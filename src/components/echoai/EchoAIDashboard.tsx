@@ -34,8 +34,6 @@ type LyricsPayload = {
   };
 };
 
-const DEFAULT_VIDEO_ID = "dQw4w9WgXcQ";
-
 type EchoAIDashboardProps = {
   initialView?: "home" | "explorer" | "stats" | "settings";
 };
@@ -79,7 +77,7 @@ export function EchoAIDashboard({ initialView = "home" }: EchoAIDashboardProps) 
     if (audioData?.videoId) {
       return audioData.videoId;
     }
-    return DEFAULT_VIDEO_ID;
+    return "";
   }, [audioData?.videoId]);
 
   useEffect(() => {

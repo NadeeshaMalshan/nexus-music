@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import ytdl from "@distube/ytdl-core";
 import { searchMusics } from "node-youtube-music";
 import { searchSongsRobust } from "@/lib/youtubeMusicSearch";
 
@@ -30,45 +29,6 @@ function youtubeHqThumbnail(videoId: string): string {
 
 function coverFromMusicVideo(m: MusicVideo, youtubeId: string): string {
   return m.thumbnailUrl?.trim() || youtubeHqThumbnail(youtubeId);
-}
-
-/** Default ytdl clients omit WEB; many YT Music / official tracks only expose streams via WEB. */
-const YTDL_PLAYER_CLIENTS: NonNullable<
-  Parameters<typeof ytdl.getInfo>[1]
->["playerClients"] = ["WEB", "WEB_EMBEDDED", "IOS", "ANDROID", "TV"];
-
-function pickAudioStreamUrl(
-  formats: Parameters<typeof ytdl.chooseFormat>[0]
-): string {
-  const attempts: { filter: "audioonly" | "audio"; quality: string }[] = [
-    { filter: "audioonly", quality: "highestaudio" },
-    { filter: "audioonly", quality: "highest" },
-    { filter: "audio", quality: "highestaudio" },
-    { filter: "audio", quality: "highest" },
-  ];
-  for (const opts of attempts) {
-    try {
-      const format = ytdl.chooseFormat(formats, opts);
-      if (format?.url) return format.url;
-    } catch {
-      /* try next */
-    }
-  }
-  const withAudio = ytdl.filterFormats(formats, "audio");
-  if (withAudio.length > 0) {
-    withAudio.sort((a, b) => (b.audioBitrate ?? 0) - (a.audioBitrate ?? 0));
-    const best = withAudio[0];
-    if (best?.url) return best.url;
-  }
-  throw new Error("No usable audio stream URL");
-}
-
-async function resolveAudioOnlyStreamUrl(youtubeId: string): Promise<string> {
-  const watchUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
-  const info = await ytdl.getInfo(watchUrl, {
-    playerClients: YTDL_PLAYER_CLIENTS,
-  });
-  return pickAudioStreamUrl(info.formats);
 }
 
 export async function GET(request: Request) {
@@ -106,19 +66,8 @@ export async function GET(request: Request) {
     const artist = formatArtists(song);
     const coverArt = coverFromMusicVideo(song, youtubeId);
 
-    let audioUrl: string;
-    try {
-      audioUrl = await resolveAudioOnlyStreamUrl(youtubeId);
-    } catch (err) {
-      console.error("Audio stream resolution failed:", err);
-      return NextResponse.json(
-        { error: "Could not resolve an audio stream for this track." },
-        { status: 502 }
-      );
-    }
-
     return NextResponse.json({
-      audioUrl,
+      audioUrl: "",
       trackName,
       artist,
       coverArt,

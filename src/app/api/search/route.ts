@@ -11,8 +11,18 @@ type SearchItem = {
 };
 
 function youtubeHqThumbnail(videoId: string): string {
-  // sddefault is usually available and significantly sharper than low-res shelf thumbs.
-  return `https://i.ytimg.com/vi/${videoId}/sddefault.jpg`;
+  // hqdefault (480x360) is universally available and safe.
+  return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+}
+
+function upgradeYtMusicThumbnail(url: string): string {
+  if (!url) return url;
+  // YT Music thumbnails often have =w120-h120-... or similar. We replace with high res.
+  if (url.includes("=w") && url.includes("-h")) {
+    return url.replace(/=w\d+-h\d+/, "=w1024-h1024");
+  }
+  // Some other patterns exist
+  return url;
 }
 
 function formatSeconds(total: number): string {
@@ -36,12 +46,15 @@ function musicVideoToItem(m: {
     m.duration?.label ||
     (m.duration?.totalSeconds != null ? formatSeconds(m.duration.totalSeconds) : "0:00");
 
+  let thumb = m.thumbnailUrl?.trim() || youtubeHqThumbnail(id);
+  thumb = upgradeYtMusicThumbnail(thumb);
+
   return {
     videoId: id,
     title: m.title?.trim() || "Unknown title",
     author: artist,
     duration: dur,
-    thumbnail: m.thumbnailUrl?.trim() || youtubeHqThumbnail(id),
+    thumbnail: thumb,
   };
 }
 

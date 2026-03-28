@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Search, Mic, X, Play, Clock } from "lucide-react";
+import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Song } from "./types";
 
 interface SearchPageProps {
   onClose: () => void;
   onSongSelect: (song: Song) => void;
-  onQueueReplace: (songs: Song[]) => void;
+  onQueueReplace?: (songs: Song[]) => void;
+  onAddToQueue?: (song: Song) => void;
+  onPlayNext?: (song: Song) => void;
 }
 
 type SearchItem = {
@@ -17,7 +19,7 @@ type SearchItem = {
   thumbnail: string;
 };
 
-export function SearchPage({ onClose, onSongSelect, onQueueReplace }: SearchPageProps) {
+export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue, onPlayNext }: SearchPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [identifiedSong, setIdentifiedSong] = useState<string | null>(null);
@@ -25,6 +27,8 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace }: SearchPage
   const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
   const [songColors, setSongColors] = useState<Record<string, string>>({});
   const searchTimeoutRef = useRef<number | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const extractDominantColor = useCallback(async (src: string): Promise<string | null> => {
     return new Promise((resolve) => {
@@ -85,13 +89,76 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace }: SearchPage
     });
   }, []);
 
-  const handleMusicIdentifier = () => {
-    setIsListening(true);
-    setIdentifiedSong(null);
-    setTimeout(() => {
+  const handleMusicIdentifier = async () => {
+    try {
+      if (isListening) return;
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
+        const formData = new FormData();
+        formData.append("audio", audioBlob);
+
+        try {
+          const response = await fetch("/api/identify", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await response.json();
+          if (response.ok) {
+             setIdentifiedSong(`${data.title} by ${data.artist}`);
+             // If we found a playable song, add it to results so user can play it
+             if (data.id) {
+                setSearchResults([
+                  {
+                    videoId: data.id,
+                    title: data.title,
+                    author: data.artist,
+                    duration: data.duration,
+                    thumbnail: data.artwork
+                  }
+                ]);
+             }
+          } else {
+             setIdentifiedSong(data.error || "Could not identify song.");
+          }
+        } catch (err) {
+          console.error("Identification error:", err);
+          setIdentifiedSong("Error identifying song.");
+        } finally {
+          setIsListening(false);
+          // Stop all tracks in the stream
+          stream.getTracks().forEach(track => track.stop());
+        }
+      };
+
+      setIsListening(true);
+      setIdentifiedSong("Focusing on the sound...");
+      mediaRecorder.start();
+
+      // Listen for 8 seconds
+      setTimeout(() => {
+        if (mediaRecorderRef.current?.state === "recording") {
+          mediaRecorderRef.current.stop();
+        }
+      }, 7000);
+
+    } catch (err) {
+      console.error("Microphone access denied:", err);
+      setIdentifiedSong("Microphone access is required.");
       setIsListening(false);
-      setIdentifiedSong("Midnight Dreams by Luna Park");
-    }, 3000);
+    }
   };
 
   const runSearch = useCallback(async (queryOverride?: string) => {
@@ -250,10 +317,6 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace }: SearchPage
                   onClick={() => {
                     void (async () => {
                       const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
-                      const normalizedSongs = mappedSongs.map((queuedSong) =>
-                        queuedSong.id === song.id ? { ...queuedSong, color: dynamicColor } : queuedSong
-                      );
-                      onQueueReplace(normalizedSongs);
                       onSongSelect({ ...song, color: dynamicColor });
                       onClose();
                     })();
@@ -272,8 +335,40 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace }: SearchPage
                       <p className="truncate text-[14px] text-[#EBEBF5]/60">Song · {song.artist}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                     <span className="text-[13px] font-medium text-[#EBEBF5]/50 flex items-center gap-1.5"><Clock size={14}/> {song.duration}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="hidden items-center gap-1 group-hover:flex">
+                      {onPlayNext && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void (async () => {
+                              const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
+                              onPlayNext({ ...song, color: dynamicColor });
+                            })();
+                          }}
+                          className="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                          title="Play Next"
+                        >
+                          <PlaySquare size={18} />
+                        </button>
+                      )}
+                      {onAddToQueue && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void (async () => {
+                              const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
+                              onAddToQueue({ ...song, color: dynamicColor });
+                            })();
+                          }}
+                          className="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                          title="Add to Queue"
+                        >
+                          <ListPlus size={18} />
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-[13px] font-medium text-[#EBEBF5]/50 flex items-center gap-1.5 whitespace-nowrap"><Clock size={14}/> {song.duration}</span>
                   </div>
                 </motion.div>
               ))}

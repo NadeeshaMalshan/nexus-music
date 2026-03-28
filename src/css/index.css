@@ -1,3 +1,11 @@
+/* ── Artwork-driven 60-30-10 palette ──────────────────────────────────────── */
+/* Defaults – overridden by EchoAIDashboard via JS when a song is playing     */
+:root {
+  --art-primary:   #0d0b14;
+  --art-secondary: #1a1528;
+  --art-accent:    #a855f7;
+}
+
 /* Custom Scrollbar Styles */
 * {
   scrollbar-width: thin;
@@ -51,4 +59,18 @@
 
 .neon-pulse {
   animation: neon-pulse 2s ease-in-out infinite;
+}
+
+/* Skeleton shimmer for For You glass cards */
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* Hide scrollbar but allow scrolling (chip strip) */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

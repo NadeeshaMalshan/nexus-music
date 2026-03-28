@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",
+    "@huggingface/inference": "^4.13.15",
+    "@upstash/redis": "^1.37.0",
     "lucide-react": "^1.7.0",
     "motion": "^12.38.0",
     "next": "16.2.1",

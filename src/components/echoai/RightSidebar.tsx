@@ -1,14 +1,16 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { List, FileText, X } from "lucide-react";
+import { List, FileText, X, Play, Sparkles, Trash2, GripVertical, ListPlus, PlaySquare } from "lucide-react";
 import { type Song } from "./types";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, Reorder } from "motion/react";
 import { parseLrcContent } from "@/lib/lrc";
+import { AudioVisualizer } from "./AudioVisualizer";
 
 interface RightSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onSongClick: (song: Song) => void;
   queueSongs: Song[];
+  upNextQueue?: Song[]; // Added for Autoplay/Radio
   lyricsContent: string | null;
   currentTimeSec: number;
   currentArtist: string;
@@ -16,6 +18,13 @@ interface RightSidebarProps {
   aiInsights: string;
   accentColor: string;
   onSeek?: (time: number) => void;
+  currentSongId?: string;
+  aiLoading?: boolean;
+  onRemoveFromQueue?: (index: number) => void;
+  onRemoveFromUpNext?: (index: number) => void;
+  onReorderQueue?: (newQueue: Song[]) => void;
+  onAddToQueue?: (song: Song) => void;
+  onPlayNext?: (song: Song) => void;
 }
 
 export function RightSidebar({
@@ -23,6 +32,7 @@ export function RightSidebar({
   onClose,
   onSongClick,
   queueSongs,
+  upNextQueue = [],
   lyricsContent,
   currentTimeSec,
   currentArtist,
@@ -30,11 +40,19 @@ export function RightSidebar({
   aiInsights,
   accentColor,
   onSeek,
+  currentSongId,
+  aiLoading,
+  onRemoveFromQueue,
+  onRemoveFromUpNext,
+  onReorderQueue,
+  onAddToQueue,
+  onPlayNext,
 }: RightSidebarProps) {
   const [activeTab, setActiveTab] = useState<"queue" | "lyrics">("queue");
   const scrollRef = useRef<HTMLDivElement>(null);
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
 
+  // (Internal lyrics logic remains same...)
   const plainLines = (lyricsContent || "").split("\n").map((l) => l.trim()).filter(Boolean);
   
   const syncedLines = useMemo(() => {
@@ -58,13 +76,13 @@ export function RightSidebar({
 
     const finalLines = [];
     for (let i = 0; i < cleaned.length; i++) {
-      finalLines.push(cleaned[i]);
-      if (i < cleaned.length - 1) {
-        const gap = cleaned[i + 1].at - cleaned[i].at;
-        if (gap > 20 && !cleaned[i].isInstrumental && !cleaned[i + 1].isInstrumental) {
-          finalLines.push({ at: cleaned[i].at + (gap * 0.3), text: "", isInstrumental: true });
+        finalLines.push(cleaned[i]);
+        if (i < cleaned.length - 1) {
+          const gap = cleaned[i + 1].at - cleaned[i].at;
+          if (gap > 20 && !cleaned[i].isInstrumental && !cleaned[i + 1].isInstrumental) {
+            finalLines.push({ at: cleaned[i].at + (gap * 0.3), text: "", isInstrumental: true });
+          }
         }
-      }
     }
     return finalLines;
   }, [lyricsContent]);
@@ -103,7 +121,7 @@ export function RightSidebar({
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 400, opacity: 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="glass hidden lg:flex h-full w-[380px] flex-col border-l border-white/[0.08]"
+          className="glass fixed right-0 top-0 z-60 hidden lg:flex h-full w-[380px] flex-col border-l border-white/[0.08]"
         >
           <div className="flex items-center justify-between border-b border-white/[0.08] p-6">
             <div className="flex items-center gap-2">
@@ -117,8 +135,8 @@ export function RightSidebar({
                 style={
                   activeTab === "queue"
                     ? {
-                        borderColor: `${accentColor}55`,
-                        boxShadow: `0 0 15px ${accentColor}33`,
+                        borderColor: `color-mix(in srgb, var(--art-accent, #a855f7) 33%, transparent)`,
+                        boxShadow: `0 0 15px color-mix(in srgb, var(--art-accent, #a855f7) 20%, transparent)`,
                       }
                     : {}
                 }
@@ -136,8 +154,8 @@ export function RightSidebar({
                 style={
                   activeTab === "lyrics"
                     ? {
-                        borderColor: `${accentColor}55`,
-                        boxShadow: `0 0 15px ${accentColor}33`,
+                        borderColor: `color-mix(in srgb, var(--art-accent, #a855f7) 33%, transparent)`,
+                        boxShadow: `0 0 15px color-mix(in srgb, var(--art-accent, #a855f7) 20%, transparent)`,
                       }
                     : {}
                 }
@@ -153,29 +171,129 @@ export function RightSidebar({
 
           <div className="flex flex-1 overflow-hidden">
             {activeTab === "queue" ? (
-              <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
-                <p className="mb-4 text-xs uppercase tracking-wider text-white/40">Up Next • {queueSongs.length} tracks</p>
-                {queueSongs.map((song, index) => (
-                  <motion.button
-                    key={song.id}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    onClick={() => onSongClick(song)}
-                    className="group flex w-full cursor-pointer items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-white/[0.04]"
-                  >
-                    <div className="relative">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={song.artwork} alt={song.title} className="h-14 w-14 rounded-lg object-cover" />
-                      <div className="absolute inset-0 rounded-lg bg-black/40 opacity-0 transition-opacity group-hover:opacity-100" />
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                
+                {/* 1. MANUAL QUEUE SECTION */}
+                {queueSongs.length > 0 && (
+                    <Reorder.Group axis="y" values={queueSongs} onReorder={onReorderQueue || (() => {})} className="space-y-3">
+                      {queueSongs.map((song, index) => {
+                        const isActive = song.id === currentSongId;
+                        return (
+                          <Reorder.Item
+                            key={`${song.id}-${index}`}
+                            value={song}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="relative"
+                          >
+                            <div
+                              onClick={() => onSongClick(song)}
+                              className={`group flex w-full cursor-pointer items-center gap-3 rounded-xl p-3 text-left transition-all ${
+                                isActive ? "bg-white/8 shadow-lg border border-white/5" : "hover:bg-white/4 border border-transparent"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 shrink-0">
+                                <div className="text-white/10 group-hover:text-white/30 transition-colors cursor-grab active:cursor-grabbing">
+                                  <GripVertical size={16} />
+                                </div>
+                                <div className="relative">
+                                  <img src={song.artwork} alt={song.title} className="h-12 w-12 rounded-lg object-cover" />
+                                  <div className={`absolute inset-0 rounded-lg flex items-center justify-center transition-opacity ${isActive ? "bg-black/60 opacity-100" : "bg-black/40 opacity-0 group-hover:opacity-100"}`}>
+                                    {isActive ? (
+                                      <AudioVisualizer active={isActive} barCount={4} color="var(--art-accent, #a855f7)" width="18px" />
+                                    ) : (
+                                      <Play size={14} fill="white" className="text-white" />
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className={`truncate text-sm font-semibold transition-colors ${isActive ? "text-white" : "text-white/90"}`}>{song.title}</p>
+                                <p className="truncate text-xs text-white/40">{song.artist}</p>
+                              </div>
+                              
+                              <div className="flex flex-col items-end gap-1">
+                                <span className="text-[10px] text-white/30">{song.duration}</span>
+                                {!isActive && onRemoveFromQueue && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onRemoveFromQueue(index);
+                                    }}
+                                    className="p-1.5 rounded-md hover:bg-red-500/20 text-white/20 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100"
+                                    title="Remove from queue"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </Reorder.Item>
+                        );
+                      })}
+                    </Reorder.Group>
+                )}
+
+                {/* 2. AUTOPLAY / RADIO SECTION */}
+                <div className="space-y-3 pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">Autoplay</p>
+                       <span className="rounded bg-white/5 px-1.5 py-0.5 text-[8px] font-bold text-white/40 uppercase tracking-widest border border-white/5">Radio</span>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-white transition-colors group-hover:text-white">{song.title}</p>
-                      <p className="truncate text-xs text-white/50">{song.artist}</p>
+                    {aiLoading && (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-1 text-[10px] text-purple-400">
+                        <Sparkles size={10} className="animate-pulse" />
+                        <span>Curating...</span>
+                      </motion.div>
+                    )}
+                  </div>
+                  {upNextQueue.length > 0 ? (
+                    upNextQueue.map((song, index) => (
+                      <motion.button
+                        key={`auto-${song.id}-${index}`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: (queueSongs.length + index) * 0.03 }}
+                        onClick={() => onSongClick(song)}
+                        className="group flex w-full cursor-pointer items-center gap-3 rounded-xl p-3 text-left transition-all hover:bg-white/4 border border-transparent"
+                      >
+                         <div className="relative shrink-0">
+                           <img src={song.artwork} alt={song.title} className="h-10 w-10 rounded-lg object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                           <div className="absolute inset-0 rounded-lg flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <Play size={12} fill="white" className="text-white" />
+                           </div>
+                         </div>
+                         <div className="min-w-0 flex-1">
+                           <p className="truncate text-sm font-medium text-white/70 group-hover:text-white transition-colors">{song.title}</p>
+                           <p className="truncate text-[11px] text-white/30">{song.artist}</p>
+                         </div>
+                         
+                         <div className="flex flex-col items-end gap-1">
+                           <span className="text-[10px] text-white/20">{song.duration}</span>
+                           {onRemoveFromUpNext && (
+                             <button
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 onRemoveFromUpNext(index);
+                               }}
+                               className="p-1.5 rounded-md hover:bg-white/10 text-white/10 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                               title="Hide from radio"
+                             >
+                               <Trash2 size={11} />
+                             </button>
+                           )}
+                         </div>
+                      </motion.button>
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                       <div className="h-1 w-20 rounded-full bg-white/5 animate-pulse mb-3" />
+                       <p className="text-[10px] text-white/20 uppercase tracking-widest">Warming up radio...</p>
                     </div>
-                    <span className="text-xs text-white/40">{song.duration}</span>
-                  </motion.button>
-                ))}
+                  )}
+                </div>
               </div>
             ) : (
               <div className="flex h-full w-full flex-col relative">

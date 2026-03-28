@@ -23,12 +23,22 @@ function formatArtists(m: MusicVideo): string {
 }
 
 function youtubeHqThumbnail(videoId: string): string {
-  // sddefault is generally available and cleaner than low-res shelf thumbnail URLs.
-  return `https://i.ytimg.com/vi/${videoId}/sddefault.jpg`;
+  // hq720 is 1280x720, much sharper than sddefault.
+  return `https://i.ytimg.com/vi/${videoId}/hq720.jpg`;
+}
+
+function upgradeYtMusicThumbnail(url: string | undefined): string {
+  if (!url) return "";
+  // YT Music thumbnails often have =w120-h120-... or similar. We replace with high res.
+  if (url.includes("=w") && url.includes("-h")) {
+    return url.replace(/=w\d+-h\d+/, "=w1024-h1024");
+  }
+  return url;
 }
 
 function coverFromMusicVideo(m: MusicVideo, youtubeId: string): string {
-  return m.thumbnailUrl?.trim() || youtubeHqThumbnail(youtubeId);
+  const thumb = m.thumbnailUrl?.trim() || youtubeHqThumbnail(youtubeId);
+  return upgradeYtMusicThumbnail(thumb);
 }
 
 export async function GET(request: Request) {

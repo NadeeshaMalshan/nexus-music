@@ -49,6 +49,7 @@ interface UnifiedLyricsPayload {
     songId: number | null;
     url: string | null;
     thumbnail: string | null;
+    description: string | null;
   };
 }
 
@@ -182,6 +183,21 @@ async function fetchGenius(track: string, artist: string): Promise<GeniusSearchH
   return data.response?.hits?.[0]?.result ?? null;
 }
 
+async function fetchGeniusDetails(id: number): Promise<string | null> {
+  const token = process.env.GENIUS_ACCESS_TOKEN;
+  if (!token) return null;
+
+  const res = await fetchWithTimeout(`https://api.genius.com/songs/${id}?text_format=plain`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) return null;
+  const data = (await res.json()) as any;
+  return data.response?.song?.description?.plain || null;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const track = searchParams.get("track")?.trim();
@@ -251,6 +267,15 @@ export async function GET(request: Request) {
     const lyricsOvhData = lyricsOvhSettled.status === "fulfilled" ? lyricsOvhSettled.value : null;
     const geniusResult = geniusSettled.status === "fulfilled" ? geniusSettled.value : null;
 
+    let geniusDescription: string | null = null;
+    if (geniusResult?.id) {
+      geniusDescription = await fetchGeniusDetails(geniusResult.id);
+      // Clean up the description if it's just a placeholder like "No description available."
+      if (geniusDescription?.toLowerCase().includes("no description available") || geniusDescription?.length && geniusDescription.length < 5) {
+        geniusDescription = null;
+      }
+    }
+
     const plainFromOvh = lyricsOvhData?.lyrics?.trim() || null;
 
     const lyricsContent = synced || plainFromLrcLib || plainFromOvh;
@@ -271,6 +296,7 @@ export async function GET(request: Request) {
         songId: geniusResult?.id ?? null,
         url: geniusResult?.url ?? null,
         thumbnail: geniusResult?.song_art_image_thumbnail_url ?? null,
+        description: geniusDescription,
       },
     };
 
@@ -289,6 +315,7 @@ export async function GET(request: Request) {
         songId: null,
         url: null,
         thumbnail: null,
+        description: null,
       },
     };
 

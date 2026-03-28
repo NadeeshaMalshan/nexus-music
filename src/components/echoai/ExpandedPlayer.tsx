@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
-import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, Sparkles, ChevronDown } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, Sparkles, ChevronDown, Trash2, GripVertical, BookOpen, ExternalLink } from "lucide-react";
 import { type Song } from "./types";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, Reorder } from "motion/react";
 import { parseLrcContent } from "@/lib/lrc";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 
@@ -21,7 +21,20 @@ interface ExpandedPlayerProps {
   onSeek: (nextTimeSec: number) => void;
   volume: number;
   onVolumeChange: (nextVolume: number) => void;
-  aiInsights: string;
+  geniusData?: {
+    found: boolean;
+    songId: number | null;
+    url: string | null;
+    thumbnail: string | null;
+    description?: string | null;
+  };
+  knowFacts?: string[];
+  knowLoading?: boolean;
+  onRateSong: (videoId: string, rating: "like" | "none") => void;
+  onRemoveFromQueue?: (index: number) => void;
+  onReorderQueue?: (newQueue: Song[]) => void;
+  isLiked?: boolean;
+  isLoggedIn?: boolean;
 }
 
 export function ExpandedPlayer({
@@ -40,10 +53,19 @@ export function ExpandedPlayer({
   onSeek,
   volume,
   onVolumeChange,
-  aiInsights,
+  geniusData,
+  knowFacts = [],
+  knowLoading = false,
+  onRateSong,
+  onRemoveFromQueue,
+  onReorderQueue,
+  isLiked = false,
+  isLoggedIn,
 }: ExpandedPlayerProps) {
   const [activeTab, setActiveTab] = useState<"lyrics" | "up-next" | "ai">("lyrics");
-  const [isLiked, setIsLiked] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const storylineRef = useRef<HTMLDivElement>(null);
+  const storylineIndexRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -112,6 +134,29 @@ export function ExpandedPlayer({
       }
     });
   }, [activeIndex, hasSynced, activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "ai" || knowLoading || !isPlaying) return;
+
+    const interval = setInterval(() => {
+      const el = storylineRef.current;
+      if (!el) return;
+
+      const items = el.querySelectorAll(".story-fact");
+      if (items.length === 0) return;
+
+      storylineIndexRef.current = (storylineIndexRef.current + 1) % (items.length + 1);
+
+      if (storylineIndexRef.current === 0) {
+        el.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        const nextItem = items[storylineIndexRef.current - 1] as HTMLElement;
+        el.scrollTo({ top: nextItem.offsetTop - 150, behavior: "smooth" });
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [activeTab, knowLoading]);
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
 
   const formatSeconds = useMemo(
@@ -141,7 +186,11 @@ export function ExpandedPlayer({
       {/* Animated blurred background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={currentSong.artwork} alt="" className="absolute inset-0 h-full w-full scale-150 object-cover opacity-60 blur-[120px] saturate-200" />
+        <img 
+          src={imageError ? "/images/default-artwork.png" : currentSong.artwork} 
+          alt="" 
+          className="absolute inset-0 h-full w-full scale-150 object-cover opacity-60 blur-[120px] saturate-200" 
+        />
         <div className="absolute inset-0 bg-black/40" />
       </div>
 
@@ -160,7 +209,7 @@ export function ExpandedPlayer({
             <ListMusic size={16} /> Up Next
           </button>
           <button onClick={() => setActiveTab("ai")} className={`flex items-center gap-2 rounded-full px-6 py-2 text-sm font-semibold transition-all ${activeTab === 'ai' ? 'bg-white/20 text-white shadow-sm' : 'text-white/60 hover:text-white'}`}>
-            <Sparkles size={16} /> AI Insights
+            <BookOpen size={16} /> Behind the Lyrics
           </button>
         </div>
         
@@ -172,20 +221,40 @@ export function ExpandedPlayer({
         {/* Left side: Player */}
         <div className="mx-auto flex w-full max-w-[480px] flex-col justify-center place-self-center">
           {/* Artwork */}
-          <div className="group relative aspect-square w-full shrink-0 overflow-hidden rounded-[16px] border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.6)] transition-transform duration-500 hover:scale-[1.02] xl:rounded-[32px]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={currentSong.artwork} alt={currentSong.title} className="absolute inset-0 h-full w-full object-cover" />
+          <div className="group relative aspect-square w-full shrink-0 overflow-hidden rounded-[16px] border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.6)] transition-transform duration-500 hover:scale-[1.02] xl:rounded-[32px] bg-zinc-900 flex items-center justify-center">
+            {imageError ? (
+               <ListMusic size={80} className="text-white/20" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img 
+                src={currentSong.artwork} 
+                alt={currentSong.title} 
+                className="absolute inset-0 h-full w-full object-cover" 
+                onError={() => setImageError(true)}
+              />
+            )}
           </div>
 
           {/* Info */}
           <div className="mt-10 flex items-start justify-between">
-            <div className="flex-1 pr-6">
-              <h1 className="truncate text-[28px] font-bold tracking-tight text-white">{currentSong.title}</h1>
-              <p className="mt-1 truncate text-xl font-medium text-white/70">{currentSong.artist}</p>
+            <div className="flex-1 pr-6 min-w-0">
+              <h1 className="line-clamp-2 text-[28px] font-bold tracking-tight text-white leading-tight">
+                {currentSong.title}
+              </h1>
+              <p className="mt-1 text-xl font-medium text-white/70 line-clamp-1">
+                {currentSong.artist}
+              </p>
             </div>
-            <button onClick={() => setIsLiked(!isLiked)} className="mt-1 rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10">
-              <Heart size={26} className={isLiked ? "fill-[#FA243C] text-[#FA243C]" : "text-white/70"} />
-            </button>
+            {isLoggedIn && (
+              <button 
+                onClick={() => {
+                  onRateSong(currentSong.id, isLiked ? "none" : "like");
+                }} 
+                className="mt-1 rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
+              >
+                <Heart size={26} className={isLiked ? "fill-[#FA243C] text-[#FA243C]" : "text-white/70"} fill={isLiked ? "#FA243C" : "none"} />
+              </button>
+            )}
           </div>
 
           {/* Progress */}
@@ -234,7 +303,7 @@ export function ExpandedPlayer({
         </div>
 
         {/* Right side: Tabs Content */}
-        <div className="relative mx-auto flex h-[75vh] w-full max-w-[600px] flex-col justify-center place-self-center lg:ml-8" style={{ maskImage: activeTab === 'lyrics' ? 'linear-gradient(to bottom, transparent, black 10%, black 90%, transparent)' : 'none' }}>
+        <div className="relative mx-auto flex h-[75vh] w-full max-w-[800px] flex-col justify-center place-self-center" style={{ maskImage: activeTab === 'lyrics' ? 'linear-gradient(to bottom, transparent, black 10%, black 90%, transparent)' : 'none' }}>
           <AnimatePresence mode="wait">
             {activeTab === "lyrics" && (
               <motion.div key="lyrics" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className={`relative h-full w-full overflow-y-auto custom-scrollbar scroll-smooth`} ref={scrollRef}>
@@ -299,37 +368,183 @@ export function ExpandedPlayer({
             {activeTab === "up-next" && (
               <motion.div key="up-next" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="custom-scrollbar h-full overflow-y-auto px-4 py-[10vh]">
                 <h2 className="mb-8 text-3xl font-bold tracking-tight text-white">Up Next</h2>
-                <div className="space-y-3">
+                <Reorder.Group axis="y" values={queueSongs} onReorder={onReorderQueue || (() => {})} className="space-y-3">
                   {queueSongs.map((song, idx) => (
-                    <button
-                      key={`${song.id}-${idx}`}
-                      onClick={() => onSongClick(song)}
-                      className="group flex w-full items-center gap-4 rounded-xl p-3 text-left transition-colors hover:bg-white/10"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={song.artwork} alt={song.title} className="h-14 w-14 rounded-lg object-cover shadow-sm transition-transform group-hover:scale-105" />
-                      <div className="flex-1 truncate">
-                        <p className="truncate text-base font-medium text-white">{song.title}</p>
-                        <p className="mt-0.5 truncate text-sm text-white/60">{song.artist}</p>
+                    <Reorder.Item key={`${song.id}-${idx}`} value={song}>
+                      <div
+                        className="group flex w-full items-center gap-4 rounded-xl p-3 text-left transition-colors hover:bg-white/10"
+                      >
+                        <div className="text-white/10 group-hover:text-white/30 transition-colors cursor-grab active:cursor-grabbing">
+                          <GripVertical size={20} />
+                        </div>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img 
+                          onClick={() => onSongClick(song)}
+                          src={song.artwork} 
+                          alt={song.title} 
+                          className="h-14 w-14 cursor-pointer rounded-lg object-cover shadow-sm transition-transform group-hover:scale-105" 
+                        />
+                        <div 
+                          onClick={() => onSongClick(song)}
+                          className="flex-1 truncate cursor-pointer"
+                        >
+                          <p className="truncate text-base font-medium text-white">{song.title}</p>
+                          <p className="mt-0.5 truncate text-sm text-white/60">{song.artist}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="text-sm font-medium text-white/40">{song.duration}</span>
+                          {onRemoveFromQueue && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRemoveFromQueue(idx);
+                              }}
+                              className="p-2 rounded-full hover:bg-white/10 text-white/20 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Remove from queue"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <span className="text-sm font-medium text-white/40">{song.duration}</span>
-                    </button>
+                    </Reorder.Item>
                   ))}
-                </div>
+                </Reorder.Group>
               </motion.div>
             )}
 
             {activeTab === "ai" && (
-              <motion.div key="ai" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full overflow-y-auto px-6 py-[15vh]">
-                 <div className="prose prose-invert prose-lg max-w-none">
-                  <div className="mb-8 flex items-center gap-3">
-                    <Sparkles size={32} className="text-[#FA243C]" />
-                    <span className="text-3xl font-bold tracking-tight text-white">
-                      AI Analysis
-                    </span>
-                    <span className="ml-4 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold tracking-wider text-white">Llama 3</span>
-                  </div>
-                  <p className="whitespace-pre-line text-[19px] font-medium leading-relaxed text-white/80">{aiInsights}</p>
+              <motion.div 
+                key="ai" 
+                ref={storylineRef}
+                initial={{ opacity: 0, x: 20 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                exit={{ opacity: 0, x: -20 }} 
+                className="h-full overflow-y-auto px-6 py-[15vh] custom-scrollbar scroll-smooth"
+              >
+                <div className="w-full space-y-32 pb-64">
+                  {geniusData?.found ? (
+                    <>
+                      <div className="space-y-6 px-2">
+                         <p
+                           className="text-[14px] font-bold uppercase tracking-[0.4em] opacity-80 mb-4 animate-pulse"
+                           style={{ color: "var(--art-accent, #FA243C)" }}
+                         >
+                           Discovery Storyline
+                         </p>
+                         <h2 className="text-[56px] font-black leading-[1] tracking-tighter text-white drop-shadow-2xl max-w-xl">
+                           The Story of <br/> "{currentSong.title}"
+                         </h2>
+                      </div>
+
+                      <div className="space-y-[40vh]">
+                        {knowLoading ? (
+                           <div className="flex h-[40vh] items-center justify-start anim-pulse">
+                              <p className="text-[42px] font-bold text-white/20 italic tracking-tighter">
+                                Decoding mysterious facts...
+                              </p>
+                           </div>
+                        ) : knowFacts.length > 0 ? (
+                          knowFacts.map((fact, i) => (
+                             <motion.div 
+                               key={i}
+                               initial={{ opacity: 0, y: 50, scale: 0.95 }}
+                               whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                               viewport={{ once: false, margin: "-20% 0px -20% 0px" }}
+                               transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                               className="px-2 story-fact"
+                             >
+                                <div className="flex flex-col gap-4">
+                                  <div className="flex items-center gap-4">
+                                    <span className="text-lg font-black tracking-[0.3em]" style={{ color: "var(--art-accent)" }}>TRIVIA {i + 1}</span>
+                                    <div className="h-px flex-1" style={{ background: `color-mix(in srgb, var(--art-accent) 10%, transparent)` }} />
+                                  </div>
+                                  <p className="text-[42px] font-bold leading-[1.1] tracking-tight text-white drop-shadow-2xl">
+                                    {fact.trim()}
+                                  </p>
+                                </div>
+                             </motion.div>
+                          ))
+                        ) : (
+                          (geniusData?.description || "")
+                            .split(/[.!?]\s+|\n\n+/)
+                            .filter(s => s.trim().length > 10 && !s.toLowerCase().includes("no description available"))
+                            .map((sentence, i) => (
+                               <motion.div 
+                                 key={i}
+                                 initial={{ opacity: 0, y: 50, scale: 0.95 }}
+                                 whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                                 viewport={{ once: false, margin: "-20% 0px -20% 0px" }}
+                                 transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                                 className="px-2 story-fact"
+                               >
+                                  <div className="flex flex-col gap-4">
+                                    <div className="flex items-center gap-4">
+                                      <span
+                                        className="text-lg font-black tracking-[0.3em]"
+                                        style={{ color: "var(--art-accent, #FA243C)" }}
+                                      >
+                                        FACT {i + 1}
+                                      </span>
+                                      <div
+                                        className="h-px flex-1"
+                                        style={{ background: `color-mix(in srgb, var(--art-accent, #ffffff) 10%, transparent)` }}
+                                      />
+                                    </div>
+                                    <p className="text-[42px] font-bold leading-[1.1] tracking-tight text-white drop-shadow-2xl">
+                                      {sentence.trim()}
+                                    </p>
+                                  </div>
+                               </motion.div>
+                            ))
+                        )}
+                      </div>
+
+                      <div className="space-y-16">
+                        {geniusData.thumbnail && (
+                          <motion.div 
+                            initial={{ opacity: 0 }} 
+                            whileInView={{ opacity: 1 }}
+                            className="relative aspect-video w-full rounded-[40px] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.6)] transition-all duration-1000"
+                            style={{
+                              border: `1px solid color-mix(in srgb, var(--art-accent, #FA243C) 30%, rgba(255,255,255,0.1))`,
+                              boxShadow: `0 50px 100px rgba(0,0,0,0.6), 0 0 40px color-mix(in srgb, var(--art-accent, #FA243C) 10%, transparent)`,
+                            }}
+                          >
+                            <img src={geniusData.thumbnail} alt="Genius Art" className="w-full h-full object-cover opacity-60 transition-transform duration-1000 group-hover:scale-110" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
+                            <div className="absolute bottom-10 left-12 flex items-center gap-4">
+                              <Heart size={20} fill="#FA243C" className="text-[#FA243C]" />
+                              <p className="text-[17px] font-black uppercase tracking-[0.3em] text-white">Behind the Scenes</p>
+                            </div>
+                          </motion.div>
+                        )}
+
+                        <div className="pt-24 border-t border-white/5 opacity-40 hover:opacity-100 transition-opacity">
+                          <p className="text-sm font-bold uppercase tracking-widest text-white/60">Source Attribution</p>
+                          <div className="mt-4 flex flex-col gap-1">
+                             <span className="text-xl font-bold text-white">Genius Editorial Team</span>
+                           <a 
+                               href={geniusData.url || "#"} 
+                               target="_blank" 
+                               rel="noopener noreferrer"
+                               className="text-lg font-bold hover:underline transition-colors"
+                               style={{ color: "var(--art-accent, #FA243C)" }}
+                             >
+                               Read full annotations on Genius.com
+                             </a>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex h-[60vh] flex-col items-start justify-center text-left">
+                       <p className="text-[56px] font-black text-white/5 tracking-tighter leading-none mb-4 uppercase">
+                         Decoding <br/> Storyline...
+                       </p>
+                       <p className="text-xl font-bold text-white/20">We haven't found a verified story for this track yet.</p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}

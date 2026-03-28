@@ -32,8 +32,8 @@ export function FloatingPlayer({
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
 
   return (
-    <div className="fixed bottom-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4">
-      <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="group relative">
+    <div className="fixed bottom-24 lg:bottom-8 left-0 right-0 z-50 flex items-center justify-center gap-2 px-4 lg:left-1/2 lg:right-auto lg:w-auto lg:-translate-x-1/2 lg:gap-4 lg:px-0 pointer-events-none">
+      <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="group relative w-full sm:w-[400px] lg:w-auto pointer-events-auto">
         <div
           className="absolute inset-0 rounded-full blur-2xl opacity-60 transition-all duration-1000 group-hover:opacity-100"
           style={{ background: `linear-gradient(to right, ${c}40, ${c}20, ${c}40)` }}

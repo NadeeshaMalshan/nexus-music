@@ -168,7 +168,7 @@ export function ExpandedPlayer({
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 mx-auto w-full max-w-[1400px] flex-1 grid grid-cols-1 lg:grid-cols-2 items-center gap-16 px-8 pb-16 lg:px-12">
+      <div className="relative z-10 mx-auto w-full max-w-[1400px] flex-1 grid grid-cols-1 lg:grid-cols-2 lg:items-center gap-8 lg:gap-16 px-6 pb-24 lg:px-12 overflow-y-auto lg:overflow-visible custom-scrollbar">
         {/* Left side: Player */}
         <div className="mx-auto flex w-full max-w-[480px] flex-col justify-center place-self-center">
           {/* Artwork */}

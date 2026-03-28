@@ -103,7 +103,7 @@ export function RightSidebar({
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 400, opacity: 0 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="glass flex h-full w-[380px] flex-col border-l border-white/[0.08]"
+          className="glass hidden lg:flex h-full w-[380px] flex-col border-l border-white/[0.08]"
         >
           <div className="flex items-center justify-between border-b border-white/[0.08] p-6">
             <div className="flex items-center gap-2">

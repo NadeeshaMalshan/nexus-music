@@ -7,7 +7,7 @@ interface CenterPanelProps {
 
 export function CenterPanel({ onPlaylistClick, accentColor }: CenterPanelProps) {
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-[#1C1C1E] px-8 py-10 lg:px-12">
+    <div className="flex-1 h-full overflow-y-auto bg-[#1C1C1E] px-6 py-8 pb-32 lg:px-12 lg:py-10">
       <div className="mb-10 text-left">
         <h1 className="text-[34px] font-bold tracking-tight text-white">Listen Now</h1>
         <div className="mt-4 h-[1px] w-full bg-white/10" />

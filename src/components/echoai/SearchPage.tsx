@@ -177,7 +177,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace }: SearchPage
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 h-full overflow-y-auto bg-[#1C1C1E] relative custom-scrollbar">
-      <div className="flex w-full flex-col px-8 py-10 lg:px-12 text-left">
+      <div className="flex w-full flex-col px-6 py-8 pb-32 text-left lg:px-12 lg:py-10">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-[34px] font-bold tracking-tight text-white">Search</h1>
           <button

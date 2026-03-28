@@ -1,0 +1,66 @@
+"use client";
+
+import { useSession, signIn, signOut } from "next-auth/react";
+import { LogIn, LogOut } from "lucide-react";
+import Image from "next/image";
+
+export function SidebarAuth() {
+  const { data: session, status } = useSession();
+
+  if (status === "loading") {
+    return (
+      <div className="mt-auto pt-4">
+        <button disabled className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-white/5 bg-white/[0.03] animate-pulse">
+          <div className="h-5 w-5 bg-white/20 rounded-full" />
+          <div className="h-4 w-24 bg-white/20 rounded" />
+        </button>
+      </div>
+    );
+  }
+
+  if (session?.user) {
+    return (
+      <div className="mt-auto pt-4">
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-white/[0.03] backdrop-blur-md shadow-lg">
+          {session.user.image ? (
+            <Image
+              src={session.user.image}
+              alt={session.user.name || "User Avatar"}
+              width={36}
+              height={36}
+              className="rounded-full object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-9 h-9 shrink-0 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold border border-blue-500/30">
+              {session.user.name?.[0]?.toUpperCase() || "U"}
+            </div>
+          )}
+          <div className="flex-1 overflow-hidden min-w-0">
+            <p className="text-sm font-medium text-white truncate">
+              {session.user.name || "User"}
+            </p>
+          </div>
+          <button
+            onClick={() => signOut()}
+            className="p-2 text-white/50 hover:text-white hover:bg-white/[0.08] rounded-lg transition-colors shrink-0"
+            aria-label="Log out"
+          >
+            <LogOut size={18} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-auto pt-4">
+      <button
+        onClick={() => signIn("google")}
+        className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-white/5 bg-white/[0.03] backdrop-blur-sm hover:bg-blue-500/10 hover:border-blue-500/30 hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] text-white/80 hover:text-blue-400 group"
+      >
+        <LogIn size={20} className="group-hover:text-blue-400 transition-colors" />
+        <span className="text-sm font-medium">Sign in with Google</span>
+      </button>
+    </div>
+  );
+}

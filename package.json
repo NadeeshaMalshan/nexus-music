@@ -9,7 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
+    "lucide-react": "^1.7.0",
+    "motion": "^12.38.0",
     "next": "16.2.1",
+    "next-auth": "^4.24.13",
+    "node-youtube-music": "^0.10.3",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },

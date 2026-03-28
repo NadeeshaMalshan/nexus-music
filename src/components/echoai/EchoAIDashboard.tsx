@@ -8,6 +8,7 @@ import { FloatingPlayer } from "./FloatingPlayer";
 import { RightSidebar } from "./RightSidebar";
 import { ExpandedPlayer } from "./ExpandedPlayer";
 import { SearchPage } from "./SearchPage";
+import { YouTubeLibrary } from "./YouTubeLibrary";
 import { type Song } from "./types";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 
@@ -35,7 +36,7 @@ type LyricsPayload = {
 };
 
 type EchoAIDashboardProps = {
-  initialView?: "home" | "explorer" | "stats" | "settings";
+  initialView?: "home" | "explorer" | "stats" | "settings" | "library";
 };
 
 export function EchoAIDashboard({ initialView = "home" }: EchoAIDashboardProps) {
@@ -286,10 +287,17 @@ export function EchoAIDashboard({ initialView = "home" }: EchoAIDashboardProps) 
 
   function onViewChange(view: string) {
     setActiveView(view as typeof initialView);
+    if (view === "search") {
+      setIsSearchOpen(true);
+      return;
+    } else {
+      setIsSearchOpen(false);
+    }
     if (view === "home") router.push("/");
     if (view === "explorer") router.push("/explorer");
     if (view === "stats") router.push("/stats");
     if (view === "settings") router.push("/settings");
+    if (view === "library") router.push("/library");
   }
 
   function onSongClick(song: Song) {
@@ -333,7 +341,10 @@ export function EchoAIDashboard({ initialView = "home" }: EchoAIDashboardProps) 
         <LeftSidebar activeView={activeView} onViewChange={onViewChange} accentColor={themeColor} />
         {isSearchOpen ? (
           <SearchPage
-            onClose={() => setIsSearchOpen(false)}
+            onClose={() => {
+              setIsSearchOpen(false);
+              setActiveView("home" as typeof initialView);
+            }}
             onSongSelect={onSongClick}
             onQueueReplace={(songs) => {
               setQueueSongs(songs);
@@ -342,8 +353,17 @@ export function EchoAIDashboard({ initialView = "home" }: EchoAIDashboardProps) 
               }
             }}
           />
+        ) : activeView === "library" ? (
+          <YouTubeLibrary onPlaylistClick={(playlist) => {
+            console.log("Clicked playlist:", playlist);
+            // Handle playlist click - maybe fetch tracks and update queue
+          }} />
         ) : (
-          <CenterPanel onPlaylistClick={() => setIsSearchOpen(true)} accentColor={themeColor} />
+          <CenterPanel 
+            accentColor={themeColor} 
+            onSongClick={onSongClick} 
+            seed={currentSong ? `${currentSong.artist} - ${currentSong.title}` : undefined}
+          />
         )}
         <RightSidebar
           isOpen={isRightSidebarOpen}
@@ -367,7 +387,10 @@ export function EchoAIDashboard({ initialView = "home" }: EchoAIDashboardProps) 
       {currentSong && (
         <FloatingPlayer
           onExpand={() => setIsExpandedPlayerOpen(true)}
-          onSearchClick={() => setIsSearchOpen(true)}
+          onSearchClick={() => {
+            setIsSearchOpen(true);
+            setActiveView("search" as typeof initialView);
+          }}
           currentSong={{
             ...currentSong,
             title: audioData?.trackName || currentSong.title,

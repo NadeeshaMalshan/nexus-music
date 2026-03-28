@@ -1,4 +1,4 @@
-import { Home, Compass, BarChart3, Settings, Music } from "lucide-react";
+import { Home, Compass, BarChart3, Settings, Music, Search, ListMusic } from "lucide-react";
 import { SidebarAuth } from "./SidebarAuth";
 
 interface LeftSidebarProps {
@@ -10,6 +10,8 @@ interface LeftSidebarProps {
 export function LeftSidebar({ activeView, onViewChange, accentColor }: LeftSidebarProps) {
   const navItems = [
     { id: "home", icon: Home, label: "Home" },
+    { id: "search", icon: Search, label: "Search" },
+    { id: "library", icon: ListMusic, label: "Library" },
     { id: "explorer", icon: Compass, label: "Explorer" },
     { id: "stats", icon: BarChart3, label: "Stats" },
     { id: "settings", icon: Settings, label: "Settings" },

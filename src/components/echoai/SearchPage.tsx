@@ -194,7 +194,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                               </div>
                               <div className="flex-1 min-w-0 pr-8">
                                  <p className="truncate text-2xl font-black text-white leading-tight mb-1">{song.title}</p>
-                                 <p className="truncate text-base font-bold text-white/30 uppercase tracking-[0.1em]">{song.author}</p>
+                                 <p className="truncate text-base font-bold text-white/30 uppercase tracking-widest">{song.author}</p>
                               </div>
                               <div className="flex items-center gap-6 shrink-0 pr-4">
                                  <div className="hidden items-center gap-3 lg:flex opacity-0 group-hover:opacity-100 transition-all">

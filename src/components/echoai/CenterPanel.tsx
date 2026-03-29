@@ -23,7 +23,7 @@ interface CenterPanelProps {
   onQueueReplace?: (songs: Song[]) => void;
   currentSongId?: string;
   seed?: string;
-  playedHistory?: string[]; // Added: real history from session
+  playedHistory?: Song[]; // Updated: real history from session
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
 }
@@ -253,7 +253,9 @@ export function CenterPanel(props: CenterPanelProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           recentTrackId: currentSongId || "K4TOrB7at0Y", // Fallback to Starboy if nothing playing
-          userHistory: playedHistory.length > 0 ? playedHistory : ["Top Hits 2024"] 
+          userHistory: playedHistory.length > 0 
+            ? playedHistory.map(s => `${s.title} by ${s.artist}`) 
+            : ["Top Hits 2024"] 
         }),
       });
 

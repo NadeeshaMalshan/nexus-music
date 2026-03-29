@@ -12,15 +12,27 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Nexus Music | Professional AI Ecosystem",
+  title: "EchoAI Music | Premium AI Ecosystem",
   description:
     "High-fidelity AI-powered music dashboard blending Spotify intelligence, YouTube playback, and Llama 3 insights.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "EchoAI Music",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export const viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
+  themeColor: "#050505",
 };
 
 export default function RootLayout({

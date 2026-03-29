@@ -432,6 +432,59 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     return () => controller.abort();
   }, [currentSong]);
 
+  // Native Media Session API (Lock Screen Controls)
+  useEffect(() => {
+    if (typeof window === "undefined" || !("mediaSession" in navigator) || !currentSong) return;
+
+    // Update Metadata
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentSong.title,
+      artist: currentSong.artist || "Unknown Artist",
+      album: "EchoAI Music",
+      artwork: [
+        { src: currentSong.artwork, sizes: "96x96", type: "image/jpeg" },
+        { src: currentSong.artwork, sizes: "128x128", type: "image/jpeg" },
+        { src: currentSong.artwork, sizes: "192x192", type: "image/jpeg" },
+        { src: currentSong.artwork, sizes: "256x256", type: "image/jpeg" },
+        { src: currentSong.artwork, sizes: "384x384", type: "image/jpeg" },
+        { src: currentSong.artwork, sizes: "512x512", type: "image/jpeg" },
+      ],
+    });
+
+    // Interaction Handlers
+    const handlers = [
+      ["play", onTogglePlay],
+      ["pause", onTogglePlay],
+      ["previoustrack", onPrev],
+      ["nexttrack", onNext],
+      ["seekto", (details: any) => {
+        if (details.seekTime !== undefined) onSeek(details.seekTime);
+      }],
+    ] as const;
+
+    handlers.forEach(([action, handler]) => {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler as any);
+      } catch (error) {
+        console.warn(`The media session action "${action}" is not supported yet.`);
+      }
+    });
+
+    return () => {
+      handlers.forEach(([action]) => {
+        try {
+          navigator.mediaSession.setActionHandler(action, null);
+        } catch { /* ignore */ }
+      });
+    };
+  }, [currentSong, onTogglePlay, onNext, onPrev, onSeek]);
+
+  // Sync Playback State to OS
+  useEffect(() => {
+    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+    navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+  }, [isPlaying]);
+
   // YouTube player: container is created imperatively on document.body so React never strips the iframe on re-renders.
   useEffect(() => {
     const mount = document.createElement("div");

@@ -415,11 +415,12 @@ export function CenterPanel(props: CenterPanelProps) {
   return (
     <div className="flex-1 h-full overflow-y-auto bg-transparent px-4 py-8 pb-32 lg:px-12 lg:py-12 custom-scrollbar">
       {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <div className="mb-14 text-left">
-        <h1 className="text-[48px] font-black tracking-tight text-white leading-none mb-3">
+      <div className="mb-14 text-left px-1 space-y-1">
+        <p className="text-white/10 font-black uppercase tracking-[0.4em] text-xs">For Your Ears Only</p>
+        <h1 className="text-[64px] lg:text-[84px] font-black tracking-tighter text-white leading-none mb-3">
           Listen Now
         </h1>
-        <p className="text-[20px] font-medium text-white/40 mb-10">Personalized for you</p>
+        <p className="text-[20px] font-medium text-white/40 mb-10">Context-aware music discovery</p>
       </div>
 
       <div className="space-y-16">

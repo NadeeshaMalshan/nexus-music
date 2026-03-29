@@ -11,6 +11,7 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  turbopack: {}, // Silence turbopack vs webpack conflict for PWA support
   images: {
     remotePatterns: [
       {

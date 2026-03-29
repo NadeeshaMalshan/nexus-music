@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
-import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, Sparkles, ChevronDown, Trash2, GripVertical, BookOpen, ExternalLink } from "lucide-react";
+import YouTube from "react-youtube";
+import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video } from "lucide-react";
 import { type Song } from "./types";
-import { motion, AnimatePresence, Reorder } from "motion/react";
 import { parseLrcContent } from "@/lib/lrc";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 
@@ -35,6 +35,13 @@ interface ExpandedPlayerProps {
   onReorderQueue?: (newQueue: Song[]) => void;
   isLiked?: boolean;
   isLoggedIn?: boolean;
+  playVideo: () => void;
+  pauseVideo: () => void;
+  pauseBackgroundPlayer: () => void;
+  setCurrentTimeSec: (time: number) => void;
+  setIsPlaying: (playing: boolean) => void;
+  viewMode: "music" | "video";
+  setViewMode: (mode: "music" | "video") => void;
 }
 
 export function ExpandedPlayer({
@@ -58,12 +65,21 @@ export function ExpandedPlayer({
   knowLoading = false,
   onRateSong,
   onRemoveFromQueue,
-  onReorderQueue,
   isLiked = false,
   isLoggedIn,
+  playVideo,
+  pauseVideo,
+  pauseBackgroundPlayer,
+  setCurrentTimeSec,
+  setIsPlaying,
+  viewMode,
+  setViewMode,
 }: ExpandedPlayerProps) {
-  const [activeTab, setActiveTab] = useState<"lyrics" | "up-next" | "ai">("lyrics");
+  const [activeTab, setActiveTab] = useState<"lyrics" | "up-next" | "ai" | "controls">("lyrics");
+  const [videoStartTime, setVideoStartTime] = useState(0);
   const [imageError, setImageError] = useState(false);
+  const ytPlayerInstance = useRef<any>(null);
+  const videoSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const storylineRef = useRef<HTMLDivElement>(null);
   const storylineIndexRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -157,6 +173,69 @@ export function ExpandedPlayer({
 
     return () => clearInterval(interval);
   }, [activeTab, knowLoading]);
+  
+  // Sync video time to global state
+  useEffect(() => {
+    if (viewMode === "video") {
+      videoSyncIntervalRef.current = setInterval(() => {
+        try {
+          const p = ytPlayerInstance.current;
+          if (!p) return;
+          const time = p.getCurrentTime();
+          if (time !== undefined && time !== null && Number.isFinite(time)) {
+            setCurrentTimeSec(time);
+          }
+        } catch {
+          /* iframe/player destroyed during track change */
+        }
+      }, 500);
+    } else {
+      if (videoSyncIntervalRef.current) {
+        clearInterval(videoSyncIntervalRef.current);
+        videoSyncIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (videoSyncIntervalRef.current) clearInterval(videoSyncIntervalRef.current);
+    };
+  }, [viewMode]);
+
+  // Sync global isPlaying to video player (only when expanded video iframe is mounted)
+  useEffect(() => {
+    if (viewMode !== "video" || !ytPlayerInstance.current) return;
+    if (isPlaying) ytPlayerInstance.current.playVideo();
+    else ytPlayerInstance.current.pauseVideo();
+  }, [isPlaying, viewMode]);
+
+  useEffect(() => {
+    if (viewMode !== "video") ytPlayerInstance.current = null;
+  }, [viewMode]);
+
+  useEffect(() => {
+    ytPlayerInstance.current = null;
+  }, [currentSong.id]);
+
+  // Handle new song selection while in video mode
+  useEffect(() => {
+    if (viewMode === "video") {
+      // Pause hidden audio only — do NOT set isPlaying false (would fight onSongClick / break next track)
+      pauseBackgroundPlayer();
+      setVideoStartTime(0);
+    }
+  }, [currentSong.id, viewMode, pauseBackgroundPlayer]);
+
+  const youtubeOpts = useMemo(() => ({
+    height: '100%',
+    width: '100%',
+    playerVars: {
+      autoplay: 0,
+      controls: 0,
+      modestbranding: 1,
+      rel: 0,
+      iv_load_policy: 3,
+    },
+  }), []);
+
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
 
   const formatSeconds = useMemo(
@@ -181,8 +260,93 @@ export function ExpandedPlayer({
     onVolumeChange(ratio * 100);
   }
 
+  const renderControls = (idKey: string) => (
+    <div
+      key={idKey}
+      className={`flex w-full flex-col justify-center ${viewMode === "video" ? "px-8 md:px-16" : ""}`}
+    >
+      {/* Info */}
+      <div className="mt-10 flex items-start justify-between">
+        <div className="flex-1 pr-6 min-w-0">
+          <h1 className="line-clamp-2 text-[28px] font-bold tracking-tight text-white leading-tight">
+            {currentSong.title}
+          </h1>
+          <p className="mt-1 text-xl font-medium text-white/70 line-clamp-1">
+            {currentSong.artist}
+          </p>
+        </div>
+        {isLoggedIn && (
+          <button 
+            onClick={() => {
+              onRateSong(currentSong.id, isLiked ? "none" : "like");
+            }} 
+            className="mt-1 rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
+          >
+            <Heart size={26} className={isLiked ? "fill-[#FA243C] text-[#FA243C]" : "text-white/70"} fill={isLiked ? "#FA243C" : "none"} />
+          </button>
+        )}
+      </div>
+
+      {/* Progress */}
+      <div className="mt-6 space-y-2.5">
+        <div
+          onClick={handleSeekClick}
+          className="group relative h-1.5 w-full cursor-pointer overflow-hidden rounded-full bg-white/20 backdrop-blur-sm md:overflow-visible"
+        >
+          <div className="absolute inset-y-0 left-0 rounded-full bg-white/90 transition-all duration-150 ease-out" style={{ width: `${progress}%` }} />
+          <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover:scale-100" style={{ left: `${progress}%` }} />
+        </div>
+        <div className="flex justify-between text-[13px] font-semibold tracking-wide text-white/50">
+          <span>{formatSeconds(currentTimeSec)}</span>
+          <span>-{formatSeconds(safeDuration - currentTimeSec)}</span>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="mt-6 flex items-center justify-center gap-12">
+        <button onClick={onPrev} className="text-white/90 transition-all hover:scale-110 hover:text-white active:scale-95">
+          <SkipBack size={42} fill="currentColor" />
+        </button>
+        <button 
+          onClick={() => {
+            if (viewMode === "video" && ytPlayerInstance.current) {
+              if (isPlaying) {
+                ytPlayerInstance.current.pauseVideo();
+                setIsPlaying(false);
+              } else {
+                ytPlayerInstance.current.playVideo();
+                setIsPlaying(true);
+              }
+            } else {
+              onTogglePlay();
+            }
+          }} 
+          className="flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/20 backdrop-blur-xl transition-all hover:scale-105 hover:bg-white/30 active:scale-95"
+        >
+          {isPlaying ? (
+            <Pause size={38} fill="white" className="text-white" />
+          ) : (
+            <Play size={38} fill="white" className="ml-2 text-white" />
+          )}
+        </button>
+        <button onClick={onNext} className="text-white/90 transition-all hover:scale-110 hover:text-white active:scale-95">
+          <SkipForward size={42} fill="currentColor" />
+        </button>
+      </div>
+
+      {/* Volume */}
+      <div className="mt-6 flex w-full items-center gap-4 px-2 pb-1">
+        <Volume2 size={20} className="text-white/60" />
+        <div onClick={handleVolumeClick} className="group relative h-1.5 flex-1 cursor-pointer rounded-full bg-white/20 backdrop-blur-sm">
+          <div className="absolute inset-y-0 left-0 rounded-full bg-white/90 transition-all duration-150 ease-out" style={{ width: `${volume}%` }} />
+          <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover:scale-100" style={{ left: `${volume}%` }} />
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }} className="fixed inset-0 z-50 flex flex-col bg-black">
+    <div className="fixed inset-0 z-50 flex max-h-[100dvh] flex-col bg-black">
       {/* Animated blurred background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -195,118 +359,161 @@ export function ExpandedPlayer({
       </div>
 
       {/* Top bar */}
-      <div className="relative z-20 flex w-full items-center justify-between px-8 py-8">
-        <button onClick={onClose} className="group rounded-full bg-black/20 p-2 backdrop-blur-md transition-colors hover:bg-black/40">
-          <ChevronDown size={32} className="text-white/80 transition-colors group-hover:text-white" />
+      <div className="relative z-20 flex w-full shrink-0 items-center gap-2 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 sm:px-8 sm:py-8">
+        <button
+          type="button"
+          onClick={onClose}
+          className="group shrink-0 rounded-full bg-black/20 p-2 backdrop-blur-md transition-colors hover:bg-black/40"
+        >
+          <ChevronDown className="h-7 w-7 text-white/80 transition-colors group-hover:text-white sm:h-8 sm:w-8" />
         </button>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-1 rounded-full border border-white/5 bg-black/20 p-1 backdrop-blur-md">
-          <button onClick={() => setActiveTab("lyrics")} className={`flex items-center gap-2 rounded-full px-6 py-2 text-sm font-semibold transition-all ${activeTab === 'lyrics' ? 'bg-white/20 text-white shadow-sm' : 'text-white/60 hover:text-white'}`}>
-            <Mic2 size={16} /> Lyrics
-          </button>
-          <button onClick={() => setActiveTab("up-next")} className={`flex items-center gap-2 rounded-full px-6 py-2 text-sm font-semibold transition-all ${activeTab === 'up-next' ? 'bg-white/20 text-white shadow-sm' : 'text-white/60 hover:text-white'}`}>
-            <ListMusic size={16} /> Up Next
-          </button>
-          <button onClick={() => setActiveTab("ai")} className={`flex items-center gap-2 rounded-full px-6 py-2 text-sm font-semibold transition-all ${activeTab === 'ai' ? 'bg-white/20 text-white shadow-sm' : 'text-white/60 hover:text-white'}`}>
-            <BookOpen size={16} /> Behind the Lyrics
-          </button>
+        <div className="min-w-0 flex-1 overflow-x-auto overflow-y-visible no-scrollbar">
+          <div className="mx-auto flex w-max max-w-full items-center gap-1 rounded-full border border-white/5 bg-black/20 p-1 backdrop-blur-md">
+            {viewMode === "video" && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("controls")}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-all sm:gap-2 sm:px-6 sm:text-sm ${activeTab === "controls" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"}`}
+              >
+                <Volume2 size={14} className="sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Controls</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setActiveTab("lyrics")}
+              className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-all sm:gap-2 sm:px-6 sm:text-sm ${activeTab === "lyrics" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"}`}
+            >
+              <Mic2 size={14} className="sm:h-4 sm:w-4" /> Lyrics
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("up-next")}
+              className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-all sm:gap-2 sm:px-6 sm:text-sm ${activeTab === "up-next" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"}`}
+            >
+              <ListMusic size={14} className="sm:h-4 sm:w-4" /> <span className="sm:hidden">Next</span>
+              <span className="hidden sm:inline">Up Next</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("ai")}
+              className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-all sm:gap-2 sm:px-6 sm:text-sm ${activeTab === "ai" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"}`}
+            >
+              <BookOpen size={14} className="sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Behind the Lyrics</span>
+              <span className="sm:hidden">Story</span>
+            </button>
+          </div>
         </div>
-        
-        <div className="w-12" /> {/* Spacer for centering tabs conceptually */}
+
+        <div className="hidden w-12 shrink-0 sm:block" aria-hidden />
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 mx-auto w-full max-w-[1400px] flex-1 grid grid-cols-1 lg:grid-cols-2 lg:items-center gap-8 lg:gap-16 px-6 pb-24 lg:px-12 overflow-y-auto lg:overflow-visible custom-scrollbar">
+      <div className={`relative z-10 mx-auto w-full ${viewMode === 'video' ? 'max-w-[1800px] lg:grid-cols-[1.5fr_1fr] xl:grid-cols-[1.8fr_1fr]' : 'max-w-[1400px] lg:grid-cols-2'} flex-1 grid grid-cols-1 lg:items-center gap-8 lg:gap-16 px-6 pb-24 lg:px-12 overflow-y-auto lg:overflow-visible custom-scrollbar transition-all duration-700`}>
         {/* Left side: Player */}
-        <div className="mx-auto flex w-full max-w-[480px] flex-col justify-center place-self-center">
-          {/* Artwork */}
-          <div className="group relative aspect-square w-full shrink-0 overflow-hidden rounded-[16px] border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.6)] transition-transform duration-500 hover:scale-[1.02] xl:rounded-[32px] bg-zinc-900 flex items-center justify-center">
-            {imageError ? (
-               <ListMusic size={80} className="text-white/20" />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img 
-                src={currentSong.artwork} 
-                alt={currentSong.title} 
-                className="absolute inset-0 h-full w-full object-cover" 
-                onError={() => setImageError(true)}
-              />
+        <div className={`mx-auto flex w-full ${viewMode === 'video' ? 'max-w-[1000px]' : 'max-w-[min(100%,380px)]'} flex-col items-center justify-center place-self-center transition-all duration-700`}>
+          {/* Artwork / Video Player Swap */}
+          <div className={`group relative w-full shrink-0 overflow-hidden rounded-[16px] border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.6)] transition-all duration-700 ease-in-out xl:rounded-[32px] bg-black flex items-center justify-center ${viewMode === "music" ? "max-w-[min(100%,380px)] aspect-square" : "aspect-video"}`}>
+            {/* Mount YouTube only in video mode so react-youtube's DOM never fights with Framer/layout while hidden */}
+            {viewMode === "video" && (
+              <div className="absolute inset-0 z-10 h-full w-full">
+                <YouTube
+                  key={currentSong.musicVideoId || currentSong.id}
+                  videoId={currentSong.musicVideoId || currentSong.id}
+                  opts={youtubeOpts}
+                  onReady={(event) => {
+                    const p = event.target;
+                    ytPlayerInstance.current = p;
+                    try {
+                      p.seekTo(currentTimeSec, true);
+                    } catch {
+                      /* player API */
+                    }
+                    if (isPlaying) p.playVideo();
+                    else p.pauseVideo();
+                  }}
+                  onStateChange={(event) => {
+                    if (event.data === YouTube.PlayerState.ENDED) {
+                      onNext();
+                    }
+                  }}
+                  className="h-full w-full"
+                  iframeClassName="h-full w-full"
+                />
+              </div>
+            )}
+
+            {viewMode === "music" && (
+              <div className="absolute inset-0 z-20 h-full w-full bg-black">
+                {imageError ? (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <ListMusic size={80} className="text-white/20" />
+                  </div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={currentSong.artwork}
+                    alt={currentSong.title}
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    onError={() => setImageError(true)}
+                  />
+                )}
+              </div>
             )}
           </div>
 
-          {/* Info */}
-          <div className="mt-10 flex items-start justify-between">
-            <div className="flex-1 pr-6 min-w-0">
-              <h1 className="line-clamp-2 text-[28px] font-bold tracking-tight text-white leading-tight">
-                {currentSong.title}
-              </h1>
-              <p className="mt-1 text-xl font-medium text-white/70 line-clamp-1">
-                {currentSong.artist}
-              </p>
-            </div>
-            {isLoggedIn && (
-              <button 
+          {/* Music / Video — centered directly under artwork (matches full-player layout) */}
+          <div className={`mt-4 flex w-full shrink-0 justify-center ${viewMode === "music" ? "max-w-[min(100%,380px)]" : ""}`}>
+            <div className="flex items-center gap-1 rounded-full border border-white/5 bg-black/20 p-1 backdrop-blur-md">
+              <button
+                type="button"
                 onClick={() => {
-                  onRateSong(currentSong.id, isLiked ? "none" : "like");
-                }} 
-                className="mt-1 rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
+                  if (viewMode === "video") {
+                    const time = ytPlayerInstance.current?.getCurrentTime() || currentTimeSec;
+                    setViewMode("music");
+                    setActiveTab((prev) => (prev === "controls" ? "lyrics" : prev));
+                    // After viewMode commits, resume hidden player only (avoid overlap with expanded iframe)
+                    window.setTimeout(() => {
+                      onSeek(time);
+                      playVideo();
+                    }, 0);
+                  }
+                }}
+                className={`flex items-center gap-2 rounded-full px-5 py-1.5 text-xs font-bold uppercase tracking-wider transition-all ${viewMode === "music" ? "scale-105 bg-white text-black shadow-lg" : "text-white/60 hover:text-white"}`}
               >
-                <Heart size={26} className={isLiked ? "fill-[#FA243C] text-[#FA243C]" : "text-white/70"} fill={isLiked ? "#FA243C" : "none"} />
+                <Music size={14} /> Music
               </button>
-            )}
-          </div>
-
-          {/* Progress */}
-          <div className="mt-10 space-y-2.5">
-            <div
-              onClick={handleSeekClick}
-              className="group relative h-1.5 w-full cursor-pointer overflow-hidden rounded-full bg-white/20 backdrop-blur-sm md:overflow-visible"
-            >
-              <div className="absolute inset-y-0 left-0 rounded-full bg-white/90 transition-all duration-150 ease-out" style={{ width: `${progress}%` }} />
-              <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover:scale-100" style={{ left: `${progress}%` }} />
-            </div>
-            <div className="flex justify-between text-[13px] font-semibold tracking-wide text-white/50">
-              <span>{formatSeconds(currentTimeSec)}</span>
-              <span>-{formatSeconds(safeDuration - currentTimeSec)}</span>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="mt-6 flex items-center justify-center gap-12">
-            <button onClick={onPrev} className="text-white/90 transition-all hover:scale-110 hover:text-white active:scale-95">
-              <SkipBack size={42} fill="currentColor" />
-            </button>
-            <button 
-              onClick={onTogglePlay} 
-              className="flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/20 backdrop-blur-xl transition-all hover:scale-105 hover:bg-white/30 active:scale-95"
-            >
-              {isPlaying ? (
-                <Pause size={38} fill="white" className="text-white" />
-              ) : (
-                <Play size={38} fill="white" className="ml-2 text-white" />
-              )}
-            </button>
-            <button onClick={onNext} className="text-white/90 transition-all hover:scale-110 hover:text-white active:scale-95">
-              <SkipForward size={42} fill="currentColor" />
-            </button>
-          </div>
-
-          {/* Volume */}
-          <div className="mt-10 flex w-full items-center gap-4 px-2">
-            <Volume2 size={20} className="text-white/60" />
-            <div onClick={handleVolumeClick} className="group relative h-1.5 flex-1 cursor-pointer rounded-full bg-white/20 backdrop-blur-sm">
-              <div className="absolute inset-y-0 left-0 rounded-full bg-white/90 transition-all duration-150 ease-out" style={{ width: `${volume}%` }} />
-              <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg transition-transform group-hover:scale-100" style={{ left: `${volume}%` }} />
+              <button
+                type="button"
+                onClick={() => {
+                  if (viewMode === "music") {
+                    pauseVideo();
+                    setViewMode("video");
+                    if (ytPlayerInstance.current) {
+                      ytPlayerInstance.current.seekTo(currentTimeSec, true);
+                      if (isPlaying) ytPlayerInstance.current.playVideo();
+                    }
+                  }
+                }}
+                className={`flex items-center gap-2 rounded-full px-5 py-1.5 text-xs font-bold uppercase tracking-wider transition-all ${viewMode === "video" ? "scale-105 bg-white text-black shadow-lg" : "text-white/60 hover:text-white"}`}
+              >
+                <Video size={14} /> Video
+              </button>
             </div>
           </div>
+
+          {viewMode === "music" && renderControls("left-controls")}
         </div>
 
         {/* Right side: Tabs Content */}
         <div className="relative mx-auto flex h-[75vh] w-full max-w-[800px] flex-col justify-center place-self-center" style={{ maskImage: activeTab === 'lyrics' ? 'linear-gradient(to bottom, transparent, black 10%, black 90%, transparent)' : 'none' }}>
-          <AnimatePresence mode="wait">
-            {activeTab === "lyrics" && (
-              <motion.div key="lyrics" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className={`relative h-full w-full overflow-y-auto custom-scrollbar scroll-smooth`} ref={scrollRef}>
+          {viewMode === "video" && activeTab === "controls" && (
+            <div key="video-controls" className="flex h-full w-full items-center justify-center">
+              {renderControls("right-controls")}
+            </div>
+          )}
+          {activeTab === "lyrics" && (
+            <div key="lyrics" className="relative h-full w-full overflow-y-auto custom-scrollbar scroll-smooth" ref={scrollRef}>
                 <div
                   className={hasSynced ? "pt-[15vh] pb-[60vh]" : "py-[30vh] space-y-4"}
                 >
@@ -362,19 +569,19 @@ export function ExpandedPlayer({
                     <p className="mt-1 text-base font-medium text-white/40">Lyrics provided by {lyricsSource || "Unknown"}</p>
                   </div>
                 </div>
-              </motion.div>
-            )}
+            </div>
+          )}
 
-            {activeTab === "up-next" && (
-              <motion.div key="up-next" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="custom-scrollbar h-full overflow-y-auto px-4 py-[10vh]">
+          {activeTab === "up-next" && (
+            <div key="up-next" className="custom-scrollbar h-full overflow-y-auto px-4 py-[10vh]">
                 <h2 className="mb-8 text-3xl font-bold tracking-tight text-white">Up Next</h2>
-                <Reorder.Group axis="y" values={queueSongs} onReorder={onReorderQueue || (() => {})} className="space-y-3">
+                <div className="space-y-3">
                   {queueSongs.map((song, idx) => (
-                    <Reorder.Item key={`${song.id}-${idx}`} value={song}>
+                    <div key={`${song.id}-${idx}`}>
                       <div
                         className="group flex w-full items-center gap-4 rounded-xl p-3 text-left transition-colors hover:bg-white/10"
                       >
-                        <div className="text-white/10 group-hover:text-white/30 transition-colors cursor-grab active:cursor-grabbing">
+                        <div className="text-white/10 group-hover:text-white/30 transition-colors">
                           <GripVertical size={20} />
                         </div>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -407,19 +614,16 @@ export function ExpandedPlayer({
                           )}
                         </div>
                       </div>
-                    </Reorder.Item>
+                    </div>
                   ))}
-                </Reorder.Group>
-              </motion.div>
-            )}
+                </div>
+            </div>
+          )}
 
-            {activeTab === "ai" && (
-              <motion.div 
-                key="ai" 
+          {activeTab === "ai" && (
+            <div
+                key="ai"
                 ref={storylineRef}
-                initial={{ opacity: 0, x: 20 }} 
-                animate={{ opacity: 1, x: 0 }} 
-                exit={{ opacity: 0, x: -20 }} 
                 className="h-full overflow-y-auto px-6 py-[15vh] custom-scrollbar scroll-smooth"
               >
                 <div className="w-full space-y-32 pb-64">
@@ -446,12 +650,8 @@ export function ExpandedPlayer({
                            </div>
                         ) : knowFacts.length > 0 ? (
                           knowFacts.map((fact, i) => (
-                             <motion.div 
+                             <div
                                key={i}
-                               initial={{ opacity: 0, y: 50, scale: 0.95 }}
-                               whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                               viewport={{ once: false, margin: "-20% 0px -20% 0px" }}
-                               transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
                                className="px-2 story-fact"
                              >
                                 <div className="flex flex-col gap-4">
@@ -463,19 +663,15 @@ export function ExpandedPlayer({
                                     {fact.trim()}
                                   </p>
                                 </div>
-                             </motion.div>
+                             </div>
                           ))
                         ) : (
                           (geniusData?.description || "")
                             .split(/[.!?]\s+|\n\n+/)
                             .filter(s => s.trim().length > 10 && !s.toLowerCase().includes("no description available"))
                             .map((sentence, i) => (
-                               <motion.div 
+                               <div
                                  key={i}
-                                 initial={{ opacity: 0, y: 50, scale: 0.95 }}
-                                 whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                                 viewport={{ once: false, margin: "-20% 0px -20% 0px" }}
-                                 transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
                                  className="px-2 story-fact"
                                >
                                   <div className="flex flex-col gap-4">
@@ -495,16 +691,14 @@ export function ExpandedPlayer({
                                       {sentence.trim()}
                                     </p>
                                   </div>
-                               </motion.div>
+                               </div>
                             ))
                         )}
                       </div>
 
                       <div className="space-y-16">
                         {geniusData.thumbnail && (
-                          <motion.div 
-                            initial={{ opacity: 0 }} 
-                            whileInView={{ opacity: 1 }}
+                          <div
                             className="relative aspect-video w-full rounded-[40px] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.6)] transition-all duration-1000"
                             style={{
                               border: `1px solid color-mix(in srgb, var(--art-accent, #FA243C) 30%, rgba(255,255,255,0.1))`,
@@ -517,7 +711,7 @@ export function ExpandedPlayer({
                               <Heart size={20} fill="#FA243C" className="text-[#FA243C]" />
                               <p className="text-[17px] font-black uppercase tracking-[0.3em] text-white">Behind the Scenes</p>
                             </div>
-                          </motion.div>
+                          </div>
                         )}
 
                         <div className="pt-24 border-t border-white/5 opacity-40 hover:opacity-100 transition-opacity">
@@ -546,11 +740,10 @@ export function ExpandedPlayer({
                     </div>
                   )}
                 </div>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

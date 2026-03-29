@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
-import { searchSongsRobust } from "@/lib/youtubeMusicSearch";
+import { searchSongsRobust } from "@/lib/ytmSearchService";
 
 const ACR_ACCESS_KEY = process.env.ACR_ACCESS_KEY || "";
 const ACR_ACCESS_SECRET = process.env.ACR_ACCESS_SECRET || "";

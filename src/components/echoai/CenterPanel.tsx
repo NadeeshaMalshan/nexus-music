@@ -348,10 +348,13 @@ export function CenterPanel(props: CenterPanelProps) {
 
   if (activeView === "library") {
     return (
-      <YouTubeLibrary 
-        onPlaylistClick={onPlaylistClick} 
+      <YouTubeLibrary
+        onPlaylistClick={onPlaylistClick}
         onAddToQueue={onAddToQueue}
         onPlayNext={onPlayNext}
+        onSongClick={onSongClick}
+        playedHistory={playedHistory}
+        accentColor={accentColor}
       />
     );
   }
@@ -360,7 +363,7 @@ export function CenterPanel(props: CenterPanelProps) {
     return (
       <div className="flex-1 h-full overflow-y-auto bg-[#06060a] px-6 py-8 pb-32 lg:px-12 lg:py-10 custom-scrollbar">
         <div className="mb-10 text-left">
-          <h1 className="text-[34px] font-bold tracking-tight text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-[34px] flex items-center gap-3">
             Your Playlists
           </h1>
           <div className="mt-4 h-px w-full bg-white/10" />
@@ -457,8 +460,8 @@ export function CenterPanel(props: CenterPanelProps) {
     <div className="flex-1 h-full overflow-y-auto bg-[#06060a] px-6 py-8 pb-32 lg:px-12 lg:py-10 custom-scrollbar">
       {/* ── Page header ─────────────────────────────────────────────────────── */}
       <div className="mb-10 text-left">
-        <h1 className="text-[34px] font-bold tracking-tight text-white flex items-center gap-3">
-          Listen Now 
+        <h1 className="text-2xl font-bold tracking-tight text-white sm:text-[34px] flex items-center gap-3">
+          Listen Now
         </h1>
         <div className="mt-4 h-px w-full bg-white/10" />
       </div>

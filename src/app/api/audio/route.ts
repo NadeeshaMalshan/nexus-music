@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchMusics } from "node-youtube-music";
-import { searchSongsRobust } from "@/lib/youtubeMusicSearch";
+import { searchSongsRobust, searchVideosRobust } from "@/lib/ytmSearchService";
 
 type MusicVideo = Awaited<ReturnType<typeof searchMusics>>[number];
 
@@ -53,35 +53,47 @@ export async function GET(request: Request) {
       );
     }
 
-    let results: MusicVideo[] = [];
+    // Try to find the "Song" (high quality audio, usually Art Track / Topic)
+    // AND the "Video" (Music Video) separately using our robust crawler.
+    let songResults: MusicVideo[] = [];
+    let videoResults: MusicVideo[] = [];
+    
     try {
-      results = await searchMusics(query);
+      songResults = await searchSongsRobust(query);
     } catch (err) {
-      console.warn("searchMusics failed (will try robust parser):", err);
-    }
-    if (results.length === 0) {
-      results = await searchSongsRobust(query);
+      console.warn("SONG search failed:", err);
     }
 
-    const song = pickFirstSong(results);
-    if (!song?.youtubeId) {
+    try {
+      videoResults = await searchVideosRobust(query);
+    } catch (err) {
+      console.warn("VIDEO search failed:", err);
+    }
+
+    const officialSong = pickFirstSong(songResults) || pickFirstSong(videoResults);
+    const officialVideo = pickFirstSong(videoResults) || officialSong;
+
+    if (!officialSong?.youtubeId) {
       return NextResponse.json(
         { error: "No matching song found on YouTube Music. Try a different search." },
         { status: 404 }
       );
     }
 
-    const youtubeId = song.youtubeId.trim();
-    const trackName = song.title?.trim() || "Unknown Track";
-    const artist = formatArtists(song);
-    const coverArt = coverFromMusicVideo(song, youtubeId);
+    const songId = officialSong.youtubeId.trim();
+    const musicVideoId = officialVideo?.youtubeId?.trim() || songId;
+    
+    const trackName = officialSong.title?.trim() || "Unknown Track";
+    const artist = formatArtists(officialSong);
+    const coverArt = coverFromMusicVideo(officialSong, songId);
 
     return NextResponse.json({
       audioUrl: "",
       trackName,
       artist,
       coverArt,
-      videoId: youtubeId,
+      videoId: songId,
+      musicVideoId,
     });
   } catch (error) {
     console.error("Audio route failed:", error);

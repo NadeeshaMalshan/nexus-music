@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchMusics } from "node-youtube-music";
-import { searchSongsRobust } from "@/lib/youtubeMusicSearch";
+import { searchSongsRobust } from "@/lib/ytmSearchService";
 
 type SearchItem = {
   videoId: string;

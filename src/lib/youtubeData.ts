@@ -108,6 +108,75 @@ export async function fetchPlaylistItems(accessToken: string, playlistId: string
   });
 }
 
+/**
+ * Recent channel activities that reference videos, filtered to music category where possible.
+ * Note: YouTube does not expose full "watch history" to third-party APIs; this is the closest official feed.
+ */
+export async function fetchRecentMusicActivities(accessToken: string, max = 40): Promise<YouTubeTrack[]> {
+  const actRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/activities?part=snippet,contentDetails&mine=true&maxResults=${Math.min(50, max + 15)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!actRes.ok) {
+    console.error("activities.list failed", await actRes.text());
+    return [];
+  }
+  const actData = await actRes.json();
+  const videoIds = new Set<string>();
+  for (const item of actData.items || []) {
+    const cd = item.contentDetails;
+    if (!cd) continue;
+    const v =
+      cd.upload?.videoId ||
+      cd.playlistItem?.resourceId?.videoId ||
+      cd.bulletin?.resourceId?.videoId ||
+      cd.social?.resourceId?.videoId ||
+      cd.recommendation?.resourceId?.videoId ||
+      cd.recommendation?.seedResourceId?.videoId;
+    if (v) videoIds.add(v);
+  }
+  const ids = [...videoIds].slice(0, max);
+  if (ids.length === 0) return [];
+
+  const vidRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${ids.join(",")}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!vidRes.ok) return [];
+  const vidData = await vidRes.json();
+  const items = vidData.items || [];
+
+  const out: YouTubeTrack[] = [];
+  const addVideo = (video: any) => {
+    const vId = video.id;
+    const title = video.snippet?.title || "Unknown";
+    const artist = (video.snippet?.channelTitle || "Unknown").replace(/\s*-\s*Topic$/, "");
+    const thumb =
+      video.snippet?.thumbnails?.high?.url ||
+      video.snippet?.thumbnails?.medium?.url ||
+      video.snippet?.thumbnails?.default?.url ||
+      "";
+    out.push({
+      id: vId,
+      videoId: vId,
+      title,
+      artist,
+      thumbnailUrl: thumb,
+      duration: parseISO8601Duration(video.contentDetails?.duration || ""),
+    });
+  };
+
+  for (const video of items) {
+    const catId = video.snippet?.categoryId;
+    if (catId && catId !== "10") continue;
+    addVideo(video);
+  }
+  if (out.length === 0) {
+    for (const video of items) addVideo(video);
+  }
+  return out;
+}
+
 export async function fetchLikedSongs(accessToken: string): Promise<YouTubeTrack[]> {
   // YT Music "Liked Music" is essentially the "LL" (Liked) playlist
   // We filter for musicOnly=true to exclude non-music YouTube likes

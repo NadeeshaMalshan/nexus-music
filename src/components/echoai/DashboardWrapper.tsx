@@ -42,6 +42,13 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     onRemoveFromUpNext,
     onReorderQueue,
     aiLoading,
+    playVideo,
+    pauseVideo,
+    pauseBackgroundPlayer,
+    setCurrentTimeSec,
+    setIsPlaying,
+    viewMode,
+    setViewMode,
   } = useDashboard();
 
   const themeColor = palette.accent;
@@ -63,14 +70,16 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           opacity: 0.9,
         }}
       />
-      <main className={`relative z-10 flex h-full w-full transition-all duration-300 ${isRightSidebarOpen && !isExpandedPlayerOpen ? "lg:pr-[380px]" : ""}`}>
-        <LeftSidebar 
-          activeView={activeView} 
+      <main
+        className={`relative z-10 flex h-full min-h-0 w-full min-w-0 transition-all duration-300 ${isRightSidebarOpen && !isExpandedPlayerOpen ? "lg:pr-[380px]" : ""}`}
+      >
+        <LeftSidebar
+          activeView={activeView}
           onViewChange={() => {}} // Now handled by Next.js routing via Link
-          accentColor={themeColor} 
+          accentColor={themeColor}
         />
-        
-        {children}
+
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
       </main>
 
       {currentSong && (
@@ -96,8 +105,9 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
 
       {!isRightSidebarOpen && !isExpandedPlayerOpen && (
         <button
+          type="button"
           onClick={() => setIsRightSidebarOpen(true)}
-          className="fixed right-8 top-8 z-40 hidden h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/40 transition-all backdrop-blur-3xl hover:bg-white/10 hover:text-white lg:flex"
+          className="fixed right-4 top-[max(1rem,env(safe-area-inset-top))] z-40 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/40 transition-all backdrop-blur-3xl hover:bg-white/10 hover:text-white lg:right-8 lg:top-8"
           title="Show Queue & Lyrics"
         >
           <ListMusic size={22} />
@@ -112,6 +122,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
             title: audioData?.trackName || currentSong.title,
             artist: audioData?.artist || currentSong.artist,
             artwork: audioData?.coverArt || currentSong.artwork,
+            musicVideoId: audioData?.musicVideoId,
           }}
           onSongClick={onSongClick}
           isPlaying={isPlaying}
@@ -137,6 +148,13 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           onRemoveFromQueue={onRemoveFromQueue}
           onReorderQueue={onReorderQueue}
           isLoggedIn={status === "authenticated"}
+          playVideo={playVideo}
+          pauseVideo={pauseVideo}
+          pauseBackgroundPlayer={pauseBackgroundPlayer}
+          setCurrentTimeSec={setCurrentTimeSec}
+          setIsPlaying={setIsPlaying}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
         />
       )}
 

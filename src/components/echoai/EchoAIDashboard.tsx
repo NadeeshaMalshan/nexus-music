@@ -3,10 +3,11 @@
 import { useDashboard } from "@/context/DashboardContext";
 import { CenterPanel } from "./CenterPanel";
 import { SearchPage } from "./SearchPage";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export function EchoAIDashboard() {
   const pathname = usePathname();
+  const router = useRouter();
   const {
     currentSong,
     onSongClick,
@@ -29,8 +30,7 @@ export function EchoAIDashboard() {
     return (
       <SearchPage
         onClose={() => {
-          // Use window.history.back() or Link to go home
-          window.location.href = "/";
+          router.push("/");
         }}
         onSongSelect={onSongClick}
         onAddToQueue={onAddToQueue}
@@ -41,13 +41,12 @@ export function EchoAIDashboard() {
 
   return (
     <CenterPanel 
-      activeView={activeView}
+    activeView={activeView}
       selectedPlaylist={selectedPlaylist}
       accentColor={palette.accent} 
       onSongClick={onSongClick} 
       onPlaylistClick={(playlist) => {
-        // Now handled by Link in sidebar, but for internal clicks:
-        window.location.href = `/playlists/${playlist.id}`;
+        router.push(`/playlists/${playlist.id}`);
       }}
       onQueueReplace={setQueueSongs}
       onAddToQueue={onAddToQueue}
@@ -58,3 +57,4 @@ export function EchoAIDashboard() {
     />
   );
 }
+

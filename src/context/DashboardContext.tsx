@@ -13,6 +13,7 @@ type AudioPayload = {
   artist: string;
   coverArt: string;
   videoId: string;
+  musicVideoId?: string;
 };
 
 type LyricsPayload = {
@@ -74,16 +75,24 @@ type DashboardContextType = {
   onReorderQueue: (newQueue: Song[]) => void;
   onAddToQueue: (song: Song) => void;
   onPlayNext: (song: Song) => void;
+  playVideo: () => void;
+  pauseVideo: () => void;
+  /** Pause hidden audio player only — does not change global isPlaying (needed when expanded video is active). */
+  pauseBackgroundPlayer: () => void;
+  viewMode: "music" | "video";
+  setViewMode: (mode: "music" | "video") => void;
   
   // Refs
   ytPlayerRef: React.RefObject<{
     playVideo: () => void;
     pauseVideo: () => void;
     loadVideoById: (videoId: string) => void;
+    cueVideoById: (videoId: string, startSeconds?: number) => void;
     getCurrentTime: () => number;
     getDuration: () => number;
     seekTo: (seconds: number, allowSeekAhead?: boolean) => void;
     setVolume: (volume: number) => void;
+    destroy: () => void;
   } | null>;
 };
 
@@ -96,15 +105,18 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     playVideo: () => void;
     pauseVideo: () => void;
     loadVideoById: (videoId: string) => void;
+    cueVideoById: (videoId: string, startSeconds?: number) => void;
     getCurrentTime: () => number;
     getDuration: () => number;
     seekTo: (seconds: number, allowSeekAhead?: boolean) => void;
     setVolume: (volume: number) => void;
+    destroy: () => void;
   } | null>(null);
   
   const playerReadyRef = useRef(false);
   const progressIntervalRef = useRef<number | null>(null);
   const lastTimeBucketRef = useRef(-1);
+  const onNextRef = useRef<() => void>(() => {});
   const playerElementId = "echoai-youtube-player";
 
   // State
@@ -128,6 +140,80 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [knowFacts, setKnowFacts] = useState<string[]>([]);
   const [knowLoading, setKnowLoading] = useState(false);
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<"music" | "video">("music");
+  const viewModeRef = useRef<"music" | "video">("music");
+
+  useEffect(() => {
+    viewModeRef.current = viewMode;
+  }, [viewMode]);
+
+  /** Hidden player: in video mode only cue + mute so expanded iframe is the sole audio source. */
+  function syncHiddenPlayerForViewMode(
+    player: NonNullable<(typeof ytPlayerRef)["current"]>,
+    videoId: string
+  ) {
+    if (viewModeRef.current === "video") {
+      player.cueVideoById(videoId);
+      queueMicrotask(() => {
+        try {
+          player.pauseVideo();
+          player.setVolume(0);
+        } catch {
+          /* ignore */
+        }
+      });
+    } else {
+      player.loadVideoById(videoId);
+    }
+  }
+
+  // Persistence: Load from localStorage on mount
+  useEffect(() => {
+    const loadPersistence = () => {
+      try {
+        const savedSong = localStorage.getItem("nexus_current_song");
+        if (savedSong) {
+          const parsed = JSON.parse(savedSong);
+          // Only set if we don't have a current song (e.g. from an active session)
+          setCurrentSong((prev) => prev || parsed);
+        }
+
+        const savedQueue = localStorage.getItem("nexus_queue");
+        if (savedQueue) {
+          const parsed = JSON.parse(savedQueue);
+          setQueueSongs((prev) => prev.length > 0 ? prev : parsed);
+        }
+
+        const savedVolume = localStorage.getItem("nexus_volume");
+        if (savedVolume) setVolume(parseInt(savedVolume, 10));
+
+        const savedHistory = localStorage.getItem("nexus_history");
+        if (savedHistory) setPlayedHistory(JSON.parse(savedHistory));
+      } catch (err) {
+        console.error("Failed to load persistence:", err);
+      }
+    };
+    loadPersistence();
+  }, []);
+
+  // Persistence: Save to localStorage on changes
+  useEffect(() => {
+    if (currentSong) {
+      localStorage.setItem("nexus_current_song", JSON.stringify(currentSong));
+    }
+  }, [currentSong]);
+
+  useEffect(() => {
+    localStorage.setItem("nexus_queue", JSON.stringify(queueSongs));
+  }, [queueSongs]);
+
+  useEffect(() => {
+    localStorage.setItem("nexus_volume", volume.toString());
+  }, [volume]);
+
+  useEffect(() => {
+    localStorage.setItem("nexus_history", JSON.stringify(playedHistory));
+  }, [playedHistory]);
 
   // Palette handling
   const effectiveArtwork = useMemo(() => audioData?.coverArt || currentSong?.artwork || null, [audioData, currentSong]);
@@ -173,7 +259,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         const payload = audioCacheRef.current[audioQuery];
         setAudioData(payload);
         if (ytPlayerRef.current && playerReadyRef.current) {
-          ytPlayerRef.current.loadVideoById(payload.videoId);
+          syncHiddenPlayerForViewMode(ytPlayerRef.current, payload.videoId);
         }
         return;
       }
@@ -188,7 +274,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         audioCacheRef.current[audioQuery] = payload;
         setAudioData(payload);
         if (ytPlayerRef.current && playerReadyRef.current) {
-          ytPlayerRef.current.loadVideoById(payload.videoId);
+          syncHiddenPlayerForViewMode(ytPlayerRef.current, payload.videoId);
         }
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
@@ -347,8 +433,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     return () => controller.abort();
   }, [currentSong]);
 
-  // YouTube Script & Player initialization - Only run once on mount
+  // YouTube player: container is created imperatively on document.body so React never strips the iframe on re-renders.
   useEffect(() => {
+    const mount = document.createElement("div");
+    mount.id = playerElementId;
+    mount.className =
+      "fixed -bottom-full -left-full h-[1px] w-[1px] overflow-hidden opacity-0 pointer-events-none";
+    mount.setAttribute("aria-hidden", "true");
+    document.body.appendChild(mount);
+
     const w = window as any;
     const initPlayer = () => {
       if (!w.YT?.Player || ytPlayerRef.current) return;
@@ -364,6 +457,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
             progressIntervalRef.current = window.setInterval(() => {
               const player = ytPlayerRef.current;
               if (!player || !playerReadyRef.current) return;
+              // Expanded react-youtube owns time + audio in video mode
+              if (viewModeRef.current === "video") return;
               const current = player.getCurrentTime();
               const duration = player.getDuration();
               if (Number.isFinite(current)) {
@@ -375,12 +470,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
               }
               if (Number.isFinite(duration) && duration > 0) setDurationSec(duration);
             }, 250);
-            ytPlayerRef.current?.setVolume(volume);
+            if (viewModeRef.current === "video") {
+              ytPlayerRef.current?.setVolume(0);
+              ytPlayerRef.current?.pauseVideo();
+            } else {
+              ytPlayerRef.current?.setVolume(volume);
+            }
           },
           onStateChange: (event: any) => {
-            if (event.data === 1) setIsPlaying(true);
-            else if (event.data === 2) setIsPlaying(false);
-            else if (event.data === 0) onNext();
+            // Only sync isPlaying if we're NOT in video mode, to let the visible player lead state
+            if (viewModeRef.current === "music") {
+              if (event.data === 1) setIsPlaying(true);
+              else if (event.data === 2) setIsPlaying(false);
+              // ENDED: only advance from the hidden player in music mode (expanded video has its own player)
+              if (event.data === 0) onNextRef.current();
+            }
           },
         },
       });
@@ -394,18 +498,52 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       document.body.appendChild(script);
       w.onYouTubeIframeAPIReady = initPlayer;
     }
-    return () => { if (progressIntervalRef.current) window.clearInterval(progressIntervalRef.current); };
+
+    return () => {
+      if (progressIntervalRef.current) {
+        window.clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      try {
+        ytPlayerRef.current?.destroy?.();
+      } catch {
+        /* YT may already be torn down */
+      }
+      ytPlayerRef.current = null;
+      playerReadyRef.current = false;
+      mount.remove();
+    };
   }, []); // Run only once
 
-  // Separate effect to load video when videoId changes
+  // Load / cue hidden player when resolved audio id changes
   useEffect(() => {
-    if (ytPlayerRef.current && playerReadyRef.current && audioData?.videoId) {
-      ytPlayerRef.current.loadVideoById(audioData.videoId);
+    if (!ytPlayerRef.current || !playerReadyRef.current || !audioData?.videoId) return;
+    syncHiddenPlayerForViewMode(ytPlayerRef.current, audioData.videoId);
+  }, [audioData?.videoId, viewMode]);
+
+  // Keep hidden player silent whenever expanded video mode is active (covers toggle without track change).
+  useEffect(() => {
+    const p = ytPlayerRef.current;
+    if (!p || !playerReadyRef.current) return;
+    try {
+      if (viewMode === "video") {
+        p.setVolume(0);
+        p.pauseVideo();
+      } else {
+        p.setVolume(volume);
+      }
+    } catch {
+      /* ignore */
     }
-  }, [audioData?.videoId]);
+  }, [viewMode, volume]);
 
   // Handlers
   const onTogglePlay = useCallback(() => {
+    if (viewMode === "video") {
+      // Expanded iframe is the only player; hidden must stay silent
+      setIsPlaying((v) => !v);
+      return;
+    }
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
     if (!isPlaying) {
@@ -415,7 +553,38 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       player.pauseVideo();
       setIsPlaying(false);
     }
-  }, [isPlaying]);
+  }, [isPlaying, viewMode]);
+
+  const playVideo = useCallback(() => {
+    const player = ytPlayerRef.current;
+    if (!player || !playerReadyRef.current) return;
+    player.setVolume(volume);
+    player.playVideo();
+    setIsPlaying(true);
+  }, [volume]);
+
+  const pauseVideo = useCallback(() => {
+    const player = ytPlayerRef.current;
+    if (!player || !playerReadyRef.current) return;
+    player.pauseVideo();
+    setIsPlaying(false);
+  }, []);
+
+  const pauseBackgroundPlayer = useCallback(() => {
+    const player = ytPlayerRef.current;
+    if (!player || !playerReadyRef.current) return;
+    player.pauseVideo();
+  }, []);
+
+  const onSongClick = useCallback((song: Song) => {
+    setCurrentSong(song);
+    setCurrentTimeSec(0);
+    setIsPlaying(true);
+    setQueueSongs((prev) => {
+      if (prev.some((q) => q.id === song.id)) return prev;
+      return [song];
+    });
+  }, []);
 
   const onNext = useCallback(() => {
     let nextSong: Song | null = null;
@@ -440,7 +609,18 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setIsPlaying(false);
-  }, [currentSong, queueSongs, upNextQueue]);
+  }, [currentSong, queueSongs, upNextQueue, onSongClick]);
+
+  onNextRef.current = onNext;
+
+  const onSeek = useCallback((nextTimeSec: number) => {
+    const player = ytPlayerRef.current;
+    if (!player || !playerReadyRef.current || !Number.isFinite(nextTimeSec)) return;
+    const safeDuration = durationSec > 0 ? durationSec : (youtubeTimestampToSeconds(currentSong?.duration ?? "") ?? 0);
+    const clamped = Math.max(0, Math.min(nextTimeSec, safeDuration || nextTimeSec));
+    player.seekTo(clamped, true);
+    setCurrentTimeSec(clamped);
+  }, [durationSec, currentSong?.duration]);
 
   const onPrev = useCallback(() => {
     if (queueSongs.length === 0) return;
@@ -451,26 +631,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     onSongClick(queueSongs[idx - 1]);
-  }, [currentSong, queueSongs]);
-
-  const onSongClick = useCallback((song: Song) => {
-    setCurrentSong(song);
-    setCurrentTimeSec(0);
-    setIsPlaying(true);
-    setQueueSongs((prev) => {
-      if (prev.some((q) => q.id === song.id)) return prev;
-      return [song];
-    });
-  }, []);
-
-  const onSeek = useCallback((nextTimeSec: number) => {
-    const player = ytPlayerRef.current;
-    if (!player || !playerReadyRef.current || !Number.isFinite(nextTimeSec)) return;
-    const safeDuration = durationSec > 0 ? durationSec : (youtubeTimestampToSeconds(currentSong?.duration ?? "") ?? 0);
-    const clamped = Math.max(0, Math.min(nextTimeSec, safeDuration || nextTimeSec));
-    player.seekTo(clamped, true);
-    setCurrentTimeSec(clamped);
-  }, [durationSec, currentSong?.duration]);
+  }, [currentSong, queueSongs, onSeek, onSongClick]);
 
   const onRateSong = useCallback(async (songId: string, rating: "like" | "none") => {
     if (!session?.user) return;
@@ -541,21 +702,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setQueueSongs(prev => [song, ...prev.filter(s => s.id !== song.id)]);
       if (!currentSong) onSongClick(song);
     },
+    playVideo,
+    pauseVideo,
+    pauseBackgroundPlayer,
+    viewMode,
+    setViewMode,
     ytPlayerRef,
   }), [
     audioData, queueSongs, currentSong, isPlaying, currentTimeSec, 
     durationSec, volume, lyricsData, lyricsLoading, knowFacts, 
     knowLoading, likedSongs, upNextQueue, playedHistory, aiLoading, 
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
-    onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong 
+    onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode
   ]);
 
-  return (
-    <DashboardContext.Provider value={value}>
-      {children}
-      <div id={playerElementId} className="sr-only" />
-    </DashboardContext.Provider>
-  );
+  return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
 }
 
 export function useDashboard() {

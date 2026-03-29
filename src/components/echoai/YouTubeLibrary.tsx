@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import { Play, Loader2, ChevronRight, Music2, Heart, Plus, Sparkles } from "lucide-react";
+import { Play, Loader2, ChevronRight, Music2, Heart, Plus, Sparkles, Clock, ListMusic } from "lucide-react";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
 import { type Song } from "./types";
 import { CreatePlaylistModal, AiPlaylistModal } from "./LibraryModals";
@@ -12,9 +12,20 @@ interface YouTubeLibraryProps {
   onPlaylistClick?: (playlist: YouTubePlaylist) => void;
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
+  onSongClick?: (song: Song) => void;
+  /** Recent titles played in this app ("Title by Artist") */
+  playedHistory?: string[];
+  accentColor?: string;
 }
 
-export function YouTubeLibrary({ onPlaylistClick, onAddToQueue, onPlayNext }: YouTubeLibraryProps) {
+export function YouTubeLibrary({
+  onPlaylistClick,
+  onAddToQueue,
+  onPlayNext,
+  onSongClick,
+  playedHistory = [],
+  accentColor = "#a855f7",
+}: YouTubeLibraryProps) {
   const { data: session } = useSession();
   const [playlists, setPlaylists] = useState<YouTubePlaylist[]>([]);
   const [likedSongs, setLikedSongs] = useState<any[]>([]);
@@ -22,6 +33,30 @@ export function YouTubeLibrary({ onPlaylistClick, onAddToQueue, onPlayNext }: Yo
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [ytHistory, setYtHistory] = useState<
+    { videoId: string; title: string; artist: string; thumbnailUrl: string; duration?: string }[]
+  >([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLineLoading, setHistoryLineLoading] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function loadYTHistory() {
+      if (!session?.accessToken) return;
+      setHistoryLoading(true);
+      try {
+        const res = await fetch("/api/youtube/history");
+        if (res.ok) {
+          const data = await res.json();
+          setYtHistory(Array.isArray(data.tracks) ? data.tracks : []);
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        setHistoryLoading(false);
+      }
+    }
+    loadYTHistory();
+  }, [session]);
 
   useEffect(() => {
     async function loadPlaylists() {
@@ -89,7 +124,7 @@ export function YouTubeLibrary({ onPlaylistClick, onAddToQueue, onPlayNext }: Yo
       <div className="h-full overflow-y-auto px-6 py-10 lg:px-12 custom-scrollbar pb-32">
         <div className="max-w-[1600px] mx-auto">
         <header className="mb-10 space-y-6">
-          <h1 className="text-[34px] font-bold text-white tracking-tight">Library</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight sm:text-[34px]">Library</h1>
           
           {/* Main Action Buttons */}
           <div className="flex items-center gap-4">
@@ -142,6 +177,109 @@ export function YouTubeLibrary({ onPlaylistClick, onAddToQueue, onPlayNext }: Yo
                <Play size={24} fill="white" className="text-white ml-1" />
             </div>
           </div>
+        </section>
+
+        {/* YouTube Music–aligned activity (Data API) + session history */}
+        <section className="mb-12">
+          <div className="flex items-center gap-3 mb-2">
+            <Clock size={22} className="text-white/80" />
+            <h2 className="text-[22px] font-bold text-white tracking-tight">History</h2>
+          </div>
+          <p className="text-sm text-zinc-500 mb-6 max-w-2xl">
+            Recent music activity from your Google account (YouTube Data API). Full YouTube Music app history
+            requires signing in there; EchoAI also lists tracks you played in this app.
+          </p>
+
+          {playedHistory.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
+                <ListMusic size={14} /> Played in EchoAI
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {playedHistory.map((line, idx) => (
+                  <button
+                    key={`${idx}-${line.slice(0, 24)}`}
+                    type="button"
+                    disabled={historyLineLoading !== null || !onSongClick}
+                    onClick={async () => {
+                      const i = line.lastIndexOf(" by ");
+                      if (i <= 0 || !onSongClick) return;
+                      const title = line.slice(0, i).trim();
+                      const artist = line.slice(i + 4).trim();
+                      setHistoryLineLoading(idx);
+                      try {
+                        const res = await fetch(`/api/search?q=${encodeURIComponent(`${title} ${artist}`)}`);
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        const first = data.items?.[0];
+                        if (!first) return;
+                        onSongClick({
+                          id: first.videoId,
+                          title: first.title,
+                          artist: first.author,
+                          artwork: first.thumbnail,
+                          duration: first.duration || "",
+                          color: accentColor,
+                        });
+                      } finally {
+                        setHistoryLineLoading(null);
+                      }
+                    }}
+                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-left text-sm text-white/90 hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-50 max-w-full truncate"
+                  >
+                    {historyLineLoading === idx ? "…" : line}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3">From YouTube (account)</h3>
+          {historyLoading ? (
+            <div className="flex items-center gap-3 text-zinc-500 py-8">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <span>Loading activity…</span>
+            </div>
+          ) : ytHistory.length === 0 ? (
+            <p className="text-zinc-600 text-sm py-4">
+              No recent music activity found for this account, or permissions are limited. Play more music on YouTube
+              or use EchoAI — entries will show here when available.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {ytHistory.map((t) => (
+                <button
+                  key={t.videoId}
+                  type="button"
+                  onClick={() =>
+                    onSongClick?.({
+                      id: t.videoId,
+                      title: t.title,
+                      artist: t.artist,
+                      artwork: t.thumbnailUrl,
+                      duration: t.duration || "",
+                      color: accentColor,
+                    })
+                  }
+                  className="group flex w-full items-center gap-3 rounded-xl border border-white/8 bg-white/[0.04] p-3 text-left transition-all hover:border-white/15 hover:bg-white/[0.07]"
+                >
+                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-800">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={t.thumbnailUrl || ""} alt="" className="h-full w-full object-cover" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-white text-[15px]">{t.title}</p>
+                    <p className="truncate text-xs text-zinc-500">{t.artist}</p>
+                  </div>
+                  <Play
+                    size={18}
+                    className="shrink-0 text-white/0 transition-all group-hover:text-white/80"
+                    fill="currentColor"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Playlists Grid */}

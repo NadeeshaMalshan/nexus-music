@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { List, FileText, X, Play, Sparkles, Trash2, GripVertical, ListPlus, PlaySquare } from "lucide-react";
 import { type Song } from "./types";
-import { motion, AnimatePresence, Reorder } from "motion/react";
 import { parseLrcContent } from "@/lib/lrc";
 import { AudioVisualizer } from "./AudioVisualizer";
 
@@ -113,17 +112,18 @@ export function RightSidebar({
     });
   }, [activeIndex, hasSynced, activeTab]);
 
+  if (!isOpen) return null;
+
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ x: 400, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: 400, opacity: 0 }}
-          transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="glass fixed right-0 top-0 z-60 hidden lg:flex h-full w-[380px] flex-col border-l border-white/[0.08]"
-        >
-          <div className="flex items-center justify-between border-b border-white/[0.08] p-6">
+    <>
+      <button
+        type="button"
+        aria-label="Close queue and lyrics"
+        className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-sm lg:hidden"
+        onClick={onClose}
+      />
+      <div className="glass fixed right-0 top-0 z-60 flex h-[100dvh] w-full max-w-full flex-col border-l border-white/[0.08] sm:max-w-md lg:w-[380px] lg:max-w-none">
+          <div className="flex items-center justify-between border-b border-white/[0.08] p-4 pt-[max(1rem,env(safe-area-inset-top))] sm:p-6">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setActiveTab("queue")}
@@ -175,18 +175,11 @@ export function RightSidebar({
                 
                 {/* 1. MANUAL QUEUE SECTION */}
                 {queueSongs.length > 0 && (
-                    <Reorder.Group axis="y" values={queueSongs} onReorder={onReorderQueue || (() => {})} className="space-y-3">
+                    <div className="space-y-3">
                       {queueSongs.map((song, index) => {
                         const isActive = song.id === currentSongId;
                         return (
-                          <Reorder.Item
-                            key={`${song.id}-${index}`}
-                            value={song}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className="relative"
-                          >
+                          <div key={`${song.id}-${index}`} className="relative">
                             <div
                               onClick={() => onSongClick(song)}
                               className={`group flex w-full cursor-pointer items-center gap-3 rounded-xl p-3 text-left transition-all ${
@@ -229,10 +222,10 @@ export function RightSidebar({
                                 )}
                               </div>
                             </div>
-                          </Reorder.Item>
+                          </div>
                         );
                       })}
-                    </Reorder.Group>
+                    </div>
                 )}
 
                 {/* 2. AUTOPLAY / RADIO SECTION */}
@@ -243,19 +236,17 @@ export function RightSidebar({
                        <span className="rounded bg-white/5 px-1.5 py-0.5 text-[8px] font-bold text-white/40 uppercase tracking-widest border border-white/5">Radio</span>
                     </div>
                     {aiLoading && (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-1 text-[10px] text-purple-400">
+                      <div className="flex items-center gap-1 text-[10px] text-purple-400">
                         <Sparkles size={10} className="animate-pulse" />
                         <span>Curating...</span>
-                      </motion.div>
+                      </div>
                     )}
                   </div>
                   {upNextQueue.length > 0 ? (
                     upNextQueue.map((song, index) => (
-                      <motion.button
+                      <button
+                        type="button"
                         key={`auto-${song.id}-${index}`}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: (queueSongs.length + index) * 0.03 }}
                         onClick={() => onSongClick(song)}
                         className="group flex w-full cursor-pointer items-center gap-3 rounded-xl p-3 text-left transition-all hover:bg-white/4 border border-transparent"
                       >
@@ -285,7 +276,7 @@ export function RightSidebar({
                              </button>
                            )}
                          </div>
-                      </motion.button>
+                      </button>
                     ))
                   ) : (
                     <div className="flex flex-col items-center justify-center py-10 text-center">
@@ -361,8 +352,7 @@ export function RightSidebar({
               </div>
             )}
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        </div>
+    </>
   );
 }

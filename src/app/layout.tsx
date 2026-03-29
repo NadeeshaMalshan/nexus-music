@@ -21,6 +21,12 @@ export const metadata: Metadata = {
     "Futuristic AI-powered music dashboard blending Spotify intelligence, YouTube playback, and Llama 3 insights.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

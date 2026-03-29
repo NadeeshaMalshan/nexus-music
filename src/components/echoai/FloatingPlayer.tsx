@@ -1,6 +1,5 @@
 import { Play, Pause, SkipBack, SkipForward, Maximize2, Heart } from "lucide-react";
 import { type Song } from "./types";
-import { motion } from "motion/react";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 
 interface FloatingPlayerProps {
@@ -36,16 +35,16 @@ export function FloatingPlayer({
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
 
   return (
-    <div className="fixed bottom-24 lg:bottom-8 left-0 right-0 z-50 flex items-center justify-center gap-2 px-4 lg:left-1/2 lg:right-auto lg:w-auto lg:-translate-x-1/2 lg:gap-4 lg:px-0 pointer-events-none">
-      <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="group relative w-full sm:w-[400px] lg:w-auto pointer-events-auto">
+    <div className="pointer-events-none fixed bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-50 flex items-center justify-center gap-2 px-3 sm:px-4 lg:bottom-8 lg:left-1/2 lg:right-auto lg:w-auto lg:-translate-x-1/2 lg:gap-4 lg:px-0">
+      <div className="group relative w-full max-w-[min(100%,420px)] sm:w-[400px] lg:w-auto pointer-events-auto">
         <div
-          className="absolute inset-0 rounded-full blur-2xl opacity-60 transition-all duration-1000 group-hover:opacity-100"
+          className="absolute inset-0 rounded-2xl blur-2xl opacity-60 transition-all duration-1000 group-hover:opacity-100 sm:rounded-full"
           style={{ background: `linear-gradient(to right, color-mix(in srgb, var(--art-accent, #a855f7) 25%, transparent), color-mix(in srgb, var(--art-accent, #a855f7) 12%, transparent), color-mix(in srgb, var(--art-accent, #a855f7) 25%, transparent))` }}
         />
 
-          <div className="glass relative flex items-center gap-4 rounded-full px-6 py-4 shadow-2xl">
+        <div className="glass relative flex flex-wrap items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl sm:flex-nowrap sm:gap-4 sm:rounded-full sm:px-6 sm:py-4">
           <button
-            className="relative h-14 w-14 cursor-pointer overflow-hidden rounded-full transition-transform hover:scale-105"
+            className="relative h-14 w-14 shrink-0 cursor-pointer overflow-hidden rounded-full transition-transform hover:scale-105"
             onClick={onExpand}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -55,13 +54,13 @@ export function FloatingPlayer({
             </div>
           </button>
 
-          <div className="flex items-center gap-4">
+          <div className="flex shrink-0 items-center gap-3 sm:gap-4">
             <button onClick={onPrev} className="p-2 text-white/70 transition-transform hover:scale-110 hover:text-white">
               <SkipBack size={20} fill="currentColor" />
             </button>
             <button
               onClick={onTogglePlay}
-              className="h-12 w-12 rounded-full transition-all duration-1000 hover:scale-105"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-all duration-1000 hover:scale-105"
               style={{ background: `linear-gradient(135deg, var(--art-accent, #a855f7), color-mix(in srgb, var(--art-accent, #a855f7) 87%, black))`, boxShadow: `0 10px 20px -10px var(--art-accent, #a855f7)` }}
             >
               {isPlaying ? (
@@ -90,9 +89,9 @@ export function FloatingPlayer({
             )}
           </div>
 
-          <div className="min-w-[200px]">
-            <p className="text-sm font-semibold text-white">{currentSong.title}</p>
-            <p className="text-xs text-white/50">{currentSong.artist}</p>
+          <div className="min-w-0 flex-1 basis-full sm:basis-auto sm:min-w-[180px] lg:min-w-[200px]">
+            <p className="truncate text-sm font-semibold text-white">{currentSong.title}</p>
+            <p className="truncate text-xs text-white/50">{currentSong.artist}</p>
             <div className="relative mt-2 h-1 overflow-hidden rounded-full bg-white/10">
               <div
                 className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-200 ease-out"
@@ -101,8 +100,7 @@ export function FloatingPlayer({
             </div>
           </div>
         </div>
-      </motion.div>
-
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { HfInference } from "@huggingface/inference";
 import { getRelatedTracksRobust } from "@/lib/youtubeMusicRelated";
-import { searchSongsRobust } from "@/lib/youtubeMusicSearch";
+import { searchSongsRobust } from "@/lib/ytmSearchService";
 import { MusicVideo } from "node-youtube-music";
 
 // Initialize Hugging Face Inference client

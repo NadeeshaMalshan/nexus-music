@@ -5,6 +5,7 @@ export type Song = {
   artwork: string;
   duration: string;
   color: string;
+  musicVideoId?: string;
 };
 export type NavItem = {
   label: string;

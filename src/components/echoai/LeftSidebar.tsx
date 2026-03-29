@@ -1,8 +1,8 @@
 "use client";
 
-import { Home, Compass, Settings, Music2, Search, ListMusic, Loader2, PlayCircle, Clock, Mic2, Album, UserCircle, LayoutGrid, Plus, ChevronDown, MoreHorizontal, Mic, X, ArrowUpRight, Play, Sparkles } from "lucide-react";
+import { Home, Compass, Settings, Music2, Search, ListMusic, Loader2, PlayCircle, Clock, Mic2, Album, UserCircle, LayoutGrid, Plus, ChevronDown, MoreHorizontal, Mic, X, ArrowUpRight, Play, Sparkles, User, LogIn } from "lucide-react";
 import { SidebarAuth } from "./SidebarAuth";
-import { useSession } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
 import Link from "next/link";
@@ -19,7 +19,7 @@ interface LeftSidebarProps {
 }
 
 export function LeftSidebar({ activeView: propActiveView, onViewChange, accentColor }: LeftSidebarProps) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const activeView = pathname === "/" ? "home" : pathname.split("/")[1] || "home";
@@ -289,18 +289,49 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
       <AiPlaylistModal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} />
 
       {/* Mobile Optimized Nav */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-white/5 bg-black/40 backdrop-blur-3xl lg:hidden pb-safe-offset-2 pt-2 px-6">
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-white/5 bg-black/40 backdrop-blur-3xl lg:hidden pb-safe-offset-2 pt-2 px-6">
         {[
           { id: "home", icon: Home, label: "Home", href: "/" },
+          { id: "search", icon: Search, label: "Search", href: "/search" },
           { id: "library", icon: ListMusic, label: "Library", href: "/library" },
-          { id: "settings", icon: Settings, label: "Settings", href: "/settings" },
+          { 
+            id: "auth", 
+            icon: status === "authenticated" ? User : LogIn, 
+            label: status === "authenticated" ? "Account" : "Login",
+            onClick: () => {
+              console.log("Auth trigger fired, current status:", status);
+              if (status === "loading") return;
+              if (status === "authenticated") void signOut();
+              else void signIn("google");
+            },
+            isButton: true,
+            isLoading: status === "loading"
+          },
         ].map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
+          
+          if (item.isButton) {
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={item.onClick}
+                disabled={item.isLoading}
+                className={`flex flex-col items-center gap-1.5 p-3 px-6 transition-all ${item.isLoading ? "opacity-20 cursor-wait" : "text-zinc-500 hover:text-zinc-100"}`}
+              >
+                <Icon size={26} strokeWidth={2} className={item.isLoading ? "animate-pulse" : ""} />
+                <span className="text-[11px] font-black uppercase tracking-widest">
+                   {item.label}
+                </span>
+              </button>
+            );
+          }
+
           return (
             <Link
               key={item.id}
-              href={item.href}
+              href={item.href || "#"}
               className={`flex flex-col items-center gap-1.5 p-3 px-6 transition-all ${
                 isActive ? "text-[#FA243C]" : "text-zinc-500 hover:text-zinc-100"
               }`}

@@ -215,7 +215,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("nexus_history", JSON.stringify(playedHistory));
   }, [playedHistory]);
 
-
   // Palette handling
   const effectiveArtwork = useMemo(() => audioData?.coverArt || currentSong?.artwork || null, [audioData, currentSong]);
   const palette = useArtworkColors(effectiveArtwork);
@@ -722,39 +721,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode
   ]);
-
-  // MediaSession API for Mobile Lock Screen & Background Controls
-  useEffect(() => {
-    if (typeof window === "undefined" || !("mediaSession" in navigator) || !currentSong) return;
-
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: currentSong.title,
-      artist: currentSong.artist,
-      artwork: [
-        { src: currentSong.artwork?.replace(/([=|-][swh])\d+/g, '$1600') || "", sizes: "600x600", type: "image/jpeg" },
-      ],
-    });
-
-    navigator.mediaSession.setActionHandler("play", onTogglePlay);
-    navigator.mediaSession.setActionHandler("pause", onTogglePlay);
-    navigator.mediaSession.setActionHandler("nexttrack", onNext);
-    navigator.mediaSession.setActionHandler("previoustrack", onPrev);
-    navigator.mediaSession.setActionHandler("seekto", (details) => {
-      if (details.seekTime !== undefined) onSeek(details.seekTime);
-    });
-
-    navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
-
-    return () => {
-      try {
-        navigator.mediaSession.setActionHandler("play", null);
-        navigator.mediaSession.setActionHandler("pause", null);
-        navigator.mediaSession.setActionHandler("nexttrack", null);
-        navigator.mediaSession.setActionHandler("previoustrack", null);
-        navigator.mediaSession.setActionHandler("seekto", null);
-      } catch (err) { /* ignore */ }
-    };
-  }, [currentSong, isPlaying, onTogglePlay, onNext, onPrev, onSeek]);
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
 }

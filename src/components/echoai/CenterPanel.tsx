@@ -23,7 +23,7 @@ interface CenterPanelProps {
   onQueueReplace?: (songs: Song[]) => void;
   currentSongId?: string;
   seed?: string;
-  playedHistory?: Song[]; // Updated: real history from session
+  playedHistory?: Song[]; // Added: real history from session
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
 }
@@ -253,9 +253,7 @@ export function CenterPanel(props: CenterPanelProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           recentTrackId: currentSongId || "K4TOrB7at0Y", // Fallback to Starboy if nothing playing
-          userHistory: playedHistory.length > 0 
-            ? playedHistory.map(s => `${s.title} by ${s.artist}`) 
-            : ["Top Hits 2024"] 
+          userHistory: playedHistory.length > 0 ? playedHistory : ["Top Hits 2024"] 
         }),
       });
 
@@ -308,7 +306,7 @@ export function CenterPanel(props: CenterPanelProps) {
         onAddToQueue={onAddToQueue}
         onPlayNext={onPlayNext}
         onSongClick={onSongClick}
-        playedHistory={playedHistory}
+        playedHistory={playedHistory || []}
         accentColor={accentColor}
       />
     );
@@ -413,14 +411,13 @@ export function CenterPanel(props: CenterPanelProps) {
   }
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-transparent px-4 py-8 pb-32 lg:px-12 lg:py-12 custom-scrollbar">
+    <div className="flex-1 h-full overflow-y-auto bg-transparent px-4 py-8 md:px-10 md:py-12 lg:px-16 pb-40 custom-scrollbar">
       {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <div className="mb-14 text-left px-1 space-y-1">
-        <p className="text-white/10 font-black uppercase tracking-[0.4em] text-xs">For Your Ears Only</p>
-        <h1 className="text-[64px] lg:text-[84px] font-black tracking-tighter text-white leading-none mb-3">
+      <div className="mb-8 md:mb-14 text-left">
+        <h1 className="text-3xl md:text-4xl lg:text-[48px] font-black tracking-tight text-white leading-none mb-3">
           Listen Now
         </h1>
-        <p className="text-[20px] font-medium text-white/40 mb-10">Context-aware music discovery</p>
+        <p className="text-lg md:text-[20px] font-medium text-white/40 mb-6 md:mb-10">Personalized for you</p>
       </div>
 
       <div className="space-y-16">

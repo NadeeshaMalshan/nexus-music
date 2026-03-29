@@ -116,13 +116,7 @@ export function RightSidebar({
 
   return (
     <>
-      <button
-        type="button"
-        aria-label="Close queue and lyrics"
-        className="fixed inset-0 z-[55] bg-black/5 lg:hidden"
-        onClick={onClose}
-      />
-      <div className="fixed right-0 top-0 z-60 flex h-[100dvh] w-full max-w-full flex-col bg-transparent backdrop-blur-3xl sm:max-w-md lg:w-[380px] lg:max-w-none border-l border-white/5 shadow-2xl">
+      <div className="fixed right-0 top-0 z-60 hidden h-[100dvh] w-[380px] flex-col bg-transparent backdrop-blur-3xl border-l border-white/5 shadow-2xl lg:flex">
           <div className="flex items-center justify-between p-6 pt-[max(1.5rem,env(safe-area-inset-top))]">
             <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
               <button

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
+import Image from "next/image";
 import YouTube from "react-youtube";
 import { 
   Play, Pause, SkipBack, SkipForward, Heart, Volume2, 

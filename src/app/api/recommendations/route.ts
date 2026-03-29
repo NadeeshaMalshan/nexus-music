@@ -176,8 +176,10 @@ Format ONLY as a JSON array of strings. No extra text.`;
 
 export async function GET(request: Request) {
   return NextResponse.json({ 
-    message: "Please use POST /api/recommendations with recentTrackId and userHistory" 
-  }, { status: 405 });
+    status: "online",
+    message: "Recommendations engine is ready. Please use POST with recentTrackId.",
+    timestamp: new Date().toISOString()
+  });
 }
 
 

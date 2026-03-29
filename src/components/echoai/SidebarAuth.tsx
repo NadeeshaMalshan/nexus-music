@@ -20,8 +20,8 @@ export function SidebarAuth() {
 
   if (session?.user) {
     return (
-      <div className="mt-auto pt-4">
-        <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-white/[0.03] backdrop-blur-md shadow-lg">
+      <div className="mt-auto pt-6 border-t border-white/5 group">
+        <div className="flex items-center gap-3 p-1 transition-all rounded-xl hover:bg-white/5">
           {session.user.image ? (
             <Image
               src={session.user.image}

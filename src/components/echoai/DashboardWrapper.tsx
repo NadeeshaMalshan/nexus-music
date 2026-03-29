@@ -57,19 +57,19 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   const activeView = pathname === "/" ? "home" : pathname.split("/")[1] || "home";
 
   return (
-    <div className="relative h-screen overflow-hidden bg-[#06060a] text-zinc-100">
-      {/* Global 60-30-10 background wash */}
+    <div className="relative h-screen overflow-hidden text-zinc-100">
       <div
         className="pointer-events-none absolute inset-0 transition-all duration-1200 ease-in-out"
         style={{
-          background: [
-            `radial-gradient(ellipse 80% 60% at 0% 0%, ${palette.primary}e0, transparent 65%)`,
-            `radial-gradient(ellipse 70% 50% at 100% 100%, ${palette.secondary}cc, transparent 60%)`,
-            `radial-gradient(circle 35% at 50% 40%, ${palette.accent}26, transparent 55%)`,
-          ].join(", "),
-          opacity: 0.9,
+          backgroundImage: `
+            radial-gradient(circle at 10% 10%, ${palette.primary}ee, transparent 80%),
+            radial-gradient(circle at 90% 90%, ${palette.secondary}cc, transparent 80%)
+          `,
+          filter: "blur(100px) saturate(2)",
+          backgroundColor: "#06060a"
         }}
       />
+      <div className="pointer-events-none absolute inset-0 bg-black/10" />
       <main
         className={`relative z-10 flex h-full min-h-0 w-full min-w-0 transition-all duration-300 ${isRightSidebarOpen && !isExpandedPlayerOpen ? "lg:pr-[380px]" : ""}`}
       >
@@ -100,18 +100,11 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           onRateSong={onRateSong}
           isLiked={likedSongs.has(audioData?.videoId || currentSong.id)}
           isLoggedIn={status === "authenticated"}
+          onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+          isRightSidebarOpen={isRightSidebarOpen}
+          volume={volume}
+          onVolumeChange={setVolume}
         />
-      )}
-
-      {!isRightSidebarOpen && !isExpandedPlayerOpen && (
-        <button
-          type="button"
-          onClick={() => setIsRightSidebarOpen(true)}
-          className="fixed right-4 top-[max(1rem,env(safe-area-inset-top))] z-40 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/40 transition-all backdrop-blur-3xl hover:bg-white/10 hover:text-white lg:right-8 lg:top-8"
-          title="Show Queue & Lyrics"
-        >
-          <ListMusic size={22} />
-        </button>
       )}
 
       {isExpandedPlayerOpen && currentSong && (

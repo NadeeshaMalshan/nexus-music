@@ -1,9 +1,15 @@
-/* ── Artwork-driven 60-30-10 palette ──────────────────────────────────────── */
 /* Defaults – overridden by EchoAIDashboard via JS when a song is playing     */
 :root {
   --art-primary:   #0d0b14;
   --art-secondary: #1a1528;
   --art-accent:    #a855f7;
+  
+  /* High-fidelity Inter (SF Pro equivalent) */
+  --font-inter: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+body {
+  font-family: var(--font-inter);
 }
 
 /* Custom Scrollbar Styles */

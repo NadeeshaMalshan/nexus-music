@@ -1,6 +1,9 @@
-import { Play, Pause, SkipBack, SkipForward, Maximize2, Heart } from "lucide-react";
+"use client";
+
+import { Play, Pause, SkipBack, SkipForward, Maximize2, Heart, ListMusic, Volume2 } from "lucide-react";
 import { type Song } from "./types";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
+import { motion, AnimatePresence } from "motion/react";
 
 interface FloatingPlayerProps {
   onExpand: () => void;
@@ -14,6 +17,10 @@ interface FloatingPlayerProps {
   onRateSong: (videoId: string, rating: "like" | "none") => void;
   isLiked?: boolean;
   isLoggedIn?: boolean;
+  onToggleRightSidebar?: () => void;
+  isRightSidebarOpen?: boolean;
+  volume: number;
+  onVolumeChange: (v: number) => void;
 }
 
 export function FloatingPlayer({
@@ -28,79 +35,129 @@ export function FloatingPlayer({
   onRateSong,
   isLiked = false,
   isLoggedIn,
+  onToggleRightSidebar,
+  isRightSidebarOpen,
+  volume,
+  onVolumeChange,
 }: FloatingPlayerProps) {
-  const c = currentSong.color;
   const fallbackDuration = youtubeTimestampToSeconds(currentSong.duration) ?? 0;
   const safeDuration = durationSec > 0 ? durationSec : fallbackDuration;
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
 
   return (
-    <div className="pointer-events-none fixed bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-50 flex items-center justify-center gap-2 px-3 sm:px-4 lg:bottom-8 lg:left-1/2 lg:right-auto lg:w-auto lg:-translate-x-1/2 lg:gap-4 lg:px-0">
-      <div className="group relative w-full max-w-[min(100%,420px)] sm:w-[400px] lg:w-auto pointer-events-auto">
-        <div
-          className="absolute inset-0 rounded-2xl blur-2xl opacity-60 transition-all duration-1000 group-hover:opacity-100 sm:rounded-full"
-          style={{ background: `linear-gradient(to right, color-mix(in srgb, var(--art-accent, #a855f7) 25%, transparent), color-mix(in srgb, var(--art-accent, #a855f7) 12%, transparent), color-mix(in srgb, var(--art-accent, #a855f7) 25%, transparent))` }}
-        />
-
-        <div className="glass relative flex flex-wrap items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl sm:flex-nowrap sm:gap-4 sm:rounded-full sm:px-6 sm:py-4">
-          <button
-            className="relative h-14 w-14 shrink-0 cursor-pointer overflow-hidden rounded-full transition-transform hover:scale-105"
-            onClick={onExpand}
+    <div className="pointer-events-none fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-50 flex items-center justify-center px-4 md:bottom-10 lg:bottom-12">
+      <motion.div 
+        layout
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="group relative flex w-auto max-w-full items-center gap-6 rounded-full bg-linear-to-br from-white/10 to-white/[0.05] p-2 pl-6 pr-8 backdrop-blur-3xl border border-white/10 shadow-2xl pointer-events-auto transition-all duration-500 hover:bg-white/[0.12]"
+      >
+        
+        {/* Left Section: Playback Controls */}
+        <div className="flex items-center gap-5 shrink-0">
+          <button 
+            onClick={onPrev} 
+            className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-90"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={currentSong.artwork} alt={currentSong.title} className="h-full w-full object-cover" />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity hover:opacity-100">
-              <Maximize2 size={20} className="text-white" />
-            </div>
+            <SkipBack size={24} fill="currentColor" strokeWidth={0} />
           </button>
-
-          <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-            <button onClick={onPrev} className="p-2 text-white/70 transition-transform hover:scale-110 hover:text-white">
-              <SkipBack size={20} fill="currentColor" />
-            </button>
-            <button
-              onClick={onTogglePlay}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-all duration-1000 hover:scale-105"
-              style={{ background: `linear-gradient(135deg, var(--art-accent, #a855f7), color-mix(in srgb, var(--art-accent, #a855f7) 87%, black))`, boxShadow: `0 10px 20px -10px var(--art-accent, #a855f7)` }}
-            >
-              {isPlaying ? (
-                <Pause size={20} fill="white" className="mx-auto text-white" />
-              ) : (
-                <Play size={20} fill="white" className="mx-auto ml-[15px] text-white" />
-              )}
-            </button>
-            <button onClick={onNext} className="p-2 text-white/70 transition-transform hover:scale-110 hover:text-white">
-              <SkipForward size={20} fill="currentColor" />
-            </button>
-            {isLoggedIn && (
-              <button
-                onClick={() => onRateSong(currentSong.id, isLiked ? "none" : "like")}
-                className="p-2 transition-all hover:scale-125 active:scale-95"
-                title={isLiked ? "Unlike" : "Like"}
-              >
-                <Heart
-                  size={20}
-                  className="transition-all duration-300"
-                  fill={isLiked ? "#FA243C" : "none"}
-                  stroke={isLiked ? "#FA243C" : "currentColor"}
-                  style={{ color: isLiked ? "#FA243C" : "rgba(255,255,255,0.7)" }}
-                />
-              </button>
+          
+          <button
+            onClick={onTogglePlay}
+            className="text-white transition-all transform hover:scale-110 active:scale-95 bg-white/10 rounded-full p-1.5 hover:bg-white/20"
+          >
+            {isPlaying ? (
+              <Pause size={28} fill="currentColor" strokeWidth={1} />
+            ) : (
+              <Play size={28} fill="currentColor" strokeWidth={1} className="pl-0.5" />
             )}
-          </div>
+          </button>
+          
+          <button 
+            onClick={onNext} 
+            className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-90"
+          >
+            <SkipForward size={24} fill="currentColor" strokeWidth={0} />
+          </button>
+        </div>
 
-          <div className="min-w-0 flex-1 basis-full sm:basis-auto sm:min-w-[180px] lg:min-w-[200px]">
-            <p className="truncate text-sm font-semibold text-white">{currentSong.title}</p>
-            <p className="truncate text-xs text-white/50">{currentSong.artist}</p>
-            <div className="relative mt-2 h-1 overflow-hidden rounded-full bg-white/10">
+        {/* Center Section: Compact Dynamic Track Component */}
+        <motion.div 
+          layout
+          className="flex-1 min-w-[120px] max-w-[400px]"
+        >
+          <div 
+            onClick={onExpand}
+            className="relative flex items-center gap-3 bg-black/30 rounded-[20px] p-2 pr-4 transition-all cursor-pointer group/card hover:bg-black/40 border border-white/5 overflow-hidden"
+          >
+            {/* Artwork Wrapper */}
+            <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl shadow-lg border border-white/10 group-hover/card:scale-105 transition-transform duration-500">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={currentSong.artwork} alt="" className="h-full w-full object-cover" />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                 <Maximize2 size={14} className="text-white" />
+              </div>
+            </div>
+
+            {/* Scrolling Song Info */}
+            <div className="min-w-0 flex-1 overflow-hidden">
+               <div className="flex flex-col">
+                  <span className="truncate text-sm font-black text-white tracking-tight leading-tight mb-0.5">{currentSong.title}</span>
+                  <span className="truncate text-[11px] font-bold text-white/30 uppercase tracking-wider">{currentSong.artist}</span>
+               </div>
+            </div>
+
+            {/* Linear Progress Indicator */}
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/5">
               <div
-                className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-200 ease-out"
-                style={{ width: `${progress}%`, background: `linear-gradient(to right, color-mix(in srgb, var(--art-accent, #a855f7) 50%, transparent), var(--art-accent, #a855f7))` }}
+                className="h-full transition-[width] duration-300 ease-out shadow-[0_0_8px_rgba(255,255,255,0.4)]"
+                style={{ width: `${progress}%`, backgroundColor: `white` }}
               />
             </div>
           </div>
+        </motion.div>
+
+        {/* Right Section: Interactive Controls */}
+        <div className="flex items-center gap-6 shrink-0">
+          {/* Functional Volume Slider */}
+          <div className="hidden items-center gap-2 lg:flex group/vol relative">
+            <div className="w-0 overflow-hidden group-hover/vol:w-24 group-hover/vol:mr-3 transition-all duration-500">
+               <input 
+                 type="range"
+                 min="0"
+                 max="100"
+                 value={volume}
+                 onChange={(e) => onVolumeChange(parseInt(e.target.value))}
+                 className="w-full h-1 appearance-none bg-white/10 rounded-full outline-none cursor-pointer accent-white"
+               />
+            </div>
+            <Volume2 size={20} className="text-white/30 group-hover/vol:text-white transition-colors" />
+          </div>
+
+          <div className="h-6 w-[1px] bg-white/10 mx-1 hidden sm:block" />
+
+          <button 
+            onClick={onToggleRightSidebar}
+            className={`transition-all transform hover:scale-110 active:scale-90 ${isRightSidebarOpen ? "text-[#FA243C]" : "text-white/40 hover:text-white"}`}
+          >
+             <ListMusic size={24} strokeWidth={2.5} />
+          </button>
+          
+          {isLoggedIn && (
+            <button
+              onClick={() => onRateSong(currentSong.id, isLiked ? "none" : "like")}
+              className="transition-all transform hover:scale-110 active:scale-95"
+            >
+              <Heart
+                size={20}
+                fill={isLiked ? "#FA243C" : "none"}
+                stroke={isLiked ? "#FA243C" : "currentColor"}
+                className={isLiked ? "text-[#FA243C] drop-shadow-[0_0_8px_rgba(250,36,60,0.4)]" : "text-white/30 hover:text-white"}
+              />
+            </button>
+          )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

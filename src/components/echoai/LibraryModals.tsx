@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { X, Search, Plus, Minus, Music2, Sparkles, Loader2 } from "lucide-react";
+import { X, Search, Plus, Minus, Music2, Sparkles, Loader2, ListPlus, Wand2, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Image from "next/image";
 
@@ -15,16 +15,16 @@ interface Song {
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
+  accentColor?: string;
 }
 
-export function CreatePlaylistModal({ isOpen, onClose }: ModalProps) {
+export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: ModalProps) {
   const [playlistName, setPlaylistName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [addedSongs, setAddedSongs] = useState<Song[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Real search
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (searchQuery.trim().length > 2) {
@@ -46,7 +46,6 @@ export function CreatePlaylistModal({ isOpen, onClose }: ModalProps) {
         setSearchResults([]);
       }
     }, 400);
-
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -57,10 +56,7 @@ export function CreatePlaylistModal({ isOpen, onClose }: ModalProps) {
       const res = await fetch("/api/youtube/playlists/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: playlistName,
-          videoIds: addedSongs.map(s => s.id)
-        })
+        body: JSON.stringify({ title: playlistName, videoIds: addedSongs.map(s => s.id) })
       });
       if (res.ok) {
         onClose();
@@ -74,151 +70,150 @@ export function CreatePlaylistModal({ isOpen, onClose }: ModalProps) {
   };
 
   const addSong = (song: Song) => {
-    if (!addedSongs.find(s => s.id === song.id)) {
-      setAddedSongs([...addedSongs, song]);
-    }
+    if (!addedSongs.find(s => s.id === song.id)) setAddedSongs([...addedSongs, song]);
     setSearchQuery("");
-  };
-
-  const removeSong = (id: string) => {
-    setAddedSongs(addedSongs.filter(s => s.id !== id));
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
-          exit={{ opacity: 0 }} 
-          className="absolute inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
-          onClick={onClose}
-        >
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9, y: 20 }} 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-xl"
+            onClick={onClose}
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 30 }} 
             animate={{ opacity: 1, scale: 1, y: 0 }} 
-            exit={{ opacity: 0, scale: 0.9, y: 20 }} 
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="w-full max-w-3xl max-h-[90%] overflow-hidden rounded-[28px] bg-[#1c1c1e] border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.6)] flex flex-col"
+            exit={{ opacity: 0, scale: 0.95, y: 30 }} 
+            className="w-full max-w-4xl max-h-[85vh] overflow-hidden rounded-[40px] bg-white/5 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl flex flex-col relative z-10"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-              <button onClick={onClose} className="text-[#007AFF] text-[17px] font-medium hover:opacity-70 transition-opacity">Cancel</button>
-              <h2 className="text-white text-[17px] font-bold">New Playlist</h2>
-              <button 
-                disabled={!playlistName || isSaving} 
-                className="text-[#007AFF] text-[17px] font-bold disabled:opacity-30 hover:opacity-70 transition-opacity"
-                onClick={handleSave}
-              >
-                {isSaving ? "Saving..." : "Save"}
-              </button>
+            {/* Header Area */}
+            <div className="flex items-center justify-between px-10 py-8">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40">
+                    <ListPlus size={24} />
+                 </div>
+                 <div>
+                    <h2 className="text-white text-3xl font-black tracking-tighter">New Playlist</h2>
+                    <p className="text-white/20 text-sm font-bold uppercase tracking-widest">Curation Studio</p>
+                 </div>
+              </div>
+              <div className="flex items-center gap-3">
+                 <button onClick={onClose} className="px-6 py-2.5 rounded-full bg-white/5 text-white/40 font-bold hover:bg-white/10 transition-all">Cancel</button>
+                 <button 
+                  onClick={handleSave}
+                  disabled={!playlistName || isSaving}
+                  className="px-8 py-2.5 rounded-full font-black text-black shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-30"
+                  style={{ backgroundColor: accentColor || '#FFF' }}
+                 >
+                   {isSaving ? "Creating..." : "Save Playlist"}
+                 </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
-              {/* Info Section */}
-              <div className="flex items-center gap-6">
-                <div className="w-32 h-32 rounded-lg bg-[#2c2c2e] flex items-center justify-center shadow-lg border border-white/5">
-                  <Music2 size={48} className="text-white/20" />
-                </div>
-                <div className="flex-1">
-                  <input 
-                    type="text" 
-                    placeholder="Playlist Name" 
-                    value={playlistName}
-                    onChange={(e) => setPlaylistName(e.target.value)}
-                    className="w-full bg-transparent text-[28px] font-bold text-white placeholder:text-white/20 focus:outline-none"
-                    autoFocus
-                  />
-                  <div className="h-px bg-white/10 mt-2" />
-                </div>
-              </div>
-
-              {/* Search Section */}
-              <div className="space-y-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={18} />
-                  <input 
-                    type="text" 
-                    placeholder="Search for songs" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-11 bg-[#2c2c2e] rounded-xl pl-10 pr-4 text-white text-[15px] focus:outline-none focus:ring-2 ring-blue-500/50 transition-all"
-                  />
-                </div>
-
-                {/* Search Results */}
-                {searchResults.length > 0 && (
-                  <div className="bg-[#2c2c2e]/80 backdrop-blur-md rounded-2xl overflow-hidden border border-white/5 divide-y divide-white/5 shadow-2xl">
-                    {searchResults.map(song => (
-                      <div key={song.id} className="flex items-center gap-4 p-4 hover:bg-white/5 group transition-colors cursor-pointer" onClick={() => addSong(song)}>
-                        <div className="relative w-12 h-12 rounded-lg overflow-hidden shadow-md">
-                          <img src={song.artwork} alt="" className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-[16px] font-bold truncate">{song.title}</p>
-                          <p className="text-white/40 text-[14px] truncate">{song.artist}</p>
-                        </div>
-                        <div className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 group-hover:bg-blue-500 transition-colors">
-                          <Plus size={18} className="text-white/40 group-hover:text-white" />
-                        </div>
-                      </div>
-                    ))}
+            <div className="flex-1 overflow-y-auto no-scrollbar px-10 pb-12 flex flex-col md:flex-row gap-12">
+               {/* Metadata Section */}
+               <div className="w-full md:w-72 space-y-8">
+                  <div className="aspect-square rounded-[36px] bg-white/5 border border-white/10 flex items-center justify-center relative overflow-hidden group">
+                     {addedSongs.length > 0 ? (
+                        <Image src={addedSongs[0].artwork} alt="" fill className="object-cover opacity-60 grayscale-[0.5]" />
+                     ) : (
+                        <Music2 size={64} className="text-white/10" />
+                     )}
+                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Plus className="text-white/40" />
+                     </div>
                   </div>
-                )}
-              </div>
+                  <div className="space-y-4">
+                     <label className="text-[11px] font-black uppercase tracking-[0.2em] text-white/20 px-1">Identity</label>
+                     <input 
+                        type="text" 
+                        placeholder="My Awesome Mix" 
+                        value={playlistName}
+                        onChange={(e) => setPlaylistName(e.target.value)}
+                        className="w-full bg-transparent text-2xl font-black text-white placeholder:text-white/10 focus:outline-none border-b border-white/5 pb-2 focus:border-white/20 transition-all"
+                        autoFocus
+                      />
+                  </div>
+               </div>
 
-              {/* Added Songs List */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-white/40 text-[13px] font-bold uppercase tracking-widest">Added Songs ({addedSongs.length})</h3>
-                  {addedSongs.length > 0 && (
-                     <button onClick={() => setAddedSongs([])} className="text-[#007AFF] text-xs font-semibold hover:underline">Clear All</button>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  <AnimatePresence mode="popLayout">
-                    {addedSongs.map(song => (
-                      <motion.div 
-                        key={song.id} 
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="flex items-center gap-4 p-4 rounded-xl bg-white/5 group border border-white/5"
-                      >
-                        <img src={song.artwork} alt="" className="w-14 h-14 rounded-xl object-cover shadow-lg border border-white/10" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-[16px] font-bold truncate leading-tight">{song.title}</p>
-                          <p className="text-white/40 text-[14px] truncate">{song.artist}</p>
-                        </div>
-                        <button 
-                          onClick={() => removeSong(song.id)} 
-                          className="w-10 h-10 flex items-center justify-center rounded-full bg-red-500/0 hover:bg-red-500/20 text-white/20 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <Minus size={22} />
-                        </button>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                  {addedSongs.length === 0 && (
-                    <div className="py-20 text-center space-y-3">
-                      <div className="w-20 h-20 bg-white/5 rounded-[2rem] flex items-center justify-center mx-auto text-white/10">
-                         <Music2 size={32} />
-                      </div>
-                      <p className="text-white/20 font-medium">Search for songs above to build your list.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+               {/* Tracklist & Search Section */}
+               <div className="flex-1 space-y-10">
+                  <div className="relative group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-white/60 transition-colors" size={20} />
+                    <input 
+                      type="text" 
+                      placeholder="Search tracks to add..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full h-14 bg-white/3 rounded-2xl pl-12 pr-6 text-white font-bold placeholder:text-white/10 border border-white/5 focus:bg-white/5 focus:border-white/20 outline-none transition-all shadow-inner"
+                    />
+                    
+                    {/* Search Result Overlay */}
+                    <AnimatePresence>
+                       {searchResults.length > 0 && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                            className="absolute top-16 left-0 right-0 z-20 bg-[#161618]/95 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.4)] overflow-hidden"
+                          >
+                             {searchResults.slice(0, 5).map(song => (
+                                <div key={song.id} onClick={() => addSong(song)} className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer transition-all border-b border-white/5 last:border-0 group">
+                                   <img src={song.artwork} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                                   <div className="flex-1 min-w-0">
+                                      <p className="text-white font-bold truncate">{song.title}</p>
+                                      <p className="text-white/30 text-xs truncate">{song.artist}</p>
+                                   </div>
+                                   <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all">
+                                      <Plus size={16} />
+                                   </div>
+                                </div>
+                             ))}
+                          </motion.div>
+                       )}
+                    </AnimatePresence>
+                  </div>
+
+                  <div className="space-y-4">
+                     <h3 className="text-[14px] font-black uppercase text-white/20 tracking-widest pl-1">Selected Tracks ({addedSongs.length})</h3>
+                     <div className="space-y-2 max-h-[400px] overflow-y-auto no-scrollbar">
+                        {addedSongs.map((song, idx) => (
+                           <motion.div 
+                              layout key={song.id} 
+                              className="flex items-center gap-4 p-3 rounded-2xl bg-white/3 border border-white/5 hover:border-white/10 transition-all group"
+                           >
+                              <div className="text-[11px] font-black text-white/20 w-4 text-center">{idx + 1}</div>
+                              <img src={song.artwork} alt="" className="w-12 h-12 rounded-xl shadow-md" />
+                              <div className="flex-1 min-w-0">
+                                 <p className="text-white font-bold truncate">{song.title}</p>
+                                 <p className="text-white/30 text-xs font-bold leading-none">{song.artist}</p>
+                              </div>
+                              <button onClick={() => setAddedSongs(addedSongs.filter(s => s.id !== song.id))} className="p-2 text-white/10 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                                 <Minus size={20} />
+                              </button>
+                           </motion.div>
+                        ))}
+                        {addedSongs.length === 0 && (
+                           <div className="py-20 flex flex-col items-center justify-center text-center opacity-10">
+                              <Music2 size={64} className="mb-4" />
+                              <p className="text-xl font-black">Curate your mix</p>
+                              <p className="text-sm font-bold">Search and add tracks from YouTube</p>
+                           </div>
+                        )}
+                     </div>
+                  </div>
+               </div>
             </div>
           </motion.div>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );
 }
 
-export function AiPlaylistModal({ isOpen, onClose }: ModalProps) {
+export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: ModalProps) {
   const [step, setStep] = useState<'input' | 'loading' | 'results'>('input');
   const [prompt, setPrompt] = useState("");
   const [generatedResult, setGeneratedResult] = useState<{ name: string, songs: Song[] }>({ name: "", songs: [] });
@@ -228,30 +223,22 @@ export function AiPlaylistModal({ isOpen, onClose }: ModalProps) {
     if (!prompt.trim()) return;
     setStep('loading');
     try {
-      // Use the new POST endpoint for vibe-based generation
       const res = await fetch("/api/recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          recentTrackId: "K4TOrB7at0Y", // Use Starboy as a neutral modern seed if only prompt is given
-          userHistory: [prompt] // Use the prompt as the history context
-        }),
+        body: JSON.stringify({ recentTrackId: "K4TOrB7at0Y", userHistory: [prompt] }),
       });
-
       if (!res.ok) throw new Error(`API error ${res.status}`);
       const data = await res.json();
-      const recs = (data.recommendations || []).slice(0, 10);
-
-      const resolvedSongs = recs.map((rec: any) => ({
-        id: rec.youtubeId,
-        title: rec.title,
-        artist: rec.artist,
-        artwork: rec.thumbnail
-      }));
-
+      const recs = (data.recommendations || []).slice(0, 12);
       setGeneratedResult({
-        name: `${prompt.charAt(0).toUpperCase() + prompt.slice(1).split(' ')[0]} Mix`,
-        songs: resolvedSongs as Song[]
+        name: `${prompt.charAt(0).toUpperCase() + prompt.slice(1).split(' ')[0]} Exploration`,
+        songs: recs.map((rec: any) => ({
+          id: rec.youtubeId,
+          title: rec.title,
+          artist: rec.artist,
+          artwork: rec.thumbnail
+        })) as Song[]
       });
       setStep('results');
     } catch (err) {
@@ -267,149 +254,153 @@ export function AiPlaylistModal({ isOpen, onClose }: ModalProps) {
       const res = await fetch("/api/youtube/playlists/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: generatedResult.name,
-          videoIds: generatedResult.songs.map(s => s.id)
-        })
+        body: JSON.stringify({ title: generatedResult.name, videoIds: generatedResult.songs.map(s => s.id) })
       });
-      if (res.ok) {
-        onClose();
-        window.location.reload();
-      }
-    } catch (err) {
-      console.error("AI Save Error:", err);
-    } finally {
-      setIsSaving(false);
-    }
+      if (res.ok) { onClose(); window.location.reload(); }
+    } catch (err) { console.error("AI Save Error:", err);
+    } finally { setIsSaving(false); }
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
-          exit={{ opacity: 0 }} 
-          className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
-          onClick={onClose}
-        >
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }} 
-            animate={{ opacity: 1, scale: 1 }} 
-            exit={{ opacity: 0, scale: 0.9 }} 
-            transition={{ type: "spring", damping: 30, stiffness: 250 }}
-            className="w-full max-w-4xl max-h-[90%] overflow-hidden rounded-[32px] bg-[#0d0d0d] shadow-[0_32px_128px_rgba(124,58,237,0.2)] flex flex-col border border-purple-500/20"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/80 backdrop-blur-2xl"
+            onClick={onClose}
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 30 }} 
+            animate={{ opacity: 1, scale: 1, y: 0 }} 
+            exit={{ opacity: 0, scale: 0.95, y: 30 }} 
+            className="w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-[48px] bg-white/[0.03] border border-white/10 shadow-[0_50px_150px_rgba(0,0,0,0.9)] backdrop-blur-3xl flex flex-col relative z-10"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5">
-              <button onClick={onClose} className="text-white/40 hover:text-white transition-colors"><X size={24} /></button>
-              <div className="flex items-center gap-2">
-                <Sparkles size={20} className="text-purple-400" />
-                <h2 className="text-white text-lg font-bold tracking-tight">Generate with Llama 3</h2>
+            {/* AI Top Bar */}
+            <div className="flex items-center justify-between px-12 py-8 border-b border-white/5">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 rounded-2xl bg-linear-to-tr from-white/10 to-white/5 flex items-center justify-center">
+                    <Wand2 size={24} className="text-white/60" />
+                 </div>
+                 <div>
+                    <h2 className="text-white text-3xl font-black tracking-tighter">Nexus Intelligence</h2>
+                    <p className="text-white/20 text-xs font-bold uppercase tracking-widest">Llama 3 Vibe Engine</p>
+                 </div>
               </div>
               <button 
-                onClick={handleSaveToYt}
-                className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${step === 'results' ? 'bg-purple-600 text-white hover:bg-purple-500' : 'bg-white/5 text-white/20'}`}
-                disabled={step !== 'results' || isSaving}
+                onClick={onClose}
+                className="p-3 rounded-full bg-white/5 text-white/40 hover:text-white transition-colors"
               >
-                {isSaving ? "Saving..." : "Save to Library"}
+                 <X size={24} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-              {step === 'input' && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center py-12 space-y-10">
-                  <div className="w-24 h-24 rounded-[2rem] bg-linear-to-br from-purple-600 to-blue-600 p-6 shadow-2xl shadow-purple-600/30 relative">
-                    <Sparkles size={48} className="text-white animate-pulse" />
-                  </div>
-                  <div className="text-center space-y-3">
-                    <h3 className="text-[40px] font-black text-white leading-tight tracking-tight">What's the vibe?</h3>
-                    <p className="text-white/40 max-w-sm">Tell Llama 3 about the mood or activity you're planning.</p>
-                  </div>
-                  <div className="w-full max-w-2xl space-y-6">
-                    <div className="flex flex-wrap items-center justify-center gap-2 opacity-50">
-                       {['Late night coding', 'Gym motivation', 'Rainy day jazz', 'Retro synthwave'].map(chip => (
-                         <button key={chip} onClick={() => setPrompt(chip)} className="px-3 py-1.5 rounded-full border border-white/10 text-xs font-bold text-white hover:bg-white/5 transition-all">{chip}</button>
-                       ))}
-                    </div>
-                    <div className="bg-white/5 rounded-3xl p-6 border border-white/10 focus-within:border-purple-500/50 transition-all">
-                      <textarea 
-                        placeholder="e.g. Melancholic piano for deep focus..." 
-                        className="w-full h-32 bg-transparent text-white text-xl placeholder:text-white/10 resize-none focus:outline-none"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        autoFocus
-                      />
-                      <div className="flex justify-end pt-4">
+            <div className="flex-1 overflow-y-auto no-scrollbar p-12">
+               {step === 'input' && (
+                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center py-12 space-y-12">
+                   <div className="text-center space-y-4">
+                     <h3 className="text-[64px] font-black text-white leading-none tracking-tighter">What's the <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/40">vibe?</span></h3>
+                     <p className="text-white/20 text-xl font-bold max-w-md mx-auto">Describe a mood, a memory, or an activity you're planning.</p>
+                   </div>
+                   
+                   <div className="w-full max-w-3xl space-y-10">
+                     <div className="relative">
+                        <textarea 
+                          placeholder="e.g. 80s inspired synthwave for late night desert driving..." 
+                          className="w-full h-40 bg-white/5 rounded-3xl p-8 text-2xl font-black text-white placeholder:text-white/5 border border-white/10 focus:border-white/20 transition-all resize-none focus:outline-none shadow-inner"
+                          value={prompt}
+                          onChange={(e) => setPrompt(e.target.value)}
+                          autoFocus
+                        />
                         <button 
                           onClick={handleGenerate}
                           disabled={!prompt.trim()}
-                          className="px-10 py-3 bg-white text-black font-black rounded-full hover:bg-zinc-200 transition-all transform active:scale-95"
+                          className="absolute bottom-6 right-6 flex items-center gap-2 px-10 py-4 font-black rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-30"
+                          style={{ backgroundColor: accentColor || '#FFF', color: '#000' }}
                         >
-                          Generate
+                           Generate 
+                           <ChevronRight size={20} />
                         </button>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
+                     </div>
 
-              {step === 'loading' && (
-                <div className="flex flex-col items-center justify-center py-32 space-y-6 text-center">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-purple-500 blur-3xl opacity-20 animate-pulse" />
-                    <Loader2 size={64} className="text-purple-500 animate-spin relative" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-2xl font-bold text-white">Llama 3 is thinking...</p>
-                    <p className="text-zinc-500 font-medium tracking-wide">Finding the perfect setlist for your vibe.</p>
-                  </div>
-                </div>
-              )}
+                     <div className="flex flex-wrap items-center justify-center gap-3">
+                        {['Late night coding', 'Rainy afternoon', 'Deep focus', 'High energy workout', 'Road trip vibes'].map(v => (
+                           <button 
+                             key={v} 
+                             onClick={() => setPrompt(v)}
+                             className="px-5 py-2.5 rounded-full bg-white/3 border border-white/5 text-sm font-black text-white/40 hover:bg-white/10 hover:text-white transition-all capitalize"
+                           >
+                             {v}
+                           </button>
+                        ))}
+                     </div>
+                   </div>
+                 </motion.div>
+               )}
 
-              {step === 'results' && (
-                <div className="space-y-10 pb-20">
-                  <div className="flex items-center gap-8">
-                    <div className="w-48 h-48 rounded-2xl bg-gradient-to-br from-purple-800 to-black flex items-center justify-center shadow-2xl border border-white/10">
-                      <Sparkles size={80} className="text-white/20" />
+               {step === 'loading' && (
+                 <div className="flex flex-col items-center justify-center py-40 space-y-10">
+                    <div className="relative">
+                       <div className="absolute inset-0 blur-3xl opacity-30 animate-pulse" style={{ backgroundColor: accentColor }} />
+                       <Loader2 size={80} className="animate-spin relative" style={{ color: accentColor }} />
                     </div>
-                    <div className="flex-1 space-y-3">
-                      <input 
-                        type="text" 
-                        value={generatedResult.name}
-                        onChange={(e) => setGeneratedResult(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full bg-transparent text-[48px] font-black text-white focus:outline-none leading-none"
-                      />
-                      <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 w-fit">
-                        <Sparkles size={12} className="text-purple-400" />
-                        <span className="text-[10px] uppercase font-black tracking-[0.2em] text-purple-400">Generated by Nexus AI</span>
-                      </div>
+                    <div className="text-center space-y-2">
+                       <p className="text-3xl font-black text-white tracking-tight">Synthesizing Audio...</p>
+                       <p className="text-white/20 font-bold uppercase tracking-widest text-sm">Nexus is scouting YouTube for the perfect setlist</p>
                     </div>
-                  </div>
+                 </div>
+               )}
 
-                  <div className="grid grid-cols-1 gap-2">
-                    {generatedResult.songs.map(song => (
-                      <div key={song.id} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-white/5 group transition-colors">
-                        <img src={song.artwork} alt="" className="w-16 h-16 rounded-xl object-cover shadow-xl" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[17px] font-bold text-white truncate">{song.title}</p>
-                          <p className="text-white/40 text-[15px] truncate">{song.artist}</p>
-                        </div>
-                        <button 
-                          onClick={() => setGeneratedResult(prev => ({ ...prev, songs: prev.songs.filter(s => s.id !== song.id) }))}
-                          className="opacity-0 group-hover:opacity-100 p-2 text-white/20 hover:text-red-500 transition-all"
-                        >
-                          <Minus size={24} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+               {step === 'results' && (
+                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
+                    <div className="flex flex-col md:flex-row items-end gap-10">
+                       <div className="w-56 h-56 rounded-[40px] bg-linear-to-tr from-white/10 to-white/5 flex items-center justify-center border border-white/10 shadow-2xl relative overflow-hidden">
+                          {generatedResult.songs.length > 0 && <Image src={generatedResult.songs[0].artwork} alt="" fill className="object-cover opacity-20" />}
+                          <Sparkles size={80} className="text-white relative" style={{ color: accentColor }} />
+                       </div>
+                       <div className="flex-1 space-y-4">
+                          <div className="flex items-center gap-2 opacity-40">
+                             <Sparkles size={14} style={{ color: accentColor }} />
+                             <span className="text-[11px] font-black uppercase tracking-[0.3em]">AI Generated Evolution</span>
+                          </div>
+                          <input 
+                              type="text" 
+                              value={generatedResult.name}
+                              onChange={(e) => setGeneratedResult(prev => ({ ...prev, name: e.target.value }))}
+                              className="w-full bg-transparent text-6xl font-black text-white focus:outline-none tracking-tighter leading-none border-b-2 border-white/5 pb-2 focus:border-white/20 transition-all uppercase"
+                          />
+                          <button 
+                            onClick={handleSaveToYt}
+                            disabled={isSaving}
+                            className="flex items-center gap-3 px-10 py-4 font-black rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-30"
+                            style={{ backgroundColor: accentColor || '#FFF', color: '#000' }}
+                          >
+                             {isSaving ? "Syncing..." : "Sync to Library"}
+                             <Plus size={20} />
+                          </button>
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                       {generatedResult.songs.map((song, i) => (
+                          <div key={song.id} className="flex items-center gap-4 p-4 rounded-3xl bg-white/3 border border-white/5 hover:bg-white/5 transition-all group">
+                             <img src={song.artwork} alt="" className="w-16 h-16 rounded-2xl object-cover shadow-xl grayscale-[0.2] group-hover:grayscale-0 transition-all" />
+                             <div className="flex-1 min-w-0 pr-2">
+                                <p className="text-[17px] font-black text-white truncate leading-tight mb-1">{song.title}</p>
+                                <p className="text-white/30 text-xs font-bold truncate uppercase tracking-wider">{song.artist}</p>
+                             </div>
+                             <button onClick={() => setGeneratedResult(prev => ({ ...prev, songs: prev.songs.filter(s => s.id !== song.id) }))} className="p-2 text-white/5 hover:text-red-500 transition-colors">
+                                <Minus size={20} />
+                             </button>
+                          </div>
+                       ))}
+                    </div>
+                 </motion.div>
+               )}
             </div>
           </motion.div>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

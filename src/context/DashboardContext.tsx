@@ -46,7 +46,7 @@ type DashboardContextType = {
   knowLoading: boolean;
   likedSongs: Set<string>;
   upNextQueue: Song[];
-  playedHistory: string[];
+  playedHistory: Song[];
   aiLoading: boolean;
 
   // View State (Shared but UI-specific)
@@ -135,7 +135,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [lyricsData, setLyricsData] = useState<LyricsPayload | null>(null);
   const [lyricsLoading, setLyricsLoading] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState<YouTubePlaylist | null>(null);
-  const [playedHistory, setPlayedHistory] = useState<string[]>([]);
+  const [playedHistory, setPlayedHistory] = useState<Song[]>([]);
   const [upNextQueue, setUpNextQueue] = useState<Song[]>([]);
   const [knowFacts, setKnowFacts] = useState<string[]>([]);
   const [knowLoading, setKnowLoading] = useState(false);
@@ -329,10 +329,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Track session played history
   useEffect(() => {
     if (currentSong) {
-      const track = `${currentSong.title} by ${currentSong.artist}`;
       setPlayedHistory(prev => {
-        if (prev.includes(track)) return prev;
-        return [track, ...prev].slice(0, 5);
+        const filtered = prev.filter(s => s.id !== currentSong.id);
+        return [currentSong, ...filtered].slice(0, 20);
       });
     }
   }, [currentSong]);
@@ -583,6 +582,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setQueueSongs((prev) => {
       if (prev.some((q) => q.id === song.id)) return prev;
       return [song];
+    });
+    
+    // Update local history
+    setPlayedHistory((prev) => {
+      // Filter out if already in history to move to top
+      const filtered = prev.filter((s) => s.id !== song.id);
+      return [song, ...filtered].slice(0, 50); // Keep last 50
     });
   }, []);
 

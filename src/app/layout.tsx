@@ -1,24 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "../components/Providers";
 import { DashboardProvider } from "@/context/DashboardContext";
 import { DashboardWrapper } from "@/components/echoai/DashboardWrapper";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "EchoAI | All-in-one AI Music Ecosystem",
+  title: "Nexus Music | Professional AI Ecosystem",
   description:
-    "Futuristic AI-powered music dashboard blending Spotify intelligence, YouTube playback, and Llama 3 insights.",
+    "High-fidelity AI-powered music dashboard blending Spotify intelligence, YouTube playback, and Llama 3 insights.",
 };
 
 export const viewport = {
@@ -35,7 +31,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#050505] text-zinc-100">
         <Providers>

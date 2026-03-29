@@ -94,44 +94,44 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
   };
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-[#06060a] custom-scrollbar">
+    <div className="flex-1 h-full overflow-y-auto bg-transparent custom-scrollbar pb-32">
       {/* Header Section */}
-      <header className="relative px-6 py-12 lg:px-12 flex flex-col md:flex-row items-end gap-8 bg-linear-to-b from-white/5 to-transparent">
-        <div className="relative w-48 h-48 lg:w-64 lg:h-64 shrink-0 shadow-2xl rounded-2xl overflow-hidden group">
+      <header className="relative px-6 py-12 lg:px-12 flex flex-col md:flex-row items-end gap-8">
+        <div className="relative w-48 h-48 lg:w-64 lg:h-64 shrink-0 shadow-[0_30px_60px_rgba(0,0,0,0.5)] rounded-2xl overflow-hidden group border border-white/10">
           {displayPlaylist.thumbnailUrl ? (
             <Image 
-              src={displayPlaylist.thumbnailUrl} 
+              src={displayPlaylist.thumbnailUrl.replace("s90", "s512")} 
               alt={displayPlaylist.title} 
               fill 
               className="object-cover transition-transform duration-700 group-hover:scale-110" 
             />
           ) : (
-            <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-              <Music2 size={64} className="text-zinc-600" />
+            <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
+              <Music2 size={64} className="text-zinc-700" />
             </div>
           )}
         </div>
         
         <div className="flex-1 space-y-4">
-          <p className="text-sm font-bold uppercase tracking-widest text-zinc-500">Playlist</p>
-          <h1 className="text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-none">
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-white/40">Playlist</p>
+          <h1 className="text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
             {displayPlaylist.title}
           </h1>
-          <p className="text-zinc-400 font-medium max-w-2xl line-clamp-2">
+          <p className="text-white/60 font-medium max-w-2xl line-clamp-2">
             {displayPlaylist.description || "A custom YouTube playlist imported to EchoAI."}
           </p>
           
           <div className="flex items-center gap-4 pt-4">
             <button 
               onClick={handlePlayAll}
-              className="px-8 py-3 bg-white text-black font-bold rounded-full flex items-center gap-2 hover:bg-zinc-200 transition-all active:scale-95 shadow-xl"
+              className="px-8 py-3 bg-white text-black font-bold rounded-xl flex items-center gap-2 hover:bg-zinc-200 transition-all active:scale-95 shadow-xl"
             >
               <Play size={20} fill="black" />
               Play
             </button>
             <button 
               onClick={handleShuffle}
-              className="px-8 py-3 bg-white/10 text-white font-bold rounded-full flex items-center gap-2 hover:bg-white/20 transition-all active:scale-95 border border-white/10"
+              className="px-8 py-3 bg-white/10 text-white font-bold rounded-xl flex items-center gap-2 hover:bg-white/20 transition-all active:scale-95 border border-white/10 backdrop-blur-xl"
             >
               <Shuffle size={20} />
               Shuffle

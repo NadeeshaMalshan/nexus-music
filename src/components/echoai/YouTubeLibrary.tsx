@@ -62,6 +62,16 @@ export function YouTubeLibrary({
     if (session) loadLibrary();
   }, [session]);
 
+  const filteredPlaylists = useMemo(() => 
+    playlists.filter(p => p.title?.toLowerCase().includes(searchQuery.toLowerCase())),
+    [playlists, searchQuery]
+  );
+
+  const filteredLiked = useMemo(() => 
+    likedSongs.filter(s => (s.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || (s.artist?.toLowerCase() || "").includes(searchQuery.toLowerCase())),
+    [likedSongs, searchQuery]
+  );
+
   const unifiedHistory = useMemo(() => {
     const local = playedHistory.map(s => ({ ...s, source: "App" as const }));
     const remote = ytHistory.map(t => ({

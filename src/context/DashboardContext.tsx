@@ -146,6 +146,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"music" | "video">("music");
   const viewModeRef = useRef<"music" | "video">("music");
+  const userIntentRef = useRef<"playing" | "paused">("paused");
 
   useEffect(() => {
     viewModeRef.current = viewMode;
@@ -493,8 +494,17 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           onStateChange: (event: any) => {
             // Only sync isPlaying if we're NOT in video mode, to let the visible player lead state
             if (viewModeRef.current === "music") {
-              if (event.data === 1) setIsPlaying(true);
-              else if (event.data === 2) setIsPlaying(false);
+              if (event.data === 1) {
+                setIsPlaying(true);
+                userIntentRef.current = "playing";
+              }
+              else if (event.data === 2) {
+                // If it paused but our intent is still playing, don't kill the global isPlaying yet
+                // This keeps the MediaSession and Silent Audio alive on lock screen
+                if (document.visibilityState === 'visible' || userIntentRef.current === "paused") {
+                    setIsPlaying(false);
+                }
+              }
               // ENDED: only advance from the hidden player in music mode (expanded video has its own player)
               if (event.data === 0) onNextRef.current();
               
@@ -556,18 +566,39 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // Handlers
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
-  // Initialize silent audio on mount to keep tab alive in background
+  // Initialize silent audio stream on mount
   useEffect(() => {
-    // A slightly longer silence to be more "real" to some mobile browsers
-    const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAAD//w==");
+    if (typeof window === "undefined") return;
+    
+    // Create a real silent audio stream using AudioContext
+    // This is much more effective than Data URIs at preventing background suspension
+    const audio = new Audio();
     audio.loop = true;
     silentAudioRef.current = audio;
 
-    // Optional: Add a listener to resume if it gets suspended
+    try {
+      const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
+      const ctx = new AudioContextClass();
+      const oscillator = ctx.createOscillator();
+      const dst = ctx.createMediaStreamDestination();
+      oscillator.connect(dst);
+      oscillator.start();
+      audio.srcObject = dst.stream;
+      audioCtxRef.current = ctx;
+    } catch (e) {
+      console.warn("AudioContext silent stream failed, falling back to data URI");
+      audio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAAD//w==";
+    }
+
     const handleResume = () => {
-      if (isPlaying && silentAudioRef.current?.paused) {
-        silentAudioRef.current.play().catch(() => {});
+      if (userIntentRef.current === "playing") {
+        if (silentAudioRef.current?.paused) silentAudioRef.current.play().catch(() => {});
+        if (ytPlayerRef.current && playerReadyRef.current && viewModeRef.current === "music") {
+           // Try to kick the YT player back to life
+           try { ytPlayerRef.current.playVideo(); } catch {}
+        }
       }
     };
     window.addEventListener("focus", handleResume);
@@ -576,7 +607,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("focus", handleResume);
       document.removeEventListener("visibilitychange", handleResume);
     };
-  }, [isPlaying]); // Added isPlaying dependency
+  }, []);
 
   // Sync silent audio with playback state
   useEffect(() => {
@@ -597,10 +628,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
     if (!isPlaying) {
+      userIntentRef.current = "playing";
       player.playVideo();
       // silentAudio is handled by effect
       setIsPlaying(true);
     } else {
+      userIntentRef.current = "paused";
       player.pauseVideo();
       // silentAudio is handled by effect
       setIsPlaying(false);
@@ -610,6 +643,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const playVideo = useCallback(() => {
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
+    userIntentRef.current = "playing";
     player.setVolume(volume);
     player.playVideo();
     setIsPlaying(true);
@@ -618,6 +652,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const pauseVideo = useCallback(() => {
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
+    userIntentRef.current = "paused";
     player.pauseVideo();
     setIsPlaying(false);
   }, []);
@@ -632,6 +667,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (shouldResetQueue) {
       setUpNextQueue([]);
     }
+    userIntentRef.current = "playing";
     setCurrentSong(song);
     setCurrentTimeSec(0);
     setIsPlaying(true);

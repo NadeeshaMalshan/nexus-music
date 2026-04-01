@@ -193,7 +193,16 @@ export function MobileExpandedPlayer({
   const youtubeOpts = {
     height: '100%',
     width: '100%',
-    playerVars: { autoplay: 0, controls: 0, modestbranding: 1, rel: 0, iv_load_policy: 3 },
+    playerVars: { 
+      autoplay: 0, 
+      controls: 0, 
+      modestbranding: 1, 
+      rel: 0, 
+      iv_load_policy: 3, 
+      playsinline: 1,
+      enablejsapi: 1,
+      origin: typeof window !== "undefined" ? window.location.origin : undefined
+    },
   };
 
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;

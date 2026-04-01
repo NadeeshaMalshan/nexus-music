@@ -145,11 +145,11 @@ export function FloatingPlayer({
             <Volume2 size={20} className="text-white/30 group-hover/vol:text-white transition-colors" />
           </div>
 
-          <div className="h-6 w-px bg-white/10 mx-1 hidden sm:block" />
+          <div className="h-6 w-px bg-white/10 mx-1 hidden md:block" />
 
           <button 
             onClick={onToggleRightSidebar}
-            className="transition-all transform hover:scale-110 active:scale-90"
+            className="hidden md:block transition-all transform hover:scale-110 active:scale-90"
             style={{ color: isRightSidebarOpen ? 'var(--art-accent, #FA243C)' : undefined }}
           >
              <ListMusic size={24} strokeWidth={2.5} className={!isRightSidebarOpen ? "text-white/40 hover:text-white" : ""} />

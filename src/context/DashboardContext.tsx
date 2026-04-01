@@ -96,6 +96,7 @@ type DashboardContextType = {
     seekTo: (seconds: number, allowSeekAhead?: boolean) => void;
     setVolume: (volume: number) => void;
     destroy: () => void;
+    getPlayerState: () => number;
   } | null>;
 };
 
@@ -114,6 +115,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     seekTo: (seconds: number, allowSeekAhead?: boolean) => void;
     setVolume: (volume: number) => void;
     destroy: () => void;
+    getPlayerState: () => number;
   } | null>(null);
 
   const playerReadyRef = useRef(false);
@@ -462,7 +464,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         height: "0",
         width: "0",
         videoId: "", // Empty initially, will be loaded via logic
-        playerVars: { controls: 0, modestbranding: 1, rel: 0 },
+        playerVars: { 
+          controls: 0, 
+          modestbranding: 1, 
+          rel: 0, 
+          playsinline: 1,
+          enablejsapi: 1,
+          origin: typeof window !== "undefined" ? window.location.origin : undefined
+        },
         events: {
           onReady: () => {
             playerReadyRef.current = true;
@@ -582,9 +591,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
       const ctx = new AudioContextClass();
       const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
       const dst = ctx.createMediaStreamDestination();
-      oscillator.connect(dst);
+      
+      // Use a very low frequency tone (20Hz) at near-zero volume
+      // This is "audible content" to the OS/browser but silent to humans.
+      // This is much more effective at keeping the session alive than absolute silence.
+      oscillator.frequency.setValueAtTime(20, ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.001, ctx.currentTime);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(dst);
       oscillator.start();
+      
       audio.srcObject = dst.stream;
       audioCtxRef.current = ctx;
     } catch (e) {
@@ -621,22 +640,33 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const onTogglePlay = useCallback(() => {
     if (viewMode === "video") {
-      // Expanded iframe is the only player; hidden must stay silent
       setIsPlaying((v) => !v);
       return;
     }
-    const player = ytPlayerRef.current;
+    const player = ytPlayerRef.current as any;
     if (!player || !playerReadyRef.current) return;
-    if (!isPlaying) {
+    
+    // Check current actual state if possible to avoid desync
+    let actualState = -1;
+    try { actualState = player.getPlayerState(); } catch {}
+    
+    // If not currently playing (state 1), we want to play
+    if (actualState !== 1) {
       userIntentRef.current = "playing";
       player.playVideo();
-      // silentAudio is handled by effect
       setIsPlaying(true);
+      // Ensure silent audio is active
+      if (silentAudioRef.current?.paused) {
+        silentAudioRef.current.play().catch(() => {});
+      }
     } else {
       userIntentRef.current = "paused";
       player.pauseVideo();
-      // silentAudio is handled by effect
       setIsPlaying(false);
+      // Stop silent audio
+      if (!silentAudioRef.current?.paused) {
+        silentAudioRef.current?.pause();
+      }
     }
   }, [isPlaying, viewMode]);
 

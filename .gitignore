@@ -36,6 +36,22 @@ yarn-error.log*
 # vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+  *.tsbuildinfo
+  next-env.d.ts
+  
+  # pwa
+  public/sw.js
+  public/sw.js.map
+  public/workbox-*.js
+  public/workbox-*.js.map
+  public/itunes.png
+  public/favicon.ico
+  public/apple-touch-icon.png
+  public/icons-*.png
+  public/next.svg
+  public/vercel.svg
+  public/manifest.json.tmp
+  public/worker-*.js
+  public/worker-*.js.map
+  public/fallback-*.js
+  public/fallback-*.js.map

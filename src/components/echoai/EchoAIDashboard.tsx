@@ -14,6 +14,7 @@ export function EchoAIDashboard() {
     setQueueSongs,
     onAddToQueue,
     onPlayNext,
+    onPlayPlaylist,
     playedHistory,
     selectedPlaylist,
     palette,
@@ -51,6 +52,7 @@ export function EchoAIDashboard() {
       onQueueReplace={setQueueSongs}
       onAddToQueue={onAddToQueue}
       onPlayNext={onPlayNext}
+      onPlayPlaylist={onPlayPlaylist}
       currentSongId={currentSong?.id}
       seed={currentSong ? `${currentSong.artist} - ${currentSong.title}` : undefined}
       playedHistory={playedHistory}

@@ -32,14 +32,20 @@ export function PlayerDock({
   return (
     <div className="fixed bottom-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4">
       <div className="group relative">
-        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500/30 via-pink-500/20 to-purple-500/30 blur-2xl transition-all duration-1000 group-hover:opacity-100" />
+        <div className="absolute inset-0 rounded-full bg-linear-to-r from-purple-500/30 via-pink-500/20 to-purple-500/30 blur-2xl transition-all duration-1000 group-hover:opacity-100" />
         <div className="glass relative flex items-center gap-5 rounded-full px-6 py-4 shadow-2xl">
           <button
             type="button"
             className="relative h-14 w-14 overflow-hidden rounded-full transition-transform hover:scale-105"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={coverArt} alt={`${trackName} cover`} className="h-full w-full object-cover" />
+            {coverArt && coverArt.length > 0 ? (
+              <img src={coverArt} alt={`${trackName} cover`} className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full bg-white/10 flex items-center justify-center">
+                <Maximize2 size={24} className="text-white/20" />
+              </div>
+            )}
             <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity hover:opacity-100">
               <Maximize2 size={18} className="text-white" />
             </div>
@@ -56,7 +62,7 @@ export function PlayerDock({
             <button
               type="button"
               onClick={onTogglePlay}
-              className="neon-pulse h-12 w-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-[0_10px_20px_-10px_rgba(217,70,239,0.8)]"
+              className="neon-pulse h-12 w-12 rounded-full bg-linear-to-br from-purple-500 to-pink-500 text-white shadow-[0_10px_20px_-10px_rgba(217,70,239,0.8)]"
             >
               {isPlaying ? (
                 <Pause size={20} fill="white" className="mx-auto text-white" />
@@ -103,7 +109,7 @@ export function PlayerDock({
       </div>
       <button
         type="button"
-        className="glass flex h-14 w-14 items-center justify-center rounded-full border border-white/[0.12] text-white/70 transition-all hover:scale-105 hover:bg-black/60 hover:text-white"
+        className="glass flex h-14 w-14 items-center justify-center rounded-full border border-white/12 text-white/70 transition-all hover:scale-105 hover:bg-black/60 hover:text-white"
         aria-label="Search and identify music"
       >
         <Search size={20} />

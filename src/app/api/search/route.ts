@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { searchMusics } from "node-youtube-music";
 import { searchSongsRobust } from "@/lib/ytmSearchService";
 
 type SearchItem = {
@@ -59,15 +58,7 @@ function musicVideoToItem(m: {
 }
 
 async function searchYouTubeMusic(query: string): Promise<SearchItem[]> {
-  let results: Awaited<ReturnType<typeof searchMusics>> = [];
-  try {
-    results = await searchMusics(query);
-  } catch {
-    /* library parser often fails on ambiguous queries; fall back below */
-  }
-  if (results.length === 0) {
-    results = await searchSongsRobust(query);
-  }
+  const results = await searchSongsRobust(query);
   const items: SearchItem[] = [];
   for (const r of results) {
     const item = musicVideoToItem(r);

@@ -109,7 +109,7 @@ export async function POST(request: Request) {
     const song = {
         id: bestMatch.youtubeId,
         title: bestMatch.title,
-        artist: bestMatch.artists?.map(a => a.name).join(", ") || "Unknown Artist",
+        artist: bestMatch.artists?.map((a: any) => a.name).join(", ") || "Unknown Artist",
         artwork: bestMatch.thumbnailUrl || youtubeHqThumbnail(bestMatch.youtubeId!),
         duration: bestMatch.duration?.label || formatSeconds(bestMatch.duration?.totalSeconds || 0),
         color: "#FA243C" // Default color, will be updated by frontend extractor

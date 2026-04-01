@@ -15,9 +15,10 @@ interface PlaylistDetailProps {
   currentSongId?: string;
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
+  onPlayPlaylist?: (songs: Song[], startIndex: number) => void;
 }
 
-export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentColor, currentSongId, onAddToQueue, onPlayNext }: PlaylistDetailProps) {
+export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentColor, currentSongId, onAddToQueue, onPlayNext, onPlayPlaylist }: PlaylistDetailProps) {
   const [currentPlaylist, setCurrentPlaylist] = useState<YouTubePlaylist>(playlist);
   const [tracks, setTracks] = useState<YouTubeTrack[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,15 +54,27 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
   // Use currentPlaylist for rendering
   const displayPlaylist = currentPlaylist;
 
-  const handleTrackClick = (track: YouTubeTrack) => {
-    onSongClick({
-      id: track.videoId,
-      title: track.title,
-      artist: track.artist,
-      artwork: track.thumbnailUrl,
-      duration: track.duration || "0:00",
-      color: accentColor
-    });
+  const handleTrackClick = (track: YouTubeTrack, index: number) => {
+    if (onPlayPlaylist) {
+      const mappedSongs: Song[] = tracks.map((t) => ({
+        id: t.videoId,
+        title: t.title,
+        artist: t.artist,
+        artwork: t.thumbnailUrl,
+        duration: t.duration || "0:00",
+        color: accentColor,
+      }));
+      onPlayPlaylist(mappedSongs, index);
+    } else {
+      onSongClick({
+        id: track.videoId,
+        title: track.title,
+        artist: track.artist,
+        artwork: track.thumbnailUrl,
+        duration: track.duration || "0:00",
+        color: accentColor
+      });
+    }
   };
 
   const handlePlayAll = () => {
@@ -74,8 +87,12 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
       duration: track.duration || "0:00",
       color: accentColor,
     }));
-    onQueueReplace(mappedSongs);
-    onSongClick(mappedSongs[0]);
+    if (onPlayPlaylist) {
+      onPlayPlaylist(mappedSongs, 0);
+    } else {
+      onQueueReplace(mappedSongs);
+      onSongClick(mappedSongs[0]);
+    }
   };
 
   const handleShuffle = () => {
@@ -89,8 +106,12 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
       duration: track.duration || "0:00",
       color: accentColor,
     }));
-    onQueueReplace(mappedSongs);
-    onSongClick(mappedSongs[0]);
+    if (onPlayPlaylist) {
+      onPlayPlaylist(mappedSongs, 0);
+    } else {
+      onQueueReplace(mappedSongs);
+      onSongClick(mappedSongs[0]);
+    }
   };
 
   return (
@@ -160,7 +181,7 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
               return (
                 <div 
                   key={track.id}
-                  onClick={() => handleTrackClick(track)}
+                  onClick={() => handleTrackClick(track, i)}
                   className={`group flex items-center gap-4 p-3 rounded-xl transition-all cursor-pointer border ${
                     isActive ? "bg-white/10 border-white/10 shadow-lg" : "hover:bg-white/5 border-transparent hover:border-white/5"
                   }`}

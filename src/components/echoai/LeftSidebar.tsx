@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Compass, Settings, Music2, Search, ListMusic, Loader2, PlayCircle, Clock, Mic2, Album, UserCircle, LayoutGrid, Plus, ChevronDown, MoreHorizontal, Mic, X, ArrowUpRight, Play, Sparkles, User, LogIn } from "lucide-react";
+import { Home, Compass, Settings, Music2, Search, ListMusic, Loader2, PlayCircle, Clock, Mic2, Album, UserCircle, LayoutGrid, Plus, ChevronDown, MoreHorizontal, Mic, X, ArrowUpRight, Play, Sparkles, User, LogIn, ListPlus } from "lucide-react";
 import { SidebarAuth } from "./SidebarAuth";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -24,7 +24,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
   const pathname = usePathname();
   const activeView = pathname === "/" ? "home" : pathname.split("/")[1] || "home";
 
-  const { setSelectedPlaylist, onSongClick } = useDashboard();
+  const { setSelectedPlaylist, onSongClick, onAddToQueue, onPlayNext } = useDashboard();
   const [playlists, setPlaylists] = useState<YouTubePlaylist[]>([]);
   const [loading, setLoading] = useState(false);
   
@@ -193,9 +193,47 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                             <Play size={16} fill="white" className="text-white ml-0.5" />
                           </div>
                         </div>
-                        <div className="flex-1 min-w-0 pr-4">
+                        <div className="flex-1 min-w-0 pr-2">
                           <h4 className="text-[15px] font-bold text-white truncate leading-tight mb-0.5">{song.title}</h4>
                           <p className="text-[12px] text-white/40 font-medium truncate">{song.author}</p>
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onPlayNext?.({
+                                id: song.videoId,
+                                title: song.title,
+                                artist: song.author,
+                                artwork: song.thumbnail,
+                                duration: song.duration,
+                                color: accentColor
+                              });
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                            title="Play Next"
+                          >
+                            <ArrowUpRight size={16} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAddToQueue?.({
+                                id: song.videoId,
+                                title: song.title,
+                                artist: song.author,
+                                artwork: song.thumbnail,
+                                duration: song.duration,
+                                color: accentColor
+                              });
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                            title="Add to Queue"
+                          >
+                            <ListPlus size={16} />
+                          </button>
                         </div>
                       </div>
                     </div>

@@ -26,6 +26,7 @@ interface CenterPanelProps {
   playedHistory?: Song[]; // Added: real history from session
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
+  onPlayPlaylist?: (songs: Song[], startIndex: number) => void;
 }
 
 type RecommendationTrack = {
@@ -91,8 +92,10 @@ function ForYouCard(props: {
   onPlay: () => void;
   isPlaying: boolean;
   accentColor: string;
+  onAddToQueue?: (song: Song) => void;
+  onPlayNext?: (song: Song) => void;
 }) {
-  const { track, index, onPlay, isPlaying, accentColor } = props;
+  const { track, index, onPlay, isPlaying, accentColor, onAddToQueue, onPlayNext } = props;
 
   return (
     <motion.div
@@ -116,12 +119,54 @@ function ForYouCard(props: {
           </div>
         )}
         
-        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300">
-           {isPlaying ? (
-             <Loader2 size={32} className="animate-spin text-white" />
-           ) : (
-             <Play size={32} fill="white" className="text-white ml-1" />
-           )}
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-4 transition-all duration-300">
+           <div className="flex items-center gap-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
+             <button
+               onClick={(e) => {
+                 e.stopPropagation();
+                 onPlayNext?.({
+                   id: track.id!,
+                   title: track.title,
+                   artist: track.artist,
+                   artwork: track.artwork || "",
+                   duration: track.duration || "",
+                   color: accentColor,
+                 });
+               }}
+               className="p-3 rounded-full bg-white/10 hover:bg-white text-white hover:text-black transition-all hover:scale-110"
+               title="Play Next"
+             >
+               <PlaySquare size={20} />
+             </button>
+             <button
+               onClick={(e) => {
+                 e.stopPropagation();
+                 onAddToQueue?.({
+                   id: track.id!,
+                   title: track.title,
+                   artist: track.artist,
+                   artwork: track.artwork || "",
+                   duration: track.duration || "",
+                   color: accentColor,
+                 });
+               }}
+               className="p-3 rounded-full bg-white/10 hover:bg-white text-white hover:text-black transition-all hover:scale-110"
+               title="Add to Queue"
+             >
+               <ListPlus size={20} />
+             </button>
+           </div>
+           
+           <div 
+             onClick={onPlay}
+             className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-black shadow-2xl hover:scale-105 transition-transform"
+           >
+             {isPlaying ? (
+               <Loader2 size={32} className="animate-spin" />
+             ) : (
+               <Play size={32} fill="currentColor" className="ml-1" />
+             )}
+           </div>
         </div>
       </div>
 
@@ -213,6 +258,7 @@ export function CenterPanel(props: CenterPanelProps) {
     playedHistory = [],
     onAddToQueue,
     onPlayNext,
+    onPlayPlaylist,
   } = props;
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -247,13 +293,16 @@ export function CenterPanel(props: CenterPanelProps) {
     setForYouLoading(true);
     setForYouTracks([]);
     try {
-      // Step 1: Ask for personalised picks using our new Hybrid Engine
+      const historyStrings = playedHistory && playedHistory.length > 0 
+        ? playedHistory.map(s => `${s.title} by ${s.artist}`).slice(0, 10)
+        : ["Top Hits 2024"];
+
       const res = await fetch("/api/recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          recentTrackId: currentSongId || "K4TOrB7at0Y", // Fallback to Starboy if nothing playing
-          userHistory: playedHistory.length > 0 ? playedHistory : ["Top Hits 2024"] 
+          recentTrackId: currentSongId || (playedHistory && playedHistory.length > 0 ? playedHistory[0].id : null),
+          userHistory: historyStrings 
         }),
       });
 
@@ -276,7 +325,7 @@ export function CenterPanel(props: CenterPanelProps) {
     } finally {
       setForYouLoading(false);
     }
-  }, []);
+  }, [playedHistory, currentSongId]);
 
   useEffect(() => {
     fetchForYou();
@@ -305,6 +354,7 @@ export function CenterPanel(props: CenterPanelProps) {
         onPlaylistClick={onPlaylistClick}
         onAddToQueue={onAddToQueue}
         onPlayNext={onPlayNext}
+        onPlayPlaylist={onPlayPlaylist}
         onSongClick={onSongClick}
         playedHistory={playedHistory || []}
         accentColor={accentColor}
@@ -404,6 +454,7 @@ export function CenterPanel(props: CenterPanelProps) {
         onQueueReplace={onQueueReplace || (() => {})}
         onAddToQueue={onAddToQueue}
         onPlayNext={onPlayNext}
+        onPlayPlaylist={onPlayPlaylist}
         accentColor={accentColor}
         currentSongId={currentSongId}
       />
@@ -442,6 +493,8 @@ export function CenterPanel(props: CenterPanelProps) {
                   accentColor={accentColor}
                   isPlaying={!!track.id && forYouPlayingId === track.id}
                   onPlay={() => handlePlayForYou(track)}
+                  onAddToQueue={onAddToQueue}
+                  onPlayNext={onPlayNext}
                 />
               </div>
             ))

@@ -1,104 +1,97 @@
+/**
+ * /api/audio/route.ts
+ * Resolves a search query to a playable YouTube Music track.
+ *
+ * GET /api/audio?query=<artist + title>
+ *
+ * Returns an AudioPayload that matches the shape expected by DashboardContext:
+ * {
+ *   audioUrl: string      // Direct YouTube watch URL (used by the hidden YT iframe)
+ *   trackName: string
+ *   artist: string
+ *   coverArt: string      // High-res thumbnail
+ *   videoId: string       // YouTube video ID
+ *   musicVideoId?: string // Same as videoId (future: separate music-video ID)
+ * }
+ */
+
 import { NextResponse } from "next/server";
-import { searchMusics } from "node-youtube-music";
 import { searchSongsRobust, searchVideosRobust } from "@/lib/ytmSearchService";
 
-type MusicVideo = Awaited<ReturnType<typeof searchMusics>>[number];
-
-/**
- * YouTube Music "Songs" tab results (via searchMusics) are catalog song rows — official audio
- * entries rather than the separate "Videos" tab (music videos / uploads).
- */
-function pickFirstSong(results: MusicVideo[]): MusicVideo | null {
-  for (const r of results) {
-    const id = r.youtubeId?.trim();
-    if (!id) continue;
-    return r;
-  }
-  return null;
-}
-
-function formatArtists(m: MusicVideo): string {
-  const joined = m.artists?.map((a) => a.name).filter(Boolean).join(", ").trim();
-  return joined || "Unknown Artist";
-}
-
 function youtubeHqThumbnail(videoId: string): string {
-  // hq720 is 1280x720, much sharper than sddefault.
-  return `https://i.ytimg.com/vi/${videoId}/hq720.jpg`;
+  return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 }
 
-function upgradeYtMusicThumbnail(url: string | undefined): string {
+function upgradeThumbnail(url?: string, videoId?: string): string {
+  if (!url && videoId) return youtubeHqThumbnail(videoId);
   if (!url) return "";
-  // YT Music thumbnails often have =w120-h120-... or similar. We replace with high res.
   if (url.includes("=w") && url.includes("-h")) {
-    return url.replace(/=w\d+-h\d+/, "=w1024-h1024");
+    return url.replace(/=w\d+-h\d+(-.*?)?$/, "=w1024-h1024");
   }
   return url;
 }
 
-function coverFromMusicVideo(m: MusicVideo, youtubeId: string): string {
-  const thumb = m.thumbnailUrl?.trim() || youtubeHqThumbnail(youtubeId);
-  return upgradeYtMusicThumbnail(thumb);
-}
-
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.get("query")?.trim();
+
+  if (!query) {
+    return NextResponse.json(
+      { error: "Missing required param: query" },
+      { status: 400 }
+    );
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.get("query")?.trim();
+    const results = await searchSongsRobust(query);
 
-    if (!query) {
+    if (!results || results.length === 0) {
       return NextResponse.json(
-        { error: "Missing required query param: query" },
-        { status: 400 }
-      );
-    }
-
-    // Try to find the "Song" (high quality audio, usually Art Track / Topic)
-    // AND the "Video" (Music Video) separately using our robust crawler.
-    let songResults: MusicVideo[] = [];
-    let videoResults: MusicVideo[] = [];
-    
-    try {
-      songResults = await searchSongsRobust(query);
-    } catch (err) {
-      console.warn("SONG search failed:", err);
-    }
-
-    try {
-      videoResults = await searchVideosRobust(query);
-    } catch (err) {
-      console.warn("VIDEO search failed:", err);
-    }
-
-    const officialSong = pickFirstSong(songResults) || pickFirstSong(videoResults);
-    const officialVideo = pickFirstSong(videoResults) || officialSong;
-
-    if (!officialSong?.youtubeId) {
-      return NextResponse.json(
-        { error: "No matching song found on YouTube Music. Try a different search." },
+        { error: "No tracks found for query: " + query },
         { status: 404 }
       );
     }
 
-    const songId = officialSong.youtubeId.trim();
-    const musicVideoId = officialVideo?.youtubeId?.trim() || songId;
-    
-    const trackName = officialSong.title?.trim() || "Unknown Track";
-    const artist = formatArtists(officialSong);
-    const coverArt = coverFromMusicVideo(officialSong, songId);
+    const best = results[0];
+    const videoId = best.youtubeId?.trim();
 
-    return NextResponse.json({
-      audioUrl: "",
-      trackName,
+    if (!videoId) {
+      return NextResponse.json(
+        { error: "Track found but has no YouTube ID" },
+        { status: 404 }
+      );
+    }
+
+    const artist =
+      best.artists
+        ?.map((a: any) => a.name)
+        .filter(Boolean)
+        .join(", ") || "Unknown Artist";
+
+    // Try to find the exact Music Video for this track so the UI's video tab works
+    const videoResults = await searchVideosRobust(`${artist} ${best.title || query} music video`);
+    const musicVideoId = videoResults?.[0]?.youtubeId?.trim() || videoId;
+
+    const thumbnail = upgradeThumbnail(best.thumbnailUrl, videoId);
+
+    const payload = {
+      audioUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      trackName: best.title?.trim() || query,
       artist,
-      coverArt,
-      videoId: songId,
-      musicVideoId,
-    });
-  } catch (error) {
-    console.error("Audio route failed:", error);
+      coverArt: thumbnail,
+      videoId,
+      musicVideoId: musicVideoId,
+      source: "music.youtube.com",
+    };
+
+    return NextResponse.json(payload);
+  } catch (error: any) {
+    console.error("[audio] Failed to resolve audio for query:", query, error);
     return NextResponse.json(
-      { error: "Unexpected error while loading audio." },
+      {
+        error: "Failed to resolve audio metadata.",
+        detail: error?.message ?? "Unknown error",
+      },
       { status: 500 }
     );
   }

@@ -406,10 +406,24 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                           void (async () => {
                             const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
                             const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
+                            onPlayNext?.({ ...song, artwork: highResArtwork, color: dynamicColor });
+                          })();
+                        }}
+                        className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all outline-hidden"
+                        title="Play Next"
+                      >
+                        <PlaySquare size={20} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void (async () => {
+                            const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
+                            const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
                             onAddToQueue?.({ ...song, artwork: highResArtwork, color: dynamicColor });
                           })();
                         }}
-                        className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                        className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all outline-hidden"
                         title="Add to Queue"
                       >
                         <ListPlus size={20} />

@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { 
   Play, Loader2, Music2, Heart, Plus, Sparkles, 
-  Search, Filter, History
+  Search, Filter, History, ListPlus, PlaySquare
 } from "lucide-react";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
 import { type Song } from "./types";
@@ -16,7 +16,8 @@ interface YouTubeLibraryProps {
   onPlaylistClick?: (playlist: YouTubePlaylist) => void;
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
-  onSongClick?: (song: Song) => void;
+  onPlayPlaylist?: (songs: Song[], startIndex: number) => void;
+  onSongClick?: (song: Song, reset?: boolean) => void;
   playedHistory?: Song[];
   accentColor?: string;
 }
@@ -25,6 +26,9 @@ type LibraryTab = "playlists" | "history" | "liked";
 
 export function YouTubeLibrary({
   onPlaylistClick,
+  onAddToQueue,
+  onPlayNext,
+  onPlayPlaylist,
   onSongClick,
   playedHistory = [],
   accentColor = "#FA233B",
@@ -97,7 +101,7 @@ export function YouTubeLibrary({
     return [...local, ...uniqueRemote].filter(s => 
       (s.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
       (s.artist?.toLowerCase() || "").includes(searchQuery.toLowerCase())
-    );
+    ).map(track => ({ ...track, source: (track as any).source || "YouTube" }));
   }, [playedHistory, ytHistory, searchQuery, accentColor]);
 
   if (!session) {
@@ -247,7 +251,13 @@ export function YouTubeLibrary({
                         {unifiedHistory.map((track, idx) => (
                            <div 
                               key={`hist-${idx}`}
-                              onClick={() => onSongClick?.(track as Song)}
+                              onClick={() => {
+                                if (onPlayPlaylist) {
+                                  onPlayPlaylist(unifiedHistory as Song[], idx);
+                                } else {
+                                  onSongClick?.(track as Song);
+                                }
+                              }}
                               className="group flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-white/3 border border-white/5 hover:bg-white/8 transition-all cursor-pointer relative overflow-hidden"
                            >
                               <div className="h-12 w-12 md:h-16 md:w-16 shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shadow-lg relative">
@@ -263,11 +273,33 @@ export function YouTubeLibrary({
                                  <p className="truncate font-bold text-white text-sm md:text-[16px] mb-0.5">{track.title}</p>
                                  <p className="truncate text-xs md:text-[13px] text-white/40 font-medium">{track.artist}</p>
                               </div>
-                              <div className="flex flex-col items-end gap-1 shrink-0">
+                              <div className="flex flex-row items-center gap-2 shrink-0">
+                                 <div className="hidden group-hover:flex items-center gap-1">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onPlayNext?.(track as Song);
+                                      }}
+                                      className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all focus:outline-none"
+                                      title="Play Next"
+                                    >
+                                      <PlaySquare size={16} />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onAddToQueue?.(track as Song);
+                                      }}
+                                      className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all focus:outline-none"
+                                      title="Add to Queue"
+                                    >
+                                      <ListPlus size={16} />
+                                    </button>
+                                 </div>
                                  <span className={`text-[8px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter ${
-                                    track.source === "App" ? "bg-[#FA233B]/20 text-[#FA233B]" : "bg-white/10 text-white/40"
+                                    (track as any).source === "App" ? "bg-[#FA233B]/20 text-[#FA233B]" : "bg-white/10 text-white/40"
                                  }`}>
-                                    {track.source}
+                                    {(track as any).source}
                                  </span>
                               </div>
                            </div>
@@ -283,26 +315,59 @@ export function YouTubeLibrary({
                        exit={{ opacity: 0, y: -10 }}
                        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"
                     >
-                       {filteredLiked.map((track, idx) => (
-                          <div 
-                             key={`liked-${idx}`}
-                             onClick={() => onSongClick?.({
-                                id: track.videoId,
-                                title: track.title,
-                                artist: track.artist,
-                                artwork: track.thumbnailUrl,
-                                duration: track.duration || "",
-                                color: accentColor,
-                             })}
-                             className="group flex flex-col cursor-pointer"
-                          >
-                             <div className="relative aspect-square mb-3 md:mb-4 rounded-3xl md:rounded-[28px] overflow-hidden bg-zinc-900 border border-white/5 shadow-xl transition-all duration-500 hover:scale-[1.03]">
-                                <img src={track.thumbnailUrl?.replace("s90", "s600")} alt="" className="h-full w-full object-cover" />
-                             </div>
-                             <h3 className="font-bold text-white truncate text-base md:text-[17px] mb-0.5 md:mb-1 leading-tight">{track.title}</h3>
-                             <p className="text-white/30 text-xs md:text-[14px] font-bold truncate">{track.artist}</p>
-                          </div>
-                       ))}
+                       {filteredLiked.map((track, idx) => {
+                          const likedSongsList: Song[] = filteredLiked.map(t => ({
+                             id: t.videoId,
+                             title: t.title,
+                             artist: t.artist,
+                             artwork: t.thumbnailUrl,
+                             duration: t.duration || "",
+                             color: accentColor,
+                          }));
+                          
+                          const songObj = likedSongsList[idx];
+                          return (
+                            <div 
+                               key={`liked-${idx}`}
+                               onClick={() => {
+                                 if (onPlayPlaylist) {
+                                   onPlayPlaylist(likedSongsList, idx);
+                                 } else {
+                                   onSongClick?.(songObj);
+                                 }
+                               }}
+                               className="group flex flex-col cursor-pointer"
+                            >
+                               <div className="relative aspect-square mb-3 md:mb-4 rounded-3xl md:rounded-[28px] overflow-hidden bg-zinc-900 border border-white/5 shadow-xl transition-all duration-500 hover:scale-[1.03]">
+                                  <img src={track.thumbnailUrl?.replace("s90", "s600")} alt="" className="h-full w-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-opacity duration-300">
+                                     <button
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         onPlayNext?.(songObj);
+                                       }}
+                                       className="p-3 rounded-full bg-white/20 hover:bg-white text-white hover:text-black transition-all hover:scale-110 focus:outline-none"
+                                       title="Play Next"
+                                     >
+                                       <PlaySquare size={20} />
+                                     </button>
+                                     <button
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         onAddToQueue?.(songObj);
+                                       }}
+                                       className="p-3 rounded-full bg-white/20 hover:bg-white text-white hover:text-black transition-all hover:scale-110 focus:outline-none"
+                                       title="Add to Queue"
+                                     >
+                                       <ListPlus size={20} />
+                                     </button>
+                                  </div>
+                               </div>
+                               <h3 className="font-bold text-white truncate text-base md:text-[17px] mb-0.5 md:mb-1 leading-tight">{track.title}</h3>
+                               <p className="text-white/30 text-xs md:text-[14px] font-bold truncate">{track.artist}</p>
+                            </div>
+                          );
+                       })}
                     </motion.div>
                  )}
               </AnimatePresence>

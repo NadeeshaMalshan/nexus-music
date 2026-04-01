@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect, type MouseEvent, useCallback } from "react";
 import YouTube from "react-youtube";
-import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus } from "lucide-react";
+import { motion, AnimatePresence, Reorder } from "motion/react";
 import { type Song } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
@@ -9,12 +9,13 @@ import { youtubeTimestampToSeconds } from "@/lib/duration";
 interface ExpandedPlayerProps {
   onClose: () => void;
   currentSong: Song;
-  onSongClick: (song: Song) => void;
+  onSongClick: (song: Song, reset?: boolean) => void;
   isPlaying: boolean;
   onTogglePlay: () => void;
   onNext: () => void;
   onPrev: () => void;
-  queueSongs: Song[];
+  upNextQueue?: Song[];
+  onRemoveFromUpNext?: (index: number) => void;
   lyricsContent: string | null;
   lyricsSource: string | null;
   currentTimeSec: number;
@@ -32,8 +33,6 @@ interface ExpandedPlayerProps {
   knowFacts?: string[];
   knowLoading?: boolean;
   onRateSong: (videoId: string, rating: "like" | "none") => void;
-  onRemoveFromQueue?: (index: number) => void;
-  onReorderQueue?: (newQueue: Song[]) => void;
   isLiked?: boolean;
   isLoggedIn?: boolean;
   playVideo: () => void;
@@ -43,6 +42,8 @@ interface ExpandedPlayerProps {
   setIsPlaying: (playing: boolean) => void;
   viewMode: "music" | "video";
   setViewMode: (mode: "music" | "video") => void;
+  onClearQueue?: () => void;
+  onReorderUpNext?: (newQueue: Song[]) => void;
 }
 
 export function ExpandedPlayer({
@@ -53,7 +54,8 @@ export function ExpandedPlayer({
   onTogglePlay,
   onNext,
   onPrev,
-  queueSongs,
+  upNextQueue = [],
+  onRemoveFromUpNext,
   lyricsContent,
   lyricsSource,
   currentTimeSec,
@@ -65,7 +67,6 @@ export function ExpandedPlayer({
   knowFacts = [],
   knowLoading = false,
   onRateSong,
-  onRemoveFromQueue,
   isLiked = false,
   isLoggedIn,
   playVideo,
@@ -75,8 +76,10 @@ export function ExpandedPlayer({
   setIsPlaying,
   viewMode,
   setViewMode,
+  onClearQueue,
+  onReorderUpNext,
 }: ExpandedPlayerProps) {
-  const [activeTab, setActiveTab] = useState<"lyrics" | "up-next" | "ai" | "controls">("controls");
+  const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">("controls");
   const [videoStartTime, setVideoStartTime] = useState(0);
   const [imageError, setImageError] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
@@ -89,6 +92,8 @@ export function ExpandedPlayer({
   const scrollRef = useRef<HTMLDivElement>(null);
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const videoInitSeekRef = useRef<boolean>(false);
+  const capturedTimeRef = useRef<number>(0);
 
   const isImmersive = useMemo(() => isMobile && activeTab !== "controls", [isMobile, activeTab]);
 
@@ -220,9 +225,12 @@ export function ExpandedPlayer({
         try {
           const p = ytPlayerInstance.current;
           if (!p) return;
-          const time = p.getCurrentTime();
-          if (time !== undefined && time !== null && Number.isFinite(time)) {
-            setCurrentTimeSec(time);
+          // Only update if actually playing to avoid overriding state with 0 during buffering/mounting
+          if (p.getPlayerState?.() === 1) { // 1 = PLAYING
+            const time = p.getCurrentTime();
+            if (time > 0 && Number.isFinite(time)) {
+              setCurrentTimeSec(time);
+            }
           }
         } catch {
           /* iframe/player destroyed during track change */
@@ -455,11 +463,10 @@ export function ExpandedPlayer({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveTab("up-next")}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-all sm:gap-2 sm:px-6 sm:text-sm ${activeTab === "up-next" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"}`}
+                  onClick={() => setActiveTab("queue")}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-all sm:gap-2 sm:px-6 sm:text-sm ${activeTab === "queue" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"}`}
                 >
-                  <ListMusic size={14} className="sm:h-4 sm:w-4" /> <span className="sm:hidden">Next</span>
-                  <span className="hidden sm:inline">Up Next</span>
+                  <ListMusic size={14} className="sm:h-4 sm:w-4" /> <span>Queue</span>
                 </button>
                 <button
                   type="button"
@@ -494,8 +501,10 @@ export function ExpandedPlayer({
                   onReady={(event) => {
                     const p = event.target;
                     ytPlayerInstance.current = p;
+                    videoInitSeekRef.current = false;
+                    const targetTime = capturedTimeRef.current > 0 ? capturedTimeRef.current : currentTimeSec;
                     try {
-                      p.seekTo(currentTimeSec, true);
+                      p.seekTo(targetTime, true);
                     } catch {
                       /* player API */
                     }
@@ -503,6 +512,12 @@ export function ExpandedPlayer({
                     else p.pauseVideo();
                   }}
                   onStateChange={(event) => {
+                    if (event.data === 1 && !videoInitSeekRef.current) { // 1 = PLAYING
+                      videoInitSeekRef.current = true;
+                      const targetTime = capturedTimeRef.current > 0 ? capturedTimeRef.current : currentTimeSec;
+                      ytPlayerInstance.current?.seekTo(targetTime, true);
+                      capturedTimeRef.current = 0; // consumed
+                    }
                     if (event.data === YouTube.PlayerState.ENDED) {
                       onNext();
                     }
@@ -540,12 +555,12 @@ export function ExpandedPlayer({
                 onClick={() => {
                   if (viewMode === "video") {
                     const time = ytPlayerInstance.current?.getCurrentTime() || currentTimeSec;
+                    capturedTimeRef.current = time; // Save exact time 
                     setViewMode("music");
                     setActiveTab((prev) => (prev === "controls" ? "lyrics" : prev));
-                    // After viewMode commits, resume hidden player only (avoid overlap with expanded iframe)
                     window.setTimeout(() => {
                       onSeek(time);
-                      playVideo();
+                      if (isPlaying) playVideo();
                     }, 0);
                   }
                 }}
@@ -557,7 +572,8 @@ export function ExpandedPlayer({
                 type="button"
                 onClick={() => {
                   if (viewMode === "music") {
-                    pauseVideo();
+                    capturedTimeRef.current = currentTimeSec; // Save explicit time before transition
+                    pauseBackgroundPlayer(); // Only pause the hidden iframe, preserve isPlaying state
                     setViewMode("video");
                     if (ytPlayerInstance.current) {
                       ytPlayerInstance.current.seekTo(currentTimeSec, true);
@@ -642,51 +658,88 @@ export function ExpandedPlayer({
           </div>
           )}
 
-          {activeTab === "up-next" && (
-            <div key="up-next" className={`custom-scrollbar h-full overflow-y-auto px-4 ${isImmersive ? "pb-[30vh] pt-[5vh]" : "py-[10vh]"}`}>
-                <h2 className="mb-8 text-3xl font-bold tracking-tight text-white">Up Next</h2>
-                <div className="space-y-3">
-                  {queueSongs.map((song, idx) => (
-                    <div key={`${song.id}-${idx}`}>
-                      <div
-                        className="group flex w-full items-center gap-4 rounded-xl p-3 text-left transition-colors hover:bg-white/10"
-                      >
-                        <div className="text-white/10 group-hover:text-white/30 transition-colors">
-                          <GripVertical size={20} />
-                        </div>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img 
-                          onClick={() => onSongClick(song)}
-                          src={song.artwork} 
-                          alt={song.title} 
-                          className="h-14 w-14 cursor-pointer rounded-lg object-cover shadow-sm transition-transform group-hover:scale-105" 
-                        />
-                        <div 
-                          onClick={() => onSongClick(song)}
-                          className="flex-1 truncate cursor-pointer"
-                        >
-                          <p className="truncate text-base font-medium text-white">{song.title}</p>
-                          <p className="mt-0.5 truncate text-sm text-white/60">{song.artist}</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-sm font-medium text-white/40">{song.duration}</span>
-                          {onRemoveFromQueue && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onRemoveFromQueue(idx);
-                              }}
-                              className="p-2 rounded-full hover:bg-white/10 text-white/20 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                              title="Remove from queue"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+          {activeTab === "queue" && (
+            <div key="queue" className={`custom-scrollbar h-full overflow-y-auto px-4 ${isImmersive ? "pb-[30vh] pt-[5vh]" : "py-[10vh]"}`}>
+                <div className="flex items-center justify-between mb-8 max-w-4xl mx-auto px-4">
+                  <h2 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white mb-0">Queue</h2>
+                  {upNextQueue.length > 0 && (
+                    <button 
+                      onClick={onClearQueue}
+                      className="px-6 py-2.5 rounded-full bg-white/10 border border-white/5 text-sm font-black text-white/40 hover:text-red-500 hover:bg-white/20 transition-all flex items-center gap-2 shadow-2xl"
+                      title="Clear Queue"
+                    >
+                      <span>Clear</span>
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
+                <Reorder.Group 
+                  axis="y" 
+                  values={upNextQueue} 
+                  onReorder={onReorderUpNext || (() => {})} 
+                  className="space-y-3 max-w-4xl mx-auto"
+                >
+                  {upNextQueue.length > 0 ? (
+                    upNextQueue.map((song, idx) => (
+                      <Reorder.Item 
+                        key={song.id} 
+                        value={song}
+                        className="group relative"
+                      >
+                        <div
+                          className="group flex w-full items-center gap-4 rounded-xl p-3 text-left transition-colors hover:bg-white/10"
+                        >
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity p-2 -ml-2 text-white/20 hover:text-white/40 cursor-grab active:cursor-grabbing shrink-0">
+                            <GripVertical size={20} />
+                          </div>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img 
+                            onClick={() => onSongClick(song, false)}
+                            src={song.artwork} 
+                            alt={song.title} 
+                            className="h-16 w-16 cursor-pointer rounded-lg object-cover shadow-sm transition-transform group-hover:scale-105" 
+                          />
+                          <div 
+                            onClick={() => onSongClick(song, false)}
+                            className="flex-1 truncate cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2">
+                                <p className="truncate text-base font-medium text-white">{song.title}</p>
+                                {song.isManual && (
+                                   <div className="shrink-0 scale-75 p-1 rounded-sm bg-white/10 border border-white/20">
+                                      <Plus size={10} className="text-white/60" />
+                                   </div>
+                                )}
+                            </div>
+                            <p className="mt-0.5 truncate text-sm text-white/60">{song.artist}</p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm font-medium text-white/40">{song.duration}</span>
+                            {onRemoveFromUpNext && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onRemoveFromUpNext(idx);
+                                }}
+                                className="p-2 rounded-full hover:bg-white/10 text-white/20 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                title="Remove from queue"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </Reorder.Item>
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                       <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center animate-pulse">
+                          <Sparkles size={32} className="text-white/10" />
+                       </div>
+                       <p className="text-lg font-bold text-white/10 uppercase tracking-[0.2em]">Curating Radio</p>
+                    </div>
+                  )}
+                </Reorder.Group>
             </div>
           )}
 

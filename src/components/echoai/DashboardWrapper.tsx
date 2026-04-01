@@ -28,7 +28,6 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     onRateSong,
     setIsExpandedPlayerOpen,
     setIsRightSidebarOpen,
-    queueSongs,
     upNextQueue,
     lyricsData,
     lyricsLoading,
@@ -38,9 +37,10 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     knowLoading,
     volume,
     setVolume,
-    onRemoveFromQueue,
     onRemoveFromUpNext,
-    onReorderQueue,
+    onClearQueue,
+    onPlayPlaylist,
+    onReorderUpNext,
     aiLoading,
     playVideo,
     pauseVideo,
@@ -59,16 +59,22 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative h-screen overflow-hidden text-zinc-100">
       <div
-        className="pointer-events-none absolute inset-0 transition-all duration-1200 ease-in-out"
+        className="pointer-events-none absolute inset-0 transition-all duration-2000 ease-in-out"
         style={{
           backgroundImage: `
-            radial-gradient(circle at 10% 10%, ${palette.primary}ee, transparent 80%),
-            radial-gradient(circle at 90% 90%, ${palette.secondary}cc, transparent 80%)
+            radial-gradient(circle at 15% 15%, ${palette.primary}cc, transparent 70%),
+            radial-gradient(circle at 85% 85%, ${palette.secondary}99, transparent 70%),
+            radial-gradient(circle at 50% 50%, ${palette.accent}22, transparent 90%)
           `,
-          filter: "blur(100px) saturate(2)",
-          backgroundColor: "#06060a"
+          filter: "blur(120px) saturate(2.5)",
+          backgroundColor: "#06060c",
         }}
-      />
+      >
+          <div className="absolute inset-0 opacity-[0.15]" style={{
+            backgroundImage: `radial-gradient(circle at 50% 50%, ${palette.accent}, transparent)`,
+            animation: 'pulse 10s infinite alternate ease-in-out'
+          }} />
+      </div>
       <div className="pointer-events-none absolute inset-0 bg-black/10" />
       <main
         className={`relative z-10 flex h-full min-h-0 w-full min-w-0 transition-all duration-300 ${isRightSidebarOpen && !isExpandedPlayerOpen ? "lg:pr-[380px]" : ""}`}
@@ -122,7 +128,10 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           onTogglePlay={onTogglePlay}
           onNext={onNext}
           onPrev={onPrev}
-          queueSongs={queueSongs}
+          upNextQueue={upNextQueue}
+          onRemoveFromUpNext={onRemoveFromUpNext}
+          onClearQueue={onClearQueue}
+          onReorderUpNext={onReorderUpNext}
           lyricsContent={
             lyricsData?.lyrics.content ||
             (lyricsLoading ? "Loading lyrics..." : "Lyrics not available for this track yet.")
@@ -138,8 +147,6 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           knowLoading={knowLoading}
           onRateSong={onRateSong}
           isLiked={currentSong ? likedSongs.has(audioData?.videoId || currentSong.id) : false}
-          onRemoveFromQueue={onRemoveFromQueue}
-          onReorderQueue={onReorderQueue}
           isLoggedIn={status === "authenticated"}
           playVideo={playVideo}
           pauseVideo={pauseVideo}
@@ -155,7 +162,6 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         isOpen={isRightSidebarOpen && !isExpandedPlayerOpen}
         onClose={() => setIsRightSidebarOpen(false)}
         onSongClick={onSongClick}
-        queueSongs={queueSongs}
         upNextQueue={upNextQueue}
         currentSongId={currentSong?.id}
         currentArtist={audioData?.artist || currentSong?.artist || "Unknown"}
@@ -166,8 +172,9 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         aiInsights={lyricsData?.geniusData.found ? "Genius metadata found for this song." : "AI insights are not available yet."}
         aiLoading={aiLoading}
         onSeek={onSeek}
-        onRemoveFromQueue={onRemoveFromQueue}
         onRemoveFromUpNext={onRemoveFromUpNext}
+        onClearQueue={onClearQueue}
+        onReorderUpNext={onReorderUpNext}
       />
     </div>
   );

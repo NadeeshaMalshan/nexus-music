@@ -50,7 +50,10 @@ export function FloatingPlayer({
         layout
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="group relative flex w-auto max-w-full items-center gap-6 rounded-full bg-linear-to-br from-white/10 to-white/[0.05] p-2 pl-6 pr-8 backdrop-blur-3xl border border-white/10 shadow-2xl pointer-events-auto transition-all duration-500 hover:bg-white/[0.12]"
+        className="group relative flex w-auto max-w-full items-center gap-6 rounded-full bg-linear-to-br from-white/10 to-white/5 p-2 pl-6 pr-8 backdrop-blur-3xl border border-white/10 shadow-2xl pointer-events-auto transition-all duration-500 hover:bg-white/12"
+        style={{
+          boxShadow: `0 20px 40px -15px rgba(0,0,0,0.5), 0 0 20px -5px var(--art-accent, rgba(255,255,255,0.1))`
+        }}
       >
         
         {/* Left Section: Playback Controls */}
@@ -64,7 +67,8 @@ export function FloatingPlayer({
           
           <button
             onClick={onTogglePlay}
-            className="text-white transition-all transform hover:scale-110 active:scale-95 bg-white/10 rounded-full p-1.5 hover:bg-white/20"
+            className="text-white transition-all transform hover:scale-110 active:scale-95 rounded-full p-1.5 hover:bg-white/10"
+            style={{ color: 'var(--art-accent, white)' }}
           >
             {isPlaying ? (
               <Pause size={28} fill="currentColor" strokeWidth={1} />
@@ -93,7 +97,13 @@ export function FloatingPlayer({
             {/* Artwork Wrapper */}
             <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl shadow-lg border border-white/10 group-hover/card:scale-105 transition-transform duration-500">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={currentSong.artwork} alt="" className="h-full w-full object-cover" />
+              {currentSong.artwork ? (
+                <img src={currentSong.artwork} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full bg-white/5 flex items-center justify-center">
+                  <Maximize2 size={16} className="text-white/20" />
+                </div>
+              )}
               <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity">
                  <Maximize2 size={14} className="text-white" />
               </div>
@@ -110,8 +120,8 @@ export function FloatingPlayer({
             {/* Linear Progress Indicator */}
             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/5">
               <div
-                className="h-full transition-[width] duration-300 ease-out shadow-[0_0_8px_rgba(255,255,255,0.4)]"
-                style={{ width: `${progress}%`, backgroundColor: `white` }}
+                className="h-full transition-[width] duration-300 ease-out shadow-[0_0_8px_var(--art-accent,rgba(255,255,255,0.4))]"
+                style={{ width: `${progress}%`, backgroundColor: `var(--art-accent, white)` }}
               />
             </div>
           </div>
@@ -129,18 +139,20 @@ export function FloatingPlayer({
                  value={volume}
                  onChange={(e) => onVolumeChange(parseInt(e.target.value))}
                  className="w-full h-1 appearance-none bg-white/10 rounded-full outline-none cursor-pointer accent-white"
+                 style={{ accentColor: 'var(--art-accent, white)' }}
                />
             </div>
             <Volume2 size={20} className="text-white/30 group-hover/vol:text-white transition-colors" />
           </div>
 
-          <div className="h-6 w-[1px] bg-white/10 mx-1 hidden sm:block" />
+          <div className="h-6 w-px bg-white/10 mx-1 hidden sm:block" />
 
           <button 
             onClick={onToggleRightSidebar}
-            className={`transition-all transform hover:scale-110 active:scale-90 ${isRightSidebarOpen ? "text-[#FA243C]" : "text-white/40 hover:text-white"}`}
+            className="transition-all transform hover:scale-110 active:scale-90"
+            style={{ color: isRightSidebarOpen ? 'var(--art-accent, #FA243C)' : undefined }}
           >
-             <ListMusic size={24} strokeWidth={2.5} />
+             <ListMusic size={24} strokeWidth={2.5} className={!isRightSidebarOpen ? "text-white/40 hover:text-white" : ""} />
           </button>
           
           {isLoggedIn && (
@@ -150,9 +162,9 @@ export function FloatingPlayer({
             >
               <Heart
                 size={20}
-                fill={isLiked ? "#FA243C" : "none"}
-                stroke={isLiked ? "#FA243C" : "currentColor"}
-                className={isLiked ? "text-[#FA243C] drop-shadow-[0_0_8px_rgba(250,36,60,0.4)]" : "text-white/30 hover:text-white"}
+                fill={isLiked ? "var(--art-accent, #FA243C)" : "none"}
+                stroke={isLiked ? "var(--art-accent, #FA243C)" : "currentColor"}
+                className={isLiked ? "drop-shadow-[0_0_8px_var(--art-accent,rgba(250,36,60,0.4))]" : "text-white/30 hover:text-white"}
               />
             </button>
           )}

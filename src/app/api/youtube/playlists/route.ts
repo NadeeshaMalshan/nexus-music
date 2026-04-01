@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { fetchUserPlaylists } from "@/lib/youtubeData";
 import { NextResponse } from "next/server";
+import { searchSongsRobust } from "@/lib/ytmSearchService";
 
 export async function GET() {
   const session = (await getServerSession(authOptions)) as any;

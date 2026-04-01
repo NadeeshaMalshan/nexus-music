@@ -68,11 +68,14 @@ type DashboardContextType = {
   onNext: () => void;
   onPrev: () => void;
   onSeek: (time: number) => void;
-  onSongClick: (song: Song) => void;
+  onSongClick: (song: Song, reset?: boolean) => void;
+  onPlayPlaylist: (songs: Song[], startIndex: number) => void;
   onRateSong: (songId: string, rating: "like" | "none") => Promise<void>;
   onRemoveFromQueue: (index: number) => void;
   onRemoveFromUpNext: (index: number) => void;
   onReorderQueue: (newQueue: Song[]) => void;
+  onReorderUpNext: (newQueue: Song[]) => void;
+  onClearQueue: () => void;
   onAddToQueue: (song: Song) => void;
   onPlayNext: (song: Song) => void;
   playVideo: () => void;
@@ -114,6 +117,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   } | null>(null);
   
   const playerReadyRef = useRef(false);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
   const progressIntervalRef = useRef<number | null>(null);
   const lastTimeBucketRef = useRef(-1);
   const onNextRef = useRef<() => void>(() => {});
@@ -258,9 +262,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       if (audioCacheRef.current[audioQuery]) {
         const payload = audioCacheRef.current[audioQuery];
         setAudioData(payload);
-        if (ytPlayerRef.current && playerReadyRef.current) {
-          syncHiddenPlayerForViewMode(ytPlayerRef.current, payload.videoId);
-        }
         return;
       }
       setAudioData(null);
@@ -269,13 +270,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           signal: controller.signal,
           cache: "no-store",
         });
-        if (!response.ok) throw new Error("Failed to fetch audio metadata");
+        if (!response.ok) {
+          console.warn("[DashboardContext] Audio metadata fetch returned status:", response.status);
+          setAudioData(null);
+          return;
+        }
         const payload = (await response.json()) as AudioPayload;
         audioCacheRef.current[audioQuery] = payload;
         setAudioData(payload);
-        if (ytPlayerRef.current && playerReadyRef.current) {
-          syncHiddenPlayerForViewMode(ytPlayerRef.current, payload.videoId);
-        }
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           console.error("Failed to load unified audio payload:", error);
@@ -381,7 +383,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     async function fetchUpNext() {
       try {
         const res = await fetch(`/api/queue?videoId=${currentSong!.id}`);
-        if (!res.ok) throw new Error("Queue API failed");
+        if (!res.ok) {
+          console.warn("[DashboardContext] Up Next API returned status:", res.status);
+          setUpNextQueue([]);
+          return;
+        }
         const data = await res.json();
         const tracks: Song[] = (data.queue || []).map((t: any) => ({
           id: t.youtubeId,
@@ -391,7 +397,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           duration: t.duration,
           color: palette.accent
         }));
-        setUpNextQueue(tracks);
+        
+        setUpNextQueue(prev => {
+           // Retain all tracks currently in the queue (both manual and previous AI items)
+           // and only append the new discovery items that are not already present.
+           const uniqueNewTracks = tracks.filter(t => !prev.some(p => p.id === t.id));
+           return [...prev, ...uniqueNewTracks];
+        });
       } catch (err) {
         console.error("Up Next Fetch Error:", err);
       }
@@ -453,6 +465,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         events: {
           onReady: () => {
             playerReadyRef.current = true;
+            setIsPlayerReady(true);
             if (progressIntervalRef.current) window.clearInterval(progressIntervalRef.current);
             progressIntervalRef.current = window.setInterval(() => {
               const player = ytPlayerRef.current;
@@ -515,11 +528,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     };
   }, []); // Run only once
 
-  // Load / cue hidden player when resolved audio id changes
+  // Load / cue hidden player when resolved audio id changes or player becomes ready
   useEffect(() => {
-    if (!ytPlayerRef.current || !playerReadyRef.current || !audioData?.videoId) return;
+    if (!ytPlayerRef.current || !isPlayerReady || !audioData?.videoId) return;
     syncHiddenPlayerForViewMode(ytPlayerRef.current, audioData.videoId);
-  }, [audioData?.videoId, viewMode]);
+  }, [audioData?.videoId, isPlayerReady]);
 
   // Keep hidden player silent whenever expanded video mode is active (covers toggle without track change).
   useEffect(() => {
@@ -576,14 +589,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     player.pauseVideo();
   }, []);
 
-  const onSongClick = useCallback((song: Song) => {
+  const onSongClick = useCallback((song: Song, shouldResetQueue: boolean = true) => {
+    if (shouldResetQueue) {
+      setUpNextQueue([]);
+    }
     setCurrentSong(song);
     setCurrentTimeSec(0);
     setIsPlaying(true);
-    setQueueSongs((prev) => {
-      if (prev.some((q) => q.id === song.id)) return prev;
-      return [song];
-    });
     
     // Update local history
     setPlayedHistory((prev) => {
@@ -594,29 +606,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const onNext = useCallback(() => {
-    let nextSong: Song | null = null;
-    if (queueSongs.length > 0) {
-      if (currentSong && queueSongs[0].id === currentSong.id) {
-        if (queueSongs.length > 1) {
-          nextSong = queueSongs[1];
-          setQueueSongs((prev) => prev.slice(1));
-        }
-      } else {
-        nextSong = queueSongs[0];
-      }
-    }
-    if (nextSong) {
-      onSongClick(nextSong);
-      return;
-    }
     if (upNextQueue.length > 0) {
       const next = upNextQueue[0];
       setUpNextQueue((prev) => prev.slice(1));
-      onSongClick(next);
+      onSongClick(next, false); // <--- Don't reset when auto-playing
       return;
     }
     setIsPlaying(false);
-  }, [currentSong, queueSongs, upNextQueue, onSongClick]);
+  }, [upNextQueue, onSongClick]);
 
   onNextRef.current = onNext;
 
@@ -630,15 +627,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, [durationSec, currentSong?.duration]);
 
   const onPrev = useCallback(() => {
-    if (queueSongs.length === 0) return;
-    let idx = -1;
-    if (currentSong) idx = queueSongs.findIndex((s) => s.id === currentSong.id);
-    if (idx <= 0) {
-      onSeek(0);
-      return;
-    }
-    onSongClick(queueSongs[idx - 1]);
-  }, [currentSong, queueSongs, onSeek, onSongClick]);
+    // With AI queue, 'Prev' usually just restarts the song
+    onSeek(0);
+  }, [onSeek]);
 
   const onRateSong = useCallback(async (songId: string, rating: "like" | "none") => {
     if (!session?.user) return;
@@ -674,12 +665,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       artist: currentSong.artist || "Unknown Artist",
       album: "EchoAI Music",
       artwork: [
-        { src: currentSong.artwork, sizes: "96x96", type: "image/jpeg" },
-        { src: currentSong.artwork, sizes: "128x128", type: "image/jpeg" },
-        { src: currentSong.artwork, sizes: "192x192", type: "image/jpeg" },
-        { src: currentSong.artwork, sizes: "256x256", type: "image/jpeg" },
-        { src: currentSong.artwork, sizes: "384x384", type: "image/jpeg" },
-        { src: currentSong.artwork, sizes: "512x512", type: "image/jpeg" },
+        { src: currentSong.artwork || "/placeholder.jpg", sizes: "96x96", type: "image/jpeg" },
+        { src: currentSong.artwork || "/placeholder.jpg", sizes: "128x128", type: "image/jpeg" },
+        { src: currentSong.artwork || "/placeholder.jpg", sizes: "192x192", type: "image/jpeg" },
+        { src: currentSong.artwork || "/placeholder.jpg", sizes: "256x256", type: "image/jpeg" },
+        { src: currentSong.artwork || "/placeholder.jpg", sizes: "384x384", type: "image/jpeg" },
+        { src: currentSong.artwork || "/placeholder.jpg", sizes: "512x512", type: "image/jpeg" },
       ],
     });
 
@@ -754,12 +745,18 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     onRemoveFromQueue: (index: number) => setQueueSongs(prev => prev.filter((_, i) => i !== index)),
     onRemoveFromUpNext: (index: number) => setUpNextQueue(prev => prev.filter((_, i) => i !== index)),
     onReorderQueue: setQueueSongs,
+    onClearQueue: () => setUpNextQueue([]),
+    onReorderUpNext: (newQueue: Song[]) => setUpNextQueue(newQueue),
+    onPlayPlaylist: (songs: Song[], startIndex: number) => {
+      onSongClick(songs[startIndex], true);
+      setUpNextQueue(songs.slice(startIndex + 1).map(s => ({ ...s, isManual: true })));
+    },
     onAddToQueue: (song: Song) => {
-      setQueueSongs(prev => prev.some(s => s.id === song.id) ? prev : [...prev, song]);
+      setUpNextQueue(prev => prev.some(s => s.id === song.id) ? prev : [...prev, { ...song, isManual: true }]);
       if (!currentSong) onSongClick(song);
     },
     onPlayNext: (song: Song) => {
-      setQueueSongs(prev => [song, ...prev.filter(s => s.id !== song.id)]);
+      setUpNextQueue(prev => [{ ...song, isManual: true }, ...prev.filter(s => s.id !== song.id)]);
       if (!currentSong) onSongClick(song);
     },
     playVideo,

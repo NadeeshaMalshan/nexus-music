@@ -1,15 +1,15 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { List, FileText, X, Play, Sparkles, Trash2, GripVertical, ListPlus, PlaySquare } from "lucide-react";
+import { List, FileText, X, Play, Sparkles, Trash2, GripVertical, ListPlus, PlaySquare, Plus } from "lucide-react";
 import { type Song } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { AudioVisualizer } from "./AudioVisualizer";
+import { motion, AnimatePresence, Reorder } from "motion/react";
 
 interface RightSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  onSongClick: (song: Song) => void;
-  queueSongs: Song[];
-  upNextQueue?: Song[]; // Added for Autoplay/Radio
+  onSongClick: (song: Song, reset?: boolean) => void;
+  upNextQueue?: Song[]; // Discovery Radio Queue
   lyricsContent: string | null;
   currentTimeSec: number;
   currentArtist: string;
@@ -19,18 +19,15 @@ interface RightSidebarProps {
   onSeek?: (time: number) => void;
   currentSongId?: string;
   aiLoading?: boolean;
-  onRemoveFromQueue?: (index: number) => void;
   onRemoveFromUpNext?: (index: number) => void;
-  onReorderQueue?: (newQueue: Song[]) => void;
-  onAddToQueue?: (song: Song) => void;
-  onPlayNext?: (song: Song) => void;
+  onClearQueue?: () => void;
+  onReorderUpNext?: (newQueue: Song[]) => void;
 }
 
 export function RightSidebar({
   isOpen,
   onClose,
   onSongClick,
-  queueSongs,
   upNextQueue = [],
   lyricsContent,
   currentTimeSec,
@@ -41,11 +38,9 @@ export function RightSidebar({
   onSeek,
   currentSongId,
   aiLoading,
-  onRemoveFromQueue,
   onRemoveFromUpNext,
-  onReorderQueue,
-  onAddToQueue,
-  onPlayNext,
+  onClearQueue,
+  onReorderUpNext,
 }: RightSidebarProps) {
   const [activeTab, setActiveTab] = useState<"queue" | "lyrics">("queue");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -151,24 +146,64 @@ export function RightSidebar({
             {activeTab === "queue" ? (
               <div className="flex-1 overflow-y-auto px-6 py-2 space-y-10 custom-scrollbar">
                 
-                {/* 1. MANUAL QUEUE SECTION */}
+                {/* PRIMARY DISCOVERY QUEUE */}
                 <div>
-                  <h2 className="text-[20px] font-black text-white px-2 mb-6">Up Next</h2>
-                  {queueSongs.length > 0 ? (
-                      <div className="space-y-1">
-                        {queueSongs.map((song, index) => {
-                          const isActive = song.id === currentSongId;
-                          return (
-                            <div key={`${song.id}-${index}`} className="group relative">
-                              <div
-                                onClick={() => onSongClick(song)}
-                                className={`flex w-full cursor-pointer items-center gap-4 rounded-2xl p-2 transition-all duration-300 ${
-                                  isActive ? "bg-white/10" : "hover:bg-white/5 active:bg-white/10"
-                                }`}
-                              >
+                  <div className="flex items-center justify-between px-2 mb-6">
+                    <div className="flex items-center gap-4">
+                      <h2 className="text-[20px] font-black text-white tracking-tight">Queue</h2>
+                      {upNextQueue.length > 0 && (
+                        <button 
+                          onClick={onClearQueue}
+                          className="px-2.5 py-1 rounded-full bg-white/5 border border-white/5 text-[11px] font-black text-white/40 hover:text-red-500 hover:bg-white/10 transition-all flex items-center gap-1.5"
+                          title="Clear Queue"
+                        >
+                          Clear
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                    {aiLoading && (
+                      <div className="flex items-center gap-1.5 text-[12px] font-bold text-[#FA243C] animate-pulse">
+                        <Sparkles size={14} />
+                        <span>Curating Discovery</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <Reorder.Group 
+                    axis="y" 
+                    values={upNextQueue} 
+                    onReorder={onReorderUpNext || (() => {})} 
+                    className="space-y-1"
+                  >
+                    {upNextQueue.length > 0 ? (
+                      upNextQueue.map((song, index) => {
+                        const isActive = song.id === currentSongId;
+                        return (
+                          <Reorder.Item 
+                            key={song.id} 
+                            value={song}
+                            className="group relative"
+                          >
+                            <div
+                              onClick={() => onSongClick(song, false)}
+                              className={`flex w-full cursor-pointer items-center gap-4 rounded-2xl p-2 transition-all duration-300 ${
+                                isActive ? "bg-white/10" : "hover:bg-white/5 active:bg-white/10"
+                              }`}
+                            >
+                              <div className="flex items-center">
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity p-1 -ml-1 text-white/20 hover:text-white/40 cursor-grab active:cursor-grabbing">
+                                  <GripVertical size={14} />
+                                </div>
                                 <div className="relative shrink-0 w-12 h-12 rounded-xl overflow-hidden shadow-lg border border-white/5">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={song.artwork} alt="" className="h-full w-full object-cover" />
+                                  {song.artwork ? (
+                                    <img src={song.artwork} alt="" className="h-full w-full object-cover" />
+                                  ) : (
+                                    <div className="h-full w-full bg-white/5 flex items-center justify-center">
+                                      <Sparkles className="text-white/10" size={20} />
+                                    </div>
+                                  )}
                                   <div className={`absolute inset-0 flex items-center justify-center transition-opacity ${isActive ? "bg-black/60 opacity-100" : "bg-black/40 opacity-0 group-hover:opacity-100"}`}>
                                     {isActive ? (
                                       <AudioVisualizer active={isActive} barCount={4} color="var(--art-accent, #FA243C)" width="18px" />
@@ -177,96 +212,52 @@ export function RightSidebar({
                                     )}
                                   </div>
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className={`truncate text-[15px] font-bold leading-tight mb-0.5 transition-colors ${isActive ? "text-white" : "text-white/80"}`}>{song.title}</p>
-                                  <p className="truncate text-[13px] font-medium text-white/40">{song.artist}</p>
-                                </div>
-                                
-                                <div className="flex items-center gap-3">
-                                  {!isActive && onRemoveFromQueue && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onRemoveFromQueue(index);
-                                      }}
-                                      className="p-2 rounded-full hover:bg-white/10 text-white/10 hover:text-white transition-all opacity-0 group-hover:opacity-100"
-                                    >
-                                      <Trash2 size={14} strokeWidth={2.5} />
-                                    </button>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <p className={`truncate text-[15px] font-bold leading-tight transition-colors ${isActive ? "text-white" : "text-white/80"}`}>{song.title}</p>
+                                  {song.isManual && !isActive && (
+                                    <div className="shrink-0 flex items-center justify-center p-0.5 rounded-sm bg-[#FA243C]/20 border border-[#FA243C]/30" title="Added to Queue">
+                                       <Plus size={8} className="text-[#FA243C]" />
+                                    </div>
                                   )}
-                                  <span className="text-[12px] font-bold text-white/20 group-hover:text-white/40 transition-colors">{song.duration}</span>
                                 </div>
+                                <p className="truncate text-[13px] font-medium text-white/40">{song.artist}</p>
+                              </div>
+                              
+                              <div className="flex items-center gap-3">
+                                {!isActive && onRemoveFromUpNext && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onRemoveFromUpNext(index);
+                                    }}
+                                    className="p-2 rounded-full hover:bg-white/10 text-white/10 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                                  >
+                                    <Trash2 size={14} strokeWidth={2.5} />
+                                  </button>
+                                )}
+                                <span className="text-[12px] font-bold text-white/20 group-hover:text-white/40 transition-colors">{song.duration}</span>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                  ) : (
-                    <div className="px-2 py-4">
-                       <p className="text-[14px] font-medium text-white/20">Queue is empty</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* 2. AUTOPLAY / RADIO SECTION */}
-                <div>
-                  <div className="flex items-center justify-between px-2 mb-6">
-                     <h2 className="text-[17px] font-black text-white/40 uppercase tracking-widest">Discovery Radio</h2>
-                     {aiLoading && (
-                       <div className="flex items-center gap-1.5 text-[12px] font-bold text-[#FA243C] animate-pulse">
-                         <Sparkles size={14} />
-                         <span>Curating</span>
-                       </div>
-                     )}
-                  </div>
-                  
-                  {upNextQueue.length > 0 ? (
-                    <div className="space-y-1">
-                      {upNextQueue.map((song, index) => (
-                        <div key={`auto-${song.id}-${index}`} className="group relative">
-                          <button
-                            type="button"
-                            onClick={() => onSongClick(song)}
-                            className="flex w-full cursor-pointer items-center gap-4 rounded-2xl p-2 transition-all hover:bg-white/5 active:bg-white/10"
-                          >
-                             <div className="relative shrink-0 w-10 h-10 rounded-lg overflow-hidden border border-white/5">
-                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                               <img src={song.artwork} alt="" className="h-full w-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500" />
-                               <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <Play size={12} fill="white" className="text-white ml-0.5" />
-                               </div>
-                             </div>
-                             <div className="min-w-0 flex-1 text-left">
-                               <p className="truncate text-[14px] font-bold text-white/60 group-hover:text-white transition-colors leading-tight mb-0.5">{song.title}</p>
-                               <p className="truncate text-[12px] font-medium text-white/30">{song.artist}</p>
-                             </div>
-                             
-                             <div className="flex items-center gap-3">
-                               {onRemoveFromUpNext && (
-                                 <button
-                                   onClick={(e) => {
-                                     e.stopPropagation();
-                                     onRemoveFromUpNext(index);
-                                   }}
-                                   className="p-2 rounded-full hover:bg-white/10 text-white/10 hover:text-white transition-all opacity-0 group-hover:opacity-100"
-                                 >
-                                   <Trash2 size={13} strokeWidth={2.5} />
-                                 </button>
-                               )}
-                               <span className="text-[11px] font-bold text-white/10 group-hover:text-white/30">{song.duration}</span>
-                             </div>
-                          </button>
+                          </Reorder.Item>
+                        );
+                      })
+                    ) : (
+                      aiLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                           <div className="w-12 h-12 rounded-full bg-white/4 border border-white/5 flex items-center justify-center animate-pulse">
+                              <Sparkles size={20} className="text-white/10" />
+                           </div>
+                           <p className="text-[13px] font-bold text-white/10 uppercase tracking-[0.2em]">Curating Radio</p>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-                       <div className="w-12 h-12 rounded-full bg-white/4 border border-white/5 flex items-center justify-center animate-pulse">
-                          <Sparkles size={20} className="text-white/10" />
-                       </div>
-                       <p className="text-[13px] font-bold text-white/10 uppercase tracking-[0.2em]">Warming up AI Radio</p>
-                    </div>
-                  )}
+                      ) : (
+                        <div className="px-2 py-4">
+                          <p className="text-[14px] font-medium text-white/20">Discovery queue is empty</p>
+                        </div>
+                      )
+                    )}
+                  </Reorder.Group>
                 </div>
               </div>
             ) : (
@@ -309,7 +300,7 @@ export function RightSidebar({
                              </div>
                           ) : (
                             <p
-                              className={`w-full origin-left whitespace-pre-wrap break-words transition-all duration-700 font-black tracking-tight ${
+                              className={`w-full origin-left whitespace-pre-wrap wrap-break-word transition-all duration-700 font-black tracking-tight ${
                                 isActive
                                   ? "text-[32px] leading-[1.1] text-white drop-shadow-2xl scale-100"
                                   : isPast

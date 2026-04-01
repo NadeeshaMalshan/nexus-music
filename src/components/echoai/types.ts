@@ -6,6 +6,7 @@ export type Song = {
   duration: string;
   color: string;
   musicVideoId?: string;
+  isManual?: boolean;
 };
 export type NavItem = {
   label: string;

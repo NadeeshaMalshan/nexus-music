@@ -66,8 +66,8 @@ export async function GET(request: Request) {
         youtubeId: track.youtubeId,
         title: title,
         artist: artist,
-        thumbnail: track.thumbnailUrl || "",
-        duration: track.duration?.label || "0:00",
+        thumbnail: track.thumbnail || track.thumbnailUrl || "",
+        duration: track.durationObj?.label || track.duration || "0:00",
       });
 
       // Stop once we have 15 perfect tracks

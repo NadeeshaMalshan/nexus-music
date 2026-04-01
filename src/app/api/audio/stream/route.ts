@@ -1,38 +1,61 @@
 import { NextRequest } from "next/server";
 import ytdl from "@distube/ytdl-core";
+import { Readable } from "stream";
+
+/**
+ * Convert a Node.js Readable stream to a Web ReadableStream
+ */
+function nodeReadableToWeb(nodeReadable: Readable): ReadableStream {
+  return new ReadableStream({
+    start(controller) {
+      nodeReadable.on("data", (chunk) => controller.enqueue(chunk));
+      nodeReadable.on("end", () => controller.close());
+      nodeReadable.on("error", (err) => controller.error(err));
+    },
+    cancel() {
+      nodeReadable.destroy();
+    },
+  });
+}
 
 export async function GET(req: NextRequest) {
   const videoId = req.nextUrl.searchParams.get("videoId");
   if (!videoId) return new Response("Missing videoId", { status: 400 });
 
   try {
+    const rangeHeader = req.headers.get("range");
+    
+    // First, verify we can even get info
     const info = await ytdl.getInfo(videoId);
-    const audioFormat = ytdl.chooseFormat(info.formats, { 
-      quality: "highestaudio", 
-      filter: "audioonly" 
+    if (!info.formats || info.formats.length === 0) {
+        throw new Error("No formats found");
+    }
+
+    // Use ytdl to get the stream directly
+    const stream = ytdl.downloadFromInfo(info, {
+      quality: "highestaudio",
+      filter: "audioonly",
+      range: rangeHeader ? { start: Number(rangeHeader.replace(/\D/g, "")) } : undefined,
     });
 
-    if (!audioFormat) return new Response("No audio format found", { status: 404 });
+    const webStream = nodeReadableToWeb(stream);
 
-    const rangeHeader = req.headers.get("range");
-    const headers: Record<string, string> = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-    };
-    if (rangeHeader) headers["Range"] = rangeHeader;
-
-    const response = await fetch(audioFormat.url, { headers });
-    
-    const responseHeaders = new Headers(response.headers);
+    const responseHeaders = new Headers();
     responseHeaders.set("Access-Control-Allow-Origin", "*");
-    responseHeaders.set("Content-Type", audioFormat.mimeType || "audio/mpeg");
+    responseHeaders.set("Content-Type", "audio/mpeg");
     responseHeaders.set("Cache-Control", "public, max-age=3600");
+    responseHeaders.set("Accept-Ranges", "bytes");
 
-    return new Response(response.body, {
-      status: response.status,
+    return new Response(webStream, {
+      status: rangeHeader ? 206 : 200,
       headers: responseHeaders,
     });
-  } catch (error) {
-    console.error("Stream error:", error);
-    return new Response("Streaming failed", { status: 500 });
+  } catch (error: any) {
+    console.error("[stream] error:", error?.message || error);
+    // Return a specific error status so the frontend can fallback
+    return new Response(JSON.stringify({ error: "Streaming unavailable", detail: error?.message }), { 
+        status: 502,
+        headers: { "Content-Type": "application/json" }
+    });
   }
 }

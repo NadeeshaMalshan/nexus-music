@@ -58,21 +58,8 @@ export async function GET(request: Request) {
 
     const thumbnail = upgradeThumbnail(best.thumbnailUrl, videoId);
 
-    // Resolve direct stream URL for background playback
-    let directStreamUrl = null;
-    try {
-      const info = await ytdl.getInfo(videoId);
-      const audioFormat = ytdl.chooseFormat(info.formats, { 
-        quality: "highestaudio", 
-        filter: "audioonly" 
-      });
-      directStreamUrl = audioFormat?.url || null;
-    } catch (err) {
-      console.warn("[audio] Failed to get direct stream with ytdl-core:", err);
-    }
-
     const payload = {
-      audioUrl: `/api/audio/stream?videoId=${videoId}`,
+      audioUrl: `https://www.youtube.com/watch?v=${videoId}`,
       trackName: best.title?.trim() || query,
       artist,
       coverArt: thumbnail,

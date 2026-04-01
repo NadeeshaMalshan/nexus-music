@@ -72,7 +72,7 @@ export async function GET(request: Request) {
     }
 
     const payload = {
-      audioUrl: directStreamUrl || `https://www.youtube.com/watch?v=${videoId}`,
+      audioUrl: `/api/audio/stream?videoId=${videoId}`,
       trackName: best.title?.trim() || query,
       artist,
       coverArt: thumbnail,

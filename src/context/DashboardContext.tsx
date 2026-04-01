@@ -160,8 +160,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     videoId: string,
     audioUrl?: string
   ) {
-    // Check if we have a direct stream URL (starts with http but not youtube.com/watch)
-    const isDirect = !!audioUrl && audioUrl.startsWith("http") && !audioUrl.includes("youtube.com/watch");
+    // Check if we have a direct stream URL (starts with http or our proxy path but not youtube.com/watch)
+    const isDirect = !!audioUrl && (audioUrl.startsWith("http") || audioUrl.startsWith("/api/audio/stream")) && !audioUrl.includes("youtube.com/watch");
     isDirectAudioRef.current = isDirect;
 
     if (viewModeRef.current === "video") {

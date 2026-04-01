@@ -551,6 +551,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, [viewMode, volume]);
 
   // Handlers
+  const silentAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize silent audio on mount to keep tab alive in background
+  useEffect(() => {
+    const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAAD//w==");
+    audio.loop = true;
+    silentAudioRef.current = audio;
+  }, []);
+
   const onTogglePlay = useCallback(() => {
     if (viewMode === "video") {
       // Expanded iframe is the only player; hidden must stay silent
@@ -561,9 +570,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (!player || !playerReadyRef.current) return;
     if (!isPlaying) {
       player.playVideo();
+      silentAudioRef.current?.play().catch(() => {});
       setIsPlaying(true);
     } else {
       player.pauseVideo();
+      silentAudioRef.current?.pause();
       setIsPlaying(false);
     }
   }, [isPlaying, viewMode]);
@@ -573,6 +584,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (!player || !playerReadyRef.current) return;
     player.setVolume(volume);
     player.playVideo();
+    silentAudioRef.current?.play().catch(() => {});
     setIsPlaying(true);
   }, [volume]);
 
@@ -580,6 +592,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
     player.pauseVideo();
+    silentAudioRef.current?.pause();
     setIsPlaying(false);
   }, []);
 

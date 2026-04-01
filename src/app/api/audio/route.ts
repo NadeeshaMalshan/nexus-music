@@ -1,22 +1,6 @@
-/**
- * /api/audio/route.ts
- * Resolves a search query to a playable YouTube Music track.
- *
- * GET /api/audio?query=<artist + title>
- *
- * Returns an AudioPayload that matches the shape expected by DashboardContext:
- * {
- *   audioUrl: string      // Direct YouTube watch URL (used by the hidden YT iframe)
- *   trackName: string
- *   artist: string
- *   coverArt: string      // High-res thumbnail
- *   videoId: string       // YouTube video ID
- *   musicVideoId?: string // Same as videoId (future: separate music-video ID)
- * }
- */
-
 import { NextResponse } from "next/server";
 import { searchSongsRobust, searchVideosRobust } from "@/lib/ytmSearchService";
+import ytdl from "@distube/ytdl-core";
 
 function youtubeHqThumbnail(videoId: string): string {
   return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
@@ -74,8 +58,21 @@ export async function GET(request: Request) {
 
     const thumbnail = upgradeThumbnail(best.thumbnailUrl, videoId);
 
+    // Resolve direct stream URL for background playback
+    let directStreamUrl = null;
+    try {
+      const info = await ytdl.getInfo(videoId);
+      const audioFormat = ytdl.chooseFormat(info.formats, { 
+        quality: "highestaudio", 
+        filter: "audioonly" 
+      });
+      directStreamUrl = audioFormat?.url || null;
+    } catch (err) {
+      console.warn("[audio] Failed to get direct stream with ytdl-core:", err);
+    }
+
     const payload = {
-      audioUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      audioUrl: directStreamUrl || `https://www.youtube.com/watch?v=${videoId}`,
       trackName: best.title?.trim() || query,
       artist,
       coverArt: thumbnail,

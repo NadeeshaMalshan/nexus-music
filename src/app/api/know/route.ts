@@ -67,59 +67,69 @@ export async function GET(request: Request) {
     if (redis) {
       const cached = await redis.get(`song_facts:${videoId}`);
       if (cached) {
-        return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached);
+        const parsed = typeof cached === 'string' ? JSON.parse(cached) : cached;
+        // If the cached version is the OLD static fallback, ignore it and re-generate
+        if (!parsed[0]?.includes("hidden backstory")) {
+          return NextResponse.json(parsed);
+        }
       }
     }
 
     // 2. IF CACHE MISS -> Fetch Genius
     const rawData = await fetchGeniusRawData(track, artist);
-    if (!rawData || (!rawData.about && !rawData.title)) {
-       return NextResponse.json(FALLBACK_FACTS);
-    }
+    
+    // 3. AI Fact Generation (Dual Model Strategy)
+    const prompt = `Generate 5-7 unique music history facts or "Did You Know?" trivia for: "${track}" by "${artist}". ${rawData?.about ? `Use this context: ${rawData.about}` : "Use your internal knowledge."} Output ONLY a JSON array of strings. No extra text.`;
 
-    // 3. Hugging Face Fact Extraction
-    const systemPrompt = `You are an expert music historian. Analyze this song data: 
-Title: ${rawData.title}
-Artist: ${rawData.artist}
-Background: ${rawData.about || "No background available."}
-Release Date: ${rawData.releaseDate || "Unknown"}
-
-Extract 5 to 7 'Mysterious Facts' or 'Did You Know?' trivia points about its hidden meaning, production, or backstory. 
-Write them as short, engaging, single sentences.
-Output ONLY a valid JSON array of strings: ["Fact 1", "Fact 2"]. 
-No extra text, no markdown code blocks.`;
-
-    const response = await hf.textGeneration({
-      model: "HuggingFaceH4/zephyr-7b-beta",
-      inputs: `<|system|>\n${systemPrompt}\n<|assistant|>\n`,
-      parameters: {
-        max_new_tokens: 500,
-        return_full_text: false,
-      },
-    });
-
-    try {
-      let factsContent = response.generated_text.trim();
-      // Basic cleanup in case model returns markdown or extra text
-      if (factsContent.includes("[") && factsContent.includes("]")) {
-        factsContent = factsContent.substring(factsContent.indexOf("["), factsContent.lastIndexOf("]") + 1);
-      }
-      
-      const facts = JSON.parse(factsContent);
-      if (Array.isArray(facts) && facts.length > 0) {
-        // 4. CACHE SAVE & RETURN
-        if (redis) {
-          await redis.set(`song_facts:${videoId}`, JSON.stringify(facts));
+    let facts: string[] | null = null;
+    
+    const tryModel = async (model: string) => {
+      try {
+        const res = await hf.textGeneration({
+          model,
+          inputs: `[INST] ${prompt} [/INST]`,
+          parameters: { max_new_tokens: 500, temperature: 0.7 },
+        });
+        let content = res.generated_text.trim();
+        if (content.includes("[") && content.includes("]")) {
+          content = content.substring(content.indexOf("["), content.lastIndexOf("]") + 1);
         }
-        return NextResponse.json(facts);
+        const parsed = JSON.parse(content);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+      } catch (e) {
+        console.error(`Model ${model} failed:`, e);
+        return null;
       }
-    } catch (parseError) {
-      console.error("HF JSON parse error:", parseError, "Content:", response.generated_text);
+    };
+
+    // Primary: Mistral
+    facts = await tryModel("mistralai/Mistral-7B-Instruct-v0.2");
+    
+    // Secondary: Zephyr (Better for instruction following if Mistral is busy)
+    if (!facts) {
+      facts = await tryModel("HuggingFaceH4/zephyr-7b-beta");
     }
 
-    return NextResponse.json(FALLBACK_FACTS);
+    if (facts) {
+      if (redis) {
+        await redis.set(`song_facts:${videoId}`, JSON.stringify(facts), { ex: 604800 });
+      }
+      return NextResponse.json(facts);
+    }
+
+    return NextResponse.json([
+      `The production of "${track}" is a testament to ${artist}'s unique evolution in the music industry.`,
+      `Many fans interpret the lyrics of "${track}" as a deeply personal reflection of ${artist}'s journey.`,
+      `Critics have praised the innovative soundscapes and melodic complexity found throughout "${track}".`,
+      `The creative process behind "${track}" involved intensive collaboration and sonic experimentation.`,
+      `Since its release, "${track}" has become a significant milestone in ${artist}'s discography.`
+    ]);
   } catch (error) {
     console.error("Did You Know API error:", error);
-    return NextResponse.json(FALLBACK_FACTS);
+    return NextResponse.json([
+      "The story behind this track is currently being compiled from various musical archives.",
+      "Musical history is rich with hidden details about tracks like this one.",
+      "Stay tuned as our AI uncovers more unique trivia about this artist's creative process."
+    ]);
   }
 }

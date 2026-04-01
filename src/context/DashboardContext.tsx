@@ -115,6 +115,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setVolume: (volume: number) => void;
     destroy: () => void;
   } | null>(null);
+
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const isDirectAudioRef = useRef(false);
   
   const playerReadyRef = useRef(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
@@ -154,10 +157,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   /** Hidden player: in video mode only cue + mute so expanded iframe is the sole audio source. */
   function syncHiddenPlayerForViewMode(
     player: NonNullable<(typeof ytPlayerRef)["current"]>,
-    videoId: string
+    videoId: string,
+    audioUrl?: string
   ) {
+    // Check if we have a direct stream URL (starts with http but not youtube.com/watch)
+    const isDirect = !!audioUrl && audioUrl.startsWith("http") && !audioUrl.includes("youtube.com/watch");
+    isDirectAudioRef.current = isDirect;
+
     if (viewModeRef.current === "video") {
       player.cueVideoById(videoId);
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current.src = "";
+      }
       queueMicrotask(() => {
         try {
           player.pauseVideo();
@@ -167,7 +179,22 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         }
       });
     } else {
-      player.loadVideoById(videoId);
+      if (isDirect && audioPlayerRef.current) {
+        // Use native audio for background playback
+        audioPlayerRef.current.src = audioUrl!;
+        audioPlayerRef.current.volume = volume / 100;
+        player.cueVideoById(videoId);
+        player.pauseVideo();
+        player.setVolume(0);
+        if (isPlaying) audioPlayerRef.current.play().catch(e => console.warn("Auto-play blocked:", e));
+      } else {
+        // Fallback to YouTube iframe
+        if (audioPlayerRef.current) {
+            audioPlayerRef.current.pause();
+            audioPlayerRef.current.src = "";
+        }
+        player.loadVideoById(videoId);
+      }
     }
   }
 
@@ -454,6 +481,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     mount.setAttribute("aria-hidden", "true");
     document.body.appendChild(mount);
 
+    const audio = mount.appendChild(document.createElement("audio"));
+    audio.id = "echoai-audio-player";
+    audio.setAttribute("playsinline", "true");
+    audio.preload = "auto";
+    audioPlayerRef.current = audio;
+
+    // Handle end of track for audio element
+    audio.onended = () => {
+        if (viewModeRef.current === "music" && isDirectAudioRef.current) {
+            onNextRef.current();
+        }
+    };
+
     const w = window as any;
     const initPlayer = () => {
       if (!w.YT?.Player || ytPlayerRef.current) return;
@@ -469,6 +509,23 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
             if (progressIntervalRef.current) window.clearInterval(progressIntervalRef.current);
             progressIntervalRef.current = window.setInterval(() => {
               const player = ytPlayerRef.current;
+              const audio = audioPlayerRef.current;
+              
+              if (isDirectAudioRef.current && audio) {
+                if (viewModeRef.current === "video") return;
+                const current = audio.currentTime;
+                const duration = audio.duration;
+                if (Number.isFinite(current)) {
+                    const bucket = Math.floor(current * 5);
+                    if (bucket !== lastTimeBucketRef.current) {
+                        lastTimeBucketRef.current = bucket;
+                        setCurrentTimeSec(current);
+                    }
+                }
+                if (Number.isFinite(duration) && duration > 0) setDurationSec(duration);
+                return;
+              }
+
               if (!player || !playerReadyRef.current) return;
               // Expanded react-youtube owns time + audio in video mode
               if (viewModeRef.current === "video") return;
@@ -487,7 +544,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
               ytPlayerRef.current?.setVolume(0);
               ytPlayerRef.current?.pauseVideo();
             } else {
-              ytPlayerRef.current?.setVolume(volume);
+              if (isDirectAudioRef.current && audioPlayerRef.current) {
+                  ytPlayerRef.current?.setVolume(0);
+                  ytPlayerRef.current?.pauseVideo();
+              } else {
+                  ytPlayerRef.current?.setVolume(volume);
+              }
             }
           },
           onStateChange: (event: any) => {
@@ -524,6 +586,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
       ytPlayerRef.current = null;
       playerReadyRef.current = false;
+      if (audioPlayerRef.current) {
+          audioPlayerRef.current.pause();
+          audioPlayerRef.current.src = "";
+      }
       mount.remove();
     };
   }, []); // Run only once
@@ -531,19 +597,28 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Load / cue hidden player when resolved audio id changes or player becomes ready
   useEffect(() => {
     if (!ytPlayerRef.current || !isPlayerReady || !audioData?.videoId) return;
-    syncHiddenPlayerForViewMode(ytPlayerRef.current, audioData.videoId);
-  }, [audioData?.videoId, isPlayerReady]);
+    syncHiddenPlayerForViewMode(ytPlayerRef.current, audioData.videoId, audioData.audioUrl);
+  }, [audioData?.videoId, audioData?.audioUrl, isPlayerReady]);
 
   // Keep hidden player silent whenever expanded video mode is active (covers toggle without track change).
   useEffect(() => {
     const p = ytPlayerRef.current;
+    const a = audioPlayerRef.current;
     if (!p || !playerReadyRef.current) return;
     try {
       if (viewMode === "video") {
         p.setVolume(0);
         p.pauseVideo();
+        if (a) a.pause();
       } else {
-        p.setVolume(volume);
+        if (isDirectAudioRef.current && a) {
+            p.setVolume(0);
+            p.pauseVideo();
+            a.volume = volume / 100;
+        } else {
+            p.setVolume(volume);
+            if (a) a.pause();
+        }
       }
     } catch {
       /* ignore */
@@ -557,6 +632,18 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setIsPlaying((v) => !v);
       return;
     }
+    
+    if (isDirectAudioRef.current && audioPlayerRef.current) {
+        if (audioPlayerRef.current.paused) {
+            audioPlayerRef.current.play().catch(e => console.warn("Play failed:", e));
+            setIsPlaying(true);
+        } else {
+            audioPlayerRef.current.pause();
+            setIsPlaying(false);
+        }
+        return;
+    }
+
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
     if (!isPlaying) {
@@ -569,6 +656,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, [isPlaying, viewMode]);
 
   const playVideo = useCallback(() => {
+    if (isDirectAudioRef.current && audioPlayerRef.current) {
+        audioPlayerRef.current.play().catch(e => console.warn("Play failed:", e));
+        setIsPlaying(true);
+        return;
+    }
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
     player.setVolume(volume);
@@ -577,6 +669,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, [volume]);
 
   const pauseVideo = useCallback(() => {
+    if (isDirectAudioRef.current && audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        setIsPlaying(false);
+        return;
+    }
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
     player.pauseVideo();
@@ -584,6 +681,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const pauseBackgroundPlayer = useCallback(() => {
+    if (audioPlayerRef.current) audioPlayerRef.current.pause();
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
     player.pauseVideo();
@@ -618,6 +716,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   onNextRef.current = onNext;
 
   const onSeek = useCallback((nextTimeSec: number) => {
+    if (isDirectAudioRef.current && audioPlayerRef.current) {
+        if (Number.isFinite(nextTimeSec)) {
+            audioPlayerRef.current.currentTime = nextTimeSec;
+            setCurrentTimeSec(nextTimeSec);
+        }
+        return;
+    }
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current || !Number.isFinite(nextTimeSec)) return;
     const safeDuration = durationSec > 0 ? durationSec : (youtubeTimestampToSeconds(currentSong?.duration ?? "") ?? 0);

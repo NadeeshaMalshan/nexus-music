@@ -33,3 +33,43 @@ export type WeeklyStat = {
   value: string;
   trend: string;
 };
+
+export interface ExpandedPlayerProps {
+  onClose: () => void;
+  currentSong: Song;
+  onSongClick: (song: Song, reset?: boolean) => void;
+  isPlaying: boolean;
+  onTogglePlay: () => void;
+  onNext: () => void;
+  onPrev: () => void;
+  upNextQueue?: Song[];
+  onRemoveFromUpNext?: (index: number) => void;
+  lyricsContent: string | null;
+  lyricsSource: string | null;
+  currentTimeSec: number;
+  durationSec: number;
+  onSeek: (nextTimeSec: number) => void;
+  volume: number;
+  onVolumeChange: (nextVolume: number) => void;
+  geniusData?: {
+    found: boolean;
+    songId: number | null;
+    url: string | null;
+    thumbnail: string | null;
+    description?: string | null;
+  };
+  knowFacts?: string[];
+  knowLoading?: boolean;
+  onRateSong: (videoId: string, rating: "like" | "none") => void;
+  isLiked?: boolean;
+  isLoggedIn?: boolean;
+  playVideo: () => void;
+  pauseVideo: () => void;
+  pauseBackgroundPlayer: () => void;
+  setCurrentTimeSec: (time: number) => void;
+  setIsPlaying: (playing: boolean) => void;
+  viewMode: "music" | "video";
+  setViewMode: (mode: "music" | "video") => void;
+  onClearQueue?: () => void;
+  onReorderUpNext?: (newQueue: Song[]) => void;
+}

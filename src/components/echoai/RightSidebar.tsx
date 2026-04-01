@@ -47,7 +47,11 @@ export function RightSidebar({
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
 
   // (Internal lyrics logic remains same...)
-  const plainLines = (lyricsContent || "").split("\n").map((l) => l.trim()).filter(Boolean);
+  const plainLines = (lyricsContent || "")
+    .replace(/\[\d{1,3}:\d{2}(?::\d{2})?(?:\.\d{1,4})?\]/g, "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   
   const syncedLines = useMemo(() => {
     if (!lyricsContent) return [];
@@ -301,11 +305,13 @@ export function RightSidebar({
                           ) : (
                             <p
                               className={`w-full origin-left whitespace-pre-wrap wrap-break-word transition-all duration-700 font-black tracking-tight ${
-                                isActive
-                                  ? "text-[32px] leading-[1.1] text-white drop-shadow-2xl scale-100"
-                                  : isPast
-                                  ? "text-[22px] leading-[1.2] text-white/30 blur-[0.4px] scale-98 group-hover:text-white/60 group-hover:blur-0"
-                                  : "text-[22px] leading-[1.2] text-white/10 blur-[0.8px] scale-98 group-hover:text-white/40 group-hover:blur-0"
+                                !hasSynced
+                                  ? "text-[24px] leading-[1.3] text-white/80 scale-100 group-hover:text-white"
+                                  : isActive
+                                    ? "text-[32px] leading-[1.1] text-white drop-shadow-2xl scale-100"
+                                    : isPast
+                                    ? "text-[22px] leading-[1.2] text-white/30 blur-[0.4px] scale-98 group-hover:text-white/60 group-hover:blur-0"
+                                    : "text-[22px] leading-[1.2] text-white/10 blur-[0.8px] scale-98 group-hover:text-white/40 group-hover:blur-0"
                               }`}
                             >
                               {line}

@@ -450,7 +450,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const mount = document.createElement("div");
     mount.id = playerElementId;
     mount.className =
-      "fixed -bottom-full -left-full h-[1px] w-[1px] overflow-hidden opacity-0 pointer-events-none";
+      "fixed top-0 left-0 h-[1px] w-[1px] overflow-hidden opacity-[0.01] pointer-events-none z-[-1]";
     mount.setAttribute("aria-hidden", "true");
     document.body.appendChild(mount);
 
@@ -497,6 +497,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
               else if (event.data === 2) setIsPlaying(false);
               // ENDED: only advance from the hidden player in music mode (expanded video has its own player)
               if (event.data === 0) onNextRef.current();
+              
+              // RESILIENCE: If it paused while hidden, and we didn't initiate it, it might be the system.
+              // We don't auto-resume here because browsers block it, but we keep isPlaying true 
+              // for a bit to see if MediaSession can rescue it.
             }
           },
         },
@@ -555,10 +559,34 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize silent audio on mount to keep tab alive in background
   useEffect(() => {
+    // A slightly longer silence to be more "real" to some mobile browsers
     const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAAD//w==");
     audio.loop = true;
     silentAudioRef.current = audio;
-  }, []);
+
+    // Optional: Add a listener to resume if it gets suspended
+    const handleResume = () => {
+      if (isPlaying && silentAudioRef.current?.paused) {
+        silentAudioRef.current.play().catch(() => {});
+      }
+    };
+    window.addEventListener("focus", handleResume);
+    document.addEventListener("visibilitychange", handleResume);
+    return () => {
+      window.removeEventListener("focus", handleResume);
+      document.removeEventListener("visibilitychange", handleResume);
+    };
+  }, [isPlaying]); // Added isPlaying dependency
+
+  // Sync silent audio with playback state
+  useEffect(() => {
+    if (!silentAudioRef.current) return;
+    if (isPlaying) {
+      silentAudioRef.current.play().catch(() => {});
+    } else {
+      silentAudioRef.current.pause();
+    }
+  }, [isPlaying]);
 
   const onTogglePlay = useCallback(() => {
     if (viewMode === "video") {
@@ -570,11 +598,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (!player || !playerReadyRef.current) return;
     if (!isPlaying) {
       player.playVideo();
-      silentAudioRef.current?.play().catch(() => {});
+      // silentAudio is handled by effect
       setIsPlaying(true);
     } else {
       player.pauseVideo();
-      silentAudioRef.current?.pause();
+      // silentAudio is handled by effect
       setIsPlaying(false);
     }
   }, [isPlaying, viewMode]);
@@ -584,7 +612,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (!player || !playerReadyRef.current) return;
     player.setVolume(volume);
     player.playVideo();
-    silentAudioRef.current?.play().catch(() => {});
     setIsPlaying(true);
   }, [volume]);
 
@@ -592,7 +619,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
     player.pauseVideo();
-    silentAudioRef.current?.pause();
     setIsPlaying(false);
   }, []);
 
@@ -676,7 +702,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentSong.title,
       artist: currentSong.artist || "Unknown Artist",
-      album: "EchoAI Music",
+      album: "Nexus Music",
       artwork: [
         { src: currentSong.artwork || "/placeholder.jpg", sizes: "96x96", type: "image/jpeg" },
         { src: currentSong.artwork || "/placeholder.jpg", sizes: "128x128", type: "image/jpeg" },
@@ -687,12 +713,31 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       ],
     });
 
+    // Support for position state (Progress bar on lock screen)
+    const updatePositionState = () => {
+      try {
+        if ("setPositionState" in navigator.mediaSession) {
+          navigator.mediaSession.setPositionState({
+            duration: durationSec || 0,
+            playbackRate: 1,
+            position: currentTimeSec || 0,
+          });
+        }
+      } catch (err) {
+        console.warn("MediaSession setPositionState failed:", err);
+      }
+    };
+
+    updatePositionState();
+
     // Interaction Handlers
     const handlers = [
       ["play", onTogglePlay],
       ["pause", onTogglePlay],
       ["previoustrack", onPrev],
       ["nexttrack", onNext],
+      ["seekbackward", () => onSeek(currentTimeSec - 10)],
+      ["seekforward", () => onSeek(currentTimeSec + 10)],
       ["seekto", (details: any) => {
         if (details.seekTime !== undefined) onSeek(details.seekTime);
       }],
@@ -713,7 +758,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         } catch { /* ignore */ }
       });
     };
-  }, [currentSong, onTogglePlay, onNext, onPrev, onSeek]);
+  }, [currentSong, onTogglePlay, onNext, onPrev, onSeek, durationSec, currentTimeSec]);
 
   // Sync Playback State to OS
   useEffect(() => {

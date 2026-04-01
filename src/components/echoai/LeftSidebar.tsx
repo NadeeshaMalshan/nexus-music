@@ -126,7 +126,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
       <div className="hidden h-full w-[360px] shrink-0 flex-col bg-transparent px-6 py-10 overflow-hidden lg:flex relative border-r border-white/5 backdrop-blur-3xl">
         {/* Search Bar */}
         <div className="mb-12 relative z-50">
-          <div className={`relative flex items-center overflow-hidden rounded-2xl transition-all duration-300 ${isSearchFocused ? "bg-white/15 ring-2 ring-[#FA243C]/20 shadow-2xl" : "bg-white/5"}`}>
+          <div className={`relative flex items-center overflow-hidden rounded-2xl transition-all duration-300 ${isSearchFocused ? "bg-white/15 ring-2 shadow-2xl" : "bg-white/5"}`} style={isSearchFocused ? { boxShadow: `0 0 0 2px ${accentColor}33`, borderColor: accentColor } : {}}>
             <div className="pl-4 pr-2 text-white/20">
               <Search size={20} />
             </div>
@@ -255,7 +255,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
           {/* Main Navigation - "Nexus" */}
           <div className="space-y-4">
             <div className="flex items-center justify-between px-4 mb-6">
-              <h2 className="text-[38px] font-black text-white tracking-tighter leading-none hover:text-[#FA243C] transition-colors cursor-default">Nexus</h2>
+              <h2 className="text-[38px] font-black text-white tracking-tighter leading-none hover:text-[var(--art-accent,#FA243C)] transition-colors cursor-default">Nexus</h2>
               <button className="p-2.5 rounded-full bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all">
                 <MoreHorizontal size={22} />
               </button>
@@ -278,8 +278,14 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                   onClick={() => setIsCreateModalOpen(true)}
                   className="flex items-center gap-4 px-4 py-3 text-white/40 hover:text-white transition-colors group w-full text-left"
                 >
-                   <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-[#FA233B] group-hover:text-white transition-all duration-300">
-                      <Plus size={18} />
+                   <div 
+                     className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:text-white transition-all duration-300"
+                     style={{ ['--hover-bg' as any]: accentColor }}
+                   >
+                      <Plus size={18} className="group-hover:scale-110 transition-transform" />
+                      <style jsx>{`
+                        div:hover { background-color: var(--art-accent, #FA233B); }
+                      `}</style>
                    </div>
                    <span className="text-[16px] font-bold">Create Checklist</span>
                 </button>
@@ -289,8 +295,14 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                   onClick={() => setIsAiModalOpen(true)}
                   className="flex items-center gap-4 px-4 py-3 text-white/40 hover:text-white transition-colors group w-full text-left"
                 >
-                   <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-[#FA233B] group-hover:text-white transition-all duration-300">
-                      <Sparkles size={16} />
+                   <div 
+                    className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:text-white transition-all duration-300"
+                    style={{ ['--hover-bg' as any]: accentColor }}
+                   >
+                      <Sparkles size={16} className="group-hover:scale-110 transition-transform" />
+                      <style jsx>{`
+                        div:hover { background-color: var(--art-accent, #FA233B); }
+                      `}</style>
                    </div>
                    <span className="text-[16px] font-bold">Generate a Playlist</span>
                 </button>
@@ -327,7 +339,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
       <AiPlaylistModal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} />
 
       {/* Mobile Optimized Nav */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-white/5 bg-black/40 backdrop-blur-3xl lg:hidden pb-safe-offset-2 pt-2 px-6">
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-white/5 bg-black/20 backdrop-blur-3xl lg:hidden pb-safe-offset-2 pt-2 px-2">
         {[
           { id: "home", icon: Home, label: "Home", href: "/" },
           { id: "search", icon: Search, label: "Search", href: "/search" },
@@ -356,10 +368,10 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                 type="button"
                 onClick={item.onClick}
                 disabled={item.isLoading}
-                className={`flex flex-col items-center gap-1.5 p-3 px-6 transition-all ${item.isLoading ? "opacity-20 cursor-wait" : "text-zinc-500 hover:text-zinc-100"}`}
+                className={`flex flex-1 flex-col items-center gap-1 py-2 transition-all ${item.isLoading ? "opacity-20 cursor-wait" : "text-zinc-500 hover:text-zinc-100"}`}
               >
-                <Icon size={26} strokeWidth={2} className={item.isLoading ? "animate-pulse" : ""} />
-                <span className="text-[11px] font-black uppercase tracking-widest">
+                <Icon size={24} strokeWidth={2} className={item.isLoading ? "animate-pulse" : ""} />
+                <span className="text-[10px] font-black uppercase tracking-tight truncate w-full text-center">
                    {item.label}
                 </span>
               </button>
@@ -370,12 +382,13 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
             <Link
               key={item.id}
               href={item.href || "#"}
-              className={`flex flex-col items-center gap-1.5 p-3 px-6 transition-all ${
-                isActive ? "text-[#FA243C]" : "text-zinc-500 hover:text-zinc-100"
+              className={`flex flex-1 flex-col items-center gap-1 py-2 transition-all ${
+                isActive ? "" : "text-zinc-500 hover:text-zinc-100"
               }`}
+              style={{ color: isActive ? accentColor : undefined }}
             >
-              <Icon size={26} strokeWidth={isActive ? 2.5 : 2} />
-              <span className={`text-[11px] font-black uppercase tracking-widest ${isActive ? "opacity-100" : "opacity-40"}`}>
+              <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+              <span className={`text-[10px] font-black uppercase tracking-tight truncate w-full text-center ${isActive ? "opacity-100" : "opacity-40"}`}>
                  {item.label}
               </span>
             </Link>

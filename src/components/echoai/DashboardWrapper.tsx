@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useDashboard } from "@/context/DashboardContext";
 import { LeftSidebar } from "./LeftSidebar";
 import { RightSidebar } from "./RightSidebar";
@@ -52,6 +53,31 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   } = useDashboard();
 
   const themeColor = palette.accent;
+
+  // Sync PWA status bar/theme color with artwork accent
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    
+    // Update theme-color meta tag
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      (meta as any).name = "theme-color";
+      document.getElementsByTagName('head')[0].appendChild(meta);
+    }
+    
+    // When a song is playing, let the status bar follow the artwork vibe.
+    // Use the current accent color if a song is loaded, otherwise default to black.
+    const activeColor = currentSong ? palette.accent : "#050505";
+    meta.setAttribute("content", activeColor);
+    
+    // For iOS specific status bar
+    let appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (appleMeta) {
+      // 'black-translucent' allows our app background (which is themed) to show through
+      appleMeta.setAttribute("content", currentSong ? "black-translucent" : "black");
+    }
+  }, [palette.accent, currentSong]);
 
   // Determine active view based on pathname
   const activeView = pathname === "/" ? "home" : pathname.split("/")[1] || "home";

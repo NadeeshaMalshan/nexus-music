@@ -167,7 +167,7 @@ export function RightSidebar({
                       )}
                     </div>
                     {aiLoading && (
-                      <div className="flex items-center gap-1.5 text-[12px] font-bold text-[#FA243C] animate-pulse">
+                      <div className="flex items-center gap-1.5 text-[12px] font-bold animate-pulse" style={{ color: 'var(--art-accent, #FA243C)' }}>
                         <Sparkles size={14} />
                         <span>Curating Discovery</span>
                       </div>
@@ -221,8 +221,8 @@ export function RightSidebar({
                                 <div className="flex items-center gap-1.5 mb-0.5">
                                   <p className={`truncate text-[15px] font-bold leading-tight transition-colors ${isActive ? "text-white" : "text-white/80"}`}>{song.title}</p>
                                   {song.isManual && !isActive && (
-                                    <div className="shrink-0 flex items-center justify-center p-0.5 rounded-sm bg-[#FA243C]/20 border border-[#FA243C]/30" title="Added to Queue">
-                                       <Plus size={8} className="text-[#FA243C]" />
+                                    <div className="shrink-0 flex items-center justify-center p-0.5 rounded-sm transition-colors border" style={{ backgroundColor: 'var(--art-accent, #FA243C)33', borderColor: 'var(--art-accent, #FA243C)4d' }} title="Added to Queue">
+                                       <Plus size={8} style={{ color: 'var(--art-accent, #FA243C)' }} />
                                     </div>
                                   )}
                                 </div>

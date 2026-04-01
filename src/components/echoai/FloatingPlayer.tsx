@@ -50,30 +50,30 @@ export function FloatingPlayer({
         layout
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="group relative flex w-auto max-w-full items-center gap-6 rounded-full bg-linear-to-br from-white/10 to-white/5 p-2 pl-6 pr-8 backdrop-blur-3xl border border-white/10 shadow-2xl pointer-events-auto transition-all duration-500 hover:bg-white/12"
+        className="group relative flex w-auto max-w-[calc(100vw-2rem)] items-center gap-3 md:gap-6 rounded-full bg-linear-to-br from-white/10 to-white/5 p-1.5 pl-4 md:pl-6 pr-5 md:pr-8 backdrop-blur-3xl border border-white/10 shadow-2xl pointer-events-auto transition-all duration-500 hover:bg-white/12"
         style={{
           boxShadow: `0 20px 40px -15px rgba(0,0,0,0.5), 0 0 20px -5px var(--art-accent, rgba(255,255,255,0.1))`
         }}
       >
         
         {/* Left Section: Playback Controls */}
-        <div className="flex items-center gap-5 shrink-0">
+        <div className="flex items-center gap-3 md:gap-5 shrink-0">
           <button 
             onClick={onPrev} 
             className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-90"
           >
-            <SkipBack size={24} fill="currentColor" strokeWidth={0} />
+            <SkipBack className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" strokeWidth={0} />
           </button>
           
           <button
             onClick={onTogglePlay}
-            className="text-white transition-all transform hover:scale-110 active:scale-95 rounded-full p-1.5 hover:bg-white/10"
+            className="text-white transition-all transform hover:scale-110 active:scale-95 rounded-full p-1 md:p-1.5 hover:bg-white/10"
             style={{ color: 'var(--art-accent, white)' }}
           >
             {isPlaying ? (
-              <Pause size={28} fill="currentColor" strokeWidth={1} />
+              <Pause className="w-6 h-6 md:w-7 md:h-7" fill="currentColor" strokeWidth={1} />
             ) : (
-              <Play size={28} fill="currentColor" strokeWidth={1} className="pl-0.5" />
+              <Play className="w-6 h-6 md:w-7 md:h-7 pl-0.5" fill="currentColor" strokeWidth={1} />
             )}
           </button>
           
@@ -81,21 +81,21 @@ export function FloatingPlayer({
             onClick={onNext} 
             className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-90"
           >
-            <SkipForward size={24} fill="currentColor" strokeWidth={0} />
+            <SkipForward className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" strokeWidth={0} />
           </button>
         </div>
 
         {/* Center Section: Compact Dynamic Track Component */}
         <motion.div 
           layout
-          className="flex-1 min-w-[120px] max-w-[400px]"
+          className="flex-1 min-w-0 max-w-[400px]"
         >
           <div 
             onClick={onExpand}
-            className="relative flex items-center gap-3 bg-black/30 rounded-[20px] p-2 pr-4 transition-all cursor-pointer group/card hover:bg-black/40 border border-white/5 overflow-hidden"
+            className="relative flex items-center gap-2 md:gap-3 bg-black/30 rounded-[20px] p-1.5 md:p-2 pr-3 md:pr-4 transition-all cursor-pointer group/card hover:bg-black/40 border border-white/5 overflow-hidden"
           >
             {/* Artwork Wrapper */}
-            <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl shadow-lg border border-white/10 group-hover/card:scale-105 transition-transform duration-500">
+            <div className="relative h-9 w-9 md:h-11 md:w-11 shrink-0 overflow-hidden rounded-xl shadow-lg border border-white/10 group-hover/card:scale-105 transition-transform duration-500">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               {currentSong.artwork ? (
                 <img src={currentSong.artwork} alt="" className="h-full w-full object-cover" />
@@ -112,8 +112,8 @@ export function FloatingPlayer({
             {/* Scrolling Song Info */}
             <div className="min-w-0 flex-1 overflow-hidden">
                <div className="flex flex-col">
-                  <span className="truncate text-sm font-black text-white tracking-tight leading-tight mb-0.5">{currentSong.title}</span>
-                  <span className="truncate text-[11px] font-bold text-white/30 uppercase tracking-wider">{currentSong.artist}</span>
+                  <span className="truncate text-xs md:text-sm font-black text-white tracking-tight leading-tight">{currentSong.title}</span>
+                  <span className="truncate text-[10px] md:text-[11px] font-bold text-white/30 uppercase tracking-wider">{currentSong.artist}</span>
                </div>
             </div>
 
@@ -128,7 +128,7 @@ export function FloatingPlayer({
         </motion.div>
 
         {/* Right Section: Interactive Controls */}
-        <div className="flex items-center gap-6 shrink-0">
+        <div className="flex items-center gap-3 md:gap-6 shrink-0">
           {/* Functional Volume Slider */}
           <div className="hidden items-center gap-2 lg:flex group/vol relative">
             <div className="w-0 overflow-hidden group-hover/vol:w-24 group-hover/vol:mr-3 transition-all duration-500">

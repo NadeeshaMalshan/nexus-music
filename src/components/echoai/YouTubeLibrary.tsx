@@ -107,7 +107,10 @@ export function YouTubeLibrary({
   if (!session) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#050505]">
-        <div className="w-20 h-20 md:w-24 md:h-24 bg-linear-to-tr from-[#FA233B] to-[#FF5E3A] rounded-[32px] flex items-center justify-center mb-10 shadow-2xl">
+        <div 
+          className="w-20 h-20 md:w-24 md:h-24 rounded-[32px] flex items-center justify-center mb-10 shadow-2xl transition-colors duration-1000"
+          style={{ backgroundImage: `linear-gradient(to top right, ${accentColor}, #FF5E3A)` }}
+        >
           <Music2 className="w-10 h-10 md:w-12 md:h-12 text-white" />
         </div>
         <h2 className="text-3xl md:text-4xl font-black text-white mb-4">Your Music Library</h2>
@@ -211,9 +214,12 @@ export function YouTubeLibrary({
                           onClick={() => setActiveTab("liked")}
                           className="group flex flex-col cursor-pointer"
                        >
-                          <div className="relative aspect-square mb-3 md:mb-4 rounded-3xl md:rounded-[28px] overflow-hidden bg-linear-to-br from-[#FA233B] to-[#8E2DE2] shadow-2xl flex items-center justify-center ring-1 ring-white/10 transition-transform duration-500 hover:scale-[1.03]">
-                             <Heart className="w-8 h-8 md:w-16 md:h-16 text-white drop-shadow-xl" fill="white" />
-                          </div>
+                           <div 
+                              className="relative aspect-square mb-3 md:mb-4 rounded-3xl md:rounded-[28px] overflow-hidden shadow-2xl flex items-center justify-center ring-1 ring-white/10 transition-transform duration-500 hover:scale-[1.03]"
+                              style={{ backgroundImage: `linear-gradient(to bottom right, ${accentColor}, #8E2DE2)` }}
+                           >
+                              <Heart className="w-8 h-8 md:w-16 md:h-16 text-white drop-shadow-xl" fill="white" />
+                           </div>
                           <h3 className="text-base md:text-lg font-bold text-white truncate">Liked Songs</h3>
                           <p className="text-xs md:text-sm text-white/30 font-bold uppercase tracking-wider">{likedSongs.length} Tracks</p>
                        </div>
@@ -233,7 +239,15 @@ export function YouTubeLibrary({
                                    </div>
                                 )}
                              </div>
-                             <h3 className="text-sm md:text-[17px] font-bold text-white truncate group-hover:text-[#FA243C] transition-colors leading-tight mb-0.5 md:mb-1">{playlist.title}</h3>
+                             <h3 
+                               className="text-sm md:text-[17px] font-bold text-white truncate transition-colors leading-tight mb-0.5 md:mb-1"
+                               style={{ ['--hover-color' as any]: accentColor }}
+                             >
+                               {playlist.title}
+                               <style jsx>{`
+                                 h3:hover { color: var(--hover-color); }
+                               `}</style>
+                             </h3>
                              <p className="text-xs md:text-[14px] text-white/20 font-bold">{playlist.itemCount} Items</p>
                           </div>
                        ))}
@@ -296,11 +310,12 @@ export function YouTubeLibrary({
                                       <ListPlus size={16} />
                                     </button>
                                  </div>
-                                 <span className={`text-[8px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter ${
-                                    (track as any).source === "App" ? "bg-[#FA233B]/20 text-[#FA233B]" : "bg-white/10 text-white/40"
-                                 }`}>
-                                    {(track as any).source}
-                                 </span>
+                               <span 
+                                 className={`text-[8px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter transition-colors`}
+                                 style={(track as any).source === "App" ? { backgroundColor: `${accentColor}33`, color: accentColor } : { backgroundColor: 'rgb(255 255 255 / 0.1)', color: 'rgb(255 255 255 / 0.4)' }}
+                               >
+                                  {(track as any).source}
+                               </span>
                               </div>
                            </div>
                         ))}

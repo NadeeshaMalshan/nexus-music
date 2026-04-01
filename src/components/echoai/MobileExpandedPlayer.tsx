@@ -3,7 +3,7 @@
 import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
 import YouTube from "react-youtube";
 import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus, PlaySquare } from "lucide-react";
-import { motion, AnimatePresence, Reorder } from "motion/react";
+import { motion, AnimatePresence, Reorder, useDragControls } from "motion/react";
 import { type Song, type ExpandedPlayerProps } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
@@ -44,6 +44,7 @@ export function MobileExpandedPlayer({
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">(viewMode === "video" ? "controls" : "lyrics");
   const [imageError, setImageError] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
+  const dragControls = useDragControls();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Mobile specific: Immersive means when we are NOT in the "controls" tab
@@ -300,7 +301,23 @@ export function MobileExpandedPlayer({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black overflow-hidden">
+    <motion.div 
+      initial={{ y: "100%" }}
+      animate={{ y: 0 }}
+      exit={{ y: "100%" }}
+      transition={{ type: "spring", damping: 25, stiffness: 200 }}
+      drag="y"
+      dragControls={dragControls}
+      dragListener={false}
+      dragConstraints={{ top: 0 }}
+      dragElastic={0.2}
+      onDragEnd={(_, info) => {
+        if (info.offset.y > 100 || info.velocity.y > 500) {
+          onClose();
+        }
+      }}
+      className="fixed inset-0 z-50 flex flex-col bg-black overflow-hidden"
+    >
       {/* Background */}
       <div className="absolute inset-0 z-0">
         <img src={currentSong.artwork} alt="" className="h-full w-full object-cover opacity-60 blur-[100px]" onError={() => setImageError(true)} />
@@ -308,7 +325,10 @@ export function MobileExpandedPlayer({
       </div>
 
       {/* Top Grabber */}
-      <div className="relative z-50 flex justify-center pt-3 pb-1">
+      <div 
+        className="relative z-50 flex justify-center pt-[max(0.75rem,env(safe-area-inset-top))] pb-1 cursor-grab active:cursor-grabbing"
+        onPointerDown={(e) => dragControls.start(e)}
+      >
         <div className="h-1.5 w-12 rounded-full bg-white/20" onClick={onClose} />
       </div>
 
@@ -317,29 +337,39 @@ export function MobileExpandedPlayer({
         {isControlsVisible && (
           <motion.div 
             initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}
-            className="relative z-40 flex items-center justify-between px-6 pt-4 pb-4"
+            className="relative z-40 flex items-center justify-between px-6 pt-4 pb-4 cursor-grab active:cursor-grabbing"
+            onPointerDown={(e) => dragControls.start(e)}
           >
             {activeTab === "controls" ? (
-                <div className="w-full flex justify-end">
+                <div className="w-full flex items-center justify-between">
+                    <button 
+                        onClick={onClose} 
+                        className="p-2 rounded-full bg-white/5 backdrop-blur-md"
+                    >
+                        <ChevronDown size={28} className="text-white/70" />
+                    </button>
                     {isLoggedIn && (
                         <button 
                             onClick={() => onRateSong(currentSong.id, isLiked ? "none" : "like")} 
                             className="p-2 rounded-full bg-white/5 backdrop-blur-md"
                         >
-                            <Heart size={24} className={isLiked ? "fill-[#FA243C] text-[#FA243C]" : "text-white/70"} />
+                            <Heart size={24} style={{ fill: isLiked ? 'var(--art-accent, #FA243C)' : 'none', color: isLiked ? 'var(--art-accent, #FA243C)' : 'rgb(255 255 255 / 0.7)' }} />
                         </button>
                     )}
                 </div>
             ) : (
                 <div className="w-full flex items-center gap-4">
-                    <motion.img layoutId="compact-art" src={currentSong.artwork} alt="" className="h-12 w-12 rounded-lg object-cover shadow-lg" />
+                    <button 
+                        onClick={onClose} 
+                        className="p-2 rounded-full bg-white/5 backdrop-blur-md"
+                    >
+                        <ChevronDown size={24} className="text-white/70" />
+                    </button>
+                    <motion.img layoutId="compact-art" src={currentSong.artwork} alt="" className="h-10 w-10 rounded-lg object-cover shadow-lg" />
                     <div className="flex-1 min-w-0">
                         <h2 className="truncate text-base font-black text-white">{currentSong.title}</h2>
                         <p className="truncate text-xs font-bold text-white/50">{currentSong.artist}</p>
                     </div>
-                    <button className="p-2 rounded-full bg-white/10 backdrop-blur-md">
-                        <Sparkles size={20} className="text-white" />
-                    </button>
                 </div>
             )}
           </motion.div>
@@ -402,15 +432,42 @@ export function MobileExpandedPlayer({
             >
               {activeTab === "lyrics" && (
                 <div ref={scrollRef} className="flex-1 overflow-y-auto px-10 pt-10 pb-[40dvh] custom-scrollbar no-scrollbar swipe-up">
-                  {lines.map((line, index) => (
-                    <div 
-                      key={index} ref={el => { elementsRef.current[index] = el; }}
-                      onClick={() => hasSynced && onSeek(syncedLines[index].at)}
-                      className={`py-4 transition-all duration-700 origin-left ${index === activeIndex ? "text-white text-[32px] font-black opacity-100 scale-100" : "text-white/20 text-[28px] font-bold opacity-30 scale-90"}`}
-                    >
-                      {line}
-                    </div>
-                  ))}
+                  {lines.map((line, index) => {
+                    const isInstrumental = hasSynced && syncedLines[index]?.isInstrumental;
+                    const isActive = index === activeIndex;
+                    
+                    let instProgress = 0;
+                    if (isInstrumental && isActive) {
+                      const start = syncedLines[index].at;
+                      const next = syncedLines[index + 1];
+                      const end = next ? next.at : start + 5;
+                      const dur = end > start ? end - start : 5;
+                      instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
+                    }
+
+                    const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
+                    const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
+                    const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
+
+                    return (
+                      <div 
+                        key={index} 
+                        ref={el => { elementsRef.current[index] = el; }}
+                        onClick={() => hasSynced && onSeek(syncedLines[index].at)}
+                        className={`transition-all duration-700 origin-left ${isInstrumental ? (isActive ? "h-20 opacity-100" : "h-0 opacity-0 overflow-hidden") : "py-4"} ${isActive ? "text-white text-[32px] font-black opacity-100 scale-100" : "text-white/20 text-[28px] font-bold opacity-30 scale-90"}`}
+                      >
+                        {isInstrumental ? (
+                          <div className={`flex gap-3 items-center h-full transition-all duration-1000 ${isActive ? "opacity-100" : "opacity-0"}`}>
+                            <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.1 }} />
+                            <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.1 }} />
+                            <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
+                          </div>
+                        ) : (
+                          line
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               
@@ -474,6 +531,6 @@ export function MobileExpandedPlayer({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

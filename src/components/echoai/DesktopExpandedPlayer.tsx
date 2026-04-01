@@ -239,7 +239,7 @@ export function DesktopExpandedPlayer({
           </div>
           {isLoggedIn && (
             <button onClick={() => onRateSong(currentSong.id, isLiked ? "none" : "like")} className="mt-1 rounded-full bg-white/5 p-2 hover:bg-white/10">
-              <Heart size={24} className={isLiked ? "fill-[#FA243C] text-[#FA243C]" : "text-white/70"} />
+              <Heart size={24} style={{ fill: isLiked ? 'var(--art-accent, #FA243C)' : 'none', color: isLiked ? 'var(--art-accent, #FA243C)' : 'rgb(255 255 255 / 0.7)' }} />
             </button>
           )}
         </div>

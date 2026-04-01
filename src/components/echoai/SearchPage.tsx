@@ -230,7 +230,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
     artist: item.author,
     artwork: item.thumbnail,
     duration: item.duration,
-    color: songColors[item.videoId] || "#FA243C",
+    color: songColors[item.videoId] || "var(--art-accent, #FA243C)",
   }));
 
   useEffect(() => {
@@ -269,7 +269,8 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
           <h1 className="text-3xl md:text-5xl lg:text-[56px] font-black text-white tracking-tighter leading-none">Search</h1>
           <button
             onClick={onClose}
-            className="md:hidden text-[#FA243C] font-bold text-lg px-4 py-2 bg-white/5 rounded-full"
+            className="md:hidden font-bold text-lg px-4 py-2 bg-white/5 rounded-full"
+            style={{ color: 'var(--art-accent, #FA243C)' }}
           >
             Done
           </button>
@@ -286,7 +287,8 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
               e.preventDefault();
               void runSearch();
             }}
-            className="relative flex items-center w-full rounded-2xl md:rounded-[24px] bg-white/4 border border-white/5 px-4 md:px-6 py-4 md:py-5 transition-all focus-within:bg-white/8 focus-within:ring-2 focus-within:ring-[#FA243C]/20 shadow-2xl"
+            className="relative flex items-center w-full rounded-2xl md:rounded-[24px] bg-white/4 border border-white/5 px-4 md:px-6 py-4 md:py-5 transition-all focus-within:bg-white/8 focus-within:ring-2 shadow-2xl"
+            style={{ ringColor: 'var(--art-accent, #FA243C)33' } as any}
           >
             <Search className="w-5 h-5 md:w-6 md:h-6 text-white/40 mr-3 md:mr-4" />
             <input
@@ -305,7 +307,8 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
             <button 
               type="button" 
               onClick={handleMusicIdentifier}
-              className={`p-2.5 rounded-full transition-all ${isListening ? "bg-[#FA243C] text-white animate-pulse" : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"}`}
+              className={`p-2.5 rounded-full transition-all ${isListening ? "text-white animate-pulse" : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"}`}
+              style={{ backgroundColor: isListening ? 'var(--art-accent, #FA243C)' : undefined }}
             >
               <Mic className="w-5 h-5 md:w-6 md:h-6" />
             </button>
@@ -352,7 +355,10 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
         {identifiedSong && !searchQuery && (
            <div className="mb-10 p-6 rounded-3xl bg-white/5 border border-white/5 backdrop-blur-3xl animate-in fade-in slide-in-from-top-4">
               <div className="flex items-center gap-4">
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${isListening ? "bg-[#FA243C]/20 text-[#FA243C] animate-pulse" : "bg-[#FA243C] text-white"}`}>
+                 <div 
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${isListening ? "animate-pulse" : "text-white"}`}
+                  style={{ backgroundColor: isListening ? 'var(--art-accent, #FA243C)33' : 'var(--art-accent, #FA243C)', color: isListening ? 'var(--art-accent, #FA243C)' : 'white' }}
+                >
                   <Mic size={24} />
                 </div>
                 <div>

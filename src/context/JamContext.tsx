@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { useDashboard } from "./DashboardContext";
 import { type Song } from "@/components/echoai/types";
-import Pusher from "pusher-js";
+import Pusher, { PresenceChannel } from "pusher-js";
 
 type JamState = {
   roomId: string | null;
@@ -45,27 +45,32 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     jamStateRef.current = jamState;
   }, [jamState]);
 
-  // Broadcast sync events via Next.js API Trigger
+  // Broadcast sync events via Direct Client Events (Blazing Fast)
   const broadcast = useCallback(async (type: string, payload: any) => {
     const currentState = jamStateRef.current;
-    if (!currentState.roomId || isSyncingRef.current) return;
+    if (!currentState.roomId || isSyncingRef.current || !channelRef.current) return;
     
+    // First try the ultra-fast Client Event (Direct Device-to-Device)
     try {
-      const res = await fetch("/api/jam/trigger", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          roomId: currentState.roomId, 
-          type, 
-          payload: { ...payload, senderId: senderIdRef.current } 
-        }),
+      const sent = channelRef.current.trigger(`client-sync-event`, { 
+        type, 
+        payload: { ...payload, senderId: senderIdRef.current } 
       });
-      if (!res.ok) {
-        const error = await res.json();
-        console.error("[Jam] Trigger failed:", error);
+      
+      // If client event fails (e.g. not authorized yet), fallback to API trigger
+      if (!sent) {
+        await fetch("/api/jam/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            roomId: currentState.roomId, 
+            type, 
+            payload: { ...payload, senderId: senderIdRef.current } 
+          }),
+        });
       }
     } catch (err) {
-      console.error("[Jam] Failed to broadcast event:", err);
+      console.warn("[Jam] Client event failed, falling back to API:", err);
     }
   }, []);
 
@@ -79,33 +84,33 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
   // Connect and Subscribe to Channel
   const connectToJam = useCallback((id: string) => {
-    if (!PUSHER_KEY) {
-        console.warn("[Jam] Pusher keys missing in .env.local. Jam will not work.");
-        return;
-    }
+    if (!PUSHER_KEY) return;
 
-    if (pusherRef.current) {
-        pusherRef.current.disconnect();
-    }
+    if (pusherRef.current) pusherRef.current.disconnect();
 
-    const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
+    const pusher = new Pusher(PUSHER_KEY, { 
+        cluster: PUSHER_CLUSTER,
+        channelAuthorization: {
+            endpoint: "/api/jam/auth",
+            transport: "ajax",
+        }
+    });
+
     pusherRef.current = pusher;
 
-    const channel = pusher.subscribe(`jam-${id}`);
+    const channel = pusher.subscribe(`presence-jam-${id}`);
     channelRef.current = channel;
 
-    channel.bind("sync-event", (data: any) => {
+    // Listen for events from other devices
+    const handleEvent = (data: any) => {
         const { type, payload } = data;
-        const currentState = jamStateRef.current;
-
-        // ECHO CANCELLATION: Ignore our own events
         if (payload?.senderId === senderIdRef.current) return;
 
-        setSyncing(type === "sync-song" ? 2000 : 500); 
+        setSyncing(type === "sync-song" ? 2000 : 300); 
         
         switch (type) {
             case "join":
-                if (currentState.isHost) {
+                if (jamStateRef.current.isHost) {
                    broadcast("sync-play", { isPlaying: dashboard.isPlaying });
                    broadcast("sync-song", { song: dashboard.currentSong });
                    broadcast("sync-queue", { queue: dashboard.upNextQueue });
@@ -129,14 +134,28 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
                 }
                 break;
             case "sync-seek":
-                if (Math.abs(payload.time - dashboard.currentTimeSec) > 3) {
+                if (Math.abs(payload.time - dashboard.currentTimeSec) > 1.5) {
                     dashboard.onSeek(payload.time);
                 }
                 break;
         }
+    };
+
+    channel.bind("client-sync-event", handleEvent);
+    channel.bind("sync-event", handleEvent); // Legacy fallback from API Trigger
+
+    // Presence events for participant count
+    channel.bind("pusher:subscription_succeeded", (members: any) => {
+        setJamState(prev => ({ ...prev, participants: members.count }));
+    });
+    channel.bind("pusher:member_added", () => {
+        setJamState(prev => ({ ...prev, participants: ((channel as PresenceChannel).members?.count || 1) }));
+    });
+    channel.bind("pusher:member_removed", () => {
+        setJamState(prev => ({ ...prev, participants: ((channel as PresenceChannel).members?.count || 1) }));
     });
 
-    console.log(`[Jam] Subscribed to Pusher channel: jam-${id}`);
+    console.log(`[Jam] Ultra-low latency Presence Channel: presence-jam-${id}`);
   }, [dashboard, broadcast]);
 
   // Sync state hooks: Playlist/Queue changes

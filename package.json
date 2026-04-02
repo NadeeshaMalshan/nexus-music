@@ -20,6 +20,8 @@
     "next-auth": "^4.24.13",
     "node-youtube-music": "^0.10.3",
     "openai": "^6.33.0",
+    "pusher": "^5.3.3",
+    "pusher-js": "^8.5.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-youtube": "^10.1.0",

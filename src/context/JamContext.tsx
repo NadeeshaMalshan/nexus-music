@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { useDashboard } from "./DashboardContext";
 import { type Song } from "@/components/echoai/types";
+import Pusher from "pusher-js";
 
 type JamState = {
   roomId: string | null;
@@ -18,13 +19,10 @@ type JamContextType = {
   leaveJam: () => void;
 };
 
-const getWsUrl = () => {
-  if (typeof window === "undefined") return "ws://127.0.0.1:3005";
-  const host = window.location.hostname;
-  return `ws://${host}:3005`;
-};
-
 const JamContext = createContext<JamContextType | undefined>(undefined);
+
+const PUSHER_KEY = process.env.NEXT_PUBLIC_PUSHER_KEY || "";
+const PUSHER_CLUSTER = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || "";
 
 export function JamProvider({ children }: { children: React.ReactNode }) {
   const dashboard = useDashboard();
@@ -35,76 +33,89 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     isJoining: false,
   });
 
-  const socketRef = useRef<WebSocket | null>(null);
+  const pusherRef = useRef<Pusher | null>(null);
+  const channelRef = useRef<any>(null);
   const isSyncingRef = useRef(false);
 
-  // Sync internal state with Jam events
-  const broadcast = useCallback((type: string, payload: any) => {
-    if (socketRef.current?.readyState === WebSocket.OPEN && jamState.roomId) {
-      socketRef.current.send(JSON.stringify({ type, roomId: jamState.roomId, payload }));
+  // Broadcast sync events via Next.js API Trigger
+  const broadcast = useCallback(async (type: string, payload: any) => {
+    if (!jamState.roomId || isSyncingRef.current) return;
+    
+    try {
+      await fetch("/api/jam/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: jamState.roomId, type, payload }),
+      });
+    } catch (err) {
+      console.error("[Jam] Failed to broadcast event:", err);
     }
   }, [jamState.roomId]);
 
-  // Handle incoming messages
-  useEffect(() => {
-    if (!socketRef.current) return;
+  // Connect and Subscribe to Channel
+  const connectToJam = useCallback((id: string) => {
+    if (!PUSHER_KEY) {
+        console.warn("[Jam] Pusher keys missing in .env.local. Jam will not work.");
+        return;
+    }
 
-    socketRef.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.roomId !== jamState.roomId) return;
+    if (pusherRef.current) pusherRef.current.disconnect();
 
-      isSyncingRef.current = true; // Prevents broadcast loops
-      
-      switch (data.type) {
-        case "sync-play":
-          if (data.payload.isPlaying !== dashboard.isPlaying) {
-            dashboard.setIsPlaying(data.payload.isPlaying);
-          }
-          break;
-        case "sync-song":
-          if (data.payload.song.id !== dashboard.currentSong?.id) {
-            dashboard.onSongClick(data.payload.song, false);
-          }
-          break;
-        case "sync-seek":
-          if (Math.abs(data.payload.time - dashboard.currentTimeSec) > 2) {
-            dashboard.onSeek(data.payload.time);
-          }
-          break;
-        case "participants-update":
-          setJamState(prev => ({ ...prev, participants: data.payload.count }));
-          break;
-      }
+    const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
+    pusherRef.current = pusher;
 
-      setTimeout(() => {
-        isSyncingRef.current = false;
-      }, 100);
-    };
-  }, [jamState.roomId, dashboard]);
+    const channel = pusher.subscribe(`jam-${id}`);
+    channelRef.current = channel;
 
-  // Broadcast local changes: Playing state
+    channel.bind("sync-event", (data: any) => {
+        isSyncingRef.current = true;
+        
+        const { type, payload } = data;
+        switch (type) {
+            case "sync-play":
+                if (payload.isPlaying !== dashboard.isPlaying) {
+                    dashboard.setIsPlaying(payload.isPlaying);
+                }
+                break;
+            case "sync-song":
+                if (payload.song.id !== dashboard.currentSong?.id) {
+                    dashboard.onSongClick(payload.song, false);
+                }
+                break;
+            case "sync-seek":
+                if (Math.abs(payload.time - dashboard.currentTimeSec) > 2) {
+                    dashboard.onSeek(payload.time);
+                }
+                break;
+        }
+
+        setTimeout(() => {
+            isSyncingRef.current = false;
+        }, 300);
+    });
+
+    console.log(`[Jam] Subscribed to Pusher channel: jam-${id}`);
+  }, [dashboard]);
+
+  // Sync state hooks
   useEffect(() => {
     if (!jamState.roomId || isSyncingRef.current) return;
     broadcast("sync-play", { isPlaying: dashboard.isPlaying });
   }, [dashboard.isPlaying, jamState.roomId, broadcast]);
 
-  // Broadcast local changes: Song change
   useEffect(() => {
     if (!jamState.roomId || isSyncingRef.current || !dashboard.currentSong) return;
     broadcast("sync-song", { song: dashboard.currentSong });
   }, [dashboard.currentSong?.id, jamState.roomId, broadcast]);
 
-  // Sync manual seeks (>5s jump)
   const lastTimeRef = useRef(dashboard.currentTimeSec);
   useEffect(() => {
     if (!jamState.roomId || isSyncingRef.current) {
         lastTimeRef.current = dashboard.currentTimeSec;
         return;
     }
-    
     const diff = Math.abs(dashboard.currentTimeSec - lastTimeRef.current);
     if (diff > 5) {
-      console.log(`[Jam] Manual seek detected (${diff}s), broadcasting...`);
       broadcast("sync-seek", { time: dashboard.currentTimeSec });
     }
     lastTimeRef.current = dashboard.currentTimeSec;
@@ -120,34 +131,14 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   const joinJam = async (id: string) => {
     setJamState({ roomId: id, participants: 0, isHost: false, isJoining: true });
     connectToJam(id);
-  };
-
-  const connectToJam = (id: string) => {
-    if (socketRef.current) socketRef.current.close();
-    
-    const url = getWsUrl();
-    const socket = new WebSocket(`${url}?roomId=${id}`);
-    socketRef.current = socket;
-
-    socket.onopen = () => {
-      setJamState(prev => ({ ...prev, isJoining: false }));
-      console.log(`[Jam] Connected successfully to Room: ${id}`);
-    };
-
-    socket.onerror = (err) => {
-      console.error("[Jam] WebSocket Connection Error:", err);
-    };
-
-    socket.onclose = (event) => {
-      console.warn(`[Jam] Connection closed. Code: ${event.code}, Reason: ${event.reason}`);
-      if (socketRef.current === socket) {
-        setJamState({ roomId: null, participants: 0, isHost: false, isJoining: false });
-      }
-    };
+    setJamState(prev => ({ ...prev, isJoining: false }));
   };
 
   const leaveJam = () => {
-    socketRef.current?.close();
+    if (pusherRef.current) {
+        pusherRef.current.unsubscribe(`jam-${jamState.roomId}`);
+        pusherRef.current.disconnect();
+    }
     setJamState({ roomId: null, participants: 0, isHost: false, isJoining: false });
   };
 

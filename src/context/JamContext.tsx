@@ -36,6 +36,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   const pusherRef = useRef<Pusher | null>(null);
   const channelRef = useRef<any>(null);
   const isSyncingRef = useRef(false);
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const jamStateRef = useRef(jamState);
 
   // Keep ref in sync with state
@@ -63,6 +64,14 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const setSyncing = (time = 500) => {
+    isSyncingRef.current = true;
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    syncTimeoutRef.current = setTimeout(() => {
+        isSyncingRef.current = false;
+    }, time);
+  };
+
   // Connect and Subscribe to Channel
   const connectToJam = useCallback((id: string) => {
     if (!PUSHER_KEY) {
@@ -81,7 +90,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     channelRef.current = channel;
 
     channel.bind("sync-event", (data: any) => {
-        isSyncingRef.current = true;
+        setSyncing(2000); // 2sec lockout for remote events
         
         const { type, payload } = data;
         const currentState = jamStateRef.current;
@@ -107,21 +116,16 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
                 }
                 break;
             case "sync-queue":
-                // Basic comparison to prevent loops
                 if (JSON.stringify(payload.queue) !== JSON.stringify(dashboard.upNextQueue)) {
-                    dashboard.setUpNextQueue(payload.queue);
+                   dashboard.setUpNextQueue(payload.queue);
                 }
                 break;
             case "sync-seek":
-                if (Math.abs(payload.time - dashboard.currentTimeSec) > 2) {
+                if (Math.abs(payload.time - dashboard.currentTimeSec) > 3) {
                     dashboard.onSeek(payload.time);
                 }
                 break;
         }
-
-        setTimeout(() => {
-            isSyncingRef.current = false;
-        }, 500); // 500ms debounce
     });
 
     console.log(`[Jam] Subscribed to Pusher channel: jam-${id}`);

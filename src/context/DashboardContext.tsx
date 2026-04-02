@@ -483,13 +483,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
               if (!player || !playerReadyRef.current) return;
               // Expanded react-youtube owns time + audio in video mode
               if (viewModeRef.current === "video") return;
+
               const current = player.getCurrentTime();
               const duration = player.getDuration();
+              
               if (Number.isFinite(current)) {
                 const bucket = Math.floor(current * 5);
                 if (bucket !== lastTimeBucketRef.current) {
                   lastTimeBucketRef.current = bucket;
                   setCurrentTimeSec(current);
+                }
+
+                // BACKGLOUND WATCHDOG: If we are within 0.5s of end, or past it, and still intend to play
+                // but hasn't advanced to next yet, we trigger manually to overcome background throttling.
+                if (duration > 0 && current >= duration - 0.5 && userIntentRef.current === "playing") {
+                   onNextRef.current();
                 }
               }
               if (Number.isFinite(duration) && duration > 0) setDurationSec(duration);
@@ -515,12 +523,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                     setIsPlaying(false);
                 }
               }
-              // ENDED: only advance from the hidden player in music mode (expanded video has its own player)
-              if (event.data === 0) onNextRef.current();
+              // ENDED: only advance from the hidden player in music mode
+              if (event.data === 0) {
+                // Check if we already moved to next to avoid double trigger
+                onNextRef.current();
+              }
               
               // RESILIENCE: If it paused while hidden, and we didn't initiate it, it might be the system.
-              // We don't auto-resume here because browsers block it, but we keep isPlaying true 
-              // for a bit to see if MediaSession can rescue it.
+              // Browsers sometimes pause hidden iframes. 
             }
           },
         },
@@ -543,20 +553,29 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
       try {
         ytPlayerRef.current?.destroy?.();
-      } catch {
-        /* YT may already be torn down */
-      }
+      } catch { /* ignore */ }
       ytPlayerRef.current = null;
       playerReadyRef.current = false;
       mount.remove();
     };
   }, []); // Run only once
 
-  // Load / cue hidden player when resolved audio id changes or player becomes ready
+  const lastProcessedIdRef = useRef<string | null>(null);
+
+  // Load / cue hidden player when resolved audio id OR currentSong id changes
   useEffect(() => {
-    if (!ytPlayerRef.current || !isPlayerReady || !audioData?.videoId) return;
-    syncHiddenPlayerForViewMode(ytPlayerRef.current, audioData.videoId);
-  }, [audioData?.videoId, isPlayerReady]);
+    if (!ytPlayerRef.current || !isPlayerReady) return;
+    
+    // We prioritize audioData.videoId, but fallback to currentSong.id for instant start
+    const targetId = audioData?.videoId || currentSong?.id;
+    if (!targetId || targetId === lastProcessedIdRef.current) return;
+    
+    lastProcessedIdRef.current = targetId;
+    syncHiddenPlayerForViewMode(ytPlayerRef.current, targetId);
+    
+    // If we're using currentSong.id (optimistic start) and then audioData comes back later,
+    // we don't want to re-load the exact same video if it's already playing.
+  }, [audioData?.videoId, currentSong?.id, isPlayerReady]);
 
   // Keep hidden player silent whenever expanded video mode is active (covers toggle without track change).
   useEffect(() => {
@@ -711,7 +730,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const lastNextCallRef = useRef(0);
   const onNext = useCallback(() => {
+    // Debounce guard to prevent double-triggering in background
+    const now = Date.now();
+    if (now - lastNextCallRef.current < 2000) return;
+    lastNextCallRef.current = now;
+
     if (upNextQueue.length > 0) {
       const next = upNextQueue[0];
       setUpNextQueue((prev) => prev.slice(1));
@@ -761,11 +786,58 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
   }, [session?.user, currentSong?.id, audioData?.videoId]);
 
-  // Native Media Session API (Lock Screen Controls)
+  const sessionHandlersRef = useRef({ onTogglePlay, onNext, onPrev, onSeek });
+  useEffect(() => {
+    sessionHandlersRef.current = { onTogglePlay, onNext, onPrev, onSeek };
+  }, [onTogglePlay, onNext, onPrev, onSeek]);
+
+  // Native Media Session API: Handlers (Persistent - set once)
+  useEffect(() => {
+    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+
+    const handlersMap: Record<string, (details?: any) => void> = {
+      play: () => sessionHandlersRef.current.onTogglePlay(),
+      pause: () => sessionHandlersRef.current.onTogglePlay(),
+      previoustrack: () => sessionHandlersRef.current.onPrev(),
+      nexttrack: () => sessionHandlersRef.current.onNext(),
+      seekbackward: () => sessionHandlersRef.current.onSeek(currentTimeSec - 10),
+      seekforward: () => sessionHandlersRef.current.onSeek(currentTimeSec + 10),
+      seekto: (details: any) => {
+        if (details.seekTime !== undefined) sessionHandlersRef.current.onSeek(details.seekTime);
+      },
+    };
+
+    Object.entries(handlersMap).forEach(([action, handler]) => {
+      try {
+        navigator.mediaSession.setActionHandler(action as any, handler);
+      } catch (error) {
+        console.warn(`Media session action "${action}" not supported.`);
+      }
+    });
+
+    return () => {
+      Object.keys(handlersMap).forEach((action) => {
+        try { navigator.mediaSession.setActionHandler(action as any, null); } catch {}
+      });
+    };
+  }, []); // Only register once! Current state accessed via sessionHandlersRef and currentTimeSec (well, currentTimeSec is still in closure, but we want it fresh)
+
+  // Actually, we need currentTimeSec to be fresh for seek.
+  // We can use a ref for it too.
+  const currentTimeRef = useRef(currentTimeSec);
+  useEffect(() => { currentTimeRef.current = currentTimeSec; }, [currentTimeSec]);
+
+  // Revised handlers to use currentTimeRef
+  useEffect(() => {
+     if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+     navigator.mediaSession.setActionHandler("seekbackward", () => sessionHandlersRef.current.onSeek(currentTimeRef.current - 10));
+     navigator.mediaSession.setActionHandler("seekforward", () => sessionHandlersRef.current.onSeek(currentTimeRef.current + 10));
+  }, []);
+
+  // Native Media Session API: Metadata (Update on song change)
   useEffect(() => {
     if (typeof window === "undefined" || !("mediaSession" in navigator) || !currentSong) return;
 
-    // Update Metadata
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentSong.title,
       artist: currentSong.artist || "Unknown Artist",
@@ -779,53 +851,23 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         { src: currentSong.artwork || "/placeholder.jpg", sizes: "512x512", type: "image/jpeg" },
       ],
     });
+  }, [currentSong]);
 
-    // Support for position state (Progress bar on lock screen)
-    const updatePositionState = () => {
-      try {
-        if ("setPositionState" in navigator.mediaSession) {
-          navigator.mediaSession.setPositionState({
-            duration: durationSec || 0,
-            playbackRate: 1,
-            position: currentTimeSec || 0,
-          });
-        }
-      } catch (err) {
-        console.warn("MediaSession setPositionState failed:", err);
-      }
-    };
+  // Native Media Session API: Position State (Update on time change)
+  useEffect(() => {
+    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+    if (!("setPositionState" in navigator.mediaSession) || !currentSong) return;
 
-    updatePositionState();
-
-    // Interaction Handlers
-    const handlers = [
-      ["play", onTogglePlay],
-      ["pause", onTogglePlay],
-      ["previoustrack", onPrev],
-      ["nexttrack", onNext],
-      ["seekbackward", () => onSeek(currentTimeSec - 10)],
-      ["seekforward", () => onSeek(currentTimeSec + 10)],
-      ["seekto", (details: any) => {
-        if (details.seekTime !== undefined) onSeek(details.seekTime);
-      }],
-    ] as const;
-
-    handlers.forEach(([action, handler]) => {
-      try {
-        navigator.mediaSession.setActionHandler(action, handler as any);
-      } catch (error) {
-        console.warn(`The media session action "${action}" is not supported yet.`);
-      }
-    });
-
-    return () => {
-      handlers.forEach(([action]) => {
-        try {
-          navigator.mediaSession.setActionHandler(action, null);
-        } catch { /* ignore */ }
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: durationSec || 0,
+        playbackRate: 1,
+        position: currentTimeSec || 0,
       });
-    };
-  }, [currentSong, onTogglePlay, onNext, onPrev, onSeek, durationSec, currentTimeSec]);
+    } catch (err) {
+      console.warn("MediaSession setPositionState failed:", err);
+    }
+  }, [currentTimeSec, durationSec, currentSong]);
 
   // Sync Playback State to OS
   useEffect(() => {

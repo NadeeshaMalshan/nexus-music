@@ -78,24 +78,34 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     }, time);
   };
 
-  // Improved Play/Pause with Retry Logic
+  // Atomic Play/Pause/Seek with Ready Check
   const safePlay = useCallback(async (startTime: number = 0) => {
     const player = dashboard.ytPlayerRef.current;
     if (!player) return;
 
-    const tryPlay = () => {
-        if (!dashboard.isPlaying) {
-             dashboard.setIsPlaying(true);
-        }
+    // Aggressive catch-up: If distance is too far, jump!
+    const trySeekAndPlay = () => {
         try {
-            if (startTime > 0) dashboard.onSeek(startTime);
+            const playerState = player.getPlayerState();
+            if (playerState === -1 || playerState === 3) {
+                // If unstarted or buffering, wait 500ms and try again
+                setTimeout(trySeekAndPlay, 500);
+                return;
+            }
+
+            if (startTime > 0) {
+               const playerTime = player.getCurrentTime();
+               if (Math.abs(startTime - playerTime) > 1.5) {
+                   dashboard.onSeek(startTime);
+               }
+            }
             dashboard.playVideo();
         } catch (e) {
-            console.warn("[Jam] Play failed, retrying...", e);
-            setTimeout(tryPlay, 500);
+            console.warn("[Jam] Play failed, retrying in 500ms...", e);
+            setTimeout(trySeekAndPlay, 500);
         }
     };
-    tryPlay();
+    trySeekAndPlay();
   }, [dashboard]);
 
   const safePause = useCallback(() => {
@@ -112,7 +122,6 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   // Connect and Subscribe to Channel
   const connectToJam = useCallback((id: string) => {
     if (!PUSHER_KEY) return;
-
     if (pusherRef.current) pusherRef.current.disconnect();
 
     const pusher = new Pusher(PUSHER_KEY, { 
@@ -133,20 +142,39 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         
         const now = Date.now();
         const latency = payload.timestamp ? (now - payload.timestamp) : 0;
+        const currentState = jamStateRef.current;
 
-        setSyncing(type === "sync-song" ? 2500 : 800); 
+        setSyncing(type === "sync-song" ? 3000 : (type === "sync-seek" ? 200 : 800)); 
         
         switch (type) {
             case "join":
-                if (jamStateRef.current.isHost) {
-                   broadcast("sync-play", { isPlaying: dashboard.isPlaying, currentTime: dashboard.currentTimeSec });
-                   broadcast("sync-song", { song: dashboard.currentSong });
-                   broadcast("sync-queue", { queue: dashboard.upNextQueue });
+                if (currentState.isHost) {
+                   // TOTAL RESET on join as requested
+                   dashboard.setUpNextQueue([]);
+                   dashboard.setCurrentSong(null);
+                   safePause();
+                   dashboard.onSeek(0);
+                   
+                   // Broadcast the reset state to the new member
+                   broadcast("sync-play", { 
+                        isPlaying: false, 
+                        currentTime: 0,
+                        song: null 
+                   });
+                   broadcast("sync-queue", { queue: [] });
                 }
                 break;
             case "sync-play":
+                const targetSongId = payload.song?.id;
+                // If song mismatch, sync song first
+                if (targetSongId && targetSongId !== dashboard.currentSong?.id) {
+                    dashboard.onSongClick(payload.song, false);
+                } else if (!targetSongId) {
+                    dashboard.setCurrentSong(null);
+                }
+                
                 if (payload.isPlaying) {
-                    const seekTo = payload.currentTime ? (payload.currentTime + (latency / 1000)) : 0;
+                    const seekTo = payload.currentTime ? (payload.currentTime + (latency / 1000) + 0.5) : 0; // +0.5 for extra buffer
                     safePlay(seekTo);
                 } else {
                     safePause();
@@ -164,7 +192,8 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
                 break;
             case "sync-seek":
                 const targetTime = payload.time + (latency / 1000);
-                if (Math.abs(targetTime - dashboard.currentTimeSec) > 2) {
+                // Aggressive check: If more than 1.5s difference, force seek
+                if (Math.abs(targetTime - dashboard.currentTimeSec) > 1.5) {
                     dashboard.onSeek(targetTime);
                 }
                 break;
@@ -188,12 +217,17 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
   // Sync state hooks
   useEffect(() => {
-    if (!jamState.roomId || isSyncingRef.current) return;
-    broadcast("sync-play", { 
-        isPlaying: dashboard.isPlaying, 
-        currentTime: dashboard.currentTimeSec 
-    });
-  }, [dashboard.isPlaying, jamState.roomId, broadcast, dashboard.currentTimeSec]);
+    if (!jamState.roomId) return;
+    
+    // Broadcast play state changes immediately unless we just received one
+    if (!isSyncingRef.current) {
+        broadcast("sync-play", { 
+            isPlaying: dashboard.isPlaying, 
+            currentTime: dashboard.currentTimeSec,
+            song: dashboard.currentSong 
+        });
+    }
+  }, [dashboard.isPlaying, jamState.roomId, broadcast, dashboard.currentTimeSec, dashboard.currentSong]);
 
   useEffect(() => {
     if (!jamState.roomId || isSyncingRef.current || !dashboard.currentSong) return;
@@ -205,13 +239,13 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     broadcast("sync-queue", { queue: dashboard.upNextQueue });
   }, [dashboard.upNextQueue, jamState.roomId, broadcast]);
 
-  // Drift Correction: Host periodically syncs time to keep everyone together
+  // Drift Correction & Periodic Heartbeat
   useEffect(() => {
     if (!jamState.roomId || !jamState.isHost || !dashboard.isPlaying || isSyncingRef.current) return;
     
     const interval = setInterval(() => {
         broadcast("sync-seek", { time: dashboard.currentTimeSec });
-    }, 10000); // Check every 10s
+    }, 12000); // Check every 12s
 
     return () => clearInterval(interval);
   }, [jamState.isHost, jamState.roomId, dashboard.isPlaying, dashboard.currentTimeSec, broadcast]);

@@ -11,7 +11,9 @@ const pusher = new Pusher({
 
 export async function POST(request: Request) {
   try {
-    const { roomId, type, payload } = await request.json();
+    const body = await request.json();
+    console.log("[Jam API] Outgoing event:", body.type, "Room:", body.roomId);
+    const { roomId, type, payload } = body;
 
     if (!roomId || !type) {
       return NextResponse.json({ error: "Missing roomId or type" }, { status: 400 });

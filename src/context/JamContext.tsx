@@ -36,21 +36,32 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   const pusherRef = useRef<Pusher | null>(null);
   const channelRef = useRef<any>(null);
   const isSyncingRef = useRef(false);
+  const jamStateRef = useRef(jamState);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    jamStateRef.current = jamState;
+  }, [jamState]);
 
   // Broadcast sync events via Next.js API Trigger
   const broadcast = useCallback(async (type: string, payload: any) => {
-    if (!jamState.roomId || isSyncingRef.current) return;
+    const currentState = jamStateRef.current;
+    if (!currentState.roomId || isSyncingRef.current) return;
     
     try {
-      await fetch("/api/jam/trigger", {
+      const res = await fetch("/api/jam/trigger", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId: jamState.roomId, type, payload }),
+        body: JSON.stringify({ roomId: currentState.roomId, type, payload }),
       });
+      if (!res.ok) {
+        const error = await res.json();
+        console.error("[Jam] Trigger failed:", error);
+      }
     } catch (err) {
       console.error("[Jam] Failed to broadcast event:", err);
     }
-  }, [jamState.roomId]);
+  }, []);
 
   // Connect and Subscribe to Channel
   const connectToJam = useCallback((id: string) => {
@@ -59,7 +70,9 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         return;
     }
 
-    if (pusherRef.current) pusherRef.current.disconnect();
+    if (pusherRef.current) {
+        pusherRef.current.disconnect();
+    }
 
     const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
     pusherRef.current = pusher;
@@ -71,7 +84,16 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         isSyncingRef.current = true;
         
         const { type, payload } = data;
+        const currentState = jamStateRef.current;
+
         switch (type) {
+            case "join":
+                if (currentState.isHost) {
+                   broadcast("sync-play", { isPlaying: dashboard.isPlaying });
+                   broadcast("sync-song", { song: dashboard.currentSong });
+                }
+                setJamState(prev => ({ ...prev, participants: prev.participants + 1 }));
+                break;
             case "sync-play":
                 if (payload.isPlaying !== dashboard.isPlaying) {
                     dashboard.setIsPlaying(payload.isPlaying);
@@ -91,11 +113,11 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
         setTimeout(() => {
             isSyncingRef.current = false;
-        }, 300);
+        }, 500); // 500ms debounce
     });
 
     console.log(`[Jam] Subscribed to Pusher channel: jam-${id}`);
-  }, [dashboard]);
+  }, [dashboard, broadcast]);
 
   // Sync state hooks
   useEffect(() => {
@@ -129,8 +151,9 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   };
 
   const joinJam = async (id: string) => {
-    setJamState({ roomId: id, participants: 0, isHost: false, isJoining: true });
+    setJamState({ roomId: id, participants: 1, isHost: false, isJoining: true });
     connectToJam(id);
+    await broadcast("join", {}); // Alert others
     setJamState(prev => ({ ...prev, isJoining: false }));
   };
 

@@ -91,6 +91,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
                 if (currentState.isHost) {
                    broadcast("sync-play", { isPlaying: dashboard.isPlaying });
                    broadcast("sync-song", { song: dashboard.currentSong });
+                   broadcast("sync-queue", { queue: dashboard.upNextQueue });
                 }
                 setJamState(prev => ({ ...prev, participants: prev.participants + 1 }));
                 break;
@@ -102,6 +103,12 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
             case "sync-song":
                 if (payload.song.id !== dashboard.currentSong?.id) {
                     dashboard.onSongClick(payload.song, false);
+                }
+                break;
+            case "sync-queue":
+                // Basic comparison to prevent loops
+                if (JSON.stringify(payload.queue) !== JSON.stringify(dashboard.upNextQueue)) {
+                    dashboard.setUpNextQueue(payload.queue);
                 }
                 break;
             case "sync-seek":
@@ -119,7 +126,12 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     console.log(`[Jam] Subscribed to Pusher channel: jam-${id}`);
   }, [dashboard, broadcast]);
 
-  // Sync state hooks
+  // Sync state hooks: Playlist/Queue changes
+  useEffect(() => {
+    if (!jamState.roomId || isSyncingRef.current) return;
+    broadcast("sync-queue", { queue: dashboard.upNextQueue });
+  }, [dashboard.upNextQueue, jamState.roomId, broadcast]);
+
   useEffect(() => {
     if (!jamState.roomId || isSyncingRef.current) return;
     broadcast("sync-play", { isPlaying: dashboard.isPlaying });

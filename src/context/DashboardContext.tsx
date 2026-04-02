@@ -889,12 +889,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     viewMode,
     setViewMode,
     ytPlayerRef,
+    setUpNextQueue,
   }), [
     audioData, queueSongs, currentSong, isPlaying, currentTimeSec, 
     durationSec, volume, lyricsData, lyricsLoading, knowFacts, 
     knowLoading, likedSongs, upNextQueue, playedHistory, aiLoading, 
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
-    onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode
+    onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
+    setIsPlaying, setUpNextQueue
   ]);
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;

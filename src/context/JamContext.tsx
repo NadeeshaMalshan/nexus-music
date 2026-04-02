@@ -50,27 +50,23 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     const currentState = jamStateRef.current;
     if (!currentState.roomId || isSyncingRef.current || !channelRef.current) return;
     
-    // First try the ultra-fast Client Event (Direct Device-to-Device)
     try {
-      const sent = channelRef.current.trigger(`client-sync-event`, { 
+      const eventData = { 
         type, 
-        payload: { ...payload, senderId: senderIdRef.current } 
-      });
+        payload: { ...payload, senderId: senderIdRef.current, timestamp: Date.now() } 
+      };
       
-      // If client event fails (e.g. not authorized yet), fallback to API trigger
+      const sent = channelRef.current.trigger(`client-sync-event`, eventData);
+      
       if (!sent) {
         await fetch("/api/jam/trigger", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            roomId: currentState.roomId, 
-            type, 
-            payload: { ...payload, senderId: senderIdRef.current } 
-          }),
+          body: JSON.stringify({ roomId: currentState.roomId, ...eventData }),
         });
       }
     } catch (err) {
-      console.warn("[Jam] Client event failed, falling back to API:", err);
+      console.warn("[Jam] Broadcast failed fallback:", err);
     }
   }, []);
 
@@ -81,6 +77,37 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         isSyncingRef.current = false;
     }, time);
   };
+
+  // Improved Play/Pause with Retry Logic
+  const safePlay = useCallback(async (startTime: number = 0) => {
+    const player = dashboard.ytPlayerRef.current;
+    if (!player) return;
+
+    const tryPlay = () => {
+        if (!dashboard.isPlaying) {
+             dashboard.setIsPlaying(true);
+        }
+        try {
+            if (startTime > 0) dashboard.onSeek(startTime);
+            dashboard.playVideo();
+        } catch (e) {
+            console.warn("[Jam] Play failed, retrying...", e);
+            setTimeout(tryPlay, 500);
+        }
+    };
+    tryPlay();
+  }, [dashboard]);
+
+  const safePause = useCallback(() => {
+    if (dashboard.isPlaying) {
+        dashboard.setIsPlaying(false);
+    }
+    try {
+        dashboard.pauseVideo();
+    } catch (e) {
+        console.warn("[Jam] Pause failed", e);
+    }
+  }, [dashboard]);
 
   // Connect and Subscribe to Channel
   const connectToJam = useCallback((id: string) => {
@@ -97,30 +124,32 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     });
 
     pusherRef.current = pusher;
-
-    const channel = pusher.subscribe(`presence-jam-${id}`);
+    const channel = pusher.subscribe(`presence-jam-${id}`) as PresenceChannel;
     channelRef.current = channel;
 
-    // Listen for events from other devices
     const handleEvent = (data: any) => {
         const { type, payload } = data;
         if (payload?.senderId === senderIdRef.current) return;
+        
+        const now = Date.now();
+        const latency = payload.timestamp ? (now - payload.timestamp) : 0;
 
-        setSyncing(type === "sync-song" ? 2000 : 300); 
+        setSyncing(type === "sync-song" ? 2500 : 800); 
         
         switch (type) {
             case "join":
                 if (jamStateRef.current.isHost) {
-                   broadcast("sync-play", { isPlaying: dashboard.isPlaying });
+                   broadcast("sync-play", { isPlaying: dashboard.isPlaying, currentTime: dashboard.currentTimeSec });
                    broadcast("sync-song", { song: dashboard.currentSong });
                    broadcast("sync-queue", { queue: dashboard.upNextQueue });
                 }
-                setJamState(prev => ({ ...prev, participants: prev.participants + 1 }));
                 break;
             case "sync-play":
-                if (payload.isPlaying !== dashboard.isPlaying) {
-                    if (payload.isPlaying) dashboard.playVideo();
-                    else dashboard.pauseVideo();
+                if (payload.isPlaying) {
+                    const seekTo = payload.currentTime ? (payload.currentTime + (latency / 1000)) : 0;
+                    safePlay(seekTo);
+                } else {
+                    safePause();
                 }
                 break;
             case "sync-song":
@@ -134,58 +163,58 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
                 }
                 break;
             case "sync-seek":
-                if (Math.abs(payload.time - dashboard.currentTimeSec) > 1.5) {
-                    dashboard.onSeek(payload.time);
+                const targetTime = payload.time + (latency / 1000);
+                if (Math.abs(targetTime - dashboard.currentTimeSec) > 2) {
+                    dashboard.onSeek(targetTime);
                 }
                 break;
         }
     };
 
     channel.bind("client-sync-event", handleEvent);
-    channel.bind("sync-event", handleEvent); // Legacy fallback from API Trigger
+    channel.bind("sync-event", handleEvent);
 
-    // Presence events for participant count
     channel.bind("pusher:subscription_succeeded", (members: any) => {
         setJamState(prev => ({ ...prev, participants: members.count }));
     });
     channel.bind("pusher:member_added", () => {
-        setJamState(prev => ({ ...prev, participants: ((channel as PresenceChannel).members?.count || 1) }));
+        setJamState(prev => ({ ...prev, participants: channel.members?.count || 1 }));
     });
     channel.bind("pusher:member_removed", () => {
-        setJamState(prev => ({ ...prev, participants: ((channel as PresenceChannel).members?.count || 1) }));
+        setJamState(prev => ({ ...prev, participants: channel.members?.count || 1 }));
     });
 
-    console.log(`[Jam] Ultra-low latency Presence Channel: presence-jam-${id}`);
-  }, [dashboard, broadcast]);
+  }, [dashboard, broadcast, safePlay, safePause]);
 
-  // Sync state hooks: Playlist/Queue changes
+  // Sync state hooks
   useEffect(() => {
     if (!jamState.roomId || isSyncingRef.current) return;
-    broadcast("sync-queue", { queue: dashboard.upNextQueue });
-  }, [dashboard.upNextQueue, jamState.roomId, broadcast]);
-
-  useEffect(() => {
-    if (!jamState.roomId || isSyncingRef.current) return;
-    broadcast("sync-play", { isPlaying: dashboard.isPlaying });
-  }, [dashboard.isPlaying, jamState.roomId, broadcast]);
+    broadcast("sync-play", { 
+        isPlaying: dashboard.isPlaying, 
+        currentTime: dashboard.currentTimeSec 
+    });
+  }, [dashboard.isPlaying, jamState.roomId, broadcast, dashboard.currentTimeSec]);
 
   useEffect(() => {
     if (!jamState.roomId || isSyncingRef.current || !dashboard.currentSong) return;
     broadcast("sync-song", { song: dashboard.currentSong });
   }, [dashboard.currentSong?.id, jamState.roomId, broadcast]);
 
-  const lastTimeRef = useRef(dashboard.currentTimeSec);
   useEffect(() => {
-    if (!jamState.roomId || isSyncingRef.current) {
-        lastTimeRef.current = dashboard.currentTimeSec;
-        return;
-    }
-    const diff = Math.abs(dashboard.currentTimeSec - lastTimeRef.current);
-    if (diff > 5) {
-      broadcast("sync-seek", { time: dashboard.currentTimeSec });
-    }
-    lastTimeRef.current = dashboard.currentTimeSec;
-  }, [dashboard.currentTimeSec, jamState.roomId, broadcast]);
+    if (!jamState.roomId || isSyncingRef.current) return;
+    broadcast("sync-queue", { queue: dashboard.upNextQueue });
+  }, [dashboard.upNextQueue, jamState.roomId, broadcast]);
+
+  // Drift Correction: Host periodically syncs time to keep everyone together
+  useEffect(() => {
+    if (!jamState.roomId || !jamState.isHost || !dashboard.isPlaying || isSyncingRef.current) return;
+    
+    const interval = setInterval(() => {
+        broadcast("sync-seek", { time: dashboard.currentTimeSec });
+    }, 10000); // Check every 10s
+
+    return () => clearInterval(interval);
+  }, [jamState.isHost, jamState.roomId, dashboard.isPlaying, dashboard.currentTimeSec, broadcast]);
 
   const createJam = async () => {
     const id = Math.random().toString(36).substring(2, 8).toUpperCase();

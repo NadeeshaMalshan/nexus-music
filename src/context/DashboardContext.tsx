@@ -60,6 +60,7 @@ type DashboardContextType = {
   setCurrentTimeSec: (time: number) => void;
   setCurrentSong: (song: Song | null) => void;
   setQueueSongs: (songs: Song[]) => void;
+  setUpNextQueue: React.Dispatch<React.SetStateAction<Song[]>>;
   setVolume: (volume: number) => void;
   setIsRightSidebarOpen: (open: boolean) => void;
   setIsExpandedPlayerOpen: (open: boolean) => void;

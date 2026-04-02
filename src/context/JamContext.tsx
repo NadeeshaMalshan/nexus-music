@@ -97,7 +97,8 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
                 break;
             case "sync-play":
                 if (payload.isPlaying !== dashboard.isPlaying) {
-                    dashboard.setIsPlaying(payload.isPlaying);
+                    if (payload.isPlaying) dashboard.playVideo();
+                    else dashboard.pauseVideo();
                 }
                 break;
             case "sync-song":

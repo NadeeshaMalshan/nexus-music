@@ -4,6 +4,8 @@ import { type Song } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { motion, AnimatePresence, Reorder } from "motion/react";
+import { JamSession } from "./JamSession";
+
 
 interface RightSidebarProps {
   isOpen: boolean;
@@ -152,6 +154,7 @@ export function RightSidebar({
                 
                 {/* PRIMARY DISCOVERY QUEUE */}
                 <div>
+                  <JamSession />
                   <div className="flex items-center justify-between px-2 mb-6">
                     <div className="flex items-center gap-4">
                       <h2 className="text-[20px] font-black text-white tracking-tight">Queue</h2>

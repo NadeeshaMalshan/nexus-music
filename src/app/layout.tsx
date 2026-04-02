@@ -38,6 +38,8 @@ export const viewport = {
   themeColor: "#050505",
 };
 
+import { JamProvider } from "@/context/JamContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -51,7 +53,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-[#050505] text-zinc-100">
         <Providers>
           <DashboardProvider>
-            <DashboardWrapper>{children}</DashboardWrapper>
+            <JamProvider>
+              <DashboardWrapper>{children}</DashboardWrapper>
+            </JamProvider>
           </DashboardProvider>
         </Providers>
       </body>

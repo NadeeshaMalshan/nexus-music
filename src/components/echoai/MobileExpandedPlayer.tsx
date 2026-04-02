@@ -2,11 +2,12 @@
 
 import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
 import YouTube from "react-youtube";
-import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus, PlaySquare } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus, PlaySquare, Users } from "lucide-react";
 import { motion, AnimatePresence, Reorder, useDragControls } from "motion/react";
 import { type Song, type ExpandedPlayerProps } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
+import { JamSession } from "./JamSession";
 
 export function MobileExpandedPlayer({
   onClose,
@@ -41,7 +42,7 @@ export function MobileExpandedPlayer({
   onClearQueue,
   onReorderUpNext,
 }: ExpandedPlayerProps) {
-  const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">(viewMode === "video" ? "controls" : "lyrics");
+  const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls" | "jam">(viewMode === "video" ? "controls" : "lyrics");
   const [imageError, setImageError] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const dragControls = useDragControls();
@@ -237,23 +238,24 @@ export function MobileExpandedPlayer({
       </button>
       <button
         type="button"
-        onClick={() => setActiveTab(activeTab === "ai" ? "controls" : "ai")}
-        className={`p-3 rounded-xl transition-all ${activeTab === "ai" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}
-      >
-        <BookOpen size={24} />
-      </button>
-      <button
-        type="button"
-        className="p-3 text-white/40 hover:text-white"
-      >
-        <Volume2 size={24} />
-      </button>
-      <button
-        type="button"
         onClick={() => setActiveTab(activeTab === "queue" ? "controls" : "queue")}
         className={`p-3 rounded-xl transition-all ${activeTab === "queue" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}
       >
         <ListMusic size={24} />
+      </button>
+      <button
+        type="button"
+        onClick={() => setActiveTab(activeTab === "jam" ? "controls" : "jam")}
+        className={`p-3 rounded-xl transition-all ${activeTab === "jam" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}
+      >
+        <Users size={24} />
+      </button>
+      <button
+        type="button"
+        onClick={() => setActiveTab(activeTab === "ai" ? "controls" : "ai")}
+        className={`p-3 rounded-xl transition-all ${activeTab === "ai" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}
+      >
+        <BookOpen size={24} />
       </button>
     </div>
   );
@@ -507,6 +509,19 @@ export function MobileExpandedPlayer({
                           </div>
                       )}
                   </div>
+              )}
+
+              {activeTab === "jam" && (
+                 <div className="flex-1 overflow-y-auto px-10 pt-10 pb-[40dvh] custom-scrollbar swipe-up">
+                     <h2 className="text-2xl font-black text-white mb-8">Nexus Jam</h2>
+                     <JamSession />
+                     <div className="mt-8 p-6 rounded-3xl bg-white/5 border border-white/5 shadow-2xl">
+                         <p className="text-sm font-bold text-white/60 leading-relaxed italic">
+                             "Jam lets you listen to music simultaneously with friends. 
+                             Control is shared—anyone can play, pause, or skip tracks in real-time."
+                         </p>
+                     </div>
+                 </div>
               )}
             </motion.div>
           )}

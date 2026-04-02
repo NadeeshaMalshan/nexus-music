@@ -35,6 +35,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
   const pusherRef = useRef<Pusher | null>(null);
   const channelRef = useRef<any>(null);
+  const senderIdRef = useRef<string>(Math.random().toString(36).substring(7));
   const isSyncingRef = useRef(false);
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const jamStateRef = useRef(jamState);
@@ -53,7 +54,11 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/jam/trigger", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId: currentState.roomId, type, payload }),
+        body: JSON.stringify({ 
+          roomId: currentState.roomId, 
+          type, 
+          payload: { ...payload, senderId: senderIdRef.current } 
+        }),
       });
       if (!res.ok) {
         const error = await res.json();
@@ -90,11 +95,14 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     channelRef.current = channel;
 
     channel.bind("sync-event", (data: any) => {
-        setSyncing(2000); // 2sec lockout for remote events
-        
         const { type, payload } = data;
         const currentState = jamStateRef.current;
 
+        // ECHO CANCELLATION: Ignore our own events
+        if (payload?.senderId === senderIdRef.current) return;
+
+        setSyncing(type === "sync-song" ? 2000 : 500); 
+        
         switch (type) {
             case "join":
                 if (currentState.isHost) {

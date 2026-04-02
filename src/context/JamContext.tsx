@@ -18,9 +18,13 @@ type JamContextType = {
   leaveJam: () => void;
 };
 
-const JamContext = createContext<JamContextType | undefined>(undefined);
+const getWsUrl = () => {
+  if (typeof window === "undefined") return "ws://127.0.0.1:3005";
+  const host = window.location.hostname;
+  return `ws://${host}:3005`;
+};
 
-const WS_URL = process.env.NEXT_PUBLIC_JAM_WS_URL || "ws://127.0.0.1:3005";
+const JamContext = createContext<JamContextType | undefined>(undefined);
 
 export function JamProvider({ children }: { children: React.ReactNode }) {
   const dashboard = useDashboard();
@@ -121,7 +125,8 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   const connectToJam = (id: string) => {
     if (socketRef.current) socketRef.current.close();
     
-    const socket = new WebSocket(`${WS_URL}?roomId=${id}`);
+    const url = getWsUrl();
+    const socket = new WebSocket(`${url}?roomId=${id}`);
     socketRef.current = socket;
 
     socket.onopen = () => {

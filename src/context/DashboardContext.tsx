@@ -156,6 +156,18 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const viewModeRef = useRef<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const userIntentRef = useRef<"playing" | "paused">("paused");
 
+  // Keep latest state in refs for intervals and events to avoid closure staleness
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  const volumeRef = useRef(volume);
+  useEffect(() => { volumeRef.current = volume; }, [volume]);
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  const upNextQueueRef = useRef(upNextQueue);
+  useEffect(() => { upNextQueueRef.current = upNextQueue; }, [upNextQueue]);
+  const currentSongRef = useRef(currentSong);
+  useEffect(() => { currentSongRef.current = currentSong; }, [currentSong]);
+
   useEffect(() => {
     viewModeRef.current = viewMode;
   }, [viewMode]);
@@ -526,7 +538,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
                 // BACKGLOUND WATCHDOG: Overcome background throttling
                 // If Gapless is ON, we trigger slightly earlier (1s) to mask the loading delay.
-                const bufferTime = settings.gaplessPlayback ? 1.0 : 0.5;
+                const bufferTime = settingsRef.current.gaplessPlayback ? 1.0 : 0.5;
                 if (duration > 0 && current >= duration - bufferTime && userIntentRef.current === "playing") {
                    onNextRef.current();
                 }
@@ -536,13 +548,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
               // Apply Volume & Quality
               // Crossfade Logic: Ramp down volume if near the end
               const currentSec = player.getCurrentTime() || 0;
-              if (duration > 0 && settings.crossfade > 0 && currentSec >= (duration - settings.crossfade)) {
+              if (duration > 0 && settingsRef.current.crossfade > 0 && currentSec >= (duration - settingsRef.current.crossfade)) {
                   const remaining = duration - currentSec;
-                  const ratio = Math.max(0, remaining / settings.crossfade);
-                  const targetVolume = Math.floor(volume * ratio);
+                  const ratio = Math.max(0, remaining / settingsRef.current.crossfade);
+                  const targetVolume = Math.floor(volumeRef.current * ratio);
                   player.setVolume(targetVolume);
                 } else {
-                  player.setVolume(volume);
+                  player.setVolume(volumeRef.current);
                 }
                 
                 // Suggest audio quality
@@ -552,9 +564,26 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                   low: "small"
                 };
                 try {
-                  (player as any)?.setPlaybackQuality?.(qualityMap[settings.audioQuality] || "auto");
+                  // For background/hidden player, we ALWAYS want lowest quality to save bandwidth and speed up transitions
+                  const targetQuality = (viewModeRef.current === "music") ? "small" : (qualityMap[settingsRef.current.audioQuality] || "auto");
+                  (player as any)?.setPlaybackQuality?.(targetQuality);
                 } catch (e) {}
-            }, 250);
+
+                // RESILIENCE: If user intent is playing but player is paused background, try to resume
+                if (userIntentRef.current === "playing" && document.visibilityState === 'hidden') {
+                    // State 2 is PAUSED. State 3 is BUFFERING. State 5 is CUED.
+                    const state = player.getPlayerState();
+                    if (state === 2 || state === 5) {
+                        player.playVideo();
+                    }
+
+                    // RE-SYNC MEDIA SESSION: Sometimes notification disappears if OS thinks we're idle
+                    if ("mediaSession" in navigator) {
+                       navigator.mediaSession.playbackState = "playing";
+                    }
+                }
+            }, 500); // Slower interval in background is more likely to be regular than fast one
+
           },
           onStateChange: (event: any) => {
             // Only sync isPlaying if we're NOT in video mode, to let the visible player lead state
@@ -674,8 +703,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       // Use a very low frequency tone (20Hz) at near-zero volume
       // This is "audible content" to the OS/browser but silent to humans.
       // This is much more effective at keeping the session alive than absolute silence.
-      oscillator.frequency.setValueAtTime(20, ctx.currentTime);
-      gainNode.gain.setValueAtTime(0.001, ctx.currentTime);
+      // Use a slightly higher frequency (infrasound/low-bass) that's less likely to be filtered
+      // and a slightly higher gain so the OS doesn't ignore it as noise floor.
+      oscillator.frequency.setValueAtTime(30, ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.005, ctx.currentTime);
       
       oscillator.connect(gainNode);
       gainNode.connect(dst);
@@ -689,6 +720,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
 
     const handleResume = () => {
+      // Resume AudioContext if it was suspended
+      try {
+        if (audioCtxRef.current?.state === "suspended") {
+          audioCtxRef.current.resume();
+        }
+      } catch (e) {}
+
       if (userIntentRef.current === "playing") {
         if (silentAudioRef.current?.paused) silentAudioRef.current.play().catch(() => {});
         if (ytPlayerRef.current && playerReadyRef.current && viewModeRef.current === "music") {
@@ -730,6 +768,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     // If not currently playing (state 1), we want to play
     if (actualState !== 1) {
       userIntentRef.current = "playing";
+      // Resume context first
+      try { audioCtxRef.current?.resume(); } catch {}
       player.playVideo();
       setIsPlaying(true);
       // Ensure silent audio is active
@@ -775,6 +815,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setUpNextQueue([]);
     }
     userIntentRef.current = "playing";
+    try { audioCtxRef.current?.resume(); } catch {}
     setCurrentSong(song);
     setCurrentTimeSec(0);
     setIsPlaying(true);
@@ -805,8 +846,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       onSongClick(next, false); // <--- Don't reset when auto-playing
       return;
     }
+
+    // If queue is empty but autoplay is on, maybe we are still fetching?
+    // We try to trigger a re-fetch if we're stuck
+    if (settings.autoplay && currentSong) {
+        setLastSeedFetched(null); // Force AI re-fetch
+    }
+    
     setIsPlaying(false);
-  }, [upNextQueue, onSongClick]);
+  }, [upNextQueue, onSongClick, settings.autoplay, currentSong]);
 
   onNextRef.current = onNext;
 
@@ -913,7 +961,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         { src: currentSong.artwork || "/placeholder.jpg", sizes: "512x512", type: "image/jpeg" },
       ],
     });
-  }, [currentSong]);
+
+    // Ensure playback state is synced for the new metadata
+    if ("mediaSession" in navigator) {
+       navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+    }
+  }, [currentSong, isPlaying]);
 
   // Native Media Session API: Position State (Update on time change)
   useEffect(() => {

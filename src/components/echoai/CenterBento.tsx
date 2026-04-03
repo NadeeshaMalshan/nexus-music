@@ -44,7 +44,7 @@ export function CenterBento({
           {view === "home" && "AI-curated playlists based on your unique taste"}
           {view === "explorer" && "Search and explore tracks, artists, and recommendations"}
           {view === "stats" && "Insights from your listening behavior this week"}
-          {view === "settings" && "Tune your EchoAI experience and personalization"}
+          {view === "settings" && "Tune your Nexus experience and personalization"}
         </p>
       </div>
 

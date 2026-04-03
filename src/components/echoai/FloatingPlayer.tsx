@@ -1,9 +1,10 @@
 "use client";
 
-import { Play, Pause, SkipBack, SkipForward, Maximize2, Heart, ListMusic, Volume2 } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Maximize2, Heart, ListMusic, Volume2, Users, Mic2 } from "lucide-react";
 import { type Song } from "./types";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { motion, AnimatePresence } from "motion/react";
+import { MusicArtwork } from "./MusicArtwork";
 
 interface FloatingPlayerProps {
   onExpand: () => void;
@@ -19,6 +20,8 @@ interface FloatingPlayerProps {
   isLoggedIn?: boolean;
   onToggleRightSidebar?: () => void;
   isRightSidebarOpen?: boolean;
+  rightSidebarMode?: "queue" | "jam" | "lyrics";
+  onSetRightSidebarMode?: (mode: "queue" | "jam" | "lyrics") => void;
   volume: number;
   onVolumeChange: (v: number) => void;
 }
@@ -37,6 +40,8 @@ export function FloatingPlayer({
   isLoggedIn,
   onToggleRightSidebar,
   isRightSidebarOpen,
+  rightSidebarMode,
+  onSetRightSidebarMode,
   volume,
   onVolumeChange,
 }: FloatingPlayerProps) {
@@ -45,7 +50,7 @@ export function FloatingPlayer({
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
 
   return (
-    <div className="pointer-events-none fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-50 flex items-center justify-center px-4 md:bottom-10 lg:bottom-12">
+    <div className="pointer-events-none fixed bottom-[calc(5rem+env(safe-area-inset-top,0px))] left-0 right-0 z-50 flex items-center justify-center px-4 md:bottom-10 lg:bottom-12">
       <motion.div 
         layout
         initial={{ opacity: 0, y: 20 }}
@@ -96,17 +101,10 @@ export function FloatingPlayer({
           >
             {/* Artwork Wrapper */}
             <div className="relative h-9 w-9 md:h-11 md:w-11 shrink-0 overflow-hidden rounded-xl shadow-lg border border-white/10 group-hover/card:scale-105 transition-transform duration-500">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {currentSong.artwork ? (
-                <img src={currentSong.artwork} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full bg-white/5 flex items-center justify-center">
-                  <Maximize2 size={16} className="text-white/20" />
-                </div>
-              )}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                 <Maximize2 size={14} className="text-white" />
-              </div>
+               <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={20} />
+               <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                  <Maximize2 size={14} className="text-white" />
+               </div>
             </div>
 
             {/* Scrolling Song Info */}
@@ -129,6 +127,19 @@ export function FloatingPlayer({
 
         {/* Right Section: Interactive Controls */}
         <div className="flex items-center gap-3 md:gap-6 shrink-0">
+          {isLoggedIn && (
+            <button
+              onClick={() => onRateSong(currentSong.id, isLiked ? "none" : "like")}
+              className="transition-all transform hover:scale-110 active:scale-95"
+            >
+              <Heart
+                size={20}
+                fill={isLiked ? "var(--art-accent, #FA243C)" : "none"}
+                stroke={isLiked ? "var(--art-accent, #FA243C)" : "currentColor"}
+                className={isLiked ? "drop-shadow-[0_0_8px_var(--art-accent,rgba(250,36,60,0.4))]" : "text-white/30 hover:text-white"}
+              />
+            </button>
+          )}
           {/* Functional Volume Slider */}
           <div className="hidden items-center gap-2 lg:flex group/vol relative">
             <div className="w-0 overflow-hidden group-hover/vol:w-24 group-hover/vol:mr-3 transition-all duration-500">
@@ -143,31 +154,58 @@ export function FloatingPlayer({
                />
             </div>
             <Volume2 size={20} className="text-white/30 group-hover/vol:text-white transition-colors" />
+
+            
           </div>
 
           <div className="h-6 w-px bg-white/10 mx-1 hidden md:block" />
 
           <button 
-            onClick={onToggleRightSidebar}
+            onClick={() => {
+              if (rightSidebarMode === "lyrics" && isRightSidebarOpen) {
+                 onToggleRightSidebar?.();
+              } else {
+                 onSetRightSidebarMode?.("lyrics");
+                 if (!isRightSidebarOpen) onToggleRightSidebar?.();
+              }
+            }}
             className="hidden md:block transition-all transform hover:scale-110 active:scale-90"
-            style={{ color: isRightSidebarOpen ? 'var(--art-accent, #FA243C)' : undefined }}
+            style={{ color: (isRightSidebarOpen && rightSidebarMode === "lyrics") ? 'var(--art-accent, #FA243C)' : undefined }}
           >
-             <ListMusic size={24} strokeWidth={2.5} className={!isRightSidebarOpen ? "text-white/40 hover:text-white" : ""} />
+             <Mic2 size={20} className={(!isRightSidebarOpen || rightSidebarMode !== "lyrics") ? "text-white/40 hover:text-white" : ""} />
+          </button>
+
+          <button 
+            onClick={() => {
+              if (rightSidebarMode === "jam" && isRightSidebarOpen) {
+                 onToggleRightSidebar?.();
+              } else {
+                 onSetRightSidebarMode?.("jam");
+                 if (!isRightSidebarOpen) onToggleRightSidebar?.();
+              }
+            }}
+            className="hidden md:block transition-all transform hover:scale-110 active:scale-90"
+            style={{ color: (isRightSidebarOpen && rightSidebarMode === "jam") ? 'var(--art-accent, #FA243C)' : undefined }}
+          >
+             <Users size={22} strokeWidth={2.5} className={(!isRightSidebarOpen || rightSidebarMode !== "jam") ? "text-white/40 hover:text-white" : ""} />
+          </button>
+
+          <button 
+            onClick={() => {
+              if (rightSidebarMode === "queue" && isRightSidebarOpen) {
+                 onToggleRightSidebar?.();
+              } else {
+                 onSetRightSidebarMode?.("queue");
+                 if (!isRightSidebarOpen) onToggleRightSidebar?.();
+              }
+            }}
+            className="hidden md:block transition-all transform hover:scale-110 active:scale-90"
+            style={{ color: (isRightSidebarOpen && rightSidebarMode === "queue") ? 'var(--art-accent, #FA243C)' : undefined }}
+          >
+             <ListMusic size={24} strokeWidth={2.5} className={(!isRightSidebarOpen || rightSidebarMode !== "queue") ? "text-white/40 hover:text-white" : ""} />
           </button>
           
-          {isLoggedIn && (
-            <button
-              onClick={() => onRateSong(currentSong.id, isLiked ? "none" : "like")}
-              className="transition-all transform hover:scale-110 active:scale-95"
-            >
-              <Heart
-                size={20}
-                fill={isLiked ? "var(--art-accent, #FA243C)" : "none"}
-                stroke={isLiked ? "var(--art-accent, #FA243C)" : "currentColor"}
-                className={isLiked ? "drop-shadow-[0_0_8px_var(--art-accent,rgba(250,36,60,0.4))]" : "text-white/30 hover:text-white"}
-              />
-            </button>
-          )}
+          
         </div>
       </motion.div>
     </div>

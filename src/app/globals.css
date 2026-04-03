@@ -1,3 +1,5 @@
+@import url('https://fonts.cdnfonts.com/css/sf-pro-display');
+@import url('https://fonts.cdnfonts.com/css/sf-pro-text');
 @import "tailwindcss";
 @import "../css/theme.css";
 @import "../css/index.css";

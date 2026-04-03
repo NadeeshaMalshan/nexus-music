@@ -50,6 +50,8 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     setIsPlaying,
     viewMode,
     setViewMode,
+    rightSidebarMode,
+    setRightSidebarMode,
   } = useDashboard();
 
   const themeColor = palette.accent;
@@ -134,6 +136,8 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           isLoggedIn={status === "authenticated"}
           onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
           isRightSidebarOpen={isRightSidebarOpen}
+          rightSidebarMode={rightSidebarMode}
+          onSetRightSidebarMode={setRightSidebarMode}
           volume={volume}
           onVolumeChange={setVolume}
         />
@@ -187,6 +191,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
       <RightSidebar
         isOpen={isRightSidebarOpen && !isExpandedPlayerOpen}
         onClose={() => setIsRightSidebarOpen(false)}
+        mode={rightSidebarMode}
         onSongClick={onSongClick}
         upNextQueue={upNextQueue}
         currentSongId={currentSong?.id}

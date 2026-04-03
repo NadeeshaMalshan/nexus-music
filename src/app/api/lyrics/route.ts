@@ -71,7 +71,7 @@ async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Resp
 }
 
 const LRCLIB_HEADERS = {
-  "User-Agent": "EchoAI/1.0 (music dashboard)",
+  "User-Agent": "Nexus/1.0 (music dashboard)",
 };
 
 function pickLrcLibRecord(records: LrcLibRecord[]): LrcLibRecord | null {

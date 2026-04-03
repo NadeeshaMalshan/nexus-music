@@ -281,8 +281,8 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                     <Wand2 className="w-5 h-5 md:w-6 md:h-6 text-white/60" />
                  </div>
                  <div>
-                    <h2 className="text-white text-xl md:text-3xl font-black tracking-tighter">Ai Build</h2>
-                    <p className="hidden sm:block text-white/20 text-[10px] md:text-xs font-bold uppercase tracking-widest text-[9px] md:text-[10px]">Llama 3 Vibe Engine</p>
+                    <h2 className="text-white text-xl md:text-3xl font-black tracking-tighter">Echo AI</h2>
+                    <p className="hidden sm:block text-white/20 text-[10px] md:text-xs font-bold uppercase tracking-widest text-[9px] md:text-[10px]">Neural Vibe Engine</p>
                  </div>
               </div>
               <button 
@@ -344,7 +344,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                     </div>
                     <div className="text-center space-y-2 px-6">
                        <p className="text-2xl md:text-3xl font-black text-white tracking-tight">Synthesizing Audio...</p>
-                       <p className="text-white/20 font-bold uppercase tracking-widest text-[9px] md:text-xs">Nexus is scouting YouTube for the perfect setlist</p>
+                       <p className="text-white/20 font-bold uppercase tracking-widest text-[9px] md:text-xs">Echo AI is scouting YouTube for the perfect setlist</p>
                     </div>
                  </div>
                )}

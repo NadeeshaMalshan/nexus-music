@@ -139,7 +139,7 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
             {displayPlaylist.title}
           </h1>
           <p className="text-white/60 font-medium max-w-2xl line-clamp-2">
-            {displayPlaylist.description || "A custom YouTube playlist imported to EchoAI."}
+            {displayPlaylist.description || "A custom YouTube playlist imported to Nexus."}
           </p>
           
           <div className="flex items-center gap-4 pt-4">

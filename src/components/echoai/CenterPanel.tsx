@@ -392,7 +392,7 @@ export function CenterPanel(props: CenterPanelProps) {
               </div>
               <div className="mt-4">
                 <h3 className="font-bold text-white text-[17px] tracking-tight truncate leading-tight mb-1">{playlist.title}</h3>
-                <p className="text-[14px] text-white/40 font-medium truncate">EchoAI Music</p>
+                <p className="text-[14px] text-white/40 font-medium truncate">Nexus</p>
               </div>
             </motion.div>
           ))}
@@ -534,7 +534,7 @@ export function CenterPanel(props: CenterPanelProps) {
                 </div>
                 <div className="mt-3">
                   <h3 className="font-bold text-white text-[15px] tracking-tight truncate leading-tight mb-0.5">{playlist.title}</h3>
-                  <p className="text-[12px] text-white/40 font-medium truncate">EchoAI Music</p>
+                  <p className="text-[12px] text-white/40 font-medium truncate">Nexus</p>
                 </div>
               </div>
             ))}

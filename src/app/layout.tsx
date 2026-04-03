@@ -4,10 +4,12 @@ import { Providers } from "../components/Providers";
 import { DashboardProvider } from "@/context/DashboardContext";
 import { DashboardWrapper } from "@/components/echoai/DashboardWrapper";
 
+
+
 export const metadata: Metadata = {
-  title: "EchoAI Music | Premium AI Ecosystem",
+  title: "Nexus | Premium AI Ecosystem",
   description:
-    "High-fidelity AI-powered music dashboard blending Spotify intelligence, YouTube playback, and Llama 3 insights.",
+    "High-fidelity AI-powered music dashboard blending Spotify intelligence, YouTube playback, and Echo AI insights.",
   manifest: "/manifest.json",
   icons: {
     apple: "/icons/icon-192x192.png",
@@ -15,7 +17,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "EchoAI Music",
+    title: "Nexus",
   },
   formatDetection: {
     telephone: false,

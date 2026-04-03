@@ -8,6 +8,7 @@ import { type Song, type ExpandedPlayerProps } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { JamSession } from "./JamSession";
+import { MusicArtwork } from "./MusicArtwork";
 
 export function MobileExpandedPlayer({
   onClose,
@@ -322,7 +323,7 @@ export function MobileExpandedPlayer({
     >
       {/* Background */}
       <div className="absolute inset-0 z-0">
-        <img src={currentSong.artwork} alt="" className="h-full w-full object-cover opacity-60 blur-[100px]" onError={() => setImageError(true)} />
+         <MusicArtwork src={currentSong.artwork} alt={currentSong.title} className="h-full w-full object-cover blur-[100px] opacity-60" />
         <div className="absolute inset-0 bg-black/40" />
       </div>
 
@@ -367,7 +368,9 @@ export function MobileExpandedPlayer({
                     >
                         <ChevronDown size={24} className="text-white/70" />
                     </button>
-                    <motion.img layoutId="compact-art" src={currentSong.artwork} alt="" className="h-10 w-10 rounded-lg object-cover shadow-lg" />
+                    <motion.div layoutId="compact-art" className="h-10 w-10 shrink-0 rounded-lg overflow-hidden shadow-lg">
+                       <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={16} />
+                    </motion.div>
                     <div className="flex-1 min-w-0">
                         <h2 className="truncate text-base font-black text-white">{currentSong.title}</h2>
                         <p className="truncate text-xs font-bold text-white/50">{currentSong.artist}</p>
@@ -395,7 +398,7 @@ export function MobileExpandedPlayer({
                     {viewMode === "video" ? (
                         <YouTube videoId={currentSong.musicVideoId || currentSong.id} opts={youtubeOpts} onReady={e => { ytPlayerInstance.current = e.target; e.target.setVolume(volume); if(isPlaying) e.target.playVideo(); }} className="h-full w-full" />
                     ) : (
-                        <img src={currentSong.artwork} alt="" className="h-full w-full object-cover" />
+                        <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={64} />
                     )}
                 </motion.div>
               </div>
@@ -434,42 +437,63 @@ export function MobileExpandedPlayer({
             >
               {activeTab === "lyrics" && (
                 <div ref={scrollRef} className="flex-1 overflow-y-auto px-10 pt-10 pb-[40dvh] custom-scrollbar no-scrollbar swipe-up">
-                  {lines.map((line, index) => {
-                    const isInstrumental = hasSynced && syncedLines[index]?.isInstrumental;
-                    const isActive = index === activeIndex;
-                    
-                    let instProgress = 0;
-                    if (isInstrumental && isActive) {
-                      const start = syncedLines[index].at;
-                      const next = syncedLines[index + 1];
-                      const end = next ? next.at : start + 5;
-                      const dur = end > start ? end - start : 5;
-                      instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
-                    }
+                  <div className="max-w-2xl mx-auto">
+                    {lines.map((line, index) => {
+                      const isInstrumental = hasSynced && syncedLines[index]?.isInstrumental;
+                      const isActive = index === activeIndex;
+                      const isPast = index < activeIndex;
+                      const isFuture = index > activeIndex;
+                      const isNearlyActive = Math.abs(index - activeIndex) <= 1;
+                      
+                      let instProgress = 0;
+                      if (isInstrumental && isActive) {
+                        const start = syncedLines[index].at;
+                        const next = syncedLines[index + 1];
+                        const end = next ? next.at : start + 5;
+                        const dur = end > start ? end - start : 5;
+                        instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
+                      }
 
-                    const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
-                    const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
-                    const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
+                      const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
+                      const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
+                      const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
 
-                    return (
-                      <div 
-                        key={index} 
-                        ref={el => { elementsRef.current[index] = el; }}
-                        onClick={() => hasSynced && onSeek(syncedLines[index].at)}
-                        className={`transition-all duration-700 origin-left ${isInstrumental ? (isActive ? "h-20 opacity-100" : "h-0 opacity-0 overflow-hidden") : "py-4"} ${isActive ? "text-white text-[32px] font-black opacity-100 scale-100" : "text-white/20 text-[28px] font-bold opacity-30 scale-90"}`}
-                      >
-                        {isInstrumental ? (
-                          <div className={`flex gap-3 items-center h-full transition-all duration-1000 ${isActive ? "opacity-100" : "opacity-0"}`}>
-                            <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.1 }} />
-                            <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.1 }} />
-                            <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
-                          </div>
-                        ) : (
-                          line
-                        )}
-                      </div>
-                    );
-                  })}
+                      return (
+                        <div 
+                          key={index} 
+                          ref={el => { elementsRef.current[index] = el; }}
+                          onClick={() => hasSynced && onSeek(syncedLines[index].at)}
+                          className={`group flex items-center transition-all duration-500 ease-in-out origin-left cursor-pointer transform ${
+                            isInstrumental 
+                                ? (isActive ? "h-20 opacity-100" : "h-0 opacity-0 overflow-hidden") 
+                                : "py-5"
+                          } ${
+                            isActive 
+                                ? "opacity-100 scale-105 blur-0 translate-x-2" 
+                                : "opacity-40 scale-95 blur-[0.4px] -translate-x-1"
+                          } ${
+                            isPast && !isActive ? "translate-y-1" : isFuture && !isActive ? "-translate-y-1" : "translate-y-0"
+                          }`}
+                        >
+                          {isInstrumental ? (
+                            <div className={`flex gap-3 items-center h-full transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
+                              <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.1 }} />
+                              <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.1 }} />
+                              <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
+                            </div>
+                          ) : (
+                            <p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all duration-500 ${
+                                isActive 
+                                  ? "text-[32px] leading-[1.1] text-white opacity-100 font-bold" 
+                                  : "text-[26px] leading-[1.2] text-white/50 opacity-40"
+                              }`}>
+                              {line}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               
@@ -481,7 +505,9 @@ export function MobileExpandedPlayer({
                       </div>
                       {upNextQueue.map((song, i) => (
                           <div key={song.id} onClick={() => onSongClick(song, false)} className="flex items-center gap-4 py-3 border-b border-white/5">
-                              <img src={song.artwork} alt="" className="h-14 w-14 rounded-lg object-cover shadow-sm" />
+                              <div className="h-14 w-14 shrink-0 rounded-lg overflow-hidden shadow-sm">
+                                 <MusicArtwork src={song.artwork} alt={song.title} iconSize={18} />
+                              </div>
                               <div className="flex-1 min-w-0">
                                   <p className="truncate text-base font-bold text-white">{song.title}</p>
                                   <p className="truncate text-sm font-medium text-white/30">{song.artist}</p>
@@ -512,15 +538,23 @@ export function MobileExpandedPlayer({
               )}
 
               {activeTab === "jam" && (
-                 <div className="flex-1 overflow-y-auto px-10 pt-10 pb-[40dvh] custom-scrollbar swipe-up">
-                     <h2 className="text-2xl font-black text-white mb-8">Nexus Jam</h2>
-                     <JamSession />
-                     <div className="mt-8 p-6 rounded-3xl bg-white/5 border border-white/5 shadow-2xl">
-                         <p className="text-sm font-bold text-white/60 leading-relaxed italic">
-                             "Jam lets you listen to music simultaneously with friends. 
-                             Control is shared—anyone can play, pause, or skip tracks in real-time."
-                         </p>
+                 <div className="flex-1 overflow-y-auto px-8 pt-6 pb-[40dvh] custom-scrollbar swipe-up">
+                     <div className="mb-8 space-y-1">
+                        <h2 className="text-[28px] font-black text-white tracking-tight">Echo AI</h2>
+                        <p className="text-[13px] font-bold text-white/30 uppercase tracking-[0.2em]">Shared Listening</p>
                      </div>
+                     <JamSession />
+                     <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="mt-10 rounded-[28px] border border-white/5 bg-white/3 p-8 shadow-2xl backdrop-blur-xl"
+                      >
+                         <p className="text-[15px] font-medium leading-[1.6] text-white/60">
+                             Echo AI lets you listen to music simultaneously with friends. 
+                             <span className="block mt-2 font-bold text-white/80">Control is shared—anyone can play, pause, or skip tracks in real-time.</span>
+                         </p>
+                     </motion.div>
                  </div>
               )}
             </motion.div>

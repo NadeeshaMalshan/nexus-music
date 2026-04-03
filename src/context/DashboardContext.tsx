@@ -51,6 +51,7 @@ type DashboardContextType = {
 
   // View State (Shared but UI-specific)
   isRightSidebarOpen: boolean;
+  rightSidebarMode: "queue" | "jam" | "lyrics";
   isExpandedPlayerOpen: boolean;
   selectedPlaylist: YouTubePlaylist | null;
   palette: { primary: string; secondary: string; accent: string };
@@ -63,6 +64,7 @@ type DashboardContextType = {
   setUpNextQueue: React.Dispatch<React.SetStateAction<Song[]>>;
   setVolume: (volume: number) => void;
   setIsRightSidebarOpen: (open: boolean) => void;
+  setRightSidebarMode: (mode: "queue" | "jam" | "lyrics") => void;
   setIsExpandedPlayerOpen: (open: boolean) => void;
   setSelectedPlaylist: (playlist: YouTubePlaylist | null) => void;
   onTogglePlay: () => void;
@@ -134,6 +136,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [lastSeedFetched, setLastSeedFetched] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+  const [rightSidebarMode, setRightSidebarMode] = useState<"queue" | "jam" | "lyrics">("queue");
   const [isExpandedPlayerOpen, setIsExpandedPlayerOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
@@ -160,16 +163,22 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     player: NonNullable<(typeof ytPlayerRef)["current"]>,
     videoId: string
   ) {
-    if (viewModeRef.current === "video") {
+    // If we're in video mode or if we haven't explicitly intended to play yet (e.g. restoration from localStorage)
+    // we use cueVideoById to load the video metadata without starting playback automatically.
+    if (viewModeRef.current === "video" || userIntentRef.current === "paused") {
       player.cueVideoById(videoId);
-      queueMicrotask(() => {
-        try {
-          player.pauseVideo();
-          player.setVolume(0);
-        } catch {
-          /* ignore */
-        }
-      });
+      
+      // Additional steps for video mode sync
+      if (viewModeRef.current === "video") {
+        queueMicrotask(() => {
+          try {
+            player.pauseVideo();
+            player.setVolume(0);
+          } catch {
+            /* ignore */
+          }
+        });
+      }
     } else {
       player.loadVideoById(videoId);
     }
@@ -568,7 +577,17 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     
     // We prioritize audioData.videoId, but fallback to currentSong.id for instant start
     const targetId = audioData?.videoId || currentSong?.id;
-    if (!targetId || targetId === lastProcessedIdRef.current) return;
+    if (!targetId) {
+       // If no song is selected, ensure the player stops and clears
+       try {
+         ytPlayerRef.current.pauseVideo();
+         ytPlayerRef.current.cueVideoById("");
+       } catch {}
+       lastProcessedIdRef.current = null;
+       return;
+    }
+
+    if (targetId === lastProcessedIdRef.current) return;
     
     lastProcessedIdRef.current = targetId;
     syncHiddenPlayerForViewMode(ytPlayerRef.current, targetId);
@@ -901,6 +920,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setQueueSongs,
     setVolume,
     setIsRightSidebarOpen,
+    setRightSidebarMode,
     setIsExpandedPlayerOpen,
     setSelectedPlaylist,
     onTogglePlay,
@@ -933,13 +953,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setViewMode,
     ytPlayerRef,
     setUpNextQueue,
+    rightSidebarMode,
   }), [
     audioData, queueSongs, currentSong, isPlaying, currentTimeSec, 
     durationSec, volume, lyricsData, lyricsLoading, knowFacts, 
     knowLoading, likedSongs, upNextQueue, playedHistory, aiLoading, 
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
-    setIsPlaying, setUpNextQueue
+    setIsPlaying, setUpNextQueue, rightSidebarMode
   ]);
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;

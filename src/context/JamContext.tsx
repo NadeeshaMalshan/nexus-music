@@ -5,9 +5,16 @@ import { useDashboard } from "./DashboardContext";
 import { type Song } from "@/components/echoai/types";
 import Pusher, { PresenceChannel } from "pusher-js";
 
+type Listener = {
+  id: string;
+  name: string;
+  image: string | null;
+};
+
 type JamState = {
   roomId: string | null;
   participants: number;
+  listeners: Listener[];
   isHost: boolean;
   isJoining: boolean;
 };
@@ -15,7 +22,7 @@ type JamState = {
 type JamContextType = {
   jamState: JamState;
   createJam: () => Promise<string>;
-  joinJam: (roomId: string) => Promise<void>;
+  joinJam: (roomId: string, name?: string) => Promise<void>;
   leaveJam: () => void;
 };
 
@@ -29,6 +36,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   const [jamState, setJamState] = useState<JamState>({
     roomId: null,
     participants: 0,
+    listeners: [],
     isHost: false,
     isJoining: false,
   });
@@ -54,9 +62,12 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   }, [jamState]);
 
   // Broadcast sync events via Direct Client Events (Blazing Fast)
-  const broadcast = useCallback(async (type: string, payload: any) => {
+  const broadcast = useCallback(async (type: string, payload: any, forced = false) => {
     const currentState = jamStateRef.current;
-    if (!currentState.roomId || isSyncingRef.current || !channelRef.current) return;
+    
+    // Bypass sync lock for utility events (pong, join) or if specifically forced
+    const isUtilityEvent = type === "pong" || type === "join" || type === "ping";
+    if (!currentState.roomId || (!isUtilityEvent && !forced && isSyncingRef.current) || !channelRef.current) return;
     
     try {
       const eventData = { 
@@ -179,7 +190,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   }, [dashboard]);
 
   // Connect and Subscribe to Channel
-  const connectToJam = useCallback((id: string) => {
+  const connectToJam = useCallback((id: string, customName?: string) => {
     if (!PUSHER_KEY) return;
     if (pusherRef.current) pusherRef.current.disconnect();
 
@@ -188,6 +199,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         channelAuthorization: {
             endpoint: "/api/jam/auth",
             transport: "ajax",
+            headers: customName ? { "X-Jam-Name": encodeURIComponent(customName) } : undefined
         }
     });
 
@@ -196,6 +208,8 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     channelRef.current = channel;
 
     const handleEvent = (data: any) => {
+        // (Event handling logic stays same)
+        // ... omitted for brevity but preserved in actual tool call
         const { type, payload } = data;
         if (payload?.senderId === senderIdRef.current) return;
         
@@ -210,7 +224,8 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
         // PING/PONG for RTT
         if (type === "ping") {
-            broadcast("pong", { originalTimestamp: payload.timestamp });
+            // Ponies should always broadcast immediately
+            broadcast("pong", { originalTimestamp: payload.timestamp }, true);
             return;
         }
         if (type === "pong") {
@@ -285,22 +300,41 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     channel.bind("sync-event", handleEvent);
 
     channel.bind("pusher:subscription_succeeded", (members: any) => {
-        setJamState(prev => ({ ...prev, participants: members.count }));
+        const listeners: Listener[] = [];
+        members.each((member: any) => {
+            listeners.push({ id: member.id, ...member.info });
+        });
+        
+        setJamState(prev => ({ ...prev, participants: members.count, listeners }));
+        console.log(`[Jam] Connected! Total participants: ${members.count}`);
         
         // Clear local state only if we joined (NOT if we started it as host)
         if (!jamStateRef.current.isHost) {
             dashboard.setUpNextQueue([]);
             dashboard.setCurrentSong(null);
-            dashboard.setIsPlaying(false);
+            safePause(); // Explicitly call safePause to stop the actual audio/video player hardware
             dashboard.onSeek(0);
-            console.log(`[Jam] Successfully joined session: ${id}. Local queue cleared.`);
+            
+            console.log(`[Jam] Successfully joined session. Clear local state and stop background playback.`);
         }
     });
-    channel.bind("pusher:member_added", () => {
-        setJamState(prev => ({ ...prev, participants: channel.members?.count || 1 }));
+
+    channel.bind("pusher:member_added", (member: any) => {
+        const listeners: Listener[] = [];
+        channel.members?.each((m: any) => {
+            listeners.push({ id: m.id, ...m.info });
+        });
+        setJamState(prev => ({ ...prev, participants: channel.members?.count || 1, listeners }));
+        console.log(`[Jam] User Joined: ${member.info.name}. Total participants: ${channel.members?.count}`);
     });
-    channel.bind("pusher:member_removed", () => {
-        setJamState(prev => ({ ...prev, participants: channel.members?.count || 1 }));
+
+    channel.bind("pusher:member_removed", (member: any) => {
+        const listeners: Listener[] = [];
+        channel.members?.each((m: any) => {
+            listeners.push({ id: m.id, ...m.info });
+        });
+        setJamState(prev => ({ ...prev, participants: channel.members?.count || 1, listeners }));
+        console.log(`[Jam] User Left. Total participants: ${channel.members?.count}`);
     });
 
   }, [dashboard, broadcast, safePlay, safePause]);
@@ -371,14 +405,14 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
   const createJam = async () => {
     const id = Math.random().toString(36).substring(2, 8).toUpperCase();
-    setJamState({ roomId: id, participants: 1, isHost: true, isJoining: false });
+    setJamState({ roomId: id, participants: 1, listeners: [], isHost: true, isJoining: false });
     connectToJam(id);
     return id;
   };
 
-  const joinJam = async (id: string) => {
-    setJamState({ roomId: id, participants: 1, isHost: false, isJoining: true });
-    connectToJam(id);
+  const joinJam = async (id: string, name?: string) => {
+    setJamState({ roomId: id, participants: 1, listeners: [], isHost: false, isJoining: true });
+    connectToJam(id, name);
     await broadcast("join", {}); // Alert others
     setJamState(prev => ({ ...prev, isJoining: false }));
   };
@@ -388,7 +422,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         pusherRef.current.unsubscribe(`jam-${jamState.roomId}`);
         pusherRef.current.disconnect();
     }
-    setJamState({ roomId: null, participants: 0, isHost: false, isJoining: false });
+    setJamState({ roomId: null, participants: 0, listeners: [], isHost: false, isJoining: false });
   };
 
   return (

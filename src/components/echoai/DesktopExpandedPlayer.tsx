@@ -7,6 +7,7 @@ import { motion, AnimatePresence, Reorder } from "motion/react";
 import { type ExpandedPlayerProps } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
+import { MusicArtwork } from "./MusicArtwork";
 
 export function DesktopExpandedPlayer({
   onClose,
@@ -284,7 +285,7 @@ export function DesktopExpandedPlayer({
   return (
     <div className="fixed inset-0 z-50 flex max-h-[100dvh] flex-col bg-black overflow-hidden">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <img src={imageError ? "/images/default-artwork.png" : currentSong.artwork} alt="" className="h-full w-full scale-150 object-cover opacity-60 blur-[120px]" onError={() => setImageError(true)} />
+         <MusicArtwork src={currentSong.artwork} alt={currentSong.title} className="h-full w-full scale-150 blur-[120px] opacity-60" />
         <div className="absolute inset-0 bg-black/40" />
       </div>
 
@@ -303,7 +304,7 @@ export function DesktopExpandedPlayer({
             {viewMode === "video" ? (
               <YouTube videoId={currentSong.musicVideoId || currentSong.id} opts={youtubeOpts} onReady={e => { ytPlayerInstance.current = e.target; e.target.setVolume(volume); if(isPlaying) e.target.playVideo(); }} className="h-full w-full overflow-hidden" />
             ) : (
-              <img src={currentSong.artwork} alt="" className="h-full w-full object-cover" />
+              <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={48} />
             )}
           </motion.div>
           <div className="mt-6 flex w-full justify-center gap-1 rounded-full border border-white/5 bg-black/20 p-1 backdrop-blur-md max-w-[200px]">
@@ -320,10 +321,66 @@ export function DesktopExpandedPlayer({
           ) : (
             <div className="h-[75vh] w-full flex flex-col overflow-hidden">
                {activeTab === "lyrics" && (
-                 <div ref={scrollRef} className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-[10vh] pb-[40vh]">
-                    {lines.map((l, i) => (
-                        <div key={i} ref={el => { elementsRef.current[i] = el; }} className={`py-4 transition-all duration-500 ${i === activeIndex ? "text-white text-[40px] font-bold" : "text-white/20 text-[32px] font-bold"}`}>{l}</div>
-                    ))}
+                 <div ref={scrollRef} className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-[10vh] pb-[40vh] no-scrollbar">
+                    <div className="max-w-2xl mx-auto">
+                      {lines.map((l, i) => {
+                        const isInstrumental = hasSynced && syncedLines[i]?.isInstrumental;
+                        const isActive = i === activeIndex;
+                        const isPast = i < activeIndex;
+                        const isFuture = i > activeIndex;
+                        const isNearlyActive = Math.abs(i - activeIndex) <= 1;
+                        
+                        let instProgress = 0;
+                        if (isInstrumental && isActive) {
+                          const start = syncedLines[i].at;
+                          const next = syncedLines[i + 1];
+                          const end = next ? next.at : start + 5;
+                          const dur = end > start ? end - start : 5;
+                          instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
+                        }
+
+                        const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
+                        const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
+                        const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
+
+                        return (
+                          <div 
+                            key={i} 
+                            ref={el => { elementsRef.current[i] = el; }} 
+                            onClick={() => hasSynced && onSeek(syncedLines[i].at)}
+                            className={`group flex items-center transition-all duration-500 ease-in-out origin-left cursor-pointer transform ${
+                              isInstrumental 
+                                  ? (isActive ? "h-[100px] opacity-100" : "h-0 opacity-0 overflow-hidden") 
+                                  : "py-5"
+                            } ${
+                              isActive 
+                                  ? "opacity-100 scale-105 blur-0 translate-x-2" 
+                                  : "opacity-40 scale-95 blur-[1.2px] -translate-x-1"
+                            } ${
+                              isPast && !isActive ? "translate-y-1" : isFuture && !isActive ? "-translate-y-1" : "translate-y-0"
+                            } hover:opacity-70 hover:blur-0`}
+                          >
+                            {isInstrumental ? (
+                              <div className={`flex gap-4 items-center h-full transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
+                                <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.1 }} />
+                                <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.1 }} />
+                                <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
+                              </div>
+                            ) : (
+                              <p 
+                                className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)] transition-all duration-500 ${
+                                  isActive 
+                                    ? "text-[44px] leading-[1.1] text-white opacity-100 font-bold" 
+                                    : "text-[32px] leading-[1.2] text-white/50 opacity-40"
+                                }`}
+                              >
+                                {l}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                  </div>
                )}
                {activeTab === "queue" && (
@@ -334,7 +391,7 @@ export function DesktopExpandedPlayer({
                     </div>
                     {upNextQueue.map((s, i) => (
                         <div key={s.id} onClick={() => onSongClick(s, false)} className="flex items-center gap-4 py-3 hover:bg-white/5 rounded-xl px-2 cursor-pointer transition-colors">
-                            <img src={s.artwork} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                            <MusicArtwork src={s.artwork} alt={s.title} className="h-16 w-16 rounded-lg object-cover" iconSize={20} />
                             <div className="flex-1 min-w-0">
                                 <p className="truncate font-bold text-white">{s.title}</p>
                                 <p className="truncate text-sm text-white/40">{s.artist}</p>

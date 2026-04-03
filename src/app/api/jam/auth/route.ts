@@ -23,12 +23,21 @@ export async function POST(request: Request) {
     }
 
     // Generate unique user data for Presence Channel
-    const userId = session?.user?.email || `user-${Math.random().toString(36).substring(7)}`;
+    // We add a random suffix to ensure multiple tabs/devices from the same account count as unique members
+    const uniqueSuffix = Math.random().toString(36).substring(7);
+    
+    // Check for custom name in headers (passed when joining without login)
+    const customName = request.headers.get("X-Jam-Name");
+    const decodedName = customName ? decodeURIComponent(customName) : null;
+    
+    const userId = session?.user?.email ? `${session.user.email}-${uniqueSuffix}` : `anon-${uniqueSuffix}`;
+    
     const presenceData = {
       user_id: userId,
       user_info: {
-        name: session?.user?.name || "Anonymous",
+        name: decodedName || session?.user?.name || "Guest",
         image: session?.user?.image || null,
+        socketId: socketId
       },
     };
 

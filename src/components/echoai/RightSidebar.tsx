@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { List, FileText, X, Play, Sparkles, Trash2, GripVertical, ListPlus, PlaySquare, Plus } from "lucide-react";
+import { List, FileText, X, Play, Sparkles, Trash2, GripVertical, ListPlus, PlaySquare, Plus, Radio, Mic2, Users } from "lucide-react";
 import { type Song } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { motion, AnimatePresence, Reorder } from "motion/react";
 import { JamSession } from "./JamSession";
+import { MusicArtwork } from "./MusicArtwork";
 
 
 interface RightSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  mode?: "queue" | "jam" | "lyrics";
   onSongClick: (song: Song, reset?: boolean) => void;
   upNextQueue?: Song[]; // Discovery Radio Queue
   lyricsContent: string | null;
@@ -29,6 +31,7 @@ interface RightSidebarProps {
 export function RightSidebar({
   isOpen,
   onClose,
+  mode = "queue",
   onSongClick,
   upNextQueue = [],
   lyricsContent,
@@ -44,7 +47,12 @@ export function RightSidebar({
   onClearQueue,
   onReorderUpNext,
 }: RightSidebarProps) {
-  const [activeTab, setActiveTab] = useState<"queue" | "lyrics">("queue");
+  const [activeTab, setActiveTab] = useState<"queue" | "lyrics" | "jam">("queue");
+
+  // Sync internal activeTab with external mode prop when it changes
+  useEffect(() => {
+    if (mode) setActiveTab(mode as "queue" | "jam" | "lyrics");
+  }, [mode]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -118,31 +126,7 @@ export function RightSidebar({
   return (
     <>
       <div className="fixed right-0 top-0 z-60 hidden h-[100dvh] w-[380px] flex-col bg-transparent backdrop-blur-3xl border-l border-white/5 shadow-2xl lg:flex">
-          <div className="flex items-center justify-between p-6 pt-[max(1.5rem,env(safe-area-inset-top))]">
-            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
-              <button
-                onClick={() => setActiveTab("queue")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-1.5 transition-all duration-400 ${
-                  activeTab === "queue"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-white/40 hover:text-white/60"
-                }`}
-              >
-                <List size={14} strokeWidth={2.5} />
-                <span className="text-[13px] font-bold tracking-tight">Queue</span>
-              </button>
-              <button
-                onClick={() => setActiveTab("lyrics")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-1.5 transition-all duration-400 ${
-                  activeTab === "lyrics"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-white/40 hover:text-white/60"
-                }`}
-              >
-                <FileText size={14} strokeWidth={2.5} />
-                <span className="text-[13px] font-bold tracking-tight">Lyrics</span>
-              </button>
-            </div>
+          <div className="flex items-center justify-end p-6 pt-[max(1.5rem,env(safe-area-inset-top))]">
             <button onClick={onClose} className="rounded-full p-2 text-white/20 transition-all hover:bg-white/5 hover:text-white">
               <X size={22} strokeWidth={2.5} />
             </button>
@@ -154,7 +138,6 @@ export function RightSidebar({
                 
                 {/* PRIMARY DISCOVERY QUEUE */}
                 <div>
-                  <JamSession />
                   <div className="flex items-center justify-between px-2 mb-6">
                     <div className="flex items-center gap-4">
                       <h2 className="text-[20px] font-black text-white tracking-tight">Queue</h2>
@@ -203,14 +186,7 @@ export function RightSidebar({
                                   <GripVertical size={14} />
                                 </div>
                                 <div className="relative shrink-0 w-12 h-12 rounded-xl overflow-hidden shadow-lg border border-white/5">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  {song.artwork ? (
-                                    <img src={song.artwork} alt="" className="h-full w-full object-cover" />
-                                  ) : (
-                                    <div className="h-full w-full bg-white/5 flex items-center justify-center">
-                                      <Sparkles className="text-white/10" size={20} />
-                                    </div>
-                                  )}
+                                   <MusicArtwork src={song.artwork} alt={song.title} iconSize={20} />
                                   <div className={`absolute inset-0 flex items-center justify-center transition-opacity ${isActive ? "bg-black/60 opacity-100" : "bg-black/40 opacity-0 group-hover:opacity-100"}`}>
                                     {isActive ? (
                                       <AudioVisualizer active={isActive} barCount={4} color="var(--art-accent, #FA243C)" width="18px" />
@@ -267,18 +243,28 @@ export function RightSidebar({
                   </Reorder.Group>
                 </div>
               </div>
+            ) : activeTab === "jam" ? (
+              <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
+                 <div className="mb-6 px-2">
+                    <h2 className="text-[24px] font-black text-white tracking-tight mb-2">Echo AI</h2>
+                    <p className="text-[13px] font-bold text-white/30 uppercase tracking-widest leading-none">Shared Listening Session</p>
+                 </div>
+                 <JamSession />
+              </div>
             ) : (
               <div className="flex h-full w-full flex-col relative">
                 <div 
                   ref={scrollRef} 
-                  className="flex-1 overflow-y-auto px-8 py-10 custom-scrollbar scroll-smooth no-scrollbar"
+                  className="flex-1 overflow-y-auto px-4 py-10 custom-scrollbar scroll-smooth no-scrollbar"
                 >
-                  <div className={!hasSynced ? "space-y-4" : "space-y-1 pb-24"}>
+                  <div className={`max-w-2xl mx-auto ${!hasSynced ? "space-y-4" : "space-y-1 pb-24"}`}>
                     {lines.map((line, index) => {
                       const isActive = hasSynced && index === activeIndex;
                       const isPast = hasSynced && index < activeIndex;
+                      const isFuture = hasSynced && index > activeIndex;
+                      const isNearlyActive = Math.abs(index - activeIndex) <= 1;
                       const isInstrumental = hasSynced && syncedLines[index]?.isInstrumental;
- 
+
                       let instProgress = 0;
                       if (isInstrumental && isActive) {
                         const start = syncedLines[index].at;
@@ -287,34 +273,46 @@ export function RightSidebar({
                         const dur = end > start ? end - start : 5;
                         instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
                       }
- 
+
                       const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
                       const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
                       const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
- 
+
                       return (
                         <div 
                           key={`${index}`} 
                           ref={(el) => { elementsRef.current[index] = el; }}
                           onClick={() => { if (hasSynced && onSeek) onSeek(syncedLines[index].at); }}
-                          className={`group flex items-center transition-all duration-1000 ease-out ${hasSynced ? 'cursor-pointer' : ''} ${isInstrumental ? (isActive ? "h-[100px] opacity-100" : "h-0 opacity-0 overflow-hidden") : "min-h-[70px] py-4"}`}
+                          className={`group flex items-center transition-all duration-500 ease-in-out origin-left transform ${
+                            hasSynced ? 'cursor-pointer' : ''
+                          } ${
+                            isInstrumental 
+                                ? (isActive ? "h-[100px] opacity-100" : "h-0 opacity-0 overflow-hidden") 
+                                : "min-h-[70px] py-4"
+                          } ${
+                            isActive 
+                                ? "opacity-100 scale-105 blur-0 translate-x-2" 
+                                : isNearlyActive
+                                    ? "opacity-40 scale-95 blur-[0.6px] translate-x-0"
+                                    : "opacity-10 scale-90 blur-[1.2px] -translate-x-1"
+                          } ${
+                            isPast && !isActive ? "translate-y-1" : isFuture && !isActive ? "-translate-y-1" : "translate-y-0"
+                          } hover:opacity-70 hover:blur-0`}
                         >
                           {isInstrumental ? (
-                            <div className={`flex gap-3 origin-left transition-all duration-1000 ${isActive ? "opacity-100" : "opacity-0"}`}>
+                            <div className={`flex gap-3 origin-left transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
                                 <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.1 }} />
                                 <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.1 }} />
                                 <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
                              </div>
                           ) : (
                             <p
-                              className={`w-full origin-left whitespace-pre-wrap wrap-break-word transition-all duration-700 font-black tracking-tight ${
+                              className={`w-full origin-left whitespace-pre-wrap break-words text-balance transition-all duration-500 font-black tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)] ${
                                 !hasSynced
                                   ? "text-[24px] leading-[1.3] text-white/80 scale-100 group-hover:text-white"
                                   : isActive
-                                    ? "text-[32px] leading-[1.1] text-white drop-shadow-2xl scale-100"
-                                    : isPast
-                                    ? "text-[22px] leading-[1.2] text-white/30 blur-[0.4px] scale-98 group-hover:text-white/60 group-hover:blur-0"
-                                    : "text-[22px] leading-[1.2] text-white/10 blur-[0.8px] scale-98 group-hover:text-white/40 group-hover:blur-0"
+                                    ? "text-[32px] leading-[1.1] text-white opacity-100 font-bold"
+                                    : "text-white/50 opacity-40 blur-[0.5px]"
                               }`}
                             >
                               {line}
@@ -323,16 +321,16 @@ export function RightSidebar({
                         </div>
                       );
                     })}
-                    <div className="mt-20 border-t border-white/5 pt-8 pb-12 opacity-30">
-                      <p className="text-[13px] font-bold text-white mb-1">Written by {currentArtist || "Unknown"}</p>
-                      <p className="text-[11px] font-medium text-white/60 uppercase tracking-widest">Lyrics via {lyricsSource || "Unknown"}</p>
-                    </div>
+                  </div>
+                  <div className="mt-20 border-t border-white/5 pt-8 pb-12 opacity-30">
+                    <p className="text-[13px] font-bold text-white mb-1">Written by {currentArtist || "Unknown"}</p>
+                    <p className="text-[11px] font-medium text-white/60 uppercase tracking-widest">Lyrics via {lyricsSource || "Unknown"}</p>
                   </div>
                 </div>
               </div>
             )}
           </div>
-        </div>
+      </div>
     </>
   );
 }

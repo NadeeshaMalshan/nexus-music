@@ -6,6 +6,7 @@ import { type YouTubePlaylist } from "@/lib/youtubeData";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { useSession } from "next-auth/react";
 import { useArtworkColors } from "@/lib/useArtworkColors";
+import { useSettings } from "./SettingsContext";
 
 type AudioPayload = {
   audioUrl: string;
@@ -107,6 +108,7 @@ const DashboardContext = createContext<DashboardContextType | undefined>(undefin
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
+  const { settings } = useSettings();
   
   const ytPlayerRef = useRef<{
     playVideo: () => void;
@@ -150,8 +152,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [knowFacts, setKnowFacts] = useState<string[]>([]);
   const [knowLoading, setKnowLoading] = useState(false);
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<"music" | "video">("music");
-  const viewModeRef = useRef<"music" | "video">("music");
+  const [viewMode, setViewMode] = useState<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
+  const viewModeRef = useRef<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const userIntentRef = useRef<"playing" | "paused">("paused");
 
   useEffect(() => {
@@ -358,6 +360,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (currentSeed === lastSeedFetched) return;
 
     async function fetchAiNextSongs() {
+      if (!settings.autoplay) return;
       setAiLoading(true);
       try {
         const recentQueue = queueSongs.slice(-4).map((s) => ({ title: s.title, artist: s.artist }));
@@ -394,6 +397,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     void fetchAiNextSongs();
 
     async function fetchUpNext() {
+      if (!settings.autoplay) return;
       try {
         const res = await fetch(`/api/queue?videoId=${currentSong!.id}`);
         if (!res.ok) {
@@ -503,20 +507,42 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                   setCurrentTimeSec(current);
                 }
 
-                // BACKGLOUND WATCHDOG: If we are within 0.5s of end, or past it, and still intend to play
-                // but hasn't advanced to next yet, we trigger manually to overcome background throttling.
-                if (duration > 0 && current >= duration - 0.5 && userIntentRef.current === "playing") {
+                // BACKGLOUND WATCHDOG: Overcome background throttling
+                // If Gapless is ON, we trigger slightly earlier (1s) to mask the loading delay.
+                const bufferTime = settings.gaplessPlayback ? 1.0 : 0.5;
+                if (duration > 0 && current >= duration - bufferTime && userIntentRef.current === "playing") {
                    onNextRef.current();
                 }
               }
               if (Number.isFinite(duration) && duration > 0) setDurationSec(duration);
+
+              // Apply Volume & Quality
+              if (viewModeRef.current === "video") {
+                player.setVolume(0);
+                player.pauseVideo();
+              } else {
+                // Crossfade Logic: Ramp down volume if near the end
+                const currentSec = player.getCurrentTime() || 0;
+                if (duration > 0 && settings.crossfade > 0 && currentSec >= (duration - settings.crossfade)) {
+                  const remaining = duration - currentSec;
+                  const ratio = Math.max(0, remaining / settings.crossfade);
+                  const targetVolume = Math.floor(volume * ratio);
+                  player.setVolume(targetVolume);
+                } else {
+                  player.setVolume(volume);
+                }
+                
+                // Suggest audio quality
+                const qualityMap: Record<string, string> = {
+                  high: "highres",
+                  normal: "medium",
+                  low: "small"
+                };
+                try {
+                  (player as any)?.setPlaybackQuality?.(qualityMap[settings.audioQuality] || "auto");
+                } catch (e) {}
+              }
             }, 250);
-            if (viewModeRef.current === "video") {
-              ytPlayerRef.current?.setVolume(0);
-              ytPlayerRef.current?.pauseVideo();
-            } else {
-              ytPlayerRef.current?.setVolume(volume);
-            }
           },
           onStateChange: (event: any) => {
             // Only sync isPlaying if we're NOT in video mode, to let the visible player lead state
@@ -755,6 +781,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const now = Date.now();
     if (now - lastNextCallRef.current < 2000) return;
     lastNextCallRef.current = now;
+
+    if (!settings.autoplay && upNextQueue.length === 0) {
+      setIsPlaying(false);
+      return;
+    }
 
     if (upNextQueue.length > 0) {
       const next = upNextQueue[0];

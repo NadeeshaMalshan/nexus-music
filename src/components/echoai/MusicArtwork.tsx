@@ -32,18 +32,6 @@ export function MusicArtwork({ src, alt = "", className = "", iconSize = 24 }: M
 
   return (
     <div className={`relative flex h-full w-full items-center justify-center overflow-hidden bg-linear-to-br from-[#1E1335] via-[#2A1B4D] to-[#452773] ${className}`}>
-      {/* Animated Background Shimmer */}
-      <motion.div
-        animate={{
-          x: ["-100%", "100%"],
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-        className="absolute inset-0 z-0 bg-linear-to-r from-transparent via-white/5 to-transparent skew-x-12"
-      />
 
       {/* Glossy Overlay */}
       <div className="absolute inset-0 z-10 bg-linear-to-tr from-white/5 to-white/10 opacity-30" />

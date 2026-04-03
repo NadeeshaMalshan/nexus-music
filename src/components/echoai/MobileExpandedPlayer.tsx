@@ -9,6 +9,7 @@ import { parseLrcContent } from "@/lib/lrc";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { JamSession } from "./JamSession";
 import { MusicArtwork } from "./MusicArtwork";
+import { useSettings } from "@/context/SettingsContext";
 
 export function MobileExpandedPlayer({
   onClose,
@@ -43,6 +44,7 @@ export function MobileExpandedPlayer({
   onClearQueue,
   onReorderUpNext,
 }: ExpandedPlayerProps) {
+  const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls" | "jam">(viewMode === "video" ? "controls" : "lyrics");
   const [imageError, setImageError] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
@@ -396,7 +398,19 @@ export function MobileExpandedPlayer({
                     className={`w-full max-w-[340px] shadow-[0_30px_60px_rgba(0,0,0,0.5)] rounded-[20px] overflow-hidden ${viewMode === 'video' ? 'aspect-video' : 'aspect-square'}`}
                 >
                     {viewMode === "video" ? (
-                        <YouTube videoId={currentSong.musicVideoId || currentSong.id} opts={youtubeOpts} onReady={e => { ytPlayerInstance.current = e.target; e.target.setVolume(volume); if(isPlaying) e.target.playVideo(); }} className="h-full w-full" />
+                        <YouTube 
+                            videoId={currentSong.musicVideoId || currentSong.id} 
+                            opts={youtubeOpts} 
+                            onReady={e => { 
+                                ytPlayerInstance.current = e.target; 
+                                e.target.setVolume(volume); 
+                                // Apply video quality setting
+                                const vq = settings.videoQuality === "auto" ? "default" : settings.videoQuality;
+                                try { e.target.setPlaybackQuality(vq); } catch(err) {}
+                                if(isPlaying) e.target.playVideo(); 
+                            }} 
+                            className="h-full w-full" 
+                        />
                     ) : (
                         <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={64} />
                     )}

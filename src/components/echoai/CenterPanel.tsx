@@ -11,6 +11,7 @@ import { usePathname } from "next/navigation";
 import { useDashboard } from "@/context/DashboardContext";
 import { YouTubeLibrary } from "./YouTubeLibrary";
 import { PlaylistDetail } from "./PlaylistDetail";
+import { Settings } from "./Settings";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -459,6 +460,9 @@ export function CenterPanel(props: CenterPanelProps) {
         currentSongId={currentSongId}
       />
     );
+  }
+  if (activeView === "settings") {
+    return <Settings />;
   }
 
   return (

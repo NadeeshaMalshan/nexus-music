@@ -100,7 +100,6 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
       >
           <div className="absolute inset-0 opacity-[0.15]" style={{
             backgroundImage: `radial-gradient(circle at 50% 50%, ${palette.accent}, transparent)`,
-            animation: 'pulse 10s infinite alternate ease-in-out'
           }} />
       </div>
       <div className="pointer-events-none absolute inset-0 bg-black/10" />

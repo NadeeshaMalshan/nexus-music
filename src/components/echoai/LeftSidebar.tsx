@@ -344,19 +344,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
           { id: "home", icon: Home, label: "Home", href: "/" },
           { id: "search", icon: Search, label: "Search", href: "/search" },
           { id: "library", icon: ListMusic, label: "Library", href: "/library" },
-          { 
-            id: "auth", 
-            icon: status === "authenticated" ? User : LogIn, 
-            label: status === "authenticated" ? "Account" : "Login",
-            onClick: () => {
-              console.log("Auth trigger fired, current status:", status);
-              if (status === "loading") return;
-              if (status === "authenticated") void signOut();
-              else void signIn("google");
-            },
-            isButton: true,
-            isLoading: status === "loading"
-          },
+          { id: "settings", icon: Settings, label: "Settings", href: "/settings" },
         ].map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;

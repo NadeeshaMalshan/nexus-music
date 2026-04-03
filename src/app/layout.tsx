@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "../components/Providers";
 import { DashboardProvider } from "@/context/DashboardContext";
+import { SettingsProvider } from "@/context/SettingsContext";
 import { DashboardWrapper } from "@/components/echoai/DashboardWrapper";
 
 
@@ -47,11 +48,13 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-[#050505] text-zinc-100">
         <Providers>
-          <DashboardProvider>
-            <JamProvider>
-              <DashboardWrapper>{children}</DashboardWrapper>
-            </JamProvider>
-          </DashboardProvider>
+          <SettingsProvider>
+            <DashboardProvider>
+              <JamProvider>
+                <DashboardWrapper>{children}</DashboardWrapper>
+              </JamProvider>
+            </DashboardProvider>
+          </SettingsProvider>
         </Providers>
       </body>
     </html>

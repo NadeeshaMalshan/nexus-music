@@ -39,11 +39,20 @@ export function SidebarAuth() {
             <p className="text-sm font-medium text-white truncate">
               {session.user.name || "User"}
             </p>
+            {(session as any).error === "RefreshAccessTokenError" && (
+              <p className="text-[10px] font-bold text-red-400 uppercase tracking-tight">Sync Problem</p>
+            )}
           </div>
           <button
-            onClick={() => signOut()}
-            className="p-2 text-white/50 hover:text-white hover:bg-white/[0.08] rounded-lg transition-colors shrink-0"
-            aria-label="Log out"
+            onClick={() => {
+              // Detailed reset: Clear everything including music state
+              localStorage.removeItem("nexus_current_song");
+              localStorage.removeItem("nexus_queue");
+              localStorage.removeItem("nexus_history");
+              signOut();
+            }}
+            className={`p-2 rounded-lg transition-colors shrink-0 ${(session as any).error === "RefreshAccessTokenError" ? "text-red-400 bg-red-400/10 hover:bg-red-400/20" : "text-white/50 hover:text-white hover:bg-white/[0.08]"}`}
+            title={(session as any).error === "RefreshAccessTokenError" ? "Re-sync account (Auth Expired)" : "Sign out"}
           >
             <LogOut size={18} />
           </button>

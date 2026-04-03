@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Song } from "./types";
+import { SwipeableSongRow } from "./SwipeableSongRow";
+import { SongMenu } from "./SongMenu";
+import { useDashboard } from "@/context/DashboardContext";
 
 interface SearchPageProps {
   onClose: () => void;
@@ -27,6 +30,8 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
   const [songColors, setSongColors] = useState<Record<string, string>>({});
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const { likedSongs, onRateSong } = useDashboard();
   const searchTimeoutRef = useRef<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -376,71 +381,112 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
             </h2>
             <div className="flex flex-col gap-1">
               {mappedSongs.map((song, index) => (
-                <motion.div
+                <SwipeableSongRow
                   key={song.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                  className="group flex cursor-pointer items-center justify-between rounded-2xl p-3 px-4 transition-all hover:bg-white/[0.04]"
-                  onClick={() => {
+                  disableDrag={openMenuId === song.id}
+                  className={openMenuId === song.id ? "z-50" : "z-10"}
+                  onSwipeLeft={() => {
                     void (async () => {
                       const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
                       const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
-                      onSongSelect({ ...song, artwork: highResArtwork, color: dynamicColor });
-                      onClose();
+                      onAddToQueue?.({ ...song, artwork: highResArtwork, color: dynamicColor });
+                    })();
+                  }}
+                  onSwipeRight={() => {
+                    void (async () => {
+                      const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
+                      const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
+                      onPlayNext?.({ ...song, artwork: highResArtwork, color: dynamicColor });
                     })();
                   }}
                 >
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-xl border border-white/10 shadow-lg">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={song.artwork?.replace(/([=|-][swh])\d+/g, '$1600') || song.artwork} alt={song.title} className="h-full w-full object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                         <Play fill="white" className="text-white w-6 h-6 ml-1" />
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="group flex cursor-pointer items-center justify-between rounded-2xl p-3 px-4 transition-all hover:bg-white/[0.04]"
+                    onClick={() => {
+                      void (async () => {
+                        const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
+                        const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
+                        onSongSelect({ ...song, artwork: highResArtwork, color: dynamicColor });
+                        onClose();
+                      })();
+                    }}
+                  >
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-xl border border-white/10 shadow-lg">
+                        <img src={song.artwork?.replace(/([=|-][swh])\d+/g, '$1600') || song.artwork} alt={song.title} className="h-full w-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                           <Play fill="white" className="text-white w-6 h-6 ml-1" />
+                        </div>
+                      </div>
+                      <div className="flex flex-col flex-1 min-w-0 pr-4">
+                        <p className="truncate text-[18px] font-bold text-white leading-tight mb-1">{song.title}</p>
+                        <p className="truncate text-[15px] font-medium text-white/40">{activeCategory === "Artists" ? "Artist" : activeCategory === "Albums" ? "Album" : "Song"} · {song.artist}</p>
                       </div>
                     </div>
-                    <div className="flex flex-col flex-1 min-w-0 pr-4">
-                      <p className="truncate text-[18px] font-bold text-white leading-tight mb-1">{song.title}</p>
-                      <p className="truncate text-[15px] font-medium text-white/40">{activeCategory === "Artists" ? "Artist" : activeCategory === "Albums" ? "Album" : "Song"} · {song.artist}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="hidden items-center gap-2 lg:flex opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void (async () => {
-                            const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
-                            const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
-                            onPlayNext?.({ ...song, artwork: highResArtwork, color: dynamicColor });
-                          })();
-                        }}
-                        className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all outline-hidden"
-                        title="Play Next"
+                    <div className="flex items-center gap-4 relative">
+                      <div className="hidden items-center gap-2 lg:flex opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void (async () => {
+                              const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
+                              const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
+                              onPlayNext?.({ ...song, artwork: highResArtwork, color: dynamicColor });
+                            })();
+                          }}
+                          className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all outline-hidden"
+                          title="Play Next"
+                        >
+                          <PlaySquare size={20} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void (async () => {
+                              const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
+                              const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
+                              onAddToQueue?.({ ...song, artwork: highResArtwork, color: dynamicColor });
+                            })();
+                          }}
+                          className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all outline-hidden"
+                          title="Add to Queue"
+                        >
+                          <ListPlus size={20} />
+                        </button>
+                      </div>
+                      <span className="text-[15px] font-bold text-white/20">{song.duration}</span>
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setOpenMenuId(song.id === openMenuId ? null : song.id); 
+                        }} 
+                        className={`text-white/20 hover:text-white transition-all p-2 rounded-full ${openMenuId === song.id ? "bg-white/10 text-white" : "hover:bg-white/10"}`}
                       >
-                        <PlaySquare size={20} />
+                         <MoreHorizontal size={20} />
                       </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void (async () => {
-                            const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
-                            const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
-                            onAddToQueue?.({ ...song, artwork: highResArtwork, color: dynamicColor });
-                          })();
+
+                      {/* Explicit Menu Portal/Replacement */}
+                      <SongMenu
+                        song={song}
+                        isOpen={openMenuId === song.id}
+                        onClose={() => setOpenMenuId(null)}
+                        onAddToQueue={() => {
+                           const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
+                           onAddToQueue?.({ ...song, artwork: highResArtwork });
                         }}
-                        className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all outline-hidden"
-                        title="Add to Queue"
-                      >
-                        <ListPlus size={20} />
-                      </button>
+                        onPlayNext={() => {
+                           const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
+                           onPlayNext?.({ ...song, artwork: highResArtwork });
+                        }}
+                        onLike={() => onRateSong?.(song.id, likedSongs.has(song.id) ? "none" : "like")}
+                        isLiked={likedSongs.has(song.id)}
+                      />
                     </div>
-                    <span className="text-[15px] font-bold text-white/20">{song.duration}</span>
-                    <button className="text-white/20 hover:text-white transition-colors">
-                       <MoreHorizontal size={20} />
-                    </button>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                </SwipeableSongRow>
               ))}
             </div>
             

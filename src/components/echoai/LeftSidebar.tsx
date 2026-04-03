@@ -349,27 +349,10 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
           const Icon = item.icon;
           const isActive = activeView === item.id;
           
-          if (item.isButton) {
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={item.onClick}
-                disabled={item.isLoading}
-                className={`flex flex-1 flex-col items-center gap-1 py-2 transition-all ${item.isLoading ? "opacity-20 cursor-wait" : "text-zinc-500 hover:text-zinc-100"}`}
-              >
-                <Icon size={24} strokeWidth={2} className={item.isLoading ? "animate-pulse" : ""} />
-                <span className="text-[10px] font-black uppercase tracking-tight truncate w-full text-center">
-                   {item.label}
-                </span>
-              </button>
-            );
-          }
-
           return (
             <Link
               key={item.id}
-              href={item.href || "#"}
+              href={item.href}
               className={`flex flex-1 flex-col items-center gap-1 py-2 transition-all ${
                 isActive ? "" : "text-zinc-500 hover:text-zinc-100"
               }`}

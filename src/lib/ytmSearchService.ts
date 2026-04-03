@@ -58,8 +58,27 @@ function mapYTMToMusicVideo(item: any) {
     }
   }
 
-  const durationSec = typeof item.duration === 'number' ? item.duration : 0;
-  const formattedDuration = formatDuration(durationSec);
+  let durationSec = 0;
+  let formattedDuration = "0:00";
+  
+  if (typeof item.duration === 'number') {
+    durationSec = item.duration;
+    formattedDuration = formatDuration(durationSec);
+  } else if (item.duration && typeof item.duration === 'object') {
+    // Some versions or result types have { label: "3:45", totalSeconds: 225 }
+    durationSec = item.duration.totalSeconds || 0;
+    formattedDuration = item.duration.label || formatDuration(durationSec);
+  } else if (typeof item.duration === 'string') {
+    // If it's a string, we might need to parse it (fallback)
+    formattedDuration = item.duration;
+    // Simple parser: 3:45 -> 225
+    const parts = formattedDuration.split(':');
+    if (parts.length === 2) {
+      durationSec = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    } else if (parts.length === 3) {
+      durationSec = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+    }
+  }
 
   return {
     youtubeId: item.videoId,

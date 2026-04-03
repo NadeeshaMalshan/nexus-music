@@ -42,8 +42,11 @@ function musicVideoToItem(m: {
   if (!id) return null;
   const artist = m.artists?.map((a) => a.name).filter(Boolean).join(", ") || "Unknown Artist";
   const dur =
+    (m as any).durationObj?.label ||
     m.duration?.label ||
-    (m.duration?.totalSeconds != null ? formatSeconds(m.duration.totalSeconds) : "0:00");
+    ((m as any).durationObj?.totalSeconds != null ? formatSeconds((m as any).durationObj.totalSeconds) : 
+     (m.duration?.totalSeconds != null ? formatSeconds(m.duration.totalSeconds) : 
+      (typeof m.duration === 'string' ? m.duration : "0:00")));
 
   let thumb = m.thumbnailUrl?.trim() || youtubeHqThumbnail(id);
   thumb = upgradeYtMusicThumbnail(thumb);

@@ -10,6 +10,7 @@ import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { JamSession } from "./JamSession";
 import { MusicArtwork } from "./MusicArtwork";
 import { useSettings } from "@/context/SettingsContext";
+import { useJam } from "@/context/JamContext";
 
 export function MobileExpandedPlayer({
   onClose,
@@ -45,6 +46,15 @@ export function MobileExpandedPlayer({
   onReorderUpNext,
 }: ExpandedPlayerProps) {
   const { settings } = useSettings();
+  const { jamState } = useJam();
+  const [jamWarning, setJamWarning] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (jamWarning) {
+      const t = setTimeout(() => setJamWarning(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [jamWarning]);
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls" | "jam">(viewMode === "video" ? "controls" : "lyrics");
   const [imageError, setImageError] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
@@ -321,8 +331,21 @@ export function MobileExpandedPlayer({
           onClose();
         }
       }}
-      className="fixed inset-0 z-50 flex flex-col bg-black overflow-hidden"
+      className="fixed inset-0 z-40 flex flex-col bg-black overflow-hidden"
     >
+      <AnimatePresence>
+        {jamWarning && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: -20, x: "-50%" }}
+            className="absolute top-20 left-1/2 z-50 rounded-full bg-red-500/90 px-6 py-3 text-xs font-black text-white shadow-2xl backdrop-blur-md whitespace-nowrap"
+          >
+            {jamWarning}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Background */}
       <div className="absolute inset-0 z-0">
          <MusicArtwork src={currentSong.artwork} alt={currentSong.title} className="h-full w-full object-cover blur-[100px] opacity-60" />
@@ -422,20 +445,26 @@ export function MobileExpandedPlayer({
                       <h1 className="text-2xl font-black text-white line-clamp-1">{currentSong.title}</h1>
                       <p className="text-lg font-bold text-white/40 mt-0.5">{currentSong.artist}</p>
                   </div>
-                  <div className="flex bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-xl">
-                      <button 
-                        onClick={() => setViewMode("music")} 
-                        className={`p-2 rounded-full transition-all ${viewMode === "music" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
-                      >
-                        <Music size={16} />
-                      </button>
-                      <button 
-                        onClick={() => setViewMode("video")} 
-                        className={`p-2 rounded-full transition-all ${viewMode === "video" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
-                      >
-                        <Video size={16} />
-                      </button>
-                  </div>
+              <div className="flex bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-xl">
+                  <button 
+                    onClick={() => setViewMode("music")} 
+                    className={`p-2 rounded-full transition-all ${viewMode === "music" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
+                  >
+                    <Music size={16} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (jamState.roomId) {
+                        setJamWarning("Can't switch to video mode while jamming");
+                        return;
+                      }
+                      setViewMode("video");
+                    }} 
+                    className={`p-2 rounded-full transition-all ${viewMode === "video" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
+                  >
+                    <Video size={16} />
+                  </button>
+              </div>
               </div>
 
               <div className="w-full mb-8">
@@ -512,26 +541,65 @@ export function MobileExpandedPlayer({
               )}
               
               {activeTab === "queue" && (
-                  <div className="flex-1 overflow-y-auto px-8 py-8 pb-[40dvh] custom-scrollbar">
-                      <div className="flex items-center justify-between mb-8">
-                          <h2 className="text-2xl font-black text-white">Playing Next</h2>
-                          <button onClick={onClearQueue} className="text-sm font-bold text-white/30 px-4 py-1.5 rounded-full bg-white/5">Clear</button>
-                      </div>
-                      {upNextQueue.map((song, i) => (
-                          <div key={song.id} onClick={() => onSongClick(song, false)} className="flex items-center gap-4 py-3 border-b border-white/5">
-                              <div className="h-14 w-14 shrink-0 rounded-lg overflow-hidden shadow-sm">
-                                 <MusicArtwork src={song.artwork} alt={song.title} iconSize={18} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                  <p className="truncate text-base font-bold text-white">{song.title}</p>
-                                  <p className="truncate text-sm font-medium text-white/30">{song.artist}</p>
-                              </div>
-                              {onRemoveFromUpNext && (
-                                  <button onClick={e => { e.stopPropagation(); onRemoveFromUpNext(i); }} className="p-2"><Trash2 size={18} className="text-white/20" /></button>
-                              )}
-                          </div>
-                      ))}
+                <div className="flex-1 overflow-y-auto px-6 pt-6 pb-[40dvh] custom-scrollbar">
+                  <div className="flex items-end justify-between mb-8 border-b border-white/5 pb-4">
+                    <div>
+                      <h2 className="text-3xl font-black text-white tracking-tight">Queue</h2>
+                      <p className="text-white/40 text-xs font-bold uppercase tracking-widest mt-1">Up Next</p>
+                    </div>
+                    <button 
+                      onClick={onClearQueue} 
+                      className="px-4 py-1.5 rounded-full bg-white/5 text-white/40 text-[12px] font-black uppercase transition-all active:scale-95"
+                    >
+                      Clear
+                    </button>
                   </div>
+
+                  {/* Current Song - Now Playing */}
+                  <div className="mb-10">
+                    <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-3">Now Playing</p>
+                    <div className="flex items-center gap-4 p-3 rounded-2xl bg-white/5 border border-white/5 shadow-xl">
+                      <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden shadow-sm">
+                        <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={16} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate font-black text-white text-[15px] leading-tight">{currentSong.title}</p>
+                        <p className="truncate text-xs font-bold text-white/40 mt-0.5">{currentSong.artist}</p>
+                      </div>
+                      <div className="pr-1">
+                        <div className="flex gap-0.5 items-end h-3">
+                          <div className="w-0.5 h-full bg-(--art-accent,#FA243C) animate-pulse" />
+                          <div className="w-0.5 h-[60%] bg-(--art-accent,#FA243C) animate-pulse" />
+                          <div className="w-0.5 h-[80%] bg-(--art-accent,#FA243C) animate-pulse" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    {upNextQueue.map((song, i) => (
+                      <div 
+                        key={song.id} 
+                        onClick={() => onSongClick(song, false)} 
+                        className="flex items-center gap-4 py-2.5 px-2 rounded-xl active:bg-white/5 transition-all"
+                      >
+                        <div className="h-11 w-11 shrink-0 rounded-lg overflow-hidden shadow-sm opacity-90">
+                          <MusicArtwork src={song.artwork} alt={song.title} iconSize={14} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate font-bold text-white text-[14px] leading-tight">{song.title}</p>
+                          <p className="truncate text-[11px] font-bold text-white/30 mt-0.5">{song.artist}</p>
+                        </div>
+                        <button 
+                          onClick={e => { e.stopPropagation(); onRemoveFromUpNext?.(i); }} 
+                          className="p-2 text-white/10 active:text-red-500 transition-colors"
+                        >
+                          <GripVertical size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
 
               {activeTab === "ai" && (
@@ -542,11 +610,11 @@ export function MobileExpandedPlayer({
                               <p className="text-white/40 uppercase tracking-[0.2em] text-xs font-black">Decrypting Story</p>
                           </div>
                       ) : (
-                          <div className="space-y-16">
-                              {knowFacts.map((fact, i) => (
-                                  <div key={i} className="story-fact text-2xl font-bold text-white/80 leading-relaxed drop-shadow-xl">{fact}</div>
-                              ))}
-                          </div>
+                           <div className="space-y-40">
+                               {knowFacts.map((fact, i) => (
+                                   <div key={i} className="story-fact text-[32px] font-black text-white/90 leading-[1.3] tracking-tight drop-shadow-2xl transition-all duration-700">{fact}</div>
+                               ))}
+                           </div>
                       )}
                   </div>
               )}

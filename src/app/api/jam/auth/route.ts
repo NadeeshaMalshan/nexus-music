@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     
     // Check for custom name in headers (passed when joining without login)
     const customName = request.headers.get("X-Jam-Name");
+    const isHost = request.headers.get("X-Jam-Host") === "true";
     const decodedName = customName ? decodeURIComponent(customName) : null;
     
     const userId = session?.user?.email ? `${session.user.email}-${uniqueSuffix}` : `anon-${uniqueSuffix}`;
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
       user_info: {
         name: decodedName || session?.user?.name || "Guest",
         image: session?.user?.image || null,
+        isHost: isHost,
         socketId: socketId
       },
     };

@@ -79,7 +79,19 @@ export async function GET(request: Request) {
     const rawData = await fetchGeniusRawData(track, artist);
     
     // 3. AI Fact Generation (Dual Model Strategy)
-    const prompt = `Generate 5-7 unique music history facts or "Did You Know?" trivia for: "${track}" by "${artist}". ${rawData?.about ? `Use this context: ${rawData.about}` : "Use your internal knowledge."} Output ONLY a JSON array of strings. No extra text.`;
+    const prompt = `Generate 5-7 immersive, highly specific "Behind the Lyrics" story snippets for the track "${track}" by "${artist}". 
+Focus on:
+1. Recording studio secrets and behind-the-scenes moments.
+2. The specific inspiration or events that led to the lyrics.
+3. The song's legacy and what happened after release.
+
+${rawData?.about ? `CRITICAL SOURCE MATERIAL: ${rawData.about}` : "Use your advanced musical knowledge for this specific track."}
+
+RULES:
+- IMPORTANT: ALL SNIPPETS MUST BE IN THE ENGLISH LANGUAGE ONLY.
+- NEVER use generic PR phrases (e.g., "is a testament to", "significant milestone", "reflection of journey").
+- Each snippet must be a unique, fact-heavy, single sentence.
+- Output ONLY a valid JSON array of strings. No intro/outro text.`;
 
     let facts: string[] | null = null;
     
@@ -117,19 +129,37 @@ export async function GET(request: Request) {
       return NextResponse.json(facts);
     }
 
+    // 4. SMART FALLBACK: If AI fails, use Genius Description directly
+    if (rawData?.about && rawData.about.length > 50 && !rawData.about.includes("is a song by")) {
+      // Split description into sentences (roughly)
+      const storySnippets = (rawData.about as string)
+        .split(/[.!?]\s+/)
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 20 && s.length < 300)
+        .slice(0, 7);
+      
+      if (storySnippets.length > 0) {
+        if (redis) {
+          await redis.set(`song_facts:${videoId}`, JSON.stringify(storySnippets), { ex: 604800 });
+        }
+        return NextResponse.json(storySnippets);
+      }
+    }
+
+    // 5. Hard Fallback (Last resort)
     return NextResponse.json([
-      `The production of "${track}" is a testament to ${artist}'s unique evolution in the music industry.`,
-      `Many fans interpret the lyrics of "${track}" as a deeply personal reflection of ${artist}'s journey.`,
-      `Critics have praised the innovative soundscapes and melodic complexity found throughout "${track}".`,
-      `The creative process behind "${track}" involved intensive collaboration and sonic experimentation.`,
-      `Since its release, "${track}" has become a significant milestone in ${artist}'s discography.`
+      `${track} by ${artist} is recognized for its distinctive production and the artistic vision ${artist} brought to the project.`,
+      `The creative direction of "${track}" showcases many of the signatures that define ${artist}'s sound.`,
+      `Critics and fans alike have noted that "${track}" represents a key moment in ${artist}'s musical development.`,
+      `The recording of "${track}" involved hours of dedicated studio performance to capture the exact mood ${artist} intended.`,
+      `Since its debut, "${track}" continues to resonate as a significant entry in ${artist}'s performance history.`
     ]);
   } catch (error) {
     console.error("Did You Know API error:", error);
     return NextResponse.json([
-      "The story behind this track is currently being compiled from various musical archives.",
-      "Musical history is rich with hidden details about tracks like this one.",
-      "Stay tuned as our AI uncovers more unique trivia about this artist's creative process."
+      "Exploring the deeper context and creative journey of this track...",
+      "Connecting with music archives to bring you the full story of this performance.",
+      "Uncovering the unique trivia and behind-the-scenes moments for this artist."
     ]);
   }
 }

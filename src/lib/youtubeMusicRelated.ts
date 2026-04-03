@@ -43,8 +43,21 @@ async function fetchSuggestionsWithRetry(videoId: string): Promise<any[]> {
             }
           }
           
-          const durationSec = typeof item.duration === 'number' ? item.duration : 0;
-          const formattedDuration = formatDuration(durationSec);
+          let durationSec = 0;
+          let formattedDuration = "0:00";
+          
+          if (typeof (item as any).duration === 'number') {
+            durationSec = (item as any).duration;
+            formattedDuration = formatDuration(durationSec);
+          } else if ((item as any).duration && typeof (item as any).duration === 'object') {
+            durationSec = (item as any).duration.totalSeconds || 0;
+            formattedDuration = (item as any).duration.label || formatDuration(durationSec);
+          } else if (typeof (item as any).duration === 'string') {
+            formattedDuration = (item as any).duration;
+            const parts = formattedDuration.split(':');
+            if (parts.length === 2) durationSec = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+            else if (parts.length === 3) durationSec = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+          }
 
           return {
             youtubeId: item.videoId,

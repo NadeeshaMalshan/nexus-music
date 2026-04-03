@@ -8,7 +8,7 @@ import { MusicArtwork } from "./MusicArtwork";
 
 interface FloatingPlayerProps {
   onExpand: () => void;
-  currentSong: Song;
+  currentSong?: Song | null;
   isPlaying: boolean;
   onTogglePlay: () => void;
   onNext: () => void;
@@ -45,7 +45,17 @@ export function FloatingPlayer({
   volume,
   onVolumeChange,
 }: FloatingPlayerProps) {
-  const fallbackDuration = youtubeTimestampToSeconds(currentSong.duration) ?? 0;
+  const isIdle = !currentSong;
+  const displaySong = currentSong || {
+    id: "idle",
+    title: "Nexus Music",
+    artist: "Ready to stream",
+    artwork: null,
+    duration: "0:00",
+    color: "#FA243C",
+  };
+
+  const fallbackDuration = youtubeTimestampToSeconds(displaySong.duration) ?? 0;
   const safeDuration = durationSec > 0 ? durationSec : fallbackDuration;
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
 
@@ -62,18 +72,20 @@ export function FloatingPlayer({
       >
         
         {/* Left Section: Playback Controls */}
-        <div className="flex items-center gap-3 md:gap-5 shrink-0">
+        <div className={`flex items-center gap-3 md:gap-5 shrink-0 ${isIdle ? 'opacity-40 grayscale' : ''}`}>
           <button 
             onClick={onPrev} 
-            className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-90"
+            disabled={isIdle}
+            className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-90 disabled:cursor-not-allowed"
           >
             <SkipBack className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" strokeWidth={0} />
           </button>
           
           <button
             onClick={onTogglePlay}
-            className="text-white transition-all transform hover:scale-110 active:scale-95 rounded-full p-1 md:p-1.5 hover:bg-white/10"
-            style={{ color: 'var(--art-accent, white)' }}
+            disabled={isIdle}
+            className="text-white transition-all transform hover:scale-110 active:scale-95 rounded-full p-1 md:p-1.5 hover:bg-white/10 disabled:cursor-not-allowed"
+            style={{ color: isIdle ? 'white' : 'var(--art-accent, white)' }}
           >
             {isPlaying ? (
               <Pause className="w-6 h-6 md:w-7 md:h-7" fill="currentColor" strokeWidth={1} />
@@ -84,7 +96,8 @@ export function FloatingPlayer({
           
           <button 
             onClick={onNext} 
-            className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-90"
+            disabled={isIdle}
+            className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-90 disabled:cursor-not-allowed"
           >
             <SkipForward className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" strokeWidth={0} />
           </button>
@@ -96,22 +109,35 @@ export function FloatingPlayer({
           className="flex-1 min-w-0 max-w-[400px]"
         >
           <div 
-            onClick={onExpand}
-            className="relative flex items-center gap-2 md:gap-3 bg-black/30 rounded-[20px] p-1.5 md:p-2 pr-3 md:pr-4 transition-all cursor-pointer group/card hover:bg-black/40 border border-white/5 overflow-hidden"
+            onClick={!isIdle ? onExpand : undefined}
+            className={`relative flex items-center gap-2 md:gap-3 bg-black/30 rounded-[20px] p-1.5 md:p-2 pr-3 md:pr-4 transition-all border border-white/5 overflow-hidden ${
+              !isIdle 
+                ? "cursor-pointer group/card hover:bg-black/40" 
+                : "cursor-default opacity-80"
+            }`}
           >
             {/* Artwork Wrapper */}
-            <div className="relative h-9 w-9 md:h-11 md:w-11 shrink-0 overflow-hidden rounded-xl shadow-lg border border-white/10 group-hover/card:scale-105 transition-transform duration-500">
-               <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={20} />
-               <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                  <Maximize2 size={14} className="text-white" />
-               </div>
+            <div className={`relative h-9 w-9 md:h-11 md:w-11 shrink-0 overflow-hidden rounded-xl shadow-lg border border-white/10 transition-transform duration-500 ${!isIdle ? 'group-hover/card:scale-105' : ''}`}>
+               <MusicArtwork src={displaySong.artwork} alt={displaySong.title} iconSize={20} />
+               {!isIdle && (
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                    <Maximize2 size={14} className="text-white" />
+                 </div>
+               )}
+               {isIdle && (
+                 <motion.div 
+                   animate={{ opacity: [0.2, 0.4, 0.2] }}
+                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                   className="absolute inset-0 bg-linear-to-tr from-white/10 to-transparent"
+                 />
+               )}
             </div>
 
             {/* Scrolling Song Info */}
             <div className="min-w-0 flex-1 overflow-hidden">
                <div className="flex flex-col">
-                  <span className="truncate text-xs md:text-sm font-black text-white tracking-tight leading-tight">{currentSong.title}</span>
-                  <span className="truncate text-[10px] md:text-[11px] font-bold text-white/30 uppercase tracking-wider">{currentSong.artist}</span>
+                  <span className="truncate text-xs md:text-sm font-black text-white tracking-tight leading-tight">{displaySong.title}</span>
+                  <span className="truncate text-[10px] md:text-[11px] font-bold text-white/30 uppercase tracking-wider">{displaySong.artist}</span>
                </div>
             </div>
 
@@ -127,9 +153,9 @@ export function FloatingPlayer({
 
         {/* Right Section: Interactive Controls */}
         <div className="flex items-center gap-3 md:gap-6 shrink-0">
-          {isLoggedIn && (
+          {isLoggedIn && !isIdle && (
             <button
-              onClick={() => onRateSong(currentSong.id, isLiked ? "none" : "like")}
+              onClick={() => onRateSong(displaySong.id, isLiked ? "none" : "like")}
               className="transition-all transform hover:scale-110 active:scale-95"
             >
               <Heart

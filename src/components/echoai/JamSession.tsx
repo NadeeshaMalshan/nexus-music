@@ -2,9 +2,30 @@
 
 import { useJam } from "@/context/JamContext";
 import { Users, LogOut, Plus, Link, Check, Radio, Lock as Padlock, Share2, MoreHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "motion/react";
+
+const Avatar = ({ src, name }: { src: string | null, name: string }) => {
+  const [error, setError] = useState(false);
+  
+  if (!src || error) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-white/10 to-white/5 text-[14px] font-black text-white/40 uppercase">
+        {name.charAt(0)}
+      </div>
+    );
+  }
+
+  return (
+    <img 
+      src={src} 
+      alt={name} 
+      className="h-full w-full object-cover" 
+      onError={() => setError(true)}
+    />
+  );
+};
 
 export function JamSession() {
   const { data: session } = useSession();
@@ -13,14 +34,32 @@ export function JamSession() {
   const [joinId, setJoinId] = useState("");
   const [userName, setUserName] = useState("");
   const [copied, setCopied] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleCopy = () => {
     if (jamState.roomId) {
-      navigator.clipboard.writeText(jamState.roomId);
+      const url = `${window.location.origin}${window.location.pathname}?jam=${jamState.roomId}`;
+      navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  // Listen for the jam param to show the join input
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const jamId = params.get("jam");
+    if (jamId && !jamState.roomId) {
+      setJoinId(jamId.toUpperCase());
+      setShowJoinInput(true);
+      const newUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({ path: newUrl }, "", newUrl);
+    }
+  }, [jamState.roomId]);
 
   if (jamState.roomId) {
     return (
@@ -48,9 +87,11 @@ export function JamSession() {
                   <Users className="text-white" size={24} style={{ color: 'var(--art-accent, #FA243C)' }} />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-[17px] font-black text-white tracking-tight">Active Echo AI</h3>
-                    <div className="flex items-center gap-1 overflow-hidden">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-[17px] font-black text-white tracking-tight">
+                        {jamState.listeners[0]?.name?.split(' ')[0] || "Anonymous"}&apos;s Jam
+                      </h3>
+                      <div className="flex items-center gap-1 overflow-hidden">
                        <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -74,44 +115,63 @@ export function JamSession() {
             </div>
 
             {/* Room ID / Share Section */}
-            <div className="space-y-2">
-              <span className="px-1 text-[11px] font-black uppercase tracking-[0.2em] text-white/20">Session Link</span>
-              <div className="flex items-center gap-2">
-                <div 
-                  onClick={handleCopy}
-                  className="group flex flex-1 items-center justify-between rounded-2xl border border-white/5 bg-black/40 px-5 py-4 transition-all hover:bg-black/60 cursor-pointer overflow-hidden relative"
-                >
-                  <div className="flex items-center gap-3">
-                    <Share2 size={14} className="text-white/30 group-hover:text-white/60 transition-colors" />
-                    <span className="font-mono text-[16px] font-black tracking-[0.3em] text-white/90">
-                      {jamState.roomId}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <AnimatePresence mode="wait">
-                      {copied ? (
-                        <motion.div
-                          key="check"
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          exit={{ scale: 0 }}
-                        >
-                          <Check size={16} className="text-green-500" />
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                          key="link"
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          exit={{ scale: 0 }}
-                        >
-                          <Link size={16} className="text-white/20 group-hover:text-white/40" />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+            <div className="space-y-4">
+              <div className="flex flex-col gap-1 px-1">
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/20">Session Room Code</span>
+                <div className="flex items-center justify-between">
+                   <span className="font-mono text-[32px] font-black tracking-[0.2em] text-white drop-shadow-2xl">
+                    {jamState.roomId}
+                  </span>
+                  <button 
+                    onClick={() => {
+                      if (jamState.roomId) {
+                        navigator.clipboard.writeText(jamState.roomId);
+                        // Subtle feedback for code copy
+                      }
+                    }}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/20 transition-all hover:bg-white/10 hover:text-white"
+                    title="Copy Code Only"
+                  >
+                    <Link size={16} />
+                  </button>
                 </div>
               </div>
+
+              <button 
+                onClick={handleCopy}
+                className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/5 py-4 transition-all hover:bg-white/10 active:scale-[0.98]"
+              >
+                <div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
+                  style={{ background: 'linear-gradient(90deg, transparent, var(--art-accent, #FA243C), transparent)' }}
+                />
+                
+                <AnimatePresence mode="wait">
+                  {copied ? (
+                    <motion.div
+                      key="copied"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="flex items-center gap-2 text-green-500"
+                    >
+                      <Check size={18} strokeWidth={3} />
+                      <span className="text-[14px] font-black uppercase tracking-widest">Link Copied</span>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="copy"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="flex items-center gap-2 text-white/70 group-hover:text-white transition-colors"
+                    >
+                      <Share2 size={18} strokeWidth={2.5} />
+                      <span className="text-[14px] font-black uppercase tracking-widest">Copy Invite Link</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </button>
             </div>
           </div>
         </div>
@@ -136,13 +196,7 @@ export function JamSession() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/5 shadow-lg">
-                      {listener.image ? (
-                        <img src={listener.image} alt={listener.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-white/10 to-white/5 text-[14px] font-black text-white/40">
-                          {listener.name.charAt(0)}
-                        </div>
-                      )}
+                      <Avatar src={listener.image} name={listener.name} />
                       {/* Subtly indicate host */}
                       {idx === 0 && (
                          <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#121212] bg-blue-500" title="Host" />

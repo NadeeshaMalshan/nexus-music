@@ -9,6 +9,7 @@ import { parseLrcContent } from "@/lib/lrc";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { MusicArtwork } from "./MusicArtwork";
 import { useSettings } from "@/context/SettingsContext";
+import { useJam } from "@/context/JamContext";
 
 export function DesktopExpandedPlayer({
   onClose,
@@ -284,8 +285,31 @@ export function DesktopExpandedPlayer({
     </div>
   );
 
+  const { jamState } = useJam();
+  const [jamWarning, setJamWarning] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (jamWarning) {
+      const t = setTimeout(() => setJamWarning(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [jamWarning]);
+
   return (
-    <div className="fixed inset-0 z-50 flex max-h-[100dvh] flex-col bg-black overflow-hidden">
+    <div className="fixed inset-0 z-40 flex max-h-[100dvh] flex-col bg-black overflow-hidden">
+      <AnimatePresence>
+        {jamWarning && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-red-500/90 px-6 py-3 text-sm font-black text-white shadow-2xl backdrop-blur-md"
+          >
+            {jamWarning}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
          <MusicArtwork src={currentSong.artwork} alt={currentSong.title} className="h-full w-full scale-150 blur-[120px] opacity-60" />
         <div className="absolute inset-0 bg-black/40" />
@@ -322,8 +346,24 @@ export function DesktopExpandedPlayer({
             )}
           </motion.div>
           <div className="mt-6 flex w-full justify-center gap-1 rounded-full border border-white/5 bg-black/20 p-1 backdrop-blur-md max-w-[200px]">
-            <button onClick={() => setViewMode("music")} className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-xs font-bold transition-all ${viewMode === "music" ? "bg-white text-black" : "text-white/60 hover:text-white"}`}><Music size={14} /> Music</button>
-            <button onClick={() => setViewMode("video")} className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-xs font-bold transition-all ${viewMode === "video" ? "bg-white text-black" : "text-white/60 hover:text-white"}`}><Video size={14} /> Video</button>
+            <button 
+              onClick={() => setViewMode("music")} 
+              className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-xs font-bold transition-all ${viewMode === "music" ? "bg-white text-black" : "text-white/60 hover:text-white"}`}
+            >
+              <Music size={14} /> Music
+            </button>
+            <button 
+              onClick={() => {
+                if (jamState.roomId) {
+                  setJamWarning("Can't switch to video mode while jamming");
+                  return;
+                }
+                setViewMode("video");
+              }} 
+              className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-xs font-bold transition-all ${viewMode === "video" ? "bg-white text-black" : "text-white/60 hover:text-white"}`}
+            >
+              <Video size={14} /> Video
+            </button>
           </div>
           {viewMode === "video" && <div className="mt-6">{renderTabSelector()}</div>}
           {viewMode === "music" && renderControls("left-controls")}
@@ -398,21 +438,98 @@ export function DesktopExpandedPlayer({
                  </div>
                )}
                {activeTab === "queue" && (
-                 <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-8">
-                    <div className="flex justify-between items-center mb-8">
-                        <h2 className="text-4xl font-black text-white">Queue</h2>
-                        <button onClick={onClearQueue} className="text-white/40 hover:text-white"><Trash2 size={24} /></button>
-                    </div>
-                    {upNextQueue.map((s, i) => (
-                        <div key={s.id} onClick={() => onSongClick(s, false)} className="flex items-center gap-4 py-3 hover:bg-white/5 rounded-xl px-2 cursor-pointer transition-colors">
-                            <MusicArtwork src={s.artwork} alt={s.title} className="h-16 w-16 rounded-lg object-cover" iconSize={20} />
-                            <div className="flex-1 min-w-0">
-                                <p className="truncate font-bold text-white">{s.title}</p>
-                                <p className="truncate text-sm text-white/40">{s.artist}</p>
+                 <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pt-10 pb-32">
+                   <div className="flex items-end justify-between mb-8 border-b border-white/5 pb-4">
+                     <div>
+                       <h2 className="text-4xl font-black text-white tracking-tight">Queue</h2>
+                       <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-1">Up Next</p>
+                     </div>
+                     <button 
+                       onClick={onClearQueue} 
+                       className="p-3 rounded-full bg-white/5 text-white/30 hover:bg-white/10 hover:text-white transition-all active:scale-95"
+                       title="Clear Queue"
+                     >
+                       <Trash2 size={20} />
+                     </button>
+                   </div>
+
+                   {/* Current Song - Now Playing */}
+                   <div className="mb-10">
+                     <p className="text-[11px] font-black text-white/30 uppercase tracking-[0.2em] mb-4">Now Playing</p>
+                     <div className="flex items-center gap-4 p-3 rounded-2xl bg-white/5 border border-white/5 shadow-2xl backdrop-blur-3xl">
+                       <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden shadow-sm">
+                         <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={16} />
+                       </div>
+                       <div className="flex-1 min-w-0">
+                         <p className="truncate font-black text-white text-[16px] leading-tight">{currentSong.title}</p>
+                         <p className="truncate text-sm font-bold text-white/40 mt-0.5">{currentSong.artist}</p>
+                       </div>
+                       <div className="pr-2">
+                          <div className="flex gap-0.5 items-end h-3">
+                             <div className="w-0.5 h-full bg-(--art-accent,#FA243C) animate-pulse" />
+                             <div className="w-0.5 h-[60%] bg-(--art-accent,#FA243C) animate-pulse" />
+                             <div className="w-0.5 h-[80%] bg-(--art-accent,#FA243C) animate-pulse" />
+                          </div>
+                       </div>
+                     </div>
+                   </div>
+
+                   <div className="space-y-1">
+                     {upNextQueue.map((s, i) => (
+                       <div 
+                         key={s.id} 
+                         onClick={() => onSongClick(s, false)} 
+                         className="flex items-center gap-4 py-2.5 px-3 rounded-xl hover:bg-white/5 group cursor-pointer transition-all active:scale-[0.98]"
+                       >
+                         <div className="relative h-10 w-10 shrink-0 rounded-md overflow-hidden shadow-xs opacity-80 group-hover:opacity-100 transition-opacity">
+                           <MusicArtwork src={s.artwork} alt={s.title} iconSize={14} />
+                         </div>
+                         <div className="flex-1 min-w-0">
+                           <p className="truncate font-bold text-white text-[15px] leading-tight">{s.title}</p>
+                           <p className="truncate text-xs font-bold text-white/30 mt-0.5">{s.artist}</p>
+                         </div>
+                         <div className="flex items-center">
+                            <button 
+                              onClick={e => { e.stopPropagation(); onRemoveFromUpNext?.(i); }} 
+                              className="p-2 opacity-0 group-hover:opacity-100 text-white/20 hover:text-red-500 transition-all transform translate-x-2 group-hover:translate-x-0"
+                            >
+                               <Trash2 size={16} />
+                            </button>
+                            <GripVertical size={16} className="text-white/5 cursor-grab active:cursor-grabbing" />
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
+               {activeTab === "ai" && (
+                 <div className="flex-1 flex flex-col h-full overflow-hidden">
+                   <div className="mb-8 border-b border-white/5 pb-4">
+                       <h2 className="text-4xl font-black text-white tracking-tight">Story</h2>
+                       <p className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] mt-1">Beyond the Lyrics</p>
+                   </div>
+                   <div ref={storylineRef} className="flex-1 overflow-y-auto custom-scrollbar px-2 pt-4 pb-[50vh] no-scrollbar">
+                       {knowLoading ? (
+                            <div className="flex flex-col items-center justify-center h-full gap-4 opacity-50">
+                               <div className="w-10 h-10 border-2 border-white/10 border-t-white/40 rounded-full animate-spin" />
+                               <p className="text-white/40 uppercase tracking-[0.2em] text-[10px] font-black">Collecting Intel</p>
                             </div>
-                            <Trash2 size={18} className="text-white/10 hover:text-red-500" onClick={e => { e.stopPropagation(); onRemoveFromUpNext?.(i); }} />
-                        </div>
-                    ))}
+                       ) : (
+                           <div className="space-y-40">
+                               {knowFacts.length > 0 ? (
+                                   knowFacts.map((fact, i) => (
+                                       <div key={i} className="story-fact text-[44px] font-black leading-[1.2] text-white/90 drop-shadow-2xl transition-all duration-700 hover:text-white tracking-tight">
+                                           {fact}
+                                       </div>
+                                   ))
+                               ) : (
+                                   <div className="flex flex-col items-center justify-center py-20 opacity-30 italic">
+                                       The story behind this track is currently being compiled...
+                                   </div>
+                               )}
+                           </div>
+                       )}
+                   </div>
                  </div>
                )}
             </div>

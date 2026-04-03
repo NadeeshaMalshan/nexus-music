@@ -193,7 +193,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         const savedSong = localStorage.getItem("nexus_current_song");
         if (savedSong) {
           const parsed = JSON.parse(savedSong);
-          // Only set if we don't have a current song (e.g. from an active session)
           setCurrentSong((prev) => prev || parsed);
         }
 
@@ -213,6 +212,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
     };
     loadPersistence();
+
+    // Check for jam link
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("jam")) {
+      setRightSidebarMode("jam");
+      setIsRightSidebarOpen(true);
+    }
   }, []);
 
   // Persistence: Save to localStorage on changes
@@ -245,6 +251,17 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty("--art-secondary", palette.secondary);
     root.style.setProperty("--art-accent", palette.accent);
   }, [palette]);
+
+  // Dynamic Tab Title
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (currentSong) {
+      const prefix = isPlaying ? "▶ " : "";
+      document.title = `${prefix}${currentSong.title} — ${currentSong.artist}`;
+    } else {
+      document.title = "Nexus | Premium AI Ecosystem";
+    }
+  }, [currentSong, isPlaying]);
 
   // Fetch liked songs
   useEffect(() => {
@@ -475,8 +492,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const initPlayer = () => {
       if (!w.YT?.Player || ytPlayerRef.current) return;
       ytPlayerRef.current = new w.YT.Player(playerElementId, {
-        height: "0",
-        width: "0",
+        height: "1",
+        width: "1",
         videoId: "", // Empty initially, will be loaded via logic
         playerVars: { 
           controls: 0, 
@@ -517,13 +534,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
               if (Number.isFinite(duration) && duration > 0) setDurationSec(duration);
 
               // Apply Volume & Quality
-              if (viewModeRef.current === "video") {
-                player.setVolume(0);
-                player.pauseVideo();
-              } else {
-                // Crossfade Logic: Ramp down volume if near the end
-                const currentSec = player.getCurrentTime() || 0;
-                if (duration > 0 && settings.crossfade > 0 && currentSec >= (duration - settings.crossfade)) {
+              // Crossfade Logic: Ramp down volume if near the end
+              const currentSec = player.getCurrentTime() || 0;
+              if (duration > 0 && settings.crossfade > 0 && currentSec >= (duration - settings.crossfade)) {
                   const remaining = duration - currentSec;
                   const ratio = Math.max(0, remaining / settings.crossfade);
                   const targetVolume = Math.floor(volume * ratio);
@@ -541,7 +554,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 try {
                   (player as any)?.setPlaybackQuality?.(qualityMap[settings.audioQuality] || "auto");
                 } catch (e) {}
-              }
             }, 250);
           },
           onStateChange: (event: any) => {

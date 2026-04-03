@@ -190,16 +190,20 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   }, [dashboard]);
 
   // Connect and Subscribe to Channel
-  const connectToJam = useCallback((id: string, customName?: string) => {
+  const connectToJam = useCallback((id: string, customName?: string, isHost: boolean = false) => {
     if (!PUSHER_KEY) return;
     if (pusherRef.current) pusherRef.current.disconnect();
+
+    const headers: Record<string, string> = {};
+    if (customName) headers["X-Jam-Name"] = encodeURIComponent(customName);
+    if (isHost) headers["X-Jam-Host"] = "true";
 
     const pusher = new Pusher(PUSHER_KEY, { 
         cluster: PUSHER_CLUSTER,
         channelAuthorization: {
             endpoint: "/api/jam/auth",
             transport: "ajax",
-            headers: customName ? { "X-Jam-Name": encodeURIComponent(customName) } : undefined
+            headers: Object.keys(headers).length > 0 ? headers : undefined
         }
     });
 
@@ -305,6 +309,9 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
             listeners.push({ id: member.id, ...member.info });
         });
         
+        // Sort so host is always first
+        listeners.sort((a, b) => ((b as any).isHost ? 1 : 0) - ((a as any).isHost ? 1 : 0));
+
         setJamState(prev => ({ ...prev, participants: members.count, listeners }));
         console.log(`[Jam] Connected! Total participants: ${members.count}`);
         
@@ -324,6 +331,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         channel.members?.each((m: any) => {
             listeners.push({ id: m.id, ...m.info });
         });
+        listeners.sort((a, b) => ((b as any).isHost ? 1 : 0) - ((a as any).isHost ? 1 : 0));
         setJamState(prev => ({ ...prev, participants: channel.members?.count || 1, listeners }));
         console.log(`[Jam] User Joined: ${member.info.name}. Total participants: ${channel.members?.count}`);
     });
@@ -333,6 +341,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         channel.members?.each((m: any) => {
             listeners.push({ id: m.id, ...m.info });
         });
+        listeners.sort((a, b) => ((b as any).isHost ? 1 : 0) - ((a as any).isHost ? 1 : 0));
         setJamState(prev => ({ ...prev, participants: channel.members?.count || 1, listeners }));
         console.log(`[Jam] User Left. Total participants: ${channel.members?.count}`);
     });
@@ -406,13 +415,13 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   const createJam = async () => {
     const id = Math.random().toString(36).substring(2, 8).toUpperCase();
     setJamState({ roomId: id, participants: 1, listeners: [], isHost: true, isJoining: false });
-    connectToJam(id);
+    connectToJam(id, undefined, true);
     return id;
   };
 
   const joinJam = async (id: string, name?: string) => {
     setJamState({ roomId: id, participants: 1, listeners: [], isHost: false, isJoining: true });
-    connectToJam(id, name);
+    connectToJam(id, name, false);
     await broadcast("join", {}); // Alert others
     setJamState(prev => ({ ...prev, isJoining: false }));
   };

@@ -115,15 +115,15 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
       </main>
 
-      {currentSong && (
+      {!isExpandedPlayerOpen && (
         <FloatingPlayer
           onExpand={() => setIsExpandedPlayerOpen(true)}
-          currentSong={{
+          currentSong={currentSong ? {
             ...currentSong,
             title: audioData?.trackName || currentSong.title,
             artist: audioData?.artist || currentSong.artist,
             artwork: audioData?.coverArt || currentSong.artwork,
-          }}
+          } : null}
           isPlaying={isPlaying}
           onTogglePlay={onTogglePlay}
           onNext={onNext}
@@ -131,7 +131,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           currentTimeSec={currentTimeSec}
           durationSec={durationSec}
           onRateSong={onRateSong}
-          isLiked={likedSongs.has(audioData?.videoId || currentSong.id)}
+          isLiked={currentSong ? likedSongs.has(audioData?.videoId || currentSong.id) : false}
           isLoggedIn={status === "authenticated"}
           onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
           isRightSidebarOpen={isRightSidebarOpen}

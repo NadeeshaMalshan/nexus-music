@@ -216,6 +216,7 @@ export async function POST(request: Request) {
       title: m.title || "Unknown Title",
       artist: m.artists ? m.artists.map((a: any) => a.name).join(", ") : "Unknown Artist",
       thumbnail: m.thumbnailUrl || "",
+      duration: m.duration || "0:00",
     }));
 
     console.log(`[Recommendations] Processing ${tracks.length} diverse tracks.`);

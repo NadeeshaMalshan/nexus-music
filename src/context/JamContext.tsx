@@ -286,6 +286,15 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
     channel.bind("pusher:subscription_succeeded", (members: any) => {
         setJamState(prev => ({ ...prev, participants: members.count }));
+        
+        // Clear local state only if we joined (NOT if we started it as host)
+        if (!jamStateRef.current.isHost) {
+            dashboard.setUpNextQueue([]);
+            dashboard.setCurrentSong(null);
+            dashboard.setIsPlaying(false);
+            dashboard.onSeek(0);
+            console.log(`[Jam] Successfully joined session: ${id}. Local queue cleared.`);
+        }
     });
     channel.bind("pusher:member_added", () => {
         setJamState(prev => ({ ...prev, participants: channel.members?.count || 1 }));
@@ -362,25 +371,12 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
   const createJam = async () => {
     const id = Math.random().toString(36).substring(2, 8).toUpperCase();
-    
-    // Clear local state before starting a jam
-    dashboard.setUpNextQueue([]);
-    dashboard.setCurrentSong(null);
-    dashboard.setIsPlaying(false);
-    dashboard.onSeek(0);
-    
     setJamState({ roomId: id, participants: 1, isHost: true, isJoining: false });
     connectToJam(id);
     return id;
   };
 
   const joinJam = async (id: string) => {
-    // Clear local state before joining a jam to start fresh
-    dashboard.setUpNextQueue([]);
-    dashboard.setCurrentSong(null);
-    dashboard.setIsPlaying(false);
-    dashboard.onSeek(0);
-
     setJamState({ roomId: id, participants: 1, isHost: false, isJoining: true });
     connectToJam(id);
     await broadcast("join", {}); // Alert others

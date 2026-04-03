@@ -133,3 +133,38 @@ export async function searchVideosRobust(query: string): Promise<any[]> {
   const res = await searchWithRetry(query, "videos");
   return res || [];
 }
+
+export async function searchArtistsRobust(query: string): Promise<any[]> {
+  if (!query?.trim()) return [];
+  try {
+    const ytmusic = await getYTMusic();
+    const results = await ytmusic.searchArtists(query);
+    return results.map((a: any) => ({
+      type: "ARTIST",
+      id: a.artistId,
+      name: a.name,
+      thumbnail: a.thumbnails?.[a.thumbnails.length - 1]?.url || "",
+    }));
+  } catch (err) {
+    console.error("[ytmSearchService] searchArtists failed:", err);
+    return [];
+  }
+}
+
+export async function searchPlaylistsRobust(query: string): Promise<any[]> {
+  if (!query?.trim()) return [];
+  try {
+    const ytmusic = await getYTMusic();
+    const results = await ytmusic.searchPlaylists(query);
+    return results.map((p: any) => ({
+      type: "PLAYLIST",
+      id: p.playlistId,
+      title: p.name,
+      author: p.author || "YouTube Music",
+      thumbnail: p.thumbnails?.[p.thumbnails.length - 1]?.url || "",
+    }));
+  } catch (err) {
+    console.error("[ytmSearchService] searchPlaylists failed:", err);
+    return [];
+  }
+}

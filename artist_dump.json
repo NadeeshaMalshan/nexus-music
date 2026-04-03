@@ -1,0 +1,4323 @@
+{
+  "artists": [
+    {
+      "type": "ARTIST",
+      "artistId": "UC0076UMUgEng8HORUw_MYHA",
+      "name": "Ariana Grande",
+      "thumbnails": [
+        {
+          "url": "https://yt3.googleusercontent.com/DU6Kpr5TYKcW6QHvMnsJau5_8QSuix8LCLtf5UEaziZZdXw8SxvcxJ9YWmVIQuzhg2R-MVHYgjdGCQ=w60-h60-p-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://yt3.googleusercontent.com/DU6Kpr5TYKcW6QHvMnsJau5_8QSuix8LCLtf5UEaziZZdXw8SxvcxJ9YWmVIQuzhg2R-MVHYgjdGCQ=w120-h120-p-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "UClYV6hHlupm_S_ObS1W-DYw",
+      "name": "The Weeknd",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/U-SAmNOu4TynE818gLCfKsuHZ0U5YNEtO9mrjSI9WCCKERs98LzrCal5kajBBTQNwdcisoB2Bn-pHp4=w60-h60-p-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/U-SAmNOu4TynE818gLCfKsuHZ0U5YNEtO9mrjSI9WCCKERs98LzrCal5kajBBTQNwdcisoB2Bn-pHp4=w120-h120-p-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "UCQ06Qg3tc4vGvvG3TY5scNg",
+      "name": "Iggy Azalea",
+      "thumbnails": [
+        {
+          "url": "https://yt3.googleusercontent.com/2ptgxw1cLuwjMk6FmUD0xx1JTUAX4zF3sAfGG7jLde8Vj9nRiVp1-ptoZjEm0KlmKN-XEsCnCpX0SAg=w60-h60-p-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://yt3.googleusercontent.com/2ptgxw1cLuwjMk6FmUD0xx1JTUAX4zF3sAfGG7jLde8Vj9nRiVp1-ptoZjEm0KlmKN-XEsCnCpX0SAg=w120-h120-p-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "UCwgX_dLqGYna_7Fm8ecf4Ng",
+      "name": "Doja Cat",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/Y4jz4Ky3uGHQ6DE_mV7_pPKSBgSK62ERNf-9kFJ-mUXPdHsuVriJX1LuJ0B7XyScCZ65Dvypr1LZpvUK=w60-h60-p-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/Y4jz4Ky3uGHQ6DE_mV7_pPKSBgSK62ERNf-9kFJ-mUXPdHsuVriJX1LuJ0B7XyScCZ65Dvypr1LZpvUK=w120-h120-p-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "UCGVGIqHPzwLhZg8KQNVaRbA",
+      "name": "Zedd",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/_ixuHGwH0GVERToOYM1Dmm-Zg5NjqrHSFgK9y9TNMuleydopxT16L4h2dkTl2pEe5WwZgN3JK-53LIs=w60-h60-p-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/_ixuHGwH0GVERToOYM1Dmm-Zg5NjqrHSFgK9y9TNMuleydopxT16L4h2dkTl2pEe5WwZgN3JK-53LIs=w120-h120-p-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "UCGlTezxEZLvKp0jhZjoNatw",
+      "name": "Anya Ariana Smith",
+      "thumbnails": [
+        {
+          "url": "https://yt3.googleusercontent.com/PV1BCJnIISfLs4ainqPJi040H6NqydN0XoEo1vXTyIf6DoqrhLnuACVyWZrcKZGJ19Q-tWfj6HCLDmo=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://yt3.googleusercontent.com/PV1BCJnIISfLs4ainqPJi040H6NqydN0XoEo1vXTyIf6DoqrhLnuACVyWZrcKZGJ19Q-tWfj6HCLDmo=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "UClpHwBjaUlIK9n8mfYGxkoQ",
+      "name": "Ariana",
+      "thumbnails": [
+        {
+          "url": "https://yt3.googleusercontent.com/Wfz5BqAhEHIPa-uyxw18VjyGI8tWSPayrvV4bKXZ1Urag1BzfIh0H2fFJSP2DRt6rZHdLCL7MT6HS3CK=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://yt3.googleusercontent.com/Wfz5BqAhEHIPa-uyxw18VjyGI8tWSPayrvV4bKXZ1Urag1BzfIh0H2fFJSP2DRt6rZHdLCL7MT6HS3CK=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    }
+  ],
+  "artistDetails": {
+    "type": "ARTIST",
+    "artistId": "UC0076UMUgEng8HORUw_MYHA",
+    "name": "Ariana Grande",
+    "thumbnails": [
+      {
+        "url": "https://yt3.googleusercontent.com/DU6Kpr5TYKcW6QHvMnsJau5_8QSuix8LCLtf5UEaziZZdXw8SxvcxJ9YWmVIQuzhg2R-MVHYgjdGCQ=w540-h225-p-l90-rj",
+        "width": 540,
+        "height": 225
+      },
+      {
+        "url": "https://yt3.googleusercontent.com/DU6Kpr5TYKcW6QHvMnsJau5_8QSuix8LCLtf5UEaziZZdXw8SxvcxJ9YWmVIQuzhg2R-MVHYgjdGCQ=w816-h340-p-l90-rj",
+        "width": 816,
+        "height": 340
+      },
+      {
+        "url": "https://yt3.googleusercontent.com/DU6Kpr5TYKcW6QHvMnsJau5_8QSuix8LCLtf5UEaziZZdXw8SxvcxJ9YWmVIQuzhg2R-MVHYgjdGCQ=w1440-h600-p-l90-rj",
+        "width": 1440,
+        "height": 600
+      },
+      {
+        "url": "https://yt3.googleusercontent.com/DU6Kpr5TYKcW6QHvMnsJau5_8QSuix8LCLtf5UEaziZZdXw8SxvcxJ9YWmVIQuzhg2R-MVHYgjdGCQ=w1920-h800-p-l90-rj",
+        "width": 1920,
+        "height": 800
+      },
+      {
+        "url": "https://yt3.googleusercontent.com/DU6Kpr5TYKcW6QHvMnsJau5_8QSuix8LCLtf5UEaziZZdXw8SxvcxJ9YWmVIQuzhg2R-MVHYgjdGCQ=w2880-h1200-p-l90-rj",
+        "width": 2880,
+        "height": 1200
+      }
+    ],
+    "topSongs": [
+      {
+        "type": "SONG",
+        "videoId": "AySMGpXQ1Mo",
+        "name": "Die For You (Remix)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "album": {
+          "name": "Starboy (Deluxe)",
+          "albumId": "MPREb_mD2jEs9HuqV"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/liKrw5t_WphMbkiYKDHQj1rf8S8GSwxgMRUmB7tkHhPF862BRcqIYxFEj9QwKr51ge2ma6u0C_wI4jNo=w60-h60-l90-rj",
+            "width": 60,
+            "height": 60
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/liKrw5t_WphMbkiYKDHQj1rf8S8GSwxgMRUmB7tkHhPF862BRcqIYxFEj9QwKr51ge2ma6u0C_wI4jNo=w120-h120-l90-rj",
+            "width": 120,
+            "height": 120
+          }
+        ]
+      },
+      {
+        "type": "SONG",
+        "videoId": "XZ868t23Pb4",
+        "name": "7 rings",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "album": {
+          "name": "thank u, next",
+          "albumId": "MPREb_IYfe9Etab3k"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w60-h60-l90-rj",
+            "width": 60,
+            "height": 60
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w120-h120-l90-rj",
+            "width": 120,
+            "height": 120
+          }
+        ]
+      },
+      {
+        "type": "SONG",
+        "videoId": "teKmHz3FkBo",
+        "name": "we can't be friends (wait for your love)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "album": {
+          "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+          "albumId": "MPREb_o3lqosnWQ7T"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+            "width": 60,
+            "height": 60
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+            "width": 120,
+            "height": 120
+          }
+        ]
+      },
+      {
+        "type": "SONG",
+        "videoId": "psuGCpXaDMU",
+        "name": "Side To Side (feat. Nicki Minaj)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "album": {
+          "name": "Dangerous Woman",
+          "albumId": "MPREb_ocDhLW2RG5h"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w60-h60-l90-rj",
+            "width": 60,
+            "height": 60
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w120-h120-l90-rj",
+            "width": 120,
+            "height": 120
+          }
+        ]
+      },
+      {
+        "type": "SONG",
+        "videoId": "yEA3qaB0dH8",
+        "name": "Stuck with U",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "album": {
+          "name": "Stuck with U",
+          "albumId": "MPREb_NsCS3nQF6M5"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/01h_mqhBieUtbt2J_3ypc-0uIwP8CFScDXbjJauYwbJeLJWwHGf7l1Wc_jPtUb97uYXaCVFnuXJtfS1p=w60-h60-l90-rj",
+            "width": 60,
+            "height": 60
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/01h_mqhBieUtbt2J_3ypc-0uIwP8CFScDXbjJauYwbJeLJWwHGf7l1Wc_jPtUb97uYXaCVFnuXJtfS1p=w120-h120-l90-rj",
+            "width": 120,
+            "height": 120
+          }
+        ]
+      }
+    ],
+    "topAlbums": [
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_tFo2e11nLhA",
+        "playlistId": "OLAK5uy_mY_LK_PtHiukc2YbykGYtULyBQhI30whM",
+        "name": "Wicked: For Good – The Soundtrack (Commentary)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2026,
+        "thumbnails": [
+          {
+            "url": "https://yt3.googleusercontent.com/ZWFaRvO5G5Fh9kyZlAGGx4jh-p7o5SAa1YsDdRfk4wT5zbWpbM0OphHZkq2LBHIfyVMyHQnqs5jp1gPE=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://yt3.googleusercontent.com/ZWFaRvO5G5Fh9kyZlAGGx4jh-p7o5SAa1YsDdRfk4wT5zbWpbM0OphHZkq2LBHIfyVMyHQnqs5jp1gPE=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_1PFtLdfxdVg",
+        "playlistId": "OLAK5uy_lj4QAoKs5zcdo-BAMplBiUHtH-h11bv7o",
+        "name": "Wicked: For Good – The Soundtrack",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2025,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/gunYbv5ithQRhnU4S7jqgFz4ZCDhrkEg3dMJdD7dP_MGGUgITm2rKcs3h5RYB4p6wmGQZ0iGPECQyyYL=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/gunYbv5ithQRhnU4S7jqgFz4ZCDhrkEg3dMJdD7dP_MGGUgITm2rKcs3h5RYB4p6wmGQZ0iGPECQyyYL=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_qLld9kLieek",
+        "playlistId": "OLAK5uy_lEAJHx_B4i2m5PkUedk1tPp8QqSVg767c",
+        "name": "eternal sunshine deluxe: brighter days ahead",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2025,
+        "thumbnails": [
+          {
+            "url": "https://yt3.googleusercontent.com/xi3VxeBR02HJBMhxOzOGLgVE-FNy-4Koxyrs9PLGe7pJnOodrGbl8KlQ7cA3AgG5Ykk_sprCGKf-CtCS=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://yt3.googleusercontent.com/xi3VxeBR02HJBMhxOzOGLgVE-FNy-4Koxyrs9PLGe7pJnOodrGbl8KlQ7cA3AgG5Ykk_sprCGKf-CtCS=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_Yxgu5EeZIlV",
+        "playlistId": "OLAK5uy_nL3ueiPJ8Cln_BL4mFs8ctCaS-SOdn3ec",
+        "name": "eternal sunshine deluxe: brighter days ahead (instrumental version)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2025,
+        "thumbnails": [
+          {
+            "url": "https://yt3.googleusercontent.com/qKlP-hYjN8zRyf4P22OpvfLgPtv0wf-GsRqLgjC7ywwgnDkqKrR4yeX83k1U7cTltB2vbYRuh42jzsI=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://yt3.googleusercontent.com/qKlP-hYjN8zRyf4P22OpvfLgPtv0wf-GsRqLgjC7ywwgnDkqKrR4yeX83k1U7cTltB2vbYRuh42jzsI=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_MJomIPNgS9M",
+        "playlistId": "OLAK5uy_mXY5L7ACnptAktqIoTRjyBLtc5i4ECarU",
+        "name": "Wicked: The Soundtrack (Commentary)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2024,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/tCsZ8Kh1XKpf5TzSbEDsYxZyrJUuiQgfuQqbIXTbW1m-XLCSoEJ5mgFrF9iv8BoAC_-_cdkK7vpZxBGf=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/tCsZ8Kh1XKpf5TzSbEDsYxZyrJUuiQgfuQqbIXTbW1m-XLCSoEJ5mgFrF9iv8BoAC_-_cdkK7vpZxBGf=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_IAPLi0cs4pY",
+        "playlistId": "OLAK5uy_nwBWblTL7oYG_GhBFXww1GcdouKStdaoY",
+        "name": "Wicked: The Soundtrack",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2024,
+        "thumbnails": [
+          {
+            "url": "https://yt3.googleusercontent.com/m7OWjkpi8RMZRumIccZ1j2W0UUzShW06Keo6CSPicCxYv3pdXu45QA4Xu3jTCIvDfMuQCptmMyHPbxw=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://yt3.googleusercontent.com/m7OWjkpi8RMZRumIccZ1j2W0UUzShW06Keo6CSPicCxYv3pdXu45QA4Xu3jTCIvDfMuQCptmMyHPbxw=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_vf8KnhLzFo6",
+        "playlistId": "OLAK5uy_lc6z4L0H2dvHsZkpxdFmFeUJT9-HnfSFg",
+        "name": "Wicked: The Soundtrack",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2024,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/ljwe3iukjoO20hexN58vdQeYyso1QZLO7JzELVh8tVryoTwY8h6PzCfNUUMnC2i-7pG5sBDZIw6Gnz4=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/ljwe3iukjoO20hexN58vdQeYyso1QZLO7JzELVh8tVryoTwY8h6PzCfNUUMnC2i-7pG5sBDZIw6Gnz4=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_R4X0lNcrW6T",
+        "playlistId": "OLAK5uy_m4FBGy6iFf5M4aInsJyAT2eokq1LcD_bc",
+        "name": "My Everything (Tenth Anniversary Edition)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2024,
+        "thumbnails": [
+          {
+            "url": "https://yt3.googleusercontent.com/LlXXNqZOg9ob30lTAz6XCkeCZ0MIwuZiwqAHqz-1BuOywEqeyXnYC7e-x1gf9L_4wUNUw9VdsMcdZ5c=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://yt3.googleusercontent.com/LlXXNqZOg9ob30lTAz6XCkeCZ0MIwuZiwqAHqz-1BuOywEqeyXnYC7e-x1gf9L_4wUNUw9VdsMcdZ5c=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_PAJOpgWiq5r",
+        "playlistId": "OLAK5uy_kQF1D-3BrTCPp38u3eZx5iPgbY2x8wIAg",
+        "name": "eternal sunshine (slightly deluxe)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2024,
+        "thumbnails": [
+          {
+            "url": "https://yt3.googleusercontent.com/H-ig68cvu6hjQm9r2yGpCfeohF5cdA-nhGt0gFnF5Ps6B_S_oYeLLWm-Uj6NVFoF_FyVf1NqVPFOUrYf=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://yt3.googleusercontent.com/H-ig68cvu6hjQm9r2yGpCfeohF5cdA-nhGt0gFnF5Ps6B_S_oYeLLWm-Uj6NVFoF_FyVf1NqVPFOUrYf=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_l2GaeT4N6Dw",
+        "playlistId": "OLAK5uy_m2xdwqi_yo13jqJ7tqraoJX3q1aU2BbPw",
+        "name": "Positions",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2020,
+        "thumbnails": [
+          {
+            "url": "https://yt3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://yt3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      }
+    ],
+    "topSingles": [
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_8BDqXMI6J3N",
+        "playlistId": "OLAK5uy_lhLP8I0PxTQ9EB7Uif2t0wAAygK2axoXE",
+        "name": "For Good (from Wicked: For Good - The Soundtrack)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2025,
+        "thumbnails": [
+          {
+            "url": "https://yt3.googleusercontent.com/Nu8CTV8cwq3fyiFsQQnh6s4DI9dMSiwrFb0D2zB7_AOa5GcKVv0EMBCiW32QMXXQUqGv5AKIczYcwXao=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://yt3.googleusercontent.com/Nu8CTV8cwq3fyiFsQQnh6s4DI9dMSiwrFb0D2zB7_AOa5GcKVv0EMBCiW32QMXXQUqGv5AKIczYcwXao=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_7c3rGXxPW5u",
+        "playlistId": "OLAK5uy_nx0tOyYdRx94_3Z1_koODYzpqnIm_2gZ4",
+        "name": "supernatural",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2025,
+        "thumbnails": [
+          {
+            "url": "https://yt3.googleusercontent.com/RoDRrnBPSqeEVy7M7UwAGIAKcPXAAJbFbcD8jhPon6wQL34inIRSDKRyqni2MKqPvYZRtOqs9AFIIY5n=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://yt3.googleusercontent.com/RoDRrnBPSqeEVy7M7UwAGIAKcPXAAJbFbcD8jhPon6wQL34inIRSDKRyqni2MKqPvYZRtOqs9AFIIY5n=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_7xirvanNQIV",
+        "playlistId": "OLAK5uy_lhZtbj3uVs_lklWQJgEOk2UuIcgMYvxZ8",
+        "name": "twilight zone",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2025,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/ivoyRA6UJe_phODxzaYGFJQ-59OVNGxF7ISzqZoWTj_nMtvXcwhafEvDAfsOuJEe4f430Ja5tCxiTQs=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/ivoyRA6UJe_phODxzaYGFJQ-59OVNGxF7ISzqZoWTj_nMtvXcwhafEvDAfsOuJEe4f430Ja5tCxiTQs=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_fp5L7FOoloX",
+        "playlistId": "OLAK5uy_mrkiKDOkLktZ8QdVk4sVmHxInOxkpDjWU",
+        "name": "Wicked: The Soundtrack (Instrumentals)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2024,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/ljwe3iukjoO20hexN58vdQeYyso1QZLO7JzELVh8tVryoTwY8h6PzCfNUUMnC2i-7pG5sBDZIw6Gnz4=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/ljwe3iukjoO20hexN58vdQeYyso1QZLO7JzELVh8tVryoTwY8h6PzCfNUUMnC2i-7pG5sBDZIw6Gnz4=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_83AQgbn1nQi",
+        "playlistId": "OLAK5uy_mSahHbEs-qidVAx7yjlN8zhJSRr2imDTk",
+        "name": "the boy is mine",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2024,
+        "thumbnails": [
+          {
+            "url": "https://yt3.googleusercontent.com/kht9aV6lGcRQdEG8kWUv218LPV6FOxLVqdmWrz6PfVs3NPkaKPK3iV_IGvaDYwx84Fd8v3OwO5F9udk=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://yt3.googleusercontent.com/kht9aV6lGcRQdEG8kWUv218LPV6FOxLVqdmWrz6PfVs3NPkaKPK3iV_IGvaDYwx84Fd8v3OwO5F9udk=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_KV4zB4EE8dS",
+        "playlistId": "OLAK5uy_kexHMgr_rqsDWBS15fYVFT0gR4i4sX7M8",
+        "name": "we can't be friends (wait for your love)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2024,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/edGb8HzjliWQY28nJdOhyFCcH-1WQJd1ZKmD9s92o3nHeAz73x_GYCRuP2JSBIIBcRdWJp-ZvRGLvccUnA=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/edGb8HzjliWQY28nJdOhyFCcH-1WQJd1ZKmD9s92o3nHeAz73x_GYCRuP2JSBIIBcRdWJp-ZvRGLvccUnA=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_F40gZE9691H",
+        "playlistId": "OLAK5uy_lGkCZLmbqG7Y6YvoRgSuC1YT0Wo9o5jNM",
+        "name": "yes, and?",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2024,
+        "thumbnails": [
+          {
+            "url": "https://yt3.googleusercontent.com/GLdXCwLrMIixK44nTJrpv0VGO-7Td33HwX0mphmUpKuWyCS_Ux6VrecGQfjhYpB2768T5QLwl61kWi1_=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://yt3.googleusercontent.com/GLdXCwLrMIixK44nTJrpv0VGO-7Td33HwX0mphmUpKuWyCS_Ux6VrecGQfjhYpB2768T5QLwl61kWi1_=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_Pxi0SxE1fIc",
+        "playlistId": "OLAK5uy_m4xFAdXNpsGSrvHLW83hTgwR4kPCJh4H8",
+        "name": "yes, and?",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2024,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/Lr3JQ3JfqjJcbK0ovBaUlVOtKao1fH3cJ4au7KBlIOUbErjgT8jMwbgVtqw59WygW2dkhH7z-vaqM5hF=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/Lr3JQ3JfqjJcbK0ovBaUlVOtKao1fH3cJ4au7KBlIOUbErjgT8jMwbgVtqw59WygW2dkhH7z-vaqM5hF=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_gs2F9dkgDL5",
+        "playlistId": "OLAK5uy_mK-j3X2YV1w-ToePbCxFFnoWnV1AIWxk8",
+        "name": "yes, and?",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2024,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/MISAPYN1uswEYgs3ztKt2FGIkECDg2Z3YXz4cTktfbTBTameTYvMEKWPgblHG2qH2a0O1s9iMS7ze7RG=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/MISAPYN1uswEYgs3ztKt2FGIkECDg2Z3YXz4cTktfbTBTameTYvMEKWPgblHG2qH2a0O1s9iMS7ze7RG=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ALBUM",
+        "albumId": "MPREb_3kIZMsUTRfn",
+        "playlistId": "OLAK5uy_kQbPf1ocPfqRn-lBBTPExP66pLRpJmi94",
+        "name": "Santa, Can’t You Hear Me",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "year": 2022,
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/aSIQDerD5Jised11OLNOkV4my5h7OxNoy66-aOIUSZMFNiTVkwLhL1N5LwkCtYk1QLMIvrVGNGRpzmo=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/aSIQDerD5Jised11OLNOkV4my5h7OxNoy66-aOIUSZMFNiTVkwLhL1N5LwkCtYk1QLMIvrVGNGRpzmo=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      }
+    ],
+    "topVideos": [
+      {
+        "type": "VIDEO",
+        "videoId": "QYh6mYIJG2Y",
+        "name": "7 rings (Official Video)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/QYh6mYIJG2Y/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3kbeXDy9-Dw-Uf5JHChrpSY03VrFw",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/QYh6mYIJG2Y/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3khpIJLs3UgeFdMcv5cN5tK7hPuug",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "VIDEO",
+        "videoId": "KNtJGQkC-WI",
+        "name": "we can't be friends (wait for your love)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/KNtJGQkC-WI/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3l-D9u3U-y4deneH4GbcuPC-q8btg",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/KNtJGQkC-WI/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lQ0LLuwCpaSF_gCR2T553C2RFRZw",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "VIDEO",
+        "videoId": "SXiSVQZLje8",
+        "name": "Side To Side (Official Video) (feat. Nicki Minaj)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/SXiSVQZLje8/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3nCaJ7N0ZjuvAGeUMXkejCCZakhpw",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/SXiSVQZLje8/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3nvnk60HKrKUosw1wVqPU2eFbLIVA",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "VIDEO",
+        "videoId": "yka6mulGMmU",
+        "name": "Die For You (Audio)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/yka6mulGMmU/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3lOVShaUzWtmelgVm04DwlH5jk4Hw",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/yka6mulGMmU/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3nrJh1yTE5aT1mw00YNRTrvc0qtDg",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "VIDEO",
+        "videoId": "gl1aHhXnN1k",
+        "name": "thank u, next (Official Video)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/gl1aHhXnN1k/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3kFvlf1iRRhSADn7x1e5b7x3FQm9w",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/gl1aHhXnN1k/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lzENOHl5IaW1DeLGzfOgri7Ux6Lw",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "VIDEO",
+        "videoId": "pE49WK-oNjU",
+        "name": "Stuck with U",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/pE49WK-oNjU/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3lP-Gg_CxFVFryRN7pEMVD5qZIyMw",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/pE49WK-oNjU/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3ldSVgkycIWThWDBk6M3RsQa4v8HA",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "VIDEO",
+        "videoId": "BPgEgaPk62M",
+        "name": "One Last Time (Official Video)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/BPgEgaPk62M/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3kPo3M44SE6HPhneknAxQmNNQoCcQ",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/BPgEgaPk62M/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3nbE625XaP--TBrVa-BFbpHaddFdg",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "VIDEO",
+        "videoId": "g5qU7p7yOY8",
+        "name": "Love Me Harder",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/g5qU7p7yOY8/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3kXaqs1tZXM-bpPnUsmjiKoJEBLfg",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/g5qU7p7yOY8/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lfhmG8NvubOotlVBguSbBO4yFSIw",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "VIDEO",
+        "videoId": "1ekZEVeXwek",
+        "name": "Into You (Official Video)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/1ekZEVeXwek/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3nQo0egVuihvWfsq1ocBDl8Ziu02A",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/1ekZEVeXwek/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lDQh0jW1t5iqaK6imxmzQH5VdrdQ",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "VIDEO",
+        "videoId": "hKwizc5nsWY",
+        "name": "supernatural (Official Music Video)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "duration": null,
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/hKwizc5nsWY/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3m-WuntrYZBCzrbgSn3YH13dWpJow",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/hKwizc5nsWY/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lfzJxsZv6zeZA6QTlz673SEhGUDg",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      }
+    ],
+    "featuredOn": [
+      {
+        "type": "PLAYLIST",
+        "playlistId": "UClYV6hHlupm_S_ObS1W-DYw",
+        "name": "The Weeknd & Ariana Grande – Save Your Tears (Live on The 202...",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/s37x2VSZrLw/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3lus8rrfOFEnquqrMP3CUjko7SHBA",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/s37x2VSZrLw/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lXd22N-fyzKOebZzQO620n4pLfJQ",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "PLAYLIST",
+        "playlistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "we can’t be friends (wait for your love) (live version)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/cZTlRmNgJz4/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3k_GKDbSNYvs0FAy05M6kMsh25MZg",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/cZTlRmNgJz4/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lmhmYHuPnx_mC5r7wEXE_2dZRPGQ",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "PLAYLIST",
+        "playlistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "supernatural (live version)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/1Oz9rEpcBH0/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3kOwivsh3mguXwpQh0542Prya05yw",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/1Oz9rEpcBH0/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3nz_JNj4JONLK4dL9f-RYihD1WGYw",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "PLAYLIST",
+        "playlistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Tattooed Heart (Live from London)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/NaZXwYjal8E/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3ka36eeYVHEKCDrw73K9Ses_eozkw",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/NaZXwYjal8E/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lP89lyIGuixRsFycIPWQBwZdAgMA",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "PLAYLIST",
+        "playlistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "eternal sunshine (live version)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/zFwrArDXHkE/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3lQKLM5pFLz3z1Mz6jItr_zzb8VIA",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/zFwrArDXHkE/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lGSLpArx9Vdj1y4mpE7gkYy_3e2A",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "PLAYLIST",
+        "playlistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Honeymoon Avenue (Live)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/zp8-BhMCnTA/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3l3P5Z68W4Vq3lCFjQr0RheZu0f7Q",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/zp8-BhMCnTA/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lnju6TlmjhtzXE4sEpbSKbCPwlug",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "PLAYLIST",
+        "playlistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "we can’t be friends (wait for your love) (Live)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/pLBXk3nMVAQ/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3kieIT5rCALYMj1XQcJ_exkSYEDPA",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/pLBXk3nMVAQ/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lhCRzDMR6XkH3qRjAUvjXlcKqerA",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "PLAYLIST",
+        "playlistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "pov (Official Live Performance) | Vevo",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/fLFvbwrWLQY/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3nWndxn-35rqDCmipYOLY6HL2Uadw",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/fLFvbwrWLQY/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3mLxugyTWWH1OwwcQhiG34pUnERQw",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "PLAYLIST",
+        "playlistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Dangerous Woman (A Cappella)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/VVYTzauIb_4/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3mKuSuUNjCqX6eGGqO2CrF9TSrZIg",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/VVYTzauIb_4/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lkj8VzNMwALP5VWcf_WpO14xpqww",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      },
+      {
+        "type": "PLAYLIST",
+        "playlistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "The Way (Live from London / 2023)",
+        "artist": {
+          "artistId": "UC0076UMUgEng8HORUw_MYHA",
+          "name": "Ariana Grande"
+        },
+        "thumbnails": [
+          {
+            "url": "https://i.ytimg.com/vi/wBWK06E3oxw/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3mVMWUih2Jez3r-IFJ_0Rov22TbdQ",
+            "width": 400,
+            "height": 225
+          },
+          {
+            "url": "https://i.ytimg.com/vi/wBWK06E3oxw/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3nmbPpHdcS16q9uMjeRYG7zs8oOGw",
+            "width": 800,
+            "height": 450
+          }
+        ]
+      }
+    ],
+    "similarArtists": [
+      {
+        "type": "ARTIST",
+        "artistId": "VLRDCLAK5uy_m6_xW9k1AulRRrn2tpl9gU_Lp3v110LpA",
+        "name": "Presenting Ariana Grande",
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/hwKaMxpYuh3qZ-kAQXB1Omdt1lMbnkFVWu_q7FqTa2r0XXjVwK6szOA1y0X6eLpL3aKvtzsJdpDBLpWi=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/hwKaMxpYuh3qZ-kAQXB1Omdt1lMbnkFVWu_q7FqTa2r0XXjVwK6szOA1y0X6eLpL3aKvtzsJdpDBLpWi=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ARTIST",
+        "artistId": "VLRDCLAK5uy_mAURaX3BiQydKi75-h_oqtIU_ZshsHStk",
+        "name": "Powerful Women of Pop",
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/5ain2EeH1SYcfiNN2ariZTjRgNvyJNMS6PC66ktCzaANCsquEuMzi2Hs3ncLUm5mG8e7I61UB6mvjQ=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/5ain2EeH1SYcfiNN2ariZTjRgNvyJNMS6PC66ktCzaANCsquEuMzi2Hs3ncLUm5mG8e7I61UB6mvjQ=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ARTIST",
+        "artistId": "VLRDCLAK5uy_nSq67AJ2d75MFNJ3j_4ClEtSgC-opBM84",
+        "name": "Pop Hits",
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/JtdVmRuNc_SnqnxQ5Ig9Z4_7cRfF-9w7T-OJTNPP8eoOMleAIMNhOVDPVEKENJlYm7gZAnZ3L96bRIs=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/JtdVmRuNc_SnqnxQ5Ig9Z4_7cRfF-9w7T-OJTNPP8eoOMleAIMNhOVDPVEKENJlYm7gZAnZ3L96bRIs=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ARTIST",
+        "artistId": "VLRDCLAK5uy_mlCByo5eM1tLBhUdMyn2GphTXICCM_W1w",
+        "name": "Pop Motivation",
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/4JmVhYrEe6xEDA2T033jGOtStSENl5JejRnux73zcZWlGKXr3EgcjKVxvmwRz47kSb1iO11s4NAQKqg=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/4JmVhYrEe6xEDA2T033jGOtStSENl5JejRnux73zcZWlGKXr3EgcjKVxvmwRz47kSb1iO11s4NAQKqg=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ARTIST",
+        "artistId": "VLRDCLAK5uy_nfs_t4FUu00E5ED6lveEBBX1VMYe1mFjk",
+        "name": "Dance Pop Bangers",
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/p8Xk7wNROf-HEnsoqdIok9kKmp5vMdVSbJFq_Kf-g_mVdqwAx2NlgKqST-WxBoEasTdpomFnibKy59o=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/p8Xk7wNROf-HEnsoqdIok9kKmp5vMdVSbJFq_Kf-g_mVdqwAx2NlgKqST-WxBoEasTdpomFnibKy59o=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ARTIST",
+        "artistId": "VLRDCLAK5uy_lGgGDpsoD65Xo1oFFcD7Qy7OWI0j3k-GM",
+        "name": "Hairbrush Karaoke",
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/JrUEfWxThhSdhimw3WhmR3vOMfybk19JuLfeqz-6YaM7aLFnDNow3HFMRGI4-jrfzX2N0fbbtXVL9aw=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/JrUEfWxThhSdhimw3WhmR3vOMfybk19JuLfeqz-6YaM7aLFnDNow3HFMRGI4-jrfzX2N0fbbtXVL9aw=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ARTIST",
+        "artistId": "VLRDCLAK5uy_kVuz2Y7g6AUnbFdB2hLHo6EH8ieytGHbg",
+        "name": "Billion Views Club - Pop",
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/-dQqajKs2Y6kEDlJ0ZcMVYl22NrYbykTCnEn4rPuyI2ayOM8BFdzEYP4bkFBdASfJagtyZIvzEfxQbk=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/-dQqajKs2Y6kEDlJ0ZcMVYl22NrYbykTCnEn4rPuyI2ayOM8BFdzEYP4bkFBdASfJagtyZIvzEfxQbk=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ARTIST",
+        "artistId": "VLRDCLAK5uy_nxuz8sV0R7aWiLsbDv5W9_Bvp0X9PxFjY",
+        "name": "'10s Pop",
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/ovdrE4a-S81t54orNlhkCVp69Zw-HqPV91fU8TsPeh9ymlmQGz1hwcM-YFL_lF-_s3xsLjZWE86FHA=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/ovdrE4a-S81t54orNlhkCVp69Zw-HqPV91fU8TsPeh9ymlmQGz1hwcM-YFL_lF-_s3xsLjZWE86FHA=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ARTIST",
+        "artistId": "VLRDCLAK5uy_lGEOjy5U8xV41C8_LyqNnAZKOH6sGyutI",
+        "name": "Bubble Pop",
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/LdHZKfih_bCyAVi4k2xuN5gG8EdDd7RA9eQKiC03slIJm5FnJwG3OfKgxy4szcjxBCrFz1R6BLPEyEU=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/LdHZKfih_bCyAVi4k2xuN5gG8EdDd7RA9eQKiC03slIJm5FnJwG3OfKgxy4szcjxBCrFz1R6BLPEyEU=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      },
+      {
+        "type": "ARTIST",
+        "artistId": "VLRDCLAK5uy_n9PTezEY6LrODsz6rl2KDtFzC9e5Qzz9Y",
+        "name": "Gaming Hits",
+        "thumbnails": [
+          {
+            "url": "https://lh3.googleusercontent.com/QrISu_Bk4sR6MN_TUD2bbWO4ZyfdSFJVE8JPpCD4P9uCRmyQtE1e3HjxtwsiomjiR0idTKD7Wl6w9A=w226-h226-l90-rj",
+            "width": 226,
+            "height": 226
+          },
+          {
+            "url": "https://lh3.googleusercontent.com/QrISu_Bk4sR6MN_TUD2bbWO4ZyfdSFJVE8JPpCD4P9uCRmyQtE1e3HjxtwsiomjiR0idTKD7Wl6w9A=w544-h544-l90-rj",
+            "width": 544,
+            "height": 544
+          }
+        ]
+      }
+    ]
+  },
+  "artistSongs": [
+    {
+      "type": "SONG",
+      "videoId": "AySMGpXQ1Mo",
+      "name": "Die For You (Remix)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Starboy (Deluxe)",
+        "albumId": "MPREb_mD2jEs9HuqV"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/liKrw5t_WphMbkiYKDHQj1rf8S8GSwxgMRUmB7tkHhPF862BRcqIYxFEj9QwKr51ge2ma6u0C_wI4jNo=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/liKrw5t_WphMbkiYKDHQj1rf8S8GSwxgMRUmB7tkHhPF862BRcqIYxFEj9QwKr51ge2ma6u0C_wI4jNo=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "XZ868t23Pb4",
+      "name": "7 rings",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "thank u, next",
+        "albumId": "MPREb_IYfe9Etab3k"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "teKmHz3FkBo",
+      "name": "we can't be friends (wait for your love)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "psuGCpXaDMU",
+      "name": "Side To Side (feat. Nicki Minaj)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Dangerous Woman",
+        "albumId": "MPREb_ocDhLW2RG5h"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "yEA3qaB0dH8",
+      "name": "Stuck with U",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Stuck with U",
+        "albumId": "MPREb_NsCS3nQF6M5"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/01h_mqhBieUtbt2J_3ypc-0uIwP8CFScDXbjJauYwbJeLJWwHGf7l1Wc_jPtUb97uYXaCVFnuXJtfS1p=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/01h_mqhBieUtbt2J_3ypc-0uIwP8CFScDXbjJauYwbJeLJWwHGf7l1Wc_jPtUb97uYXaCVFnuXJtfS1p=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "GftZ601-pXs",
+      "name": "thank u, next",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "thank u, next",
+        "albumId": "MPREb_IYfe9Etab3k"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "KEGZVv6KXL0",
+      "name": "One Last Time",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "My Everything (Deluxe)",
+        "albumId": "MPREb_doJku3QBzcl"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "uvXtC13GlxQ",
+      "name": "Love Me Harder",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "My Everything (Deluxe)",
+        "albumId": "MPREb_doJku3QBzcl"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Faq-ODnfIPw",
+      "name": "Into You",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Dangerous Woman",
+        "albumId": "MPREb_4QUOy96CYxp"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "b0U-NcIWz1M",
+      "name": "Bang Bang",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "My Everything (Deluxe)",
+        "albumId": "MPREb_doJku3QBzcl"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "5CB_bMJKRR8",
+      "name": "supernatural",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "lzlg0e7MvYI",
+      "name": "positions",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Positions",
+        "albumId": "MPREb_l2GaeT4N6Dw"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "lS9Kgp6PsWY",
+      "name": "Save Your Tears ((Remix) Bonus Track)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "After Hours (Deluxe)",
+        "albumId": "MPREb_0K920QfuSu0"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/Ds4HZUl-Cziy9wW0zGv5_rRw0fGc01a3rMZ6mB27HkSTtVLaPwUpPaXdoISHAH3XprkYyPfIEcSpmPy-=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/Ds4HZUl-Cziy9wW0zGv5_rRw0fGc01a3rMZ6mB27HkSTtVLaPwUpPaXdoISHAH3XprkYyPfIEcSpmPy-=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "t31xgKtLjwo",
+      "name": "no tears left to cry",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Sweetener",
+        "albumId": "MPREb_zmSz8s0dO46"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/Mu-SOxwcJzaiQpjsFsNiKSBGXZNx6xJ4aZoyi-vZNLfxXpuD0wXQH_-qT172MN-Z7YxuFzf60QW6yVPQDA=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/Mu-SOxwcJzaiQpjsFsNiKSBGXZNx6xJ4aZoyi-vZNLfxXpuD0wXQH_-qT172MN-Z7YxuFzf60QW6yVPQDA=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Uyka5SnxmQ4",
+      "name": "Dangerous Woman",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Dangerous Woman",
+        "albumId": "MPREb_YpOiaYzgStT"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "JxqiCA-gcPI",
+      "name": "Problem (feat. Iggy Azalea)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "My Everything (Deluxe)",
+        "albumId": "MPREb_doJku3QBzcl"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "1s4-OFCBUGo",
+      "name": "Break Free (feat. Zedd)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "My Everything (Deluxe)",
+        "albumId": "MPREb_doJku3QBzcl"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "hO2iUtGvmXM",
+      "name": "Everyday (feat. Future)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Dangerous Woman",
+        "albumId": "MPREb_ocDhLW2RG5h"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "6vzaFiMrPPY",
+      "name": "twilight zone",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "4b_ugh-65NQ",
+      "name": "bloodline",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "thank u, next",
+        "albumId": "MPREb_IYfe9Etab3k"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "vpohuhgqf5w",
+      "name": "God is a woman",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Sweetener",
+        "albumId": "MPREb_dDuqjs54mrq"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/aEL1JzO2XmKANj25bRhT_f4Jm0-IAUSySpb9AuRSvoPlIzBeLKgs7YvorQkws5s-_IycP9alZrcOwC8=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/aEL1JzO2XmKANj25bRhT_f4Jm0-IAUSySpb9AuRSvoPlIzBeLKgs7YvorQkws5s-_IycP9alZrcOwC8=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Zzhy5-cANQA",
+      "name": "the boy is mine",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "bGY7Vae7pwc",
+      "name": "needy",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "thank u, next",
+        "albumId": "MPREb_IYfe9Etab3k"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "7GOFTXLSvMI",
+      "name": "boyfriend",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Boyfriend",
+        "albumId": "MPREb_bXgqC9iN7An"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/JGxdiarndH6Ed7xNQusUaiRFUNzkcStSb3fInvJzRheYbdyU9PvfOemSoaueE0nYX4We2OZLcN-TrMVM=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/JGxdiarndH6Ed7xNQusUaiRFUNzkcStSb3fInvJzRheYbdyU9PvfOemSoaueE0nYX4We2OZLcN-TrMVM=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "DXnS8mqUDyQ",
+      "name": "Rain On Me",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Chromatica",
+        "albumId": "MPREb_gYNCAPArfZD"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/ZiPfq90LtAxtNwB_3WlwX21XbQqOxA5lK3lQpwURSwOOrb3J8phMF-WVyQ6jZcDtBcC4RuW_2PWQqUj7=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/ZiPfq90LtAxtNwB_3WlwX21XbQqOxA5lK3lQpwURSwOOrb3J8phMF-WVyQ6jZcDtBcC4RuW_2PWQqUj7=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "4nbYqWVXp7Q",
+      "name": "break up with your girlfriend, i'm bored",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "thank u, next",
+        "albumId": "MPREb_IYfe9Etab3k"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "NplFevPlYDI",
+      "name": "34+35",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Positions",
+        "albumId": "MPREb_l2GaeT4N6Dw"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Hofh-VI0KaQ",
+      "name": "intro (end of the world) (extended)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "S3nrck7gcfk",
+      "name": "yes, and?",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "TKVsRBjMWuk",
+      "name": "Almost Is Never Enough",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Yours Truly",
+        "albumId": "MPREb_bnI7JvW7UUn"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "5vETwZfmRgM",
+      "name": "Beauty and the Beast",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Beauty and the Beast (Original Motion Picture Soundtrack/Deluxe Edition)",
+        "albumId": "MPREb_EhCr1QLJAh8"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/jej343l-7DJxcd4wx3v-qWIpQ3g8_FcTan8EkvI5cMCxxEQKVMUORRF4VtJwpDTz4U3tjncW0nx66EGY=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/jej343l-7DJxcd4wx3v-qWIpQ3g8_FcTan8EkvI5cMCxxEQKVMUORRF4VtJwpDTz4U3tjncW0nx66EGY=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "y-C5cM_0KVE",
+      "name": "pov",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Positions",
+        "albumId": "MPREb_l2GaeT4N6Dw"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "MBc7Ykm31hE",
+      "name": "The Way (feat. Mac Miller)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Yours Truly",
+        "albumId": "MPREb_bnI7JvW7UUn"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "8axQACbVkrk",
+      "name": "breathin",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Sweetener",
+        "albumId": "MPREb_dDuqjs54mrq"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/aEL1JzO2XmKANj25bRhT_f4Jm0-IAUSySpb9AuRSvoPlIzBeLKgs7YvorQkws5s-_IycP9alZrcOwC8=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/aEL1JzO2XmKANj25bRhT_f4Jm0-IAUSySpb9AuRSvoPlIzBeLKgs7YvorQkws5s-_IycP9alZrcOwC8=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "-JPoGJSwmBQ",
+      "name": "Focus",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Focus",
+        "albumId": "MPREb_dzAnEwBLkoo"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/m1ZRHAatmXv8-d1T48u4PG-UdSA8B4815GRF7nm6s9nF-YZMmNWVetm7tuG89N_ECUdIUZY3AHWan1qS=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/m1ZRHAatmXv8-d1T48u4PG-UdSA8B4815GRF7nm6s9nF-YZMmNWVetm7tuG89N_ECUdIUZY3AHWan1qS=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "lMydbVuFy4w",
+      "name": "Let Me Love You (feat. Lil Wayne)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Dangerous Woman",
+        "albumId": "MPREb_4QUOy96CYxp"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "5aNBV0sexK8",
+      "name": "eternal sunshine",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "9g8J94VuE70",
+      "name": "For Good",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "For Good (from Wicked: For Good - The Soundtrack)",
+        "albumId": "MPREb_8BDqXMI6J3N"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/Nu8CTV8cwq3fyiFsQQnh6s4DI9dMSiwrFb0D2zB7_AOa5GcKVv0EMBCiW32QMXXQUqGv5AKIczYcwXao=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/Nu8CTV8cwq3fyiFsQQnh6s4DI9dMSiwrFb0D2zB7_AOa5GcKVv0EMBCiW32QMXXQUqGv5AKIczYcwXao=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "h-mrUx9_jis",
+      "name": "everytime",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Sweetener",
+        "albumId": "MPREb_dDuqjs54mrq"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/aEL1JzO2XmKANj25bRhT_f4Jm0-IAUSySpb9AuRSvoPlIzBeLKgs7YvorQkws5s-_IycP9alZrcOwC8=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/aEL1JzO2XmKANj25bRhT_f4Jm0-IAUSySpb9AuRSvoPlIzBeLKgs7YvorQkws5s-_IycP9alZrcOwC8=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Jy-FoujjHm8",
+      "name": "Hampstead",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "mbxaGzjCXP8",
+      "name": "Be My Baby (feat. Cashmere Cat)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "My Everything (Deluxe)",
+        "albumId": "MPREb_doJku3QBzcl"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "cfkwssGxTos",
+      "name": "dandelion",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "IhMvZ6LV6CY",
+      "name": "warm",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "K9pmOxDdq20",
+      "name": "What Is This Feeling?",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Wicked: The Soundtrack",
+        "albumId": "MPREb_IAPLi0cs4pY"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/m7OWjkpi8RMZRumIccZ1j2W0UUzShW06Keo6CSPicCxYv3pdXu45QA4Xu3jTCIvDfMuQCptmMyHPbxw=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/m7OWjkpi8RMZRumIccZ1j2W0UUzShW06Keo6CSPicCxYv3pdXu45QA4Xu3jTCIvDfMuQCptmMyHPbxw=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "eLQMGYHVJ_I",
+      "name": "Daydreamin'",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Yours Truly",
+        "albumId": "MPREb_bnI7JvW7UUn"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "K1dCGfSDbQY",
+      "name": "bye",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "DamlrNlbKHk",
+      "name": "we can’t be friends (wait for your love) (live version)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine (slightly deluxe and also live)",
+        "albumId": "MPREb_Fa9RqOH57rE"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/MMvfTfNPvkBlGZ8aQgz6a_RxNVZVJEvFAfevs1w1SHuuWqknJWaH85n5PBzWmph0dvQHpZQdmvVSC_Y=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/MMvfTfNPvkBlGZ8aQgz6a_RxNVZVJEvFAfevs1w1SHuuWqknJWaH85n5PBzWmph0dvQHpZQdmvVSC_Y=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "KHUFlha_hTs",
+      "name": "Don’t Call Me Angel (Charlie’s Angels)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Don’t Call Me Angel (From \"Charlie’s Angels\")",
+        "albumId": "MPREb_FoIXjAMsZxz"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/w2iyaIqWOHWWMLrkV-31fdaP9iWgNw_XYuA58smTdoDlPp_Nx6IdCyckah9p6Gsj2WuBB6wELSGz23Za=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/w2iyaIqWOHWWMLrkV-31fdaP9iWgNw_XYuA58smTdoDlPp_Nx6IdCyckah9p6Gsj2WuBB6wELSGz23Za=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "1q3SnhZnf88",
+      "name": "34+35 (Remix) (feat. Doja Cat & Megan Thee Stallion)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Positions (Deluxe)",
+        "albumId": "MPREb_yBGn9Y7Ev7u"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/7ebRChaURWQyuEu_l927uvBqbCBSv9arimDKTaqPpZDuv1gS08OO6Ru5f9Wa_kafLCBIOORtZrAUyuj5=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/7ebRChaURWQyuEu_l927uvBqbCBSv9arimDKTaqPpZDuv1gS08OO6Ru5f9Wa_kafLCBIOORtZrAUyuj5=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "rpFXOD_olvY",
+      "name": "Popular",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Wicked: The Soundtrack",
+        "albumId": "MPREb_IAPLi0cs4pY"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/m7OWjkpi8RMZRumIccZ1j2W0UUzShW06Keo6CSPicCxYv3pdXu45QA4Xu3jTCIvDfMuQCptmMyHPbxw=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/m7OWjkpi8RMZRumIccZ1j2W0UUzShW06Keo6CSPicCxYv3pdXu45QA4Xu3jTCIvDfMuQCptmMyHPbxw=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "XVhqcmyne2A",
+      "name": "My Favorite Part",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "The Divine Feminine",
+        "albumId": "MPREb_kCZ6WUs8Rg3"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/QgFG5RHpesQcNq4JDY51ot0i2GRRf7GFpiO49zyAVO2C5YyKxCTglY0A9c4zBCHWkLrtg7mi-0UY5Uc=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/QgFG5RHpesQcNq4JDY51ot0i2GRRf7GFpiO49zyAVO2C5YyKxCTglY0A9c4zBCHWkLrtg7mi-0UY5Uc=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "_tJM74eZy04",
+      "name": "Honeymoon Avenue",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Yours Truly",
+        "albumId": "MPREb_bnI7JvW7UUn"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "xyLa7Y9CpnY",
+      "name": "For Good (Live from the Gershwin Theatre)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Wicked: One Wonderful Night (Live) – The Soundtrack",
+        "albumId": "MPREb_YZDOPCmdHax"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/_3fb9g0XWzg6lQG8deOuEnVrWJ57DdQS5CCYCYA3cbV7sW3DP4eZpNLbwztr4jawHn3NRC-or-3WAxE=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/_3fb9g0XWzg6lQG8deOuEnVrWJ57DdQS5CCYCYA3cbV7sW3DP4eZpNLbwztr4jawHn3NRC-or-3WAxE=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "8Vb0AhxaIwI",
+      "name": "motive",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Positions",
+        "albumId": "MPREb_l2GaeT4N6Dw"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Qztc5UGupj4",
+      "name": "ghostin",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "thank u, next",
+        "albumId": "MPREb_IYfe9Etab3k"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "cS_3fUtcVAU",
+      "name": "past life",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "denGNWMNsSY",
+      "name": "Moonlight",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Dangerous Woman",
+        "albumId": "MPREb_ocDhLW2RG5h"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "hNRjI_biB18",
+      "name": "Touch It",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Dangerous Woman",
+        "albumId": "MPREb_ocDhLW2RG5h"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "oa11bHIZNaE",
+      "name": "Greedy",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Dangerous Woman",
+        "albumId": "MPREb_ocDhLW2RG5h"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "8zWMcFNehtA",
+      "name": "Baby I",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Yours Truly",
+        "albumId": "MPREb_bnI7JvW7UUn"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "8n5W2O2DzLY",
+      "name": "supernatural (remix)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine (slightly deluxe)",
+        "albumId": "MPREb_PAJOpgWiq5r"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/H-ig68cvu6hjQm9r2yGpCfeohF5cdA-nhGt0gFnF5Ps6B_S_oYeLLWm-Uj6NVFoF_FyVf1NqVPFOUrYf=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/H-ig68cvu6hjQm9r2yGpCfeohF5cdA-nhGt0gFnF5Ps6B_S_oYeLLWm-Uj6NVFoF_FyVf1NqVPFOUrYf=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "8TVs1iuijWI",
+      "name": "Right There (feat. Big Sean)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Yours Truly",
+        "albumId": "MPREb_bnI7JvW7UUn"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Imi_ty1pOzM",
+      "name": "i wish i hated you",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "9s43N_WGQ1k",
+      "name": "we can't be friends (wait for your love) – string version",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "we can't be friends (wait for your love)",
+        "albumId": "MPREb_KV4zB4EE8dS"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/edGb8HzjliWQY28nJdOhyFCcH-1WQJd1ZKmD9s92o3nHeAz73x_GYCRuP2JSBIIBcRdWJp-ZvRGLvccUnA=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/edGb8HzjliWQY28nJdOhyFCcH-1WQJd1ZKmD9s92o3nHeAz73x_GYCRuP2JSBIIBcRdWJp-ZvRGLvccUnA=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "2OqwZbGagvw",
+      "name": "just like magic",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Positions",
+        "albumId": "MPREb_l2GaeT4N6Dw"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "KpnHqYIOf8g",
+      "name": "safety net (feat. Ty Dolla $ign)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Positions",
+        "albumId": "MPREb_l2GaeT4N6Dw"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "fAn4Ckhy1QI",
+      "name": "imperfect for you",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "F7CWxFayXxk",
+      "name": "Popular Song",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Yours Truly (Tenth Anniversary Edition)",
+        "albumId": "MPREb_yj28ozuLVAt"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/RtEp5zIMatKhME6xCOceCFL_NxaY7LFP6yaN8-AuiUAHkhJMm5kRZmLpIgKwSEZpIBlQuSw_w-K9GTDXNw=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/RtEp5zIMatKhME6xCOceCFL_NxaY7LFP6yaN8-AuiUAHkhJMm5kRZmLpIgKwSEZpIBlQuSw_w-K9GTDXNw=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "RaVicfLvpAg",
+      "name": "true story",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "B9YYv5cvRNM",
+      "name": "supernatural (live version)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine (slightly deluxe and also live)",
+        "albumId": "MPREb_yvJFHhwhQWI"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/nFEIimoT5HC3hXCoWgVEvr_N3Z6imH4BpFa_TRvNR1sziE7NRH0dRUEV9Ap1LrVhuJv6-VryPDDvf51T=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/nFEIimoT5HC3hXCoWgVEvr_N3Z6imH4BpFa_TRvNR1sziE7NRH0dRUEV9Ap1LrVhuJv6-VryPDDvf51T=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "ZTrxUUegR0Q",
+      "name": "don't wanna break up again",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "R5hPUMUlNaE",
+      "name": "in my head",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "thank u, next",
+        "albumId": "MPREb_IYfe9Etab3k"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "EKajhntvaZA",
+      "name": "nasty",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Positions",
+        "albumId": "MPREb_l2GaeT4N6Dw"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "2TEAh5SHZGs",
+      "name": "Santa Tell Me",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Santa Tell Me",
+        "albumId": "MPREb_OwoYaW2IZqE"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/Hn_9CnRK_4oS1S4zcUFnZNOkNRRdy05B71LUd32qdsMxpCHsXK3lJZKd7VZ-enS5G0-5L3AfRrXMuA3N=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/Hn_9CnRK_4oS1S4zcUFnZNOkNRRdy05B71LUd32qdsMxpCHsXK3lJZKd7VZ-enS5G0-5L3AfRrXMuA3N=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Ahiesiu5TRs",
+      "name": "Thank Goodness / I Couldn’t Be Happier (feat. Michelle Yeoh)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Wicked: For Good – The Soundtrack",
+        "albumId": "MPREb_1PFtLdfxdVg"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/gunYbv5ithQRhnU4S7jqgFz4ZCDhrkEg3dMJdD7dP_MGGUgITm2rKcs3h5RYB4p6wmGQZ0iGPECQyyYL=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/gunYbv5ithQRhnU4S7jqgFz4ZCDhrkEg3dMJdD7dP_MGGUgITm2rKcs3h5RYB4p6wmGQZ0iGPECQyyYL=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "fNQKANYp5hA",
+      "name": "Wonderful",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Wicked: For Good – The Soundtrack",
+        "albumId": "MPREb_1PFtLdfxdVg"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/gunYbv5ithQRhnU4S7jqgFz4ZCDhrkEg3dMJdD7dP_MGGUgITm2rKcs3h5RYB4p6wmGQZ0iGPECQyyYL=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/gunYbv5ithQRhnU4S7jqgFz4ZCDhrkEg3dMJdD7dP_MGGUgITm2rKcs3h5RYB4p6wmGQZ0iGPECQyyYL=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "L7hORyNan8w",
+      "name": "sweetener",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Sweetener",
+        "albumId": "MPREb_dDuqjs54mrq"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/aEL1JzO2XmKANj25bRhT_f4Jm0-IAUSySpb9AuRSvoPlIzBeLKgs7YvorQkws5s-_IycP9alZrcOwC8=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/aEL1JzO2XmKANj25bRhT_f4Jm0-IAUSySpb9AuRSvoPlIzBeLKgs7YvorQkws5s-_IycP9alZrcOwC8=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "6H6dRxGT_ww",
+      "name": "Best Mistake (feat. Big Sean)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "My Everything (Deluxe)",
+        "albumId": "MPREb_doJku3QBzcl"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "lzxrYdzwsw0",
+      "name": "Tattooed Heart (Live from London)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Yours Truly (Tenth Anniversary Edition)",
+        "albumId": "MPREb_yj28ozuLVAt"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/RtEp5zIMatKhME6xCOceCFL_NxaY7LFP6yaN8-AuiUAHkhJMm5kRZmLpIgKwSEZpIBlQuSw_w-K9GTDXNw=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/RtEp5zIMatKhME6xCOceCFL_NxaY7LFP6yaN8-AuiUAHkhJMm5kRZmLpIgKwSEZpIBlQuSw_w-K9GTDXNw=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "HxWSDUC-KTU",
+      "name": "My Everything",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "My Everything (Deluxe)",
+        "albumId": "MPREb_doJku3QBzcl"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/sC_NN7UUnVPL2NIgKmJZvZUpX8F9dUQD4G_FVtfgNNnmGR0wCGXaeWXpSuCCs90BOF0VxEOgUy3I9aBy=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "ZjlDAKcACAI",
+      "name": "No One Mourns the Wicked (feat. Sharon D. Clarke, Courtney-Mae Briggs, Jeff Goldblum & Jenna Boyd)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Wicked: The Soundtrack",
+        "albumId": "MPREb_IAPLi0cs4pY"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/m7OWjkpi8RMZRumIccZ1j2W0UUzShW06Keo6CSPicCxYv3pdXu45QA4Xu3jTCIvDfMuQCptmMyHPbxw=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/m7OWjkpi8RMZRumIccZ1j2W0UUzShW06Keo6CSPicCxYv3pdXu45QA4Xu3jTCIvDfMuQCptmMyHPbxw=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "RFm4n7xrYxU",
+      "name": "Thinking Bout You",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Dangerous Woman",
+        "albumId": "MPREb_ocDhLW2RG5h"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "ZSFHOIuUl7E",
+      "name": "imagine",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "thank u, next",
+        "albumId": "MPREb_IYfe9Etab3k"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "UjIzzi4WILI",
+      "name": "bad idea",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "thank u, next",
+        "albumId": "MPREb_IYfe9Etab3k"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "cXMg-EnYiwU",
+      "name": "The Girl in the Bubble",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Wicked: For Good – The Soundtrack",
+        "albumId": "MPREb_1PFtLdfxdVg"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/gunYbv5ithQRhnU4S7jqgFz4ZCDhrkEg3dMJdD7dP_MGGUgITm2rKcs3h5RYB4p6wmGQZ0iGPECQyyYL=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/gunYbv5ithQRhnU4S7jqgFz4ZCDhrkEg3dMJdD7dP_MGGUgITm2rKcs3h5RYB4p6wmGQZ0iGPECQyyYL=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "CV9RCoHDzX8",
+      "name": "goodnight n go",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Sweetener",
+        "albumId": "MPREb_dDuqjs54mrq"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/aEL1JzO2XmKANj25bRhT_f4Jm0-IAUSySpb9AuRSvoPlIzBeLKgs7YvorQkws5s-_IycP9alZrcOwC8=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/aEL1JzO2XmKANj25bRhT_f4Jm0-IAUSySpb9AuRSvoPlIzBeLKgs7YvorQkws5s-_IycP9alZrcOwC8=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "-oXWkRXWzOI",
+      "name": "we can't be friends (wait for your love) (a cappella)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine deluxe: brighter days ahead (a cappella version)",
+        "albumId": "MPREb_o3lqosnWQ7T"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2JkNTcKLVLvcBiWzHmZqkZvRurTeyuvcViLILicGdDSO9O1T-sB_4j9HVszzXpmVEowpyv7oPrWuddUORQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "H6DeIBK0yuc",
+      "name": "Tattooed Heart",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Yours Truly",
+        "albumId": "MPREb_bnI7JvW7UUn"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/cwJUlOPNvE63q6JxQgIMHjF03yf6NQIBWB4i0hY6l8U125A16HwbJ7tnQqz74CAxtU_9CwY8IAxOz3ku=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "1Gz9NnU_0Gw",
+      "name": "L.A. Boyz",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Victorious 3.0 (Even More Music from the TV Show \"Victorious\")",
+        "albumId": "MPREb_9Bv8dDNoE0X"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/lA8grT9wx73uGs0yYwu0zvFspsjmrLDU6nfQucgaBeHAS8GEYuMKCsrD4SZiH9ooR2m-eIzFhd3QbO_-=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/lA8grT9wx73uGs0yYwu0zvFspsjmrLDU6nfQucgaBeHAS8GEYuMKCsrD4SZiH9ooR2m-eIzFhd3QbO_-=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "BQ9souA9bNo",
+      "name": "eternal sunshine (live version)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "eternal sunshine (slightly deluxe and also live)",
+        "albumId": "MPREb_Fa9RqOH57rE"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/MMvfTfNPvkBlGZ8aQgz6a_RxNVZVJEvFAfevs1w1SHuuWqknJWaH85n5PBzWmph0dvQHpZQdmvVSC_Y=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/MMvfTfNPvkBlGZ8aQgz6a_RxNVZVJEvFAfevs1w1SHuuWqknJWaH85n5PBzWmph0dvQHpZQdmvVSC_Y=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "5bZ6hAqaD5E",
+      "name": "Be Alright",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Dangerous Woman",
+        "albumId": "MPREb_4QUOy96CYxp"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3wOl_OCk8jhI_TKKkIYZ5yP8oSyE-MOchuTX_GqmJ6Jxd1Aq6t_COg_iiePziNF5aXrGePLwlTXizuM=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "2dYzO8bemG4",
+      "name": "Honeymoon Avenue (Live from London)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Yours Truly (Tenth Anniversary Edition)",
+        "albumId": "MPREb_yj28ozuLVAt"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/RtEp5zIMatKhME6xCOceCFL_NxaY7LFP6yaN8-AuiUAHkhJMm5kRZmLpIgKwSEZpIBlQuSw_w-K9GTDXNw=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/RtEp5zIMatKhME6xCOceCFL_NxaY7LFP6yaN8-AuiUAHkhJMm5kRZmLpIgKwSEZpIBlQuSw_w-K9GTDXNw=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "5l24PwM-7lc",
+      "name": "R.E.M",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Sweetener",
+        "albumId": "MPREb_dDuqjs54mrq"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/aEL1JzO2XmKANj25bRhT_f4Jm0-IAUSySpb9AuRSvoPlIzBeLKgs7YvorQkws5s-_IycP9alZrcOwC8=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/aEL1JzO2XmKANj25bRhT_f4Jm0-IAUSySpb9AuRSvoPlIzBeLKgs7YvorQkws5s-_IycP9alZrcOwC8=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "dKHgEh9_yXg",
+      "name": "They Don't Know",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "TROLLS (Original Motion Picture Soundtrack)",
+        "albumId": "MPREb_ixi6aIaVXgJ"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/g2J9RtlrQEC4Sn1qFHZ4vXTi8R9h9v5kIegbVWPbUDi5SFfA1vdgP2LRqb040lnzL1hZxU_TBdqX6iDA=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/g2J9RtlrQEC4Sn1qFHZ4vXTi8R9h9v5kIegbVWPbUDi5SFfA1vdgP2LRqb040lnzL1hZxU_TBdqX6iDA=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Lc-7MOkHz6o",
+      "name": "The Way (Live from London) (feat. Mac Miller)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Yours Truly (Tenth Anniversary Edition)",
+        "albumId": "MPREb_yj28ozuLVAt"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/RtEp5zIMatKhME6xCOceCFL_NxaY7LFP6yaN8-AuiUAHkhJMm5kRZmLpIgKwSEZpIBlQuSw_w-K9GTDXNw=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/RtEp5zIMatKhME6xCOceCFL_NxaY7LFP6yaN8-AuiUAHkhJMm5kRZmLpIgKwSEZpIBlQuSw_w-K9GTDXNw=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "wXuDDiw7dXU",
+      "name": "pov (live from Vevo)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Positions (Vevo Official Live Performances)",
+        "albumId": "MPREb_XLfB1LsMUtG"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/1x0bEcaGjWzjaLvrD8XUGYZ5FzPvn1I49_Ir3b-fl9uT_vOdXUWZviENwUxrPa3Xt817HbfPNMSnjBVr=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/1x0bEcaGjWzjaLvrD8XUGYZ5FzPvn1I49_Ir3b-fl9uT_vOdXUWZviENwUxrPa3Xt817HbfPNMSnjBVr=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Y5Jrk4TXioE",
+      "name": "my hair",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Positions",
+        "albumId": "MPREb_l2GaeT4N6Dw"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "6Pd1ODrVazw",
+      "name": "NASA",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "thank u, next",
+        "albumId": "MPREb_IYfe9Etab3k"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "XrcLojUHRIM",
+      "name": "off the table",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Positions",
+        "albumId": "MPREb_l2GaeT4N6Dw"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/2-_pSt_yjP16a7YPYGAHO4g9HLcNYdnXCfH-wXxNxXTGG7XWdJ93xLaHK92JrXGuVtjA86nbogM3Kx9l=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "uOUuFLhbgRk",
+      "name": "fake smile",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "thank u, next",
+        "albumId": "MPREb_IYfe9Etab3k"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3LV6GoLom0Vb_oNFTXI_e2NIua0D-WocCifEFnSQattWpLfswpayWPzZ2BeClAB5QxR2EnGZkgh7QI7j=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "xOazTYPrt64",
+      "name": "Somebody That I Used To Know (feat. Kimbra)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Making Mirrors",
+        "albumId": "MPREb_vDiDlMWN1v0"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/Mec0zeof6z-TkwToxxv3Fs6GjyUmifRDUJeEq200VC3_Tla3Sx4S6UfLTK8uNuPB8Q-RaPm4DU5B-EeQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/Mec0zeof6z-TkwToxxv3Fs6GjyUmifRDUJeEq200VC3_Tla3Sx4S6UfLTK8uNuPB8Q-RaPm4DU5B-EeQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "y6lfK3bH4z8",
+      "name": "November Rain",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Use Your Illusion I",
+        "albumId": "MPREb_fj1B4Tl3r6C"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/pcrIVPiugsSpXJJPCaPNdp2vpHPo5UsmsoVjqlT7L1p7Lki663u9tONk-S3oqK9GvAsoj2m0AaNgNJj9Zg=w60-h60-s-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/pcrIVPiugsSpXJJPCaPNdp2vpHPo5UsmsoVjqlT7L1p7Lki663u9tONk-S3oqK9GvAsoj2m0AaNgNJj9Zg=w120-h120-s-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "gbAd62jzrNI",
+      "name": "Earth Song",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "HIStory: PAST, PRESENT AND FUTURE, BOOK I",
+        "albumId": "MPREb_L7mH5RJKKdI"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/R7pwf7-lcPvK3dxv8jMkUd4SlbVmrM-nZOFEJqnHGLQFBl4lqj1gyeWSFO5X9HZxgUhTh4KM8n0l7j_k=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/R7pwf7-lcPvK3dxv8jMkUd4SlbVmrM-nZOFEJqnHGLQFBl4lqj1gyeWSFO5X9HZxgUhTh4KM8n0l7j_k=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "-grPV-Fae6I",
+      "name": "Not Afraid",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Recovery",
+        "albumId": "MPREb_UUFKiZYr3uO"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/IUuZFSUqFLMQlejTtsnLM_cB16A0T1g-savL7DYbWz5NFh2-DOw5-v9_PREJt9keX48NSan-8yUQCPM=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/IUuZFSUqFLMQlejTtsnLM_cB16A0T1g-savL7DYbWz5NFh2-DOw5-v9_PREJt9keX48NSan-8yUQCPM=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Wlyl80yH7RA",
+      "name": "Lost on You (Live at Harvard and Stone)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Lost on You",
+        "albumId": "MPREb_eQWRZHMeOTr"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/lz9NJ7zby7cCREzXqYmzRdvmcbebO88-26ryk1nxXPlhbfzoBntGg4B5m-v8hL9iCL_bpfA9qKILVwU=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/lz9NJ7zby7cCREzXqYmzRdvmcbebO88-26ryk1nxXPlhbfzoBntGg4B5m-v8hL9iCL_bpfA9qKILVwU=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "HSkyD7lWxkY",
+      "name": "American Boy (feat. Kanye West)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Shine",
+        "albumId": "MPREb_P11KrN2c7SG"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/eOcECnH86RobSJO4RsNtdlbQYamX78nkBgjvDaKBP3EmfvIvQTW8aHtbCeBXktJ2myfW7Q8kgUYT674=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/eOcECnH86RobSJO4RsNtdlbQYamX78nkBgjvDaKBP3EmfvIvQTW8aHtbCeBXktJ2myfW7Q8kgUYT674=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "JJPlzNajdUs",
+      "name": "Sımarık",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Ölürüm Sana",
+        "albumId": "MPREb_ZanW9lnZdSG"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/_IAlJw4omjfbrYBcTXat1uS-J3YWDb3wQmXqQTrcYQhLwzKnuBefZowooBGSOOU-3Vt3YO9eEzbTp_87EA=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/_IAlJw4omjfbrYBcTXat1uS-J3YWDb3wQmXqQTrcYQhLwzKnuBefZowooBGSOOU-3Vt3YO9eEzbTp_87EA=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "fddX4hUBk0E",
+      "name": "Decode (Twilight Soundtrack Version)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Brand New Eyes (Deluxe Edition)",
+        "albumId": "MPREb_zZAxz2GlmYx"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/xHOdrZzC00HwYmyewWAs69_1_in34WRbNGdHt_l7I1ql8DaDcH9LEe1O8EmMuuYNL7YpoIwLB2cory0u=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/xHOdrZzC00HwYmyewWAs69_1_in34WRbNGdHt_l7I1ql8DaDcH9LEe1O8EmMuuYNL7YpoIwLB2cory0u=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "PuwWj2_wL2E",
+      "name": "KING",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "BULLY",
+        "albumId": "MPREb_eX5Jd28E2Sf"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/bkKS0_cba9hOrMz_BEMCmhnsm88AyUNpZ0K5lpjO07ctU7giLt-sXht5bmbwTmxRnjqSUDygDbdcQ9OB=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/bkKS0_cba9hOrMz_BEMCmhnsm88AyUNpZ0K5lpjO07ctU7giLt-sXht5bmbwTmxRnjqSUDygDbdcQ9OB=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "5McUFZz2s-w",
+      "name": "Seven - Explicit Ver. (feat. Latto)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Seven",
+        "albumId": "MPREb_sM98QzTJaVg"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/6HM8d1d7o2RDgf17Qi-T_XWgOAE8eOxYRWTVmAMxjdKjQ0vzq5rn4zQt1QkGW4fCNEGJifJ50Kboozkj=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/6HM8d1d7o2RDgf17Qi-T_XWgOAE8eOxYRWTVmAMxjdKjQ0vzq5rn4zQt1QkGW4fCNEGJifJ50Kboozkj=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "m9Gqt9SUVbQ",
+      "name": "Ai Se Eu Te Pego (Ao Vivo)",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Ai Se Eu Te Pego (Ao Vivo)",
+        "albumId": "MPREb_FExuGsT4fmv"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/3QWFUgn5soPzq8IiNNfKqOatDiQ-Lp2sXv8WfX76Mo3po1uSFUs67sXc19NCypSrpDVyHiDWxVuewr7A=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/3QWFUgn5soPzq8IiNNfKqOatDiQ-Lp2sXv8WfX76Mo3po1uSFUs67sXc19NCypSrpDVyHiDWxVuewr7A=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "MBJFPq2Llps",
+      "name": "Rap God",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "Rap God",
+        "albumId": "MPREb_EPz4TobP2QC"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/pbff_r8bJlc5iWG4-9SkmgY-yKgY_I4W1f9fzowGDqtsT2mrBBwtu90gLTy3wDUoVYT5TI7tq2O4du3L=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/pbff_r8bJlc5iWG4-9SkmgY-yKgY_I4W1f9fzowGDqtsT2mrBBwtu90gLTy3wDUoVYT5TI7tq2O4du3L=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "BTAN0EiFv-w",
+      "name": "WAGWAN",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "ALL ROADS LEAD HOME",
+        "albumId": "MPREb_2qXH3oXSP97"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/gFTkfU3CQSBdxsAxQJMxKvdr_p7tujp6mzTkxUsI76TYjhJTB1hQRrnhm6btNdRUKPlt1s-tDrZwju3M=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/gFTkfU3CQSBdxsAxQJMxKvdr_p7tujp6mzTkxUsI76TYjhJTB1hQRrnhm6btNdRUKPlt1s-tDrZwju3M=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "jpKaptxKfnI",
+      "name": "KUSURA BAKMA",
+      "artist": {
+        "artistId": "UC0076UMUgEng8HORUw_MYHA",
+        "name": "Ariana Grande"
+      },
+      "album": {
+        "name": "KUSURA BAKMA",
+        "albumId": "MPREb_OSQhAkzCZS8"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/s1cip4pQ1gjfUY62IdMmF7rrLYptdsx2y3d5DztuRDXCvqqMaVlAsAm5pu5rjDDzaK-FCzr8n8cNSGdI=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/s1cip4pQ1gjfUY62IdMmF7rrLYptdsx2y3d5DztuRDXCvqqMaVlAsAm5pu5rjDDzaK-FCzr8n8cNSGdI=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    }
+  ]
+}

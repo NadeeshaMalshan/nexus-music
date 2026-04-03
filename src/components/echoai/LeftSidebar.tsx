@@ -12,6 +12,15 @@ import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { CreatePlaylistModal, AiPlaylistModal } from "./LibraryModals";
 
+const formatCount = (count: string | number) => {
+  const num = typeof count === "string" ? parseInt(count) : count;
+  if (!num) return "0";
+  if (num >= 1000000000) return (num / 1000000000).toFixed(1) + "B";
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+  if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+  return num.toString();
+};
+
 interface LeftSidebarProps {
   activeView: string;
   onViewChange: (view: string, data?: any) => void;
@@ -170,16 +179,26 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                     </div>
                   )}
 
-                  {searchResults.map((song) => (
+                  {searchResults.map((item) => (
                     <div 
-                      key={song.videoId}
+                      key={item.videoId || item.id}
                       onClick={() => {
+                        if (item.type === "ARTIST") {
+                          router.push(`/artist/${encodeURIComponent(item.name)}`);
+                          setIsSearchFocused(false);
+                          return;
+                        }
+                        if (item.type === "PLAYLIST") {
+                           router.push(`/playlists/${item.id}`);
+                           setIsSearchFocused(false);
+                           return;
+                        }
                         onSongClick({
-                          id: song.videoId,
-                          title: song.title,
-                          artist: song.author,
-                          artwork: song.thumbnail,
-                          duration: song.duration,
+                          id: item.videoId,
+                          title: item.title,
+                          artist: item.author,
+                          artwork: item.thumbnail,
+                          duration: item.duration,
                           color: accentColor
                         });
                         setIsSearchFocused(false);
@@ -187,54 +206,68 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                       className="px-2"
                     >
                       <div className="flex items-center gap-3.5 px-3 py-2.5 rounded-2xl hover:bg-white/5 transition-all cursor-pointer group">
-                        <div className="relative w-11 h-11 rounded-lg overflow-hidden shrink-0 shadow-lg">
-                          <Image src={song.thumbnail} alt="" fill className="object-cover" />
+                        <div className={`relative w-11 h-11 ${item.type === "ARTIST" ? "rounded-full" : "rounded-lg"} overflow-hidden shrink-0 shadow-lg`}>
+                          <Image src={item.thumbnail} alt="" fill className="object-cover" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                             <Play size={16} fill="white" className="text-white ml-0.5" />
                           </div>
                         </div>
                         <div className="flex-1 min-w-0 pr-2">
-                          <h4 className="text-[15px] font-bold text-white truncate leading-tight mb-0.5">{song.title}</h4>
-                          <p className="text-[12px] text-white/40 font-medium truncate">{song.author}</p>
+                          <h4 className="text-[15px] font-bold text-white truncate leading-tight mb-0.5">{item.title || item.name}</h4>
+                          <div className="flex items-center gap-1.5 overflow-hidden">
+                             <p className="text-[12px] text-white/40 font-medium truncate shrink-0">
+                               {item.type === "ARTIST" ? "Artist" : item.type === "PLAYLIST" ? `Playlist · ${item.author}` : item.author}
+                             </p>
+                             {(!item.type || item.type === "SONG") && item.views && (
+                               <>
+                                 <span className="text-white/10 text-[8px]">•</span>
+                                 <span className="text-[10px] font-black text-white/20 uppercase tracking-tighter leading-none pt-0.5">
+                                   {formatCount(item.views)}
+                                 </span>
+                               </>
+                             )}
+                          </div>
                         </div>
                         
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onPlayNext?.({
-                                id: song.videoId,
-                                title: song.title,
-                                artist: song.author,
-                                artwork: song.thumbnail,
-                                duration: song.duration,
-                                color: accentColor
-                              });
-                            }}
-                            className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
-                            title="Play Next"
-                          >
-                            <ArrowUpRight size={16} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onAddToQueue?.({
-                                id: song.videoId,
-                                title: song.title,
-                                artist: song.author,
-                                artwork: song.thumbnail,
-                                duration: song.duration,
-                                color: accentColor
-                              });
-                            }}
-                            className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
-                            title="Add to Queue"
-                          >
-                            <ListPlus size={16} />
-                          </button>
-                        </div>
+                        {/* Action Buttons (Only for songs) */}
+                        {(!item.type || item.type === "SONG") && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onPlayNext?.({
+                                  id: item.videoId,
+                                  title: item.title,
+                                  artist: item.author,
+                                  artwork: item.thumbnail,
+                                  duration: item.duration,
+                                  color: accentColor
+                                });
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                              title="Play Next"
+                            >
+                              <ArrowUpRight size={16} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAddToQueue?.({
+                                  id: item.videoId,
+                                  title: item.title,
+                                  artist: item.author,
+                                  artwork: item.thumbnail,
+                                  duration: item.duration,
+                                  color: accentColor
+                                });
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                              title="Add to Queue"
+                            >
+                              <ListPlus size={16} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -201,7 +201,7 @@ export async function rateVideo(accessToken: string, videoId: string, rating: "l
   }
 }
 
-function parseISO8601Duration(duration: string): string {
+export function parseISO8601Duration(duration: string): string {
   if (!duration) return "0:00";
   const regex = /P(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
   const matches = duration.match(regex);
@@ -300,4 +300,100 @@ export async function fetchRelatedVideos(accessToken: string, videoId: string): 
     thumbnailUrl: item.snippet.thumbnails?.maxres?.url || item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
     videoId: item.id.videoId,
   }));
+}
+
+export async function fetchChannelStats(accessToken: string, channelId: string) {
+  const response = await fetch(
+    `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${channelId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) return null;
+  const data = await response.json();
+  return data.items?.[0] || null;
+}
+
+export async function subscribeToChannel(accessToken: string, channelId: string): Promise<void> {
+  const response = await fetch(
+    "https://www.googleapis.com/youtube/v3/subscriptions?part=snippet",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        snippet: {
+          resourceId: {
+            kind: "youtube#channel",
+            channelId,
+          },
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error("YouTube Subscribe error:", errorData);
+    throw new Error("Failed to subscribe to channel");
+  }
+}
+
+export async function checkSubscriptionStatus(accessToken: string, channelId: string): Promise<boolean> {
+  const response = await fetch(
+    `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&forChannelId=${channelId}&mine=true`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) return false;
+  const data = await response.json();
+  return data.items && data.items.length > 0;
+}
+
+export async function searchOfficialChannel(accessToken: string, query: string) {
+  const searchRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=channel&maxResults=5&relevanceLanguage=en`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!searchRes.ok) return null;
+  const searchData = await searchRes.json();
+  const candidates = searchData.items || [];
+  if (candidates.length === 0) return null;
+
+  // Fetch stats for all candidates to find the most authoritative one
+  const ids = candidates.map((c: any) => c.id.channelId).filter(Boolean).join(",");
+  const statsRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${ids}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+
+  if (!statsRes.ok) return candidates[0]; // fallback to first
+  const statsData = await statsRes.json();
+  const statsItems = statsData.items || [];
+
+  // Sort by subscriber count descending
+  statsItems.sort((a: any, b: any) => parseInt(b.statistics?.subscriberCount || "0") - parseInt(a.statistics?.subscriberCount || "0"));
+
+  const best = statsItems[0];
+  if (!best) return candidates[0];
+
+  return {
+    id: { channelId: best.id },
+    snippet: best.snippet, // This might be missing, but we only really need the ID
+    statistics: best.statistics
+  };
 }

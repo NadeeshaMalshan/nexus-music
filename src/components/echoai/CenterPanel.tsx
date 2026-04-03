@@ -11,7 +11,9 @@ import { usePathname } from "next/navigation";
 import { useDashboard } from "@/context/DashboardContext";
 import { YouTubeLibrary } from "./YouTubeLibrary";
 import { PlaylistDetail } from "./PlaylistDetail";
+import { AlbumDetail } from "./AlbumDetail";
 import { Settings } from "./Settings";
+import { useRouter } from "next/navigation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -262,6 +264,8 @@ export function CenterPanel(props: CenterPanelProps) {
     onPlayPlaylist,
   } = props;
   const pathname = usePathname();
+  const router = useRouter();
+  const segments = pathname.split("/").filter(Boolean);
   const { data: session } = useSession();
   const [playlists, setPlaylists] = useState<YouTubePlaylist[]>([]);
   const [playlistsLoading, setPlaylistsLoading] = useState(false);
@@ -444,6 +448,23 @@ export function CenterPanel(props: CenterPanelProps) {
           </div>
       </div>
     );
+  }
+
+  if (activeView === "album") {
+    return (
+       <AlbumDetail
+         albumId={segments[1]} 
+         onBack={() => router.back()}
+         onNavigateArtist={(name: string) => router.push(`/artist/${encodeURIComponent(name)}`)}
+         onSongClick={onSongClick || (() => {})}
+         onQueueReplace={onQueueReplace || (() => {})}
+         onPlayNext={onPlayNext}
+         onAddToQueue={onAddToQueue}
+         onPlayPlaylist={onPlayPlaylist}
+         accentColor={accentColor}
+         currentSongId={currentSongId}
+       />
+    )
   }
 
   if (activeView === "playlist-detail") {

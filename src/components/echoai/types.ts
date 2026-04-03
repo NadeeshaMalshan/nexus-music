@@ -72,4 +72,5 @@ export interface ExpandedPlayerProps {
   setViewMode: (mode: "music" | "video") => void;
   onClearQueue?: () => void;
   onReorderUpNext?: (newQueue: Song[]) => void;
+  onArtistClick?: (artistName: string) => void;
 }

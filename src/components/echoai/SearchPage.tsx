@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles } from "lucide-react";
+import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles, UserRound } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { type Song } from "./types";
 import { SwipeableSongRow } from "./SwipeableSongRow";
@@ -12,6 +12,7 @@ interface SearchPageProps {
   onQueueReplace?: (songs: Song[]) => void;
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
+  onNavigateArtist?: (name: string) => void;
 }
 
 type SearchItem = {
@@ -20,9 +21,22 @@ type SearchItem = {
   author: string;
   duration: string;
   thumbnail: string;
+  type?: "ARTIST" | "PLAYLIST" | "SONG";
+  id?: string;
+  name?: string;
+  views?: string;
 };
 
-export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue, onPlayNext }: SearchPageProps) {
+const formatCount = (count: string | number) => {
+  const num = typeof count === "string" ? parseInt(count) : count;
+  if (!num) return "0";
+  if (num >= 1000000000) return (num / 1000000000).toFixed(1) + "B";
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+  if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+  return num.toString();
+};
+
+export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue, onPlayNext, onNavigateArtist }: SearchPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("Top");
   const [isListening, setIsListening] = useState(false);
@@ -37,7 +51,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const audioChunksRef = useRef<Blob[]>([]);
 
   // Category list
-  const categories = ["Top", "Songs", "Remixes", "Artists", "Albums"];
+  const categories = ["Top", "Songs", "Artists", "Albums", "Playlists", "Remixes"];
 
   // Handle initial query from URL
   useEffect(() => {
@@ -186,14 +200,17 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
     }
     setSearchLoading(true);
     
-    // Adjust query based on category
+    // Determine the type for the API
+    let type = "songs";
+    if (cat === "Artists") type = "artists";
+    else if (cat === "Playlists") type = "playlists";
+    
+    // Remixes as a local modification of songs search
     let finalQuery = query;
     if (cat === "Remixes") finalQuery += " remix";
-    else if (cat === "Artists") finalQuery += " artist";
-    else if (cat === "Albums") finalQuery += " album";
     
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(finalQuery)}`, {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(finalQuery)}&type=${type}`, {
         cache: "no-store",
       });
       if (!response.ok) {
@@ -229,14 +246,41 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
     };
   }, [searchQuery, runSearch]);
 
-  const mappedSongs: Song[] = searchResults.map((item, idx) => ({
-    id: item.videoId || `search-${idx}`,
-    title: item.title,
-    artist: item.author,
-    artwork: item.thumbnail,
-    duration: item.duration,
-    color: songColors[item.videoId] || "var(--art-accent, #FA243C)",
-  }));
+  const mappedSongs: any[] = searchResults.map((item: any, idx) => {
+    // Standardize to a common UI item shape
+    if (item.type === "ARTIST") {
+       return {
+         id: item.id || `artist-${idx}`,
+         title: item.name,
+         artist: "Artist",
+         artwork: item.thumbnail,
+         duration: "",
+         color: "var(--art-accent, #FA243C)",
+         type: "ARTIST"
+       };
+    }
+    if (item.type === "PLAYLIST") {
+       return {
+         id: item.id || `playlist-${idx}`,
+         title: item.title,
+         artist: `Playlist · ${item.author}`,
+         artwork: item.thumbnail,
+         duration: "",
+         color: "var(--art-accent, #FA243C)",
+         type: "PLAYLIST"
+       };
+    }
+    return {
+      id: item.videoId || `search-${idx}`,
+      title: item.title,
+      artist: item.author,
+      artwork: item.thumbnail,
+      duration: item.duration,
+      color: songColors[item.videoId] || "var(--art-accent, #FA243C)",
+      type: "SONG",
+      views: item.views
+    };
+  });
 
   useEffect(() => {
     let isCancelled = false;
@@ -406,6 +450,16 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                     transition={{ delay: index * 0.03 }}
                     className="group flex cursor-pointer items-center justify-between rounded-2xl p-3 px-4 transition-all hover:bg-white/[0.04]"
                     onClick={() => {
+                      // For Artist category → navigate to artist page
+                      if (song.type === "ARTIST") {
+                        onNavigateArtist?.(song.title);
+                        return;
+                      }
+                      // For Playlist category → navigate to playlist page
+                      if (song.type === "PLAYLIST") {
+                        window.location.href = `/playlists/${song.id}`;
+                        return;
+                      }
                       void (async () => {
                         const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
                         const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
@@ -415,7 +469,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                     }}
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-xl border border-white/10 shadow-lg">
+                      <div className={`relative h-[64px] w-[64px] shrink-0 overflow-hidden ${song.type === "ARTIST" ? "rounded-full" : "rounded-xl"} border border-white/10 shadow-lg`}>
                         <img src={song.artwork?.replace(/([=|-][swh])\d+/g, '$1600') || song.artwork} alt={song.title} className="h-full w-full object-cover" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                            <Play fill="white" className="text-white w-6 h-6 ml-1" />
@@ -423,7 +477,19 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                       </div>
                       <div className="flex flex-col flex-1 min-w-0 pr-4">
                         <p className="truncate text-[18px] font-bold text-white leading-tight mb-1">{song.title}</p>
-                        <p className="truncate text-[15px] font-medium text-white/40">{activeCategory === "Artists" ? "Artist" : activeCategory === "Albums" ? "Album" : "Song"} · {song.artist}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-[15px] font-medium text-white/40">
+                            {song.artist}
+                          </p>
+                          {(!song.type || song.type === "SONG") && song.views && (
+                            <>
+                              <span className="text-white/10 text-[10px]">•</span>
+                              <span className="text-[12px] font-bold text-white/20 uppercase tracking-widest leading-none">
+                                {formatCount(song.views)}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 relative">

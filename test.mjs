@@ -1,0 +1,1 @@
+import YTMusic from 'ytmusic-api'; const api = new YTMusic(); api.initialize().then(() => api.search('BLACKPINK')).then(d => { require('fs').writeFileSync('search.json', JSON.stringify(d, null, 2)); }).catch(console.error);

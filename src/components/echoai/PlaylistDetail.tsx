@@ -6,6 +6,7 @@ import { type Song } from "./types";
 import { Play, Shuffle, Loader2, Music2, Clock, MoreHorizontal, ListPlus, PlaySquare } from "lucide-react";
 import Image from "next/image";
 import { AudioVisualizer } from "./AudioVisualizer";
+import { useDashboard } from "@/context/DashboardContext";
 
 interface PlaylistDetailProps {
   playlist: YouTubePlaylist;
@@ -19,6 +20,7 @@ interface PlaylistDetailProps {
 }
 
 export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentColor, currentSongId, onAddToQueue, onPlayNext, onPlayPlaylist }: PlaylistDetailProps) {
+  const { setOverrideArtwork } = useDashboard();
   const [currentPlaylist, setCurrentPlaylist] = useState<YouTubePlaylist>(playlist);
   const [tracks, setTracks] = useState<YouTubeTrack[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,16 +29,50 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
     async function loadData() {
       setLoading(true);
       try {
-        // If playlist is just a shell with an ID (from deep link)
-        if (!playlist.title || playlist.title === "Loading...") {
+        // 1. Resolve basic metadata (Title, Description, Art)
+        // If it's a deep link (coming from ArtistPage), we might only have an ID
+        let meta = { ...playlist };
+        
+        // Try to get metadata from our dedicated music API first (v. fast for YTM IDs)
+        const musicMetaRes = await fetch(`/api/yt-playlist?id=${playlist.id}`);
+        if (musicMetaRes.ok) {
+           const musicData = await musicMetaRes.json();
+           meta = {
+             id: playlist.id,
+             title: musicData.name || musicData.title || meta.title,
+             description: musicData.description || meta.description,
+             thumbnailUrl: musicData.thumbnails?.[musicData.thumbnails.length - 1]?.url || meta.thumbnailUrl,
+             itemCount: musicData.songs?.length || 0
+           };
+           // If we got songs from this call, we can set them immediately too!
+           if (musicData.songs?.length) {
+              const mappedTracks: YouTubeTrack[] = musicData.songs.map((s: any) => ({
+                id: s.videoId,
+                videoId: s.videoId,
+                title: s.title,
+                artist: s.artist,
+                thumbnailUrl: s.artwork,
+                duration: s.duration
+              }));
+              setTracks(mappedTracks);
+              setCurrentPlaylist(meta as YouTubePlaylist);
+              setLoading(false);
+              return; // Exit early since we have everything
+           }
+        }
+
+        // 2. Fallback to user library check for metadata
+        if (!meta.title || meta.title === "Loading...") {
           const plRes = await fetch(`/api/youtube/playlists`);
           if (plRes.ok) {
             const allPls: YouTubePlaylist[] = await plRes.json();
             const found = allPls.find(p => p.id === playlist.id);
-            if (found) setCurrentPlaylist(found);
+            if (found) meta = { ...meta, ...found };
           }
         }
+        setCurrentPlaylist(meta as YouTubePlaylist);
 
+        // 3. Load tracks (Fallback if yt-playlist didn't fulfill it)
         const res = await fetch(`/api/youtube/playlist-items?playlistId=${playlist.id}`);
         if (res.ok) {
           const data = await res.json();
@@ -49,7 +85,19 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
       }
     }
     loadData();
-  }, [playlist.id, playlist.title]);
+
+    // Reset global theme when leaving playlist page
+    return () => {
+      setOverrideArtwork(null);
+    };
+  }, [playlist.id, playlist.title, setOverrideArtwork]);
+
+  // Update override artwork whenever currentPlaylist changes (e.g. after metadata loads)
+  useEffect(() => {
+    if (currentPlaylist.thumbnailUrl) {
+      setOverrideArtwork(currentPlaylist.thumbnailUrl);
+    }
+  }, [currentPlaylist.thumbnailUrl, setOverrideArtwork]);
 
   // Use currentPlaylist for rendering
   const displayPlaylist = currentPlaylist;

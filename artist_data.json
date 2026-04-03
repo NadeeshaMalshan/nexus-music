@@ -1,0 +1,1119 @@
+{
+  "type": "ARTIST",
+  "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+  "name": "BLACKPINK",
+  "thumbnails": [
+    {
+      "url": "https://lh3.googleusercontent.com/pvJ1n3OBNXcz80KquAr-BY3ZRpp4Vfv8IHBk1SHBkJPF6eGhYJqaO3H5meVIQwb-BTOv0VsckNtPow=w540-h225-p-l90-rj",
+      "width": 540,
+      "height": 225
+    },
+    {
+      "url": "https://lh3.googleusercontent.com/pvJ1n3OBNXcz80KquAr-BY3ZRpp4Vfv8IHBk1SHBkJPF6eGhYJqaO3H5meVIQwb-BTOv0VsckNtPow=w816-h340-p-l90-rj",
+      "width": 816,
+      "height": 340
+    },
+    {
+      "url": "https://lh3.googleusercontent.com/pvJ1n3OBNXcz80KquAr-BY3ZRpp4Vfv8IHBk1SHBkJPF6eGhYJqaO3H5meVIQwb-BTOv0VsckNtPow=w1440-h600-p-l90-rj",
+      "width": 1440,
+      "height": 600
+    },
+    {
+      "url": "https://lh3.googleusercontent.com/pvJ1n3OBNXcz80KquAr-BY3ZRpp4Vfv8IHBk1SHBkJPF6eGhYJqaO3H5meVIQwb-BTOv0VsckNtPow=w1920-h800-p-l90-rj",
+      "width": 1920,
+      "height": 800
+    },
+    {
+      "url": "https://lh3.googleusercontent.com/pvJ1n3OBNXcz80KquAr-BY3ZRpp4Vfv8IHBk1SHBkJPF6eGhYJqaO3H5meVIQwb-BTOv0VsckNtPow=w2880-h1200-p-l90-rj",
+      "width": 2880,
+      "height": 1200
+    }
+  ],
+  "topSongs": [
+    {
+      "type": "SONG",
+      "videoId": "r6Eei81SuqE",
+      "name": "JUMP",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "album": {
+        "name": "JUMP",
+        "albumId": "MPREb_tjAWILhVe9t"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/9h5EMc3LktccxFy-3bznozFCwYSU1YnU0agJZssvGqDj3UDrtFC7FgPHjDrtUG3dGAP45uEPBxDYLBg=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/9h5EMc3LktccxFy-3bznozFCwYSU1YnU0agJZssvGqDj3UDrtFC7FgPHjDrtUG3dGAP45uEPBxDYLBg=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Bqm3jusHM9I",
+      "name": "GO",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "album": {
+        "name": "DEADLINE",
+        "albumId": "MPREb_ZK7RXf2soA7"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/j1OgxeWEogfpaoqINaTd3chArQGnFUfEP_dl5nyXYy8J_IPtIzZ34hOFX1df4oog2btNbCxXJQ1lVqLT=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/j1OgxeWEogfpaoqINaTd3chArQGnFUfEP_dl5nyXYy8J_IPtIzZ34hOFX1df4oog2btNbCxXJQ1lVqLT=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "8mA6jIeojnk",
+      "name": "How You Like That",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "album": {
+        "name": "How You Like That",
+        "albumId": "MPREb_UhcqmNpCCt2"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/LtzwLew9W3Igam672B19Vp7Kotr_tjTSkEY4L4DNjAvIkfLOxs34jYaAUJ3cCd5SUIzHwJfPyDIlHl_N=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/LtzwLew9W3Igam672B19Vp7Kotr_tjTSkEY4L4DNjAvIkfLOxs34jYaAUJ3cCd5SUIzHwJfPyDIlHl_N=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "Il_KNBTmLpQ",
+      "name": "Kill This Love",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "album": {
+        "name": "KILL THIS LOVE",
+        "albumId": "MPREb_a8dPYoKfrQ4"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/es_BszThtkl1ZuZxcvxVsMWyqawHHfFwKjJM9wJXPOstwZ7D6D52w7iXo9UAXIr4yHai6Rf9FpbvTcuIAQ=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/es_BszThtkl1ZuZxcvxVsMWyqawHHfFwKjJM9wJXPOstwZ7D6D52w7iXo9UAXIr4yHai6Rf9FpbvTcuIAQ=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "type": "SONG",
+      "videoId": "qCDPprTDkJE",
+      "name": "Pink Venom",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "album": {
+        "name": "BORN PINK",
+        "albumId": "MPREb_J7wVS5GlYZK"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/GriPb4nuy0ykhBVO0s1K0aYQBrbosi_ML1F0HYOCrHouOFTpUIm1zijUz7cZVNoVfd_XPWm_DEEhGVk=w60-h60-l90-rj",
+          "width": 60,
+          "height": 60
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/GriPb4nuy0ykhBVO0s1K0aYQBrbosi_ML1F0HYOCrHouOFTpUIm1zijUz7cZVNoVfd_XPWm_DEEhGVk=w120-h120-l90-rj",
+          "width": 120,
+          "height": 120
+        }
+      ]
+    }
+  ],
+  "topAlbums": [
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_ODbk3DwVCqR",
+      "playlistId": "OLAK5uy_lRomaeWWbiUqoxaxM8v3jZ9-sm1iRMT6s",
+      "name": "BORN PINK",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2022,
+      "thumbnails": [
+        {
+          "url": "https://yt3.googleusercontent.com/dN5TibspwgdasbXInBwuXO5quHw5kPJxxufl_DY1CYhhp6_Ot9tkhYbFXPEUQ_etG1QCND1AoGiP_DgBfQ=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://yt3.googleusercontent.com/dN5TibspwgdasbXInBwuXO5quHw5kPJxxufl_DY1CYhhp6_Ot9tkhYbFXPEUQ_etG1QCND1AoGiP_DgBfQ=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_5akfGIsrUrJ",
+      "playlistId": "OLAK5uy_m1OQNnyJAlg50n3C_TywdGIbF7fki4PmA",
+      "name": "THE ALBUM",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2020,
+      "thumbnails": [
+        {
+          "url": "https://yt3.googleusercontent.com/ZKINUFCtfMUKB4CH4wJcQyHi6-bmuHz2exRBV6SORUd96KsC1jo2nrDImg2zlLnvHgJPGBxreYVjunGycg=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://yt3.googleusercontent.com/ZKINUFCtfMUKB4CH4wJcQyHi6-bmuHz2exRBV6SORUd96KsC1jo2nrDImg2zlLnvHgJPGBxreYVjunGycg=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_1kG83YrPTtl",
+      "playlistId": "OLAK5uy_m1cfvDs2PHYWbSS5IlZ610ZBs17rn-p0w",
+      "name": "BLACKPINK 2021 'THE SHOW' LIVE",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2021,
+      "thumbnails": [
+        {
+          "url": "https://yt3.googleusercontent.com/B_Vrnp3cNjt6ZtdawU1HO1AxOylrYFKpwH5wDxr60SnwqoKsQUe3TfYZcwREJOtHdGJJ-azadRSw60ixQA=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://yt3.googleusercontent.com/B_Vrnp3cNjt6ZtdawU1HO1AxOylrYFKpwH5wDxr60SnwqoKsQUe3TfYZcwREJOtHdGJJ-azadRSw60ixQA=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_Wbh7z3ktrMG",
+      "playlistId": "OLAK5uy_lycmoSIX7MwULr3Vxad2nSrCVPShSvTZY",
+      "name": "In Your Area, Seoul (Live)",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2019,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/zd2HIHkxQn2zKj9o_nhuvZ64RMCPfIOY2Xyqoij-K-JNwKDqla0XNi7plx95G2KPZaPzqh_QPq8rCgZa=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/zd2HIHkxQn2zKj9o_nhuvZ64RMCPfIOY2Xyqoij-K-JNwKDqla0XNi7plx95G2KPZaPzqh_QPq8rCgZa=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_1SmIGPmTZrL",
+      "playlistId": "OLAK5uy_mYAI-kSw46_fnkFwSGOOdlt1jxZyEz5do",
+      "name": "BLACKPINK ARENA TOUR 2018 \"SPECIAL FINAL IN KYOCERA DOME OSAKA\"",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2019,
+      "thumbnails": [
+        {
+          "url": "https://yt3.googleusercontent.com/Khjfz144xBxJ7RDGznXHVPHY8zgDW7O4ABhPqBayHHi320b9-Fea07-zCF6C4rAhB2KCzIOVrN--bijA=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://yt3.googleusercontent.com/Khjfz144xBxJ7RDGznXHVPHY8zgDW7O4ABhPqBayHHi320b9-Fea07-zCF6C4rAhB2KCzIOVrN--bijA=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    }
+  ],
+  "topSingles": [
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_ZK7RXf2soA7",
+      "playlistId": "OLAK5uy_l3QGS6y9ZWficqzcu429HoCvcKlpMmmmY",
+      "name": "DEADLINE",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2026,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/j1OgxeWEogfpaoqINaTd3chArQGnFUfEP_dl5nyXYy8J_IPtIzZ34hOFX1df4oog2btNbCxXJQ1lVqLT=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/j1OgxeWEogfpaoqINaTd3chArQGnFUfEP_dl5nyXYy8J_IPtIzZ34hOFX1df4oog2btNbCxXJQ1lVqLT=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_tjAWILhVe9t",
+      "playlistId": "OLAK5uy_k3IMFtohb-iC4E65H0q5knmtNGj-_SjX8",
+      "name": "JUMP",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2025,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/9h5EMc3LktccxFy-3bznozFCwYSU1YnU0agJZssvGqDj3UDrtFC7FgPHjDrtUG3dGAP45uEPBxDYLBg=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/9h5EMc3LktccxFy-3bznozFCwYSU1YnU0agJZssvGqDj3UDrtFC7FgPHjDrtUG3dGAP45uEPBxDYLBg=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_FdtbGLTLgZJ",
+      "playlistId": "OLAK5uy_loyV80xGQj4iM1xhSjDmCVYdi_myGC7OY",
+      "name": "THE GIRLS (BLACKPINK THE GAME OST)",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2023,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/IYw-UkpGDAHJX4qEOS0S0xsaGas99M2fEMc34BjHuEVUpCQIvlyBxksTse3gAjPTuVyXDt-gFVbKRWQTDw=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/IYw-UkpGDAHJX4qEOS0S0xsaGas99M2fEMc34BjHuEVUpCQIvlyBxksTse3gAjPTuVyXDt-gFVbKRWQTDw=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_DZezN30qL1V",
+      "playlistId": "OLAK5uy_l6MbfNJNj0yzaN_hunaih9v1-su1hQzb0",
+      "name": "Pink Venom",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2022,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/OeyObLE4rESv5Qu7MruXwBWsCbmXvpJl8652fUKrVzmt6SNYCvZIugmGxHRgBHN_XUSODkH3x6plN_tc=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/OeyObLE4rESv5Qu7MruXwBWsCbmXvpJl8652fUKrVzmt6SNYCvZIugmGxHRgBHN_XUSODkH3x6plN_tc=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_EiwLmHAnwaA",
+      "playlistId": "OLAK5uy_ksQaz48nFASVdLxo7vZHaQ4iulroeEFCw",
+      "name": "Pretty Savage (Japan Version)",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2021,
+      "thumbnails": [
+        {
+          "url": "https://yt3.googleusercontent.com/QVJrQH4Rabcpm-oZFVmZHgJQcJu9kFslW9WzrYfEGMYRb3mEvemfEoN8mF9v27_2-wWeTXR-gq8uTldW=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://yt3.googleusercontent.com/QVJrQH4Rabcpm-oZFVmZHgJQcJu9kFslW9WzrYfEGMYRb3mEvemfEoN8mF9v27_2-wWeTXR-gq8uTldW=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_cVyNm6BtBTg",
+      "playlistId": "OLAK5uy_nPopckpNYkvAxcMStQF53QS5kHKa3fDRo",
+      "name": "You Never Know (Japan Version)",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2021,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/Ki0HXthUT3pNroZK13KZ4eVRUQ2MO0uw2jhYmGfnbOYAqmPNInlruq23ztVfufHvMxDGZE5VEro2C-o=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/Ki0HXthUT3pNroZK13KZ4eVRUQ2MO0uw2jhYmGfnbOYAqmPNInlruq23ztVfufHvMxDGZE5VEro2C-o=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_0QsmRYcYSyY",
+      "playlistId": "OLAK5uy_kKOA3s6Lcdz-w9wbkw74IfO9dBCyujxF8",
+      "name": "How You Like That (Japan Version)",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2021,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/Dy-GmsqcfEJxRzuSFS2fj8bLEVPdf1Ru8E1t6BBcMyPs0SAiLGWtnCHmH3GuF8Z1t8yTiWNMxyS3mcw=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/Dy-GmsqcfEJxRzuSFS2fj8bLEVPdf1Ru8E1t6BBcMyPs0SAiLGWtnCHmH3GuF8Z1t8yTiWNMxyS3mcw=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_GaZvvUPjur6",
+      "playlistId": "OLAK5uy_nLfqtrAMLbxAVf234yuvScNLTKo6XaW44",
+      "name": "Lovesick Girls (Japan Version)",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2021,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/4zeD11ffSI8CSun50PDuI7QcpOlA_eGekx-Q9pKR1w4kasX4h8tJgpyXxl55qRNatHEGu9kov_TXaT-Z=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/4zeD11ffSI8CSun50PDuI7QcpOlA_eGekx-Q9pKR1w4kasX4h8tJgpyXxl55qRNatHEGu9kov_TXaT-Z=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_p3Yv3LfZ5se",
+      "playlistId": "OLAK5uy_m1cCEYl2ifKrlhAVnOE5gCMEgZAQhjr3Y",
+      "name": "Ice Cream",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2020,
+      "thumbnails": [
+        {
+          "url": "https://yt3.googleusercontent.com/6x_mnarsLKgwpc_mhuqc-57_gLiTGUmDovaKFVeYKv5rM6quA1ddWyg8nrsstDgXQh6W12AwAL2yDYY=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://yt3.googleusercontent.com/6x_mnarsLKgwpc_mhuqc-57_gLiTGUmDovaKFVeYKv5rM6quA1ddWyg8nrsstDgXQh6W12AwAL2yDYY=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ALBUM",
+      "albumId": "MPREb_UhcqmNpCCt2",
+      "playlistId": "OLAK5uy_lKNNSMv776klZC32fSKz-_5z1rRg1iD8s",
+      "name": "How You Like That",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "year": 2020,
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/LtzwLew9W3Igam672B19Vp7Kotr_tjTSkEY4L4DNjAvIkfLOxs34jYaAUJ3cCd5SUIzHwJfPyDIlHl_N=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/LtzwLew9W3Igam672B19Vp7Kotr_tjTSkEY4L4DNjAvIkfLOxs34jYaAUJ3cCd5SUIzHwJfPyDIlHl_N=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    }
+  ],
+  "topVideos": [
+    {
+      "type": "VIDEO",
+      "videoId": "yQhbf7BW_wI",
+      "name": "BLACKPINK - ‘뛰어(JUMP)’ (Official Audio)",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/yQhbf7BW_wI/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3ltX5FG_MRNm9-MfTW_jQs3zGoAEQ",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/yQhbf7BW_wI/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lYr7MsPmMVUk0RR6U751yu-oXOnA",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "VIDEO",
+      "videoId": "k7JitOG5wVo",
+      "name": "GO",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/k7JitOG5wVo/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3k8yVvyN7RDh9_ITMaNYk9DPnFa-g",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/k7JitOG5wVo/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3nsgBjgZC1UvTGm741o3VqUPF1e4w",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "VIDEO",
+      "videoId": "AJ2QxtR0dJc",
+      "name": "Me and my",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/AJ2QxtR0dJc/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3nCvY3RCVWR6XUUTQO0ZhwCrhHdEw",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/AJ2QxtR0dJc/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3kOWtDbTHVMu4M0Nau6ybPjWxuuWg",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "VIDEO",
+      "videoId": "PgOGYHPoPsE",
+      "name": "Champion",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/PgOGYHPoPsE/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3nugDve_IjvnF3ZcI-yfoNtbdL1ig",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/PgOGYHPoPsE/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lkVThuRmdouoqnfR-KblhIaYygZA",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "VIDEO",
+      "videoId": "bgKZC7BgG-M",
+      "name": "Fxxxboy",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/bgKZC7BgG-M/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3mlgbjdtrQYB8LSvpSDxWRWV_95EA",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/bgKZC7BgG-M/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lie4D_1ICR07gy7m20z-VmvXJLkw",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "VIDEO",
+      "videoId": "32si5cfrCNc",
+      "name": "How You Like That (Live)",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/32si5cfrCNc/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3nDr-aLxRpZp8NP7ftPuDQ3fBsj4A",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/32si5cfrCNc/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3nnba9j5DNs3il4gbwPMTLjnm8wVA",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "VIDEO",
+      "videoId": "gQlMMD8auMs",
+      "name": "Pink Venom",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/gQlMMD8auMs/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3nEM0b-vFFexT2C8d4yzP8hQi60Sg",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/gQlMMD8auMs/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3khUMi18G93F7jAInIz62E5CIBUFw",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "VIDEO",
+      "videoId": "2S24-y0Ij3Y",
+      "name": "Kill This Love",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/2S24-y0Ij3Y/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3nJr8TNH64g8IZ1UncSNnVEaaDAMQ",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/2S24-y0Ij3Y/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lvlYKryIo33Ih1eyoAS7UpcAvWqg",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "VIDEO",
+      "videoId": "dNCWe_6HAM8",
+      "name": "MONEY (PERFORMANCE VIDEO)",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/dNCWe_6HAM8/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3lUpMp3bbI_aztcw8HyPiwEY9JLRw",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/dNCWe_6HAM8/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3mM-xwJxMUGBQPGYYOGSkJMToP0jQ",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "VIDEO",
+      "videoId": "POe9SOEKotk",
+      "name": "Shut Down",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "duration": null,
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/POe9SOEKotk/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3m512hPlVaRZGGDe7lyzi4uYVVm2Q",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/POe9SOEKotk/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3kbAXOLxYByimodFUXOfH2mRh45lA",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    }
+  ],
+  "featuredOn": [
+    {
+      "type": "PLAYLIST",
+      "playlistId": "UCkbbMCA40i18i7UdjayMPAg",
+      "name": "JUMP (Live)",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/P169hsXjYQs/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3ki7MREfRnamUZFK6Mw8vvibDut1w",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/P169hsXjYQs/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lwNCcg51gxNtOlLsCi5WS7HXTHUA",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "PLAYLIST",
+      "playlistId": "UCkbbMCA40i18i7UdjayMPAg",
+      "name": "Pretty Savage",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/VLpUsmBafMQ/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3m7ZS4LkfHhrJlLnvZbipyfsHtWxw",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/VLpUsmBafMQ/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3lv_lKA9zo_baemeym6-D4Dktnh3g",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "PLAYLIST",
+      "playlistId": "UCkbbMCA40i18i7UdjayMPAg",
+      "name": "Typa Girl",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/z9tifvQSu-g/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3lVS3vV4tPfXoUnm5ldPWs_ovtM8g",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/z9tifvQSu-g/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3k43iVsqdglHx2qoawBw7Bz--6NgQ",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "PLAYLIST",
+      "playlistId": "UCkbbMCA40i18i7UdjayMPAg",
+      "name": "Pretty Savage",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/gU2HqP4NxUs/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3nPhXoXBF7pIJ0F23HSwwr4tSTDVg",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/gU2HqP4NxUs/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3kYBPoWl40XUsnCwwvjIm8IxeYf8g",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "PLAYLIST",
+      "playlistId": "UCkbbMCA40i18i7UdjayMPAg",
+      "name": "Shut Down",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/NpVJidAKOqc/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3nIheltLWZa3GmC4Egy-uqjNXJkmw",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/NpVJidAKOqc/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3mBZ2X0xP3WrR10ilWjiEXJsY1mAA",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "PLAYLIST",
+      "playlistId": "UCkbbMCA40i18i7UdjayMPAg",
+      "name": "DDU-DU DDU-DU",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/cxNIewNXpcg/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3mvLDkHh6fyMnemclnXxT0mA3Nmmg",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/cxNIewNXpcg/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3mMI9uk8IfpVASHOe46wvvdlOC_nA",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "PLAYLIST",
+      "playlistId": "UCkbbMCA40i18i7UdjayMPAg",
+      "name": "BOOMBAYAH (KR Ver.)",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/LpSH8MrYCfg/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3lAzLYybT0KIXTGsZXWEHMO3m1Cow",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/LpSH8MrYCfg/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3l1t4DFj-KH7ejUPHNCjMbreeSviw",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "PLAYLIST",
+      "playlistId": "UCkbbMCA40i18i7UdjayMPAg",
+      "name": "Kill This Love",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/vx9CSpnROfs/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3nGiwFN4upYxXCcQPjY3qaMW5ZWKQ",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/vx9CSpnROfs/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3kEegIzmFD9T-vchsXlGMdlvuxKjw",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "PLAYLIST",
+      "playlistId": "UCkbbMCA40i18i7UdjayMPAg",
+      "name": "BLACKPINK - 'SURE THING (Miguel)' COVER 0812 SBS PARTY PEOPLE",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/_7TMluHVx4Y/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3l8KsEL-GhicQKtmb64y-1LmkisXw",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/_7TMluHVx4Y/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3mzGK3I2o5m56W3pCYT1FSQ3-yOhA",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    },
+    {
+      "type": "PLAYLIST",
+      "playlistId": "UCkbbMCA40i18i7UdjayMPAg",
+      "name": "Forever Young",
+      "artist": {
+        "artistId": "UCkbbMCA40i18i7UdjayMPAg",
+        "name": "BLACKPINK"
+      },
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/67otJZ6qe9Y/sddefault.jpg?sqp=-oaymwEWCJADEOEBIAQqCghqEJQEGHgg6AJIWg&rs=AMzJL3lqBU0rumJdKT4uf6wsmgtfEC918w",
+          "width": 400,
+          "height": 225
+        },
+        {
+          "url": "https://i.ytimg.com/vi/67otJZ6qe9Y/hq720.jpg?sqp=-oaymwEXCKAGEMIDIAQqCwjVARCqCBh4INgESFo&rs=AMzJL3m7_eFMfU4gnNQSqYp-2f0bCEsfMg",
+          "width": 800,
+          "height": 450
+        }
+      ]
+    }
+  ],
+  "similarArtists": [
+    {
+      "type": "ARTIST",
+      "artistId": "VLRDCLAK5uy_nLNY4ReQKH2kx5U23cyGMHql9ciHD9RSM",
+      "name": "Presenting BLACKPINK",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/5j_tW3FoVlSJYd7sduqK8KcpHE-S_RcbYHFzfVdViEZJaN8HfZcRZTMF3wjjHsQA7k7VTkVJmann-Ds=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/5j_tW3FoVlSJYd7sduqK8KcpHE-S_RcbYHFzfVdViEZJaN8HfZcRZTMF3wjjHsQA7k7VTkVJmann-Ds=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "VLRDCLAK5uy_l7K78k4EkjcFojhd1617rmUjY-aet6-t0",
+      "name": "K-Pop Party Hits",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/CwS_OJJlqLineN6jRyoQHBGz4vm82rk7TtMuAYMYmGP98C0fGLqvW_cNLY1GMqO4v1ZgjbzVQsgpl65f=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/CwS_OJJlqLineN6jRyoQHBGz4vm82rk7TtMuAYMYmGP98C0fGLqvW_cNLY1GMqO4v1ZgjbzVQsgpl65f=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "VLRDCLAK5uy_lHgwpuV4hqkECCrgSRMeTrIqVeiko0UMk",
+      "name": "Top K-Pop 2020",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/eKMOXYUzjSVctBq1N4JvBe_Gn0U4IkpaKpIHG9s0K6_9HLswKGQPKPyrLZMNA1NY3pOBjF4CCtQNiEM=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/eKMOXYUzjSVctBq1N4JvBe_Gn0U4IkpaKpIHG9s0K6_9HLswKGQPKPyrLZMNA1NY3pOBjF4CCtQNiEM=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "VLRDCLAK5uy_mHW5bcduhjB-PkTePAe6EoRMj1xNT8gzY",
+      "name": "K-Pop Girl Crush",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/4aym6iptlvs_WWewKTAzqmx42ZESP1ITZpP8TbOAAwl7B5LZu2OuQetlqeCffu6hrSrRlyw8q77N5Bk=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/4aym6iptlvs_WWewKTAzqmx42ZESP1ITZpP8TbOAAwl7B5LZu2OuQetlqeCffu6hrSrRlyw8q77N5Bk=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "VLRDCLAK5uy_moWU7LFrqNAVA27VvUM3Mqfs12exbf7jY",
+      "name": "K-Pop Girl Group Essentials",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/cVug3uK0tvpI1eEfDxYai6YutJJOzHojKw-Ra3Gz4FbiZg4aB-t1z3WeJt7lGZwxEYiEYukCSChHfA=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/cVug3uK0tvpI1eEfDxYai6YutJJOzHojKw-Ra3Gz4FbiZg4aB-t1z3WeJt7lGZwxEYiEYukCSChHfA=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "VLRDCLAK5uy_k4RceM5BqUxVY66agjm-hru6HOUEwgi7Q",
+      "name": "The Hits: 10s K-Pop",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/U0dnKNAouLg--LTT_dAQSd1MnZ5KElqjBMP2C6QP_j3IhJXQa4mZLxXui5Fie02VJcySZV0yj8up9pE=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/U0dnKNAouLg--LTT_dAQSd1MnZ5KElqjBMP2C6QP_j3IhJXQa4mZLxXui5Fie02VJcySZV0yj8up9pE=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "VLRDCLAK5uy_kkpBwv_1TI0ymnmeo_ZHqpjC44ndCUNTk",
+      "name": "K-Pop Dance for Exercise",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/TRsFCRrNSFYmL9_k9UNvnQcIEeXxHYwkOPZE6ZFG2VEfAylYcX_gYWVhVhurYxSuzWxsBvsxUI5sO0M=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/TRsFCRrNSFYmL9_k9UNvnQcIEeXxHYwkOPZE6ZFG2VEfAylYcX_gYWVhVhurYxSuzWxsBvsxUI5sO0M=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "VLRDCLAK5uy_nMqMWmqwZwDvMcqcAohgO_Dp_7zT1nSC8",
+      "name": "BEAT ON",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/ftoEZR8pivVWkmZNl-OHRB7eE5MJ-A8mwVGPyFRwCKhESTmoujjxvlcMd5OdWK8WsC8w1cVMyXFetg=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/ftoEZR8pivVWkmZNl-OHRB7eE5MJ-A8mwVGPyFRwCKhESTmoujjxvlcMd5OdWK8WsC8w1cVMyXFetg=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "VLRDCLAK5uy_k_TKBp6oH3QbWxGwH_CBAwB5w94Jb5uV8",
+      "name": "K-Pop Dance Challenge",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/m10S-jLPRxld5nXlEaWLPIhl8-2YmMHgkOf0LJIejuRUfB7KHcWgVLZG9x9GZKhsXXErco6ohGVNiBvH=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/m10S-jLPRxld5nXlEaWLPIhl8-2YmMHgkOf0LJIejuRUfB7KHcWgVLZG9x9GZKhsXXErco6ohGVNiBvH=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    },
+    {
+      "type": "ARTIST",
+      "artistId": "VLRDCLAK5uy_mk11wKIzEMTu5TnhhmXU6SyNtw1XSrVoQ",
+      "name": "Boredom-blowing K-Pop Dance",
+      "thumbnails": [
+        {
+          "url": "https://lh3.googleusercontent.com/MoRRp8bnuO1cOe6vZQd71eUbj11XefQbdMkv79RXFO6OOZAMStVunkaoK3l4Q-M68ViOnQ_Y7cRYP68=w226-h226-l90-rj",
+          "width": 226,
+          "height": 226
+        },
+        {
+          "url": "https://lh3.googleusercontent.com/MoRRp8bnuO1cOe6vZQd71eUbj11XefQbdMkv79RXFO6OOZAMStVunkaoK3l4Q-M68ViOnQ_Y7cRYP68=w544-h544-l90-rj",
+          "width": 544,
+          "height": 544
+        }
+      ]
+    }
+  ]
+}

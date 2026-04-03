@@ -112,62 +112,64 @@ function samplePixels(data: Uint8ClampedArray, count = 800): [number, number, nu
 // ── Core extraction ───────────────────────────────────────────────────────────
 
 async function extractPalette(imageUrl: string): Promise<ArtworkPalette> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      try {
-        const SIZE = 80; // downsample for perf
-        const canvas = document.createElement("canvas");
-        canvas.width = SIZE; canvas.height = SIZE;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { resolve(DEFAULT_PALETTE); return; }
-        ctx.drawImage(img, 0, 0, SIZE, SIZE);
-        const { data } = ctx.getImageData(0, 0, SIZE, SIZE);
+  const tryExtract = (url: string, useProxy = false): Promise<ArtworkPalette | null> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      
+      const finalUrl = useProxy 
+        ? `https://images.weserv.nl/?url=${encodeURIComponent(url.replace(/^https?:\/\//, ""))}&w=200&h=200&fit=cover`
+        : url;
 
-        // Filter out very dark or very light pixels for better color quality
-        const pixels = samplePixels(data, 600).filter(([r, g, b]) => {
-          const [, s, l] = rgbToHsl(r, g, b);
-          return l > 5 && l < 95 && s > 8; // skip near-black, near-white, grayscale
-        });
+      img.onload = () => {
+        try {
+          const SIZE = 80;
+          const canvas = document.createElement("canvas");
+          canvas.width = SIZE; canvas.height = SIZE;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { resolve(null); return; }
+          ctx.drawImage(img, 0, 0, SIZE, SIZE);
+          const { data } = ctx.getImageData(0, 0, SIZE, SIZE);
 
-        if (pixels.length < 10) { resolve(DEFAULT_PALETTE); return; }
+          const pixels = samplePixels(data, 600).filter(([r, g, b]) => {
+            const [, s, l] = rgbToHsl(r, g, b);
+            return l > 5 && l < 95 && s > 8;
+          });
 
-        // Extract 6 cluster centers
-        const centers = kmeans(pixels, 6);
+          if (pixels.length < 10) { resolve(null); return; }
+          const centers = kmeans(pixels, 6);
+          const hslCenters = centers.map(([r, g, b]) => {
+            const [h, s, l] = rgbToHsl(r, g, b);
+            return { h, s, l, score: s * (l > 20 && l < 80 ? 1 : 0.3) };
+          });
+          hslCenters.sort((a, b) => b.score - a.score);
 
-        // Convert to HSL and sort by saturation * lightness (vibrancy score)
-        const hslCenters = centers.map(([r, g, b]) => {
-          const [h, s, l] = rgbToHsl(r, g, b);
-          return { h, s, l, score: s * (l > 20 && l < 80 ? 1 : 0.3) };
-        });
-        hslCenters.sort((a, b) => b.score - a.score);
+          const p = hslCenters[0] ?? { h: 270, s: 20, l: 10 };
+          const [ph, ps, pl] = darkenHsl(p.h, p.s, p.l, 55);
+          const s2 = hslCenters[1] ?? hslCenters[0];
+          const [sh, ss, sl] = darkenHsl(s2.h, s2.s, s2.l, 40);
+          const ac = hslCenters[0] ?? hslCenters[0];
+          const [ah, as2, al] = vibrifyHsl(ac.h, ac.s, ac.l);
 
-        // 60% – primary → darkened dominant
-        const p = hslCenters[0] ?? { h: 270, s: 20, l: 10 };
-        const [ph, ps, pl] = darkenHsl(p.h, p.s, p.l, 55);
+          resolve({
+            primary: hslToHex(ph, ps, pl),
+            secondary: hslToHex(sh, ss, sl),
+            accent: hslToHex(ah, as2, al),
+          });
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = finalUrl;
+    });
+  };
 
-        // 30% – secondary → slightly less dark
-        const s2 = hslCenters[1] ?? hslCenters[0];
-        const [sh, ss, sl] = darkenHsl(s2.h, s2.s, s2.l, 40);
-
-        // 10% – accent → most vibrant color, pumped up
-        const ac = hslCenters[0] ?? hslCenters[0];
-        const [ah, as2, al] = vibrifyHsl(ac.h, ac.s, ac.l);
-
-        resolve({
-          primary: hslToHex(ph, ps, pl),
-          secondary: hslToHex(sh, ss, sl),
-          accent: hslToHex(ah, as2, al),
-        });
-      } catch {
-        resolve(DEFAULT_PALETTE);
-      }
-    };
-    img.onerror = () => resolve(DEFAULT_PALETTE);
-    // Append cache-bust via proxy if needed
-    img.src = imageUrl;
-  });
+  // Try direct first, then fallback to proxy for CORS issues
+  const direct = await tryExtract(imageUrl, false);
+  if (direct) return direct;
+  
+  return (await tryExtract(imageUrl, true)) || DEFAULT_PALETTE;
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────

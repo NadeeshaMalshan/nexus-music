@@ -8,10 +8,11 @@ import { FloatingPlayer } from "./FloatingPlayer";
 import { ExpandedPlayer } from "./ExpandedPlayer";
 import { ListMusic } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { status } = useSession();
   const {
     palette,
@@ -139,6 +140,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           onSetRightSidebarMode={setRightSidebarMode}
           volume={volume}
           onVolumeChange={setVolume}
+          onArtistClick={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
         />
       )}
 
@@ -184,6 +186,10 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           setIsPlaying={setIsPlaying}
           viewMode={viewMode}
           setViewMode={setViewMode}
+          onArtistClick={(name) => {
+            setIsExpandedPlayerOpen(false);
+            router.push(`/artist/${encodeURIComponent(name)}`);
+          }}
         />
       )}
 

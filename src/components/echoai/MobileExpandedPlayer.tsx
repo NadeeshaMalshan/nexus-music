@@ -44,6 +44,7 @@ export function MobileExpandedPlayer({
   setViewMode,
   onClearQueue,
   onReorderUpNext,
+  onArtistClick,
 }: ExpandedPlayerProps) {
   const { settings } = useSettings();
   const { jamState } = useJam();
@@ -398,7 +399,12 @@ export function MobileExpandedPlayer({
                     </motion.div>
                     <div className="flex-1 min-w-0">
                         <h2 className="truncate text-base font-black text-white">{currentSong.title}</h2>
-                        <p className="truncate text-xs font-bold text-white/50">{currentSong.artist}</p>
+                        <button 
+                          onClick={() => onArtistClick?.(currentSong.artist)}
+                          className="truncate text-xs font-bold text-white/50 active:text-white transition-colors text-left"
+                        >
+                          {currentSong.artist}
+                        </button>
                     </div>
                 </div>
             )}
@@ -443,7 +449,12 @@ export function MobileExpandedPlayer({
               <div className="w-full flex items-center justify-between px-10 mb-6">
                   <div className="flex-1 min-w-0 pr-4">
                       <h1 className="text-2xl font-black text-white line-clamp-1">{currentSong.title}</h1>
-                      <p className="text-lg font-bold text-white/40 mt-0.5">{currentSong.artist}</p>
+                      <button 
+                        onClick={() => onArtistClick?.(currentSong.artist)}
+                        className="text-lg font-bold text-white/40 active:text-white/70 transition-colors mt-0.5 text-left"
+                      >
+                        {currentSong.artist}
+                      </button>
                   </div>
               <div className="flex bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-xl">
                   <button 
@@ -564,7 +575,12 @@ export function MobileExpandedPlayer({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="truncate font-black text-white text-[15px] leading-tight">{currentSong.title}</p>
-                        <p className="truncate text-xs font-bold text-white/40 mt-0.5">{currentSong.artist}</p>
+                        <button 
+                          onClick={() => onArtistClick?.(currentSong.artist)}
+                          className="truncate text-xs font-bold text-white/40 active:text-white/70 transition-colors mt-0.5 text-left"
+                        >
+                          {currentSong.artist}
+                        </button>
                       </div>
                       <div className="pr-1">
                         <div className="flex gap-0.5 items-end h-3">
@@ -588,7 +604,12 @@ export function MobileExpandedPlayer({
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="truncate font-bold text-white text-[14px] leading-tight">{song.title}</p>
-                          <p className="truncate text-[11px] font-bold text-white/30 mt-0.5">{song.artist}</p>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onArtistClick?.(song.artist); }}
+                            className="truncate text-[11px] font-bold text-white/30 active:text-white/60 transition-colors mt-0.5 text-left"
+                          >
+                            {song.artist}
+                          </button>
                         </div>
                         <button 
                           onClick={e => { e.stopPropagation(); onRemoveFromUpNext?.(i); }} 

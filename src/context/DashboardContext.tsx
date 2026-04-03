@@ -49,6 +49,8 @@ type DashboardContextType = {
   upNextQueue: Song[];
   playedHistory: Song[];
   aiLoading: boolean;
+  overrideArtwork: string | null;
+  setOverrideArtwork: (url: string | null) => void;
 
   // View State (Shared but UI-specific)
   isRightSidebarOpen: boolean;
@@ -148,6 +150,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [lyricsLoading, setLyricsLoading] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState<YouTubePlaylist | null>(null);
   const [playedHistory, setPlayedHistory] = useState<Song[]>([]);
+  const [overrideArtwork, setOverrideArtwork] = useState<string | null>(null);
   const [upNextQueue, setUpNextQueue] = useState<Song[]>([]);
   const [knowFacts, setKnowFacts] = useState<string[]>([]);
   const [knowLoading, setKnowLoading] = useState(false);
@@ -253,7 +256,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, [playedHistory]);
 
   // Palette handling
-  const effectiveArtwork = useMemo(() => audioData?.coverArt || currentSong?.artwork || null, [audioData, currentSong]);
+  const effectiveArtwork = useMemo(() => overrideArtwork || audioData?.coverArt || currentSong?.artwork || null, [overrideArtwork, audioData, currentSong]);
   const palette = useArtworkColors(effectiveArtwork);
 
   useEffect(() => {
@@ -1006,6 +1009,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     upNextQueue,
     playedHistory,
     aiLoading,
+    overrideArtwork,
+    setOverrideArtwork,
     isRightSidebarOpen,
     isExpandedPlayerOpen,
     selectedPlaylist,
@@ -1056,7 +1061,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     knowLoading, likedSongs, upNextQueue, playedHistory, aiLoading, 
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
-    setIsPlaying, setUpNextQueue, rightSidebarMode
+    setIsPlaying, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork
   ]);
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;

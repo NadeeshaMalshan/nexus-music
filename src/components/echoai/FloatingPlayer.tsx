@@ -24,6 +24,7 @@ interface FloatingPlayerProps {
   onSetRightSidebarMode?: (mode: "queue" | "jam" | "lyrics") => void;
   volume: number;
   onVolumeChange: (v: number) => void;
+  onArtistClick?: (artistName: string) => void;
 }
 
 export function FloatingPlayer({
@@ -44,6 +45,7 @@ export function FloatingPlayer({
   onSetRightSidebarMode,
   volume,
   onVolumeChange,
+  onArtistClick,
 }: FloatingPlayerProps) {
   const isIdle = !currentSong;
   const displaySong = currentSong || {
@@ -137,7 +139,21 @@ export function FloatingPlayer({
             <div className="min-w-0 flex-1 overflow-hidden">
                <div className="flex flex-col">
                   <span className="truncate text-xs md:text-sm font-black text-white tracking-tight leading-tight">{displaySong.title}</span>
-                  <span className="truncate text-[10px] md:text-[11px] font-bold text-white/30 uppercase tracking-wider">{displaySong.artist}</span>
+                  <button
+                    onClick={(e) => {
+                      if (!isIdle && onArtistClick) {
+                        e.stopPropagation();
+                        onArtistClick(displaySong.artist);
+                      }
+                    }}
+                    className={`truncate text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-left transition-colors ${
+                      !isIdle && onArtistClick
+                        ? "text-white/30 hover:text-white/70 cursor-pointer"
+                        : "text-white/30 cursor-default"
+                    }`}
+                  >
+                    {displaySong.artist}
+                  </button>
                </div>
             </div>
 

@@ -43,6 +43,7 @@ export function DesktopExpandedPlayer({
   setViewMode,
   onClearQueue,
   onReorderUpNext,
+  onArtistClick,
 }: ExpandedPlayerProps) {
   const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">(viewMode === "video" ? "controls" : "lyrics");
@@ -239,7 +240,12 @@ export function DesktopExpandedPlayer({
         <div className="mt-3 flex items-start justify-between">
           <div className="flex-1 pr-6 min-w-0">
             <h1 className="line-clamp-2 text-[26px] font-bold tracking-tight text-white leading-tight">{currentSong.title}</h1>
-            <p className="mt-1 text-lg font-medium text-white/70 line-clamp-1">{currentSong.artist}</p>
+            <button
+              onClick={() => onArtistClick?.(currentSong.artist)}
+              className="mt-1 text-lg font-medium text-white/70 hover:text-white transition-colors line-clamp-1 text-left hover:underline underline-offset-4"
+            >
+              {currentSong.artist}
+            </button>
           </div>
           {isLoggedIn && (
             <button onClick={() => onRateSong(currentSong.id, isLiked ? "none" : "like")} className="mt-1 rounded-full bg-white/5 p-2 hover:bg-white/10">
@@ -460,10 +466,15 @@ export function DesktopExpandedPlayer({
                        <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden shadow-sm">
                          <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={16} />
                        </div>
-                       <div className="flex-1 min-w-0">
-                         <p className="truncate font-black text-white text-[16px] leading-tight">{currentSong.title}</p>
-                         <p className="truncate text-sm font-bold text-white/40 mt-0.5">{currentSong.artist}</p>
-                       </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate font-black text-white text-[16px] leading-tight">{currentSong.title}</p>
+                          <button 
+                            onClick={() => onArtistClick?.(currentSong.artist)}
+                            className="truncate text-sm font-bold text-white/40 hover:text-white/70 transition-colors mt-0.5 text-left"
+                          >
+                            {currentSong.artist}
+                          </button>
+                        </div>
                        <div className="pr-2">
                           <div className="flex gap-0.5 items-end h-3">
                              <div className="w-0.5 h-full bg-(--art-accent,#FA243C) animate-pulse" />

@@ -251,10 +251,10 @@ Format ONLY as a JSON array of strings. No extra text.`;
     let reasons: string[] = [];
     try {
       const response = await hf.chatCompletion({
-        model: "HuggingFaceH4/zephyr-7b-beta",
+        model: "mistralai/Mistral-7B-Instruct-v0.3",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: "Provide only the JSON array of strings." }
+          { role: "user", content: "Provide only the JSON array of strings for these 16 tracks." }
         ],
         max_tokens: 1024,
         temperature: 0.1,

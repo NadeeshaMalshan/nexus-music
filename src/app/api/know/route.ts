@@ -97,12 +97,17 @@ RULES:
     
     const tryModel = async (model: string) => {
       try {
-        const res = await hf.textGeneration({
+        const response = await hf.chatCompletion({
           model,
-          inputs: `[INST] ${prompt} [/INST]`,
-          parameters: { max_new_tokens: 500, temperature: 0.7 },
+          messages: [
+            { role: "system", content: "You are a professional music historian and curator. Output ONLY a valid JSON array of strings, nothing else." },
+            { role: "user", content: prompt }
+          ],
+          max_tokens: 500,
+          temperature: 0.7,
         });
-        let content = res.generated_text.trim();
+        
+        let content = response.choices[0].message.content?.trim() || "";
         if (content.includes("[") && content.includes("]")) {
           content = content.substring(content.indexOf("["), content.lastIndexOf("]") + 1);
         }

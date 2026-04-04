@@ -15,6 +15,7 @@ type AudioPayload = {
   coverArt: string;
   videoId: string;
   musicVideoId?: string;
+  directUrl?: string; // Direct YouTube stream URL
 };
 
 type LyricsPayload = {
@@ -158,6 +159,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [viewMode, setViewMode] = useState<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const viewModeRef = useRef<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const userIntentRef = useRef<"playing" | "paused">("paused");
+
+  const [directAudioUrl, setDirectAudioUrl] = useState<string | null>(null);
+  const nativeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const isUsingNativeAudio = useMemo(() => viewMode === "music" && !!directAudioUrl, [viewMode, directAudioUrl]);
 
   // Keep latest state in refs for intervals and events to avoid closure staleness
   const settingsRef = useRef(settings);
@@ -335,6 +340,35 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     loadAudioMeta();
     return () => controller.abort();
   }, [audioQuery]);
+
+  // Direct URL Extraction for Music Mode
+  useEffect(() => {
+    if (!currentSong || viewMode !== "music") {
+      setDirectAudioUrl(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    async function loadDirectUrl() {
+      try {
+        const response = await fetch(`/api/get-audio-url?videoId=${currentSong?.id}`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("Failed to fetch direct URL");
+        const data = await response.json();
+        if (data.url) {
+          setDirectAudioUrl(data.url);
+        }
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          console.error("Failed to load direct audio URL:", error);
+        }
+      }
+    }
+    void loadDirectUrl();
+    return () => controller.abort();
+  }, [currentSong, viewMode]);
 
   // Lyrics loading logic
   useEffect(() => {
@@ -587,6 +621,42 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 }
             }, 500); // Slower interval in background is more likely to be regular than fast one
 
+            // Native Audio progress interval
+            const nativeProgressInterval = window.setInterval(() => {
+              if (!isUsingNativeAudio || !nativeAudioRef.current) return;
+              const audio = nativeAudioRef.current;
+              
+              if (!audio.paused && userIntentRef.current === "playing") {
+                const current = audio.currentTime;
+                const duration = audio.duration;
+                
+                if (Number.isFinite(current)) {
+                  setCurrentTimeSec(current);
+                }
+                if (Number.isFinite(duration) && duration > 0) {
+                  setDurationSec(duration);
+                  
+                  // Handle next track
+                  const bufferTime = settingsRef.current.gaplessPlayback ? 1.0 : 0.5;
+                  if (current >= duration - bufferTime) {
+                    onNextRef.current();
+                  }
+                }
+
+                // Apply Volume & Crossfade
+                if (duration > 0 && settingsRef.current.crossfade > 0 && current >= (duration - settingsRef.current.crossfade)) {
+                  const remaining = duration - current;
+                  const ratio = Math.max(0, remaining / settingsRef.current.crossfade);
+                  audio.volume = (volumeRef.current / 100) * ratio;
+                } else {
+                  audio.volume = volumeRef.current / 100;
+                }
+              }
+            }, 500);
+
+            return () => {
+              window.clearInterval(nativeProgressInterval);
+            };
           },
           onStateChange: (event: any) => {
             // Only sync isPlaying if we're NOT in video mode, to let the visible player lead state
@@ -643,7 +713,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // Load / cue hidden player when resolved audio id OR currentSong id changes
   useEffect(() => {
-    if (!ytPlayerRef.current || !isPlayerReady) return;
+    // Sync native audio if in use
+    if (isUsingNativeAudio && nativeAudioRef.current) {
+        const audio = nativeAudioRef.current;
+        if (directAudioUrl && audio.src !== directAudioUrl) {
+            audio.src = directAudioUrl;
+            if (userIntentRef.current === "playing") {
+                audio.play().catch(e => console.warn("Native audio play failed:", e));
+                setIsPlaying(true);
+            }
+        }
+        // Silence YT player
+        try { ytPlayerRef.current?.pauseVideo(); ytPlayerRef.current?.setVolume(0); } catch {}
+    }
+
+    if (!ytPlayerRef.current || !isPlayerReady || isUsingNativeAudio) return;
     
     // We prioritize audioData.videoId, but fallback to currentSong.id for instant start
     const targetId = audioData?.videoId || currentSong?.id;
@@ -669,18 +753,22 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Keep hidden player silent whenever expanded video mode is active (covers toggle without track change).
   useEffect(() => {
     const p = ytPlayerRef.current;
+    if (nativeAudioRef.current) {
+        nativeAudioRef.current.volume = volume / 100;
+    }
+    
     if (!p || !playerReadyRef.current) return;
     try {
-      if (viewMode === "video") {
+      if (viewMode === "video" || isUsingNativeAudio) {
         p.setVolume(0);
-        p.pauseVideo();
+        if (isUsingNativeAudio) p.pauseVideo();
       } else {
         p.setVolume(volume);
       }
     } catch {
       /* ignore */
     }
-  }, [viewMode, volume]);
+  }, [viewMode, volume, isUsingNativeAudio]);
 
   // Handlers
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -761,6 +849,24 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setIsPlaying((v) => !v);
       return;
     }
+
+    if (isUsingNativeAudio && nativeAudioRef.current) {
+        const audio = nativeAudioRef.current;
+        if (audio.paused) {
+            userIntentRef.current = "playing";
+            try { audioCtxRef.current?.resume(); } catch {}
+            audio.play().catch(() => {});
+            setIsPlaying(true);
+            if (silentAudioRef.current?.paused) silentAudioRef.current.play().catch(() => {});
+        } else {
+            userIntentRef.current = "paused";
+            audio.pause();
+            setIsPlaying(false);
+            if (!silentAudioRef.current?.paused) silentAudioRef.current?.pause();
+        }
+        return;
+    }
+
     const player = ytPlayerRef.current as any;
     if (!player || !playerReadyRef.current) return;
     
@@ -788,30 +894,46 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         silentAudioRef.current?.pause();
       }
     }
-  }, [isPlaying, viewMode]);
+  }, [isPlaying, viewMode, isUsingNativeAudio]);
 
   const playVideo = useCallback(() => {
+    userIntentRef.current = "playing";
+    
+    if (isUsingNativeAudio && nativeAudioRef.current) {
+        nativeAudioRef.current.play().catch(() => {});
+        setIsPlaying(true);
+        return;
+    }
+
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
-    userIntentRef.current = "playing";
     player.setVolume(volume);
     player.playVideo();
     setIsPlaying(true);
-  }, [volume]);
+  }, [volume, isUsingNativeAudio]);
 
   const pauseVideo = useCallback(() => {
+    userIntentRef.current = "paused";
+    if (isUsingNativeAudio && nativeAudioRef.current) {
+        nativeAudioRef.current.pause();
+        setIsPlaying(false);
+        return;
+    }
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
-    userIntentRef.current = "paused";
     player.pauseVideo();
     setIsPlaying(false);
-  }, []);
+  }, [isUsingNativeAudio]);
 
   const pauseBackgroundPlayer = useCallback(() => {
+    if (isUsingNativeAudio && nativeAudioRef.current) {
+        nativeAudioRef.current.pause();
+        return;
+    }
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
     player.pauseVideo();
-  }, []);
+  }, [isUsingNativeAudio]);
 
   const onSongClick = useCallback((song: Song, shouldResetQueue: boolean = true) => {
     if (shouldResetQueue) {
@@ -862,13 +984,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   onNextRef.current = onNext;
 
   const onSeek = useCallback((nextTimeSec: number) => {
+    if (!Number.isFinite(nextTimeSec)) return;
+    
+    if (isUsingNativeAudio && nativeAudioRef.current) {
+        nativeAudioRef.current.currentTime = nextTimeSec;
+        setCurrentTimeSec(nextTimeSec);
+        return;
+    }
+
     const player = ytPlayerRef.current;
-    if (!player || !playerReadyRef.current || !Number.isFinite(nextTimeSec)) return;
+    if (!player || !playerReadyRef.current) return;
     const safeDuration = durationSec > 0 ? durationSec : (youtubeTimestampToSeconds(currentSong?.duration ?? "") ?? 0);
     const clamped = Math.max(0, Math.min(nextTimeSec, safeDuration || nextTimeSec));
     player.seekTo(clamped, true);
     setCurrentTimeSec(clamped);
-  }, [durationSec, currentSong?.duration]);
+  }, [durationSec, currentSong?.duration, isUsingNativeAudio]);
 
   const onPrev = useCallback(() => {
     // With AI queue, 'Prev' usually just restarts the song
@@ -1064,7 +1194,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setIsPlaying, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork
   ]);
 
-  return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
+  return (
+    <DashboardContext.Provider value={value}>
+      {children}
+      {/* Hidden Native Audio Player for Direct URL Extraction */}
+      <audio
+        ref={nativeAudioRef}
+        style={{ display: "none" }}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => {
+            if (userIntentRef.current === "paused") setIsPlaying(false);
+        }}
+        onEnded={() => onNext()}
+      />
+    </DashboardContext.Provider>
+  );
 }
 
 export function useDashboard() {

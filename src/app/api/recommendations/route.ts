@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { HfInference } from "@huggingface/inference";
+
+export const dynamic = "force-dynamic";
 import { getRelatedTracksRobust } from "@/lib/youtubeMusicRelated";
 import { searchSongsRobust } from "@/lib/ytmSearchService";
 import { getServerSession } from "next-auth/next";

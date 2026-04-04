@@ -209,7 +209,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                     >
                       <div className="flex items-center gap-3.5 px-3 py-2.5 rounded-2xl hover:bg-white/5 transition-all cursor-pointer group">
                         <div className={`relative w-11 h-11 ${item.type === "ARTIST" ? "rounded-full" : "rounded-lg"} overflow-hidden shrink-0 shadow-lg`}>
-                          <Image src={item.thumbnail} alt="" fill className="object-cover" />
+                          <Image unoptimized src={item.thumbnail} alt="" fill className="object-cover" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                             <Play size={16} fill="white" className="text-white ml-0.5" />
                           </div>
@@ -353,7 +353,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                   >
                     <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity shadow-sm">
                       {pl.thumbnailUrl ? (
-                         <Image src={pl.thumbnailUrl} alt="" fill className="object-cover" />
+                         <Image unoptimized src={pl.thumbnailUrl} alt="" fill className="object-cover" />
                       ) : (
                          <div className="absolute inset-0 bg-white/5 flex items-center justify-center"><Music2 size={12} /></div>
                       )}

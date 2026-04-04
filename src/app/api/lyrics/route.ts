@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { parseLrcContent } from "@/lib/lrc";
 
+// Performance hint for Next.js 16+
+export const dynamic = "force-dynamic";
+export const maxDuration = 30; // Max serverless duration on Vercel
+
 type LyricsSource = "LRCLIB" | "Lyrics.ovh";
 
 interface LrcLibRecord {

@@ -5,13 +5,18 @@ const withPWA = withPWAInit({
   dest: "public",
   cacheOnFrontEndNav: true,
   register: true,
+  disable: process.env.NODE_ENV === "development",
 });
 
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
-  turbopack: {}, // Silence turbopack vs webpack conflict for PWA support
+  turbopack: {
+    // Explicitly set root to prevent watching parent Documents folder
+    root: "./",
+  }, 
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",

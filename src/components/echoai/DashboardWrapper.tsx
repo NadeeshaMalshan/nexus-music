@@ -125,7 +125,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="fixed inset-x-0 bottom-0 z-50 pointer-events-none flex items-center justify-center px-4"
+            className="fixed inset-x-0 bottom-0 z-60 pointer-events-none flex items-center justify-center px-4 pb-safe"
           >
             <FloatingPlayer
               onExpand={() => setIsExpandedPlayerOpen(true)}

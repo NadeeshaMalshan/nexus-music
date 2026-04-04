@@ -194,7 +194,7 @@ export function YouTubeLibrary({
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 overflow-y-auto px-6 py-8 md:px-8 md:py-10 lg:px-12 custom-scrollbar pb-32 md:pb-40 text-left">
+      <main className="min-h-0 px-6 py-8 md:px-8 md:py-10 lg:px-12 pb-32 md:pb-40 text-left">
         <div className="max-w-[1600px] mx-auto">
            {loading ? (
               <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-4">

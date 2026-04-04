@@ -89,7 +89,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 30 }} 
             transition={MOTION_CONFIG.transition}
-            className="w-full h-full md:h-auto md:max-w-4xl md:max-h-[85vh] overflow-hidden md:rounded-[40px] bg-white/5 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl flex flex-col relative z-10 animate-gpu"
+            className="w-full h-full md:h-[85vh] md:max-h-[85vh] overflow-hidden md:rounded-[40px] bg-white/5 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl flex flex-col relative z-10 animate-gpu"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header Area */}
@@ -116,7 +116,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto no-scrollbar px-6 py-8 md:px-10 md:pb-12 flex flex-col md:flex-row gap-8 md:gap-12">
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-8 md:px-10 md:pb-12 flex flex-col md:flex-row gap-8 md:gap-12 custom-scrollbar">
                {/* Metadata Section */}
                <div className="w-full md:w-72 space-y-6 md:space-y-8">
                   <div className="aspect-square w-48 md:w-full mx-auto md:mx-0 rounded-3xl md:rounded-[36px] bg-white/5 border border-white/10 flex items-center justify-center relative overflow-hidden group">
@@ -277,7 +277,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 30 }} 
             transition={MOTION_CONFIG.transition}
-            className="w-full h-full md:h-auto md:max-w-5xl md:max-h-[90vh] overflow-hidden md:rounded-[48px] bg-white/[0.03] border border-white/10 shadow-[0_50px_150px_rgba(0,0,0,0.9)] backdrop-blur-3xl flex flex-col relative z-10 animate-gpu"
+            className="w-full h-full md:h-[90vh] md:max-h-[90vh] overflow-hidden md:rounded-[48px] bg-white/[0.03] border border-white/10 shadow-[0_50px_150px_rgba(0,0,0,0.9)] backdrop-blur-3xl flex flex-col relative z-10 animate-gpu"
             onClick={(e) => e.stopPropagation()}
           >
             {/* AI Top Bar */}
@@ -299,7 +299,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
               </button>
             </div>
 
-             <div className="flex-1 overflow-y-auto no-scrollbar p-6 md:p-12">
+             <div className="flex-1 min-h-0 overflow-y-auto p-6 md:p-12 custom-scrollbar">
                 {step === 'input' && (
                   <m.div 
                     initial={{ opacity: 0, y: 20 }} 

@@ -374,7 +374,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
       <AiPlaylistModal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} />
 
       {/* Mobile Optimized Nav */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-white/5 bg-black/20 backdrop-blur-3xl lg:hidden pb-safe-offset-2 pt-2 px-2">
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-white/5 bg-black/20 backdrop-blur-3xl lg:hidden pb-safe pb-2 pt-2 px-2">
         {[
           { id: "home", icon: Home, label: "Home", href: "/" },
           { id: "search", icon: Search, label: "Search", href: "/search" },

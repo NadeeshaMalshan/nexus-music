@@ -305,16 +305,14 @@ export function CenterPanel(props: CenterPanelProps) {
   };
 
   return (
-    <main className="flex-1 min-h-0 overflow-y-auto no-scrollbar pt-12 pb-40 text-left">
-      <div className="max-w-[1600px] mx-auto px-6 md:px-10 lg:px-16">
+    <div className="flex-1 h-full flex flex-col overflow-hidden relative">
+      <div className="flex-1 h-full min-h-0 flex flex-col">
         <AnimatePresence mode="wait">
           {activeView === "playlist-detail" && (
-            <m.div
-              key={`playlist-${selectedPlaylist?.id || segments[1]}`}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={MOTION_CONFIG.transition}
+            <m.div 
+              key="playlist-detail" 
+              className="flex-1 h-full min-h-0 flex flex-col overflow-hidden"
+              {...FADE_IN_VARIANTS}
             >
                 <PlaylistDetail
                   playlist={selectedPlaylist || { id: segments[1], title: "Loading...", itemCount: 0, thumbnailUrl: "", description: "" }}
@@ -331,12 +329,10 @@ export function CenterPanel(props: CenterPanelProps) {
           )}
 
           {activeView === "album" && (
-            <m.div
-              key={`album-${segments[1]}`}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={MOTION_CONFIG.transition}
+            <m.div 
+              key="album-detail" 
+              className="flex-1 h-full min-h-0 flex flex-col overflow-hidden"
+              {...FADE_IN_VARIANTS}
             >
                 <AlbumDetail
                   albumId={segments[1]}
@@ -354,12 +350,13 @@ export function CenterPanel(props: CenterPanelProps) {
           )}
 
           {activeView === "library" && (
-            <m.div
-              key="library"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={MOTION_CONFIG.transition}
+            <m.div 
+               key="library" 
+               className="flex-1 h-full min-h-0 flex flex-col overflow-y-auto custom-scrollbar"
+               initial={{ opacity: 0, y: 20 }}
+               animate={{ opacity: 1, y: 0 }}
+               exit={{ opacity: 0, y: 20 }}
+               transition={MOTION_CONFIG.transition}
             >
               <YouTubeLibrary
                 onPlaylistClick={onPlaylistClick}
@@ -374,12 +371,10 @@ export function CenterPanel(props: CenterPanelProps) {
           )}
 
           {activeView === "settings" && (
-            <m.div
-              key="settings"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={MOTION_CONFIG.transition}
+            <m.div 
+              key="settings" 
+              className="flex-1 h-full min-h-0 flex flex-col overflow-hidden"
+              {...FADE_IN_VARIANTS}
             >
               <Settings />
             </m.div>
@@ -392,7 +387,7 @@ export function CenterPanel(props: CenterPanelProps) {
               animate="animate"
               exit="exit"
               variants={FADE_IN_VARIANTS}
-              className="space-y-20"
+              className="flex-1 h-full min-h-0 overflow-y-auto custom-scrollbar px-6 md:px-10 lg:px-16 pt-12 pb-40 space-y-20"
             >
               <header className="mb-12">
                 <h1 className="text-[48px] font-black tracking-tighter text-white leading-none mb-3">Listen Now</h1>
@@ -456,6 +451,6 @@ export function CenterPanel(props: CenterPanelProps) {
           )}
         </AnimatePresence>
       </div>
-    </main>
+    </div>
   );
 }

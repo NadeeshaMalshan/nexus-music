@@ -48,7 +48,7 @@ export function EchoAIDashboard() {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
           transition={MOTION_CONFIG.transition}
-          className="flex-1 h-full"
+          className="flex-1 h-full flex flex-col"
         >
           <SearchPage
             onClose={() => router.push("/")}
@@ -65,7 +65,7 @@ export function EchoAIDashboard() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={MOTION_CONFIG.transition}
-          className="flex-1 h-full"
+          className="flex-1 h-full flex flex-col"
         >
           <ArtistPage
             artistName={artistNameFromUrl}
@@ -82,7 +82,7 @@ export function EchoAIDashboard() {
           initial="initial"
           animate="animate"
           exit="exit"
-          className="flex-1 h-full"
+          className="flex-1 h-full min-h-0 flex flex-col"
         >
           <CenterPanel
             activeView={activeView}

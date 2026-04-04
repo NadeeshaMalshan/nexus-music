@@ -64,7 +64,7 @@ export function FloatingPlayer({
 
   return (
     <m.div 
-      className="group relative flex w-auto max-w-[calc(100vw-2rem)] items-center gap-3 md:gap-6 rounded-full bg-[#1c1c1e]/60 p-1.5 pl-4 md:pl-6 pr-5 md:pr-8 backdrop-blur-[32px] backdrop-saturate-[180%] border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.4)] pointer-events-auto transition-all duration-500 hover:bg-[#1c1c1e]/80 mx-auto md:mb-10 lg:mb-12"
+      className="group relative flex w-auto max-w-[calc(100vw-2rem)] items-center gap-3 md:gap-6 rounded-full bg-[#1c1c1e]/60 p-1.5 pl-4 md:pl-6 pr-5 md:pr-8 backdrop-blur-[32px] backdrop-saturate-[180%] border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.4)] pointer-events-auto transition-all duration-500 hover:bg-[#1c1c1e]/80 mx-auto mb-24 md:mb-10 lg:mb-12"
       style={{
         boxShadow: `0 20px 40px -15px rgba(0,0,0,0.5), 0 0 20px -5px var(--art-accent, rgba(255,255,255,0.1))`
       }}

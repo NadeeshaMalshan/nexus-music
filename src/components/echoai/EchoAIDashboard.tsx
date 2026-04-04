@@ -5,6 +5,8 @@ import { CenterPanel } from "./CenterPanel";
 import { SearchPage } from "./SearchPage";
 import { ArtistPage } from "./ArtistPage";
 import { usePathname, useRouter } from "next/navigation";
+import { m, AnimatePresence } from "motion/react";
+import { FADE_IN_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
 
 export function EchoAIDashboard() {
   const pathname = usePathname();
@@ -37,45 +39,68 @@ export function EchoAIDashboard() {
   const albumIdFromUrl =
     activeView === "album" ? segments[1] : "";
 
-  if (activeView === "search") {
-    return (
-      <SearchPage
-        onClose={() => router.push("/")}
-        onSongSelect={onSongClick}
-        onAddToQueue={onAddToQueue}
-        onPlayNext={onPlayNext}
-        onNavigateArtist={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
-      />
-    );
-  }
-
-  if (activeView === "artist" && artistNameFromUrl) {
-    return (
-      <ArtistPage
-        key={artistNameFromUrl}
-        artistName={artistNameFromUrl}
-        onBack={() => router.back()}
-        onNavigateArtist={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
-        onNavigatePlaylist={(id) => router.push(`/playlists/${id}`)}
-        onNavigateAlbum={(id) => router.push(`/album/${id}`)}
-      />
-    );
-  }
-
   return (
-    <CenterPanel
-      activeView={activeView}
-      selectedPlaylist={selectedPlaylist}
-      accentColor={palette.accent}
-      onSongClick={onSongClick}
-      onPlaylistClick={(playlist) => router.push(`/playlists/${playlist.id}`)}
-      onQueueReplace={setQueueSongs}
-      onAddToQueue={onAddToQueue}
-      onPlayNext={onPlayNext}
-      onPlayPlaylist={onPlayPlaylist}
-      currentSongId={currentSong?.id}
-      seed={currentSong ? `${currentSong.artist} - ${currentSong.title}` : undefined}
-      playedHistory={playedHistory}
-    />
+    <AnimatePresence mode="wait">
+      {activeView === "search" ? (
+        <m.div
+          key="search-view"
+          initial={{ opacity: 0, scale: 1.02 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={MOTION_CONFIG.transition}
+          className="flex-1 h-full"
+        >
+          <SearchPage
+            onClose={() => router.push("/")}
+            onSongSelect={onSongClick}
+            onAddToQueue={onAddToQueue}
+            onPlayNext={onPlayNext}
+            onNavigateArtist={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
+          />
+        </m.div>
+      ) : activeView === "artist" && artistNameFromUrl ? (
+        <m.div
+          key={`artist-view-${artistNameFromUrl}`}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={MOTION_CONFIG.transition}
+          className="flex-1 h-full"
+        >
+          <ArtistPage
+            artistName={artistNameFromUrl}
+            onBack={() => router.back()}
+            onNavigateArtist={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
+            onNavigatePlaylist={(id) => router.push(`/playlists/${id}`)}
+            onNavigateAlbum={(id) => router.push(`/album/${id}`)}
+          />
+        </m.div>
+      ) : (
+        <m.div
+          key="center-view"
+          variants={FADE_IN_VARIANTS}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="flex-1 h-full"
+        >
+          <CenterPanel
+            activeView={activeView}
+            selectedPlaylist={selectedPlaylist}
+            accentColor={palette.accent}
+            onSongClick={onSongClick}
+            onPlaylistClick={(playlist) => router.push(`/playlists/${playlist.id}`)}
+            onQueueReplace={setQueueSongs}
+            onAddToQueue={onAddToQueue}
+            onPlayNext={onPlayNext}
+            onPlayPlaylist={onPlayPlaylist}
+            currentSongId={currentSong?.id}
+            seed={currentSong ? `${currentSong.artist} - ${currentSong.title}` : undefined}
+            playedHistory={playedHistory}
+            onNavigateArtist={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
+          />
+        </m.div>
+      )}
+    </AnimatePresence>
   );
 }

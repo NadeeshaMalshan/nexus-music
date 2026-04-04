@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useMemo } from "react";
 
 interface AudioVisualizerProps {
   active: boolean;
@@ -8,6 +8,7 @@ interface AudioVisualizerProps {
   color?: string;
   gap?: number;
   width?: string;
+  height?: string;
 }
 
 export function AudioVisualizer({ 
@@ -15,57 +16,46 @@ export function AudioVisualizer({
   barCount = 4, 
   color = "#ef4444", 
   gap = 2,
-  width = "16px"
+  width = "16px",
+  height = "16px"
 }: AudioVisualizerProps) {
-  const [heights, setHeights] = useState<number[]>(new Array(barCount).fill(30));
-  const requestRef = useRef<number | null>(null);
-
-  const animate = () => {
-    if (!active) {
-      setHeights(new Array(barCount).fill(30));
-      return;
-    }
-
-    setHeights(prev => prev.map(() => {
-      // Create a more "jumpy" beat-like movement
-      const target = Math.random() > 0.8 ? Math.random() * 80 + 20 : Math.random() * 40 + 20;
-      return target;
-    }));
-
-    requestRef.current = requestAnimationFrame(animate);
-  };
-
-  useEffect(() => {
-    if (active) {
-      requestRef.current = requestAnimationFrame(animate);
-    } else {
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-      setHeights(new Array(barCount).fill(30));
-    }
-    return () => {
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  
+  // Memoize random durations to prevent re-renders while keeping unique animations
+  const barDurations = useMemo(() => 
+    new Array(barCount).fill(0).map(() => 0.5 + Math.random() * 0.5), 
+  [barCount]);
 
   return (
     <div 
-      className="flex items-end justify-center overflow-hidden" 
-      style={{ width, height: "16px", gap: `${gap}px` }}
+      className="flex items-end justify-center overflow-hidden animate-gpu" 
+      style={{ width, height, gap: `${gap}px` }}
     >
-      {heights.map((height, i) => (
+      {[...Array(barCount)].map((_, i) => (
         <div
           key={i}
-          className="rounded-full transition-all duration-150 ease-out"
+          className={`rounded-full shadow-[0_0_8px_var(--visualizer-color)] transition-all duration-300 ${active ? "animate-audio-bar" : ""}`}
           style={{
             width: "2.5px",
-            height: `${height}%`,
+            height: active ? "100%" : "30%",
             backgroundColor: color,
-            // Add a slight glow effect
-            boxShadow: active ? `0 0 8px ${color}66` : "none"
+            animationDuration: `${barDurations[i]}s`,
+            animationDelay: `${i * 0.1}s`,
+            //@ts-ignore
+            "--visualizer-color": active ? `${color}66` : "transparent"
           }}
         />
       ))}
+      <style jsx global>{`
+        @keyframes audio-bar {
+          0%, 100% { height: 30%; }
+          50% { height: 100%; }
+        }
+        .animate-audio-bar {
+          animation-name: audio-bar;
+          animation-iteration-count: infinite;
+          animation-timing-function: ease-in-out;
+        }
+      `}</style>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { ExpandedPlayer } from "./ExpandedPlayer";
 import { ListMusic } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
+import { m, AnimatePresence } from "motion/react";
 
 export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -86,9 +87,10 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   const activeView = pathname === "/" ? "home" : pathname.split("/")[1] || "home";
 
   return (
-    <div className="relative h-screen overflow-hidden text-zinc-100">
+    <div className="relative h-screen overflow-hidden text-zinc-100 bg-[#06060c]">
+      {/* Background with optimized CSS transition */}
       <div
-        className="pointer-events-none absolute inset-0 transition-all duration-2000 ease-in-out"
+        className="pointer-events-none absolute inset-0 bg-gradient-animate animate-gpu"
         style={{
           backgroundImage: `
             radial-gradient(circle at 15% 15%, ${palette.primary}cc, transparent 70%),
@@ -96,10 +98,9 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
             radial-gradient(circle at 50% 50%, ${palette.accent}22, transparent 90%)
           `,
           filter: "blur(120px) saturate(2.5)",
-          backgroundColor: "#06060c",
         }}
       >
-          <div className="absolute inset-0 opacity-[0.15]" style={{
+          <div className="absolute inset-0 opacity-[0.15] bg-gradient-animate" style={{
             backgroundImage: `radial-gradient(circle at 50% 50%, ${palette.accent}, transparent)`,
           }} />
       </div>
@@ -116,82 +117,94 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
       </main>
 
-      {!isExpandedPlayerOpen && (
-        <FloatingPlayer
-          onExpand={() => setIsExpandedPlayerOpen(true)}
-          currentSong={currentSong ? {
-            ...currentSong,
-            title: audioData?.trackName || currentSong.title,
-            artist: audioData?.artist || currentSong.artist,
-            artwork: audioData?.coverArt || currentSong.artwork,
-          } : null}
-          isPlaying={isPlaying}
-          onTogglePlay={onTogglePlay}
-          onNext={onNext}
-          onPrev={onPrev}
-          currentTimeSec={currentTimeSec}
-          durationSec={durationSec}
-          onRateSong={onRateSong}
-          isLiked={currentSong ? likedSongs.has(audioData?.videoId || currentSong.id) : false}
-          isLoggedIn={status === "authenticated"}
-          onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-          isRightSidebarOpen={isRightSidebarOpen}
-          rightSidebarMode={rightSidebarMode}
-          onSetRightSidebarMode={setRightSidebarMode}
-          volume={volume}
-          onVolumeChange={setVolume}
-          onArtistClick={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
-        />
-      )}
+      <AnimatePresence>
+        {!isExpandedPlayerOpen && (
+          <m.div
+            key="floating-player"
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="fixed inset-x-0 bottom-0 z-50 pointer-events-none flex items-center justify-center px-4"
+          >
+            <FloatingPlayer
+              onExpand={() => setIsExpandedPlayerOpen(true)}
+              currentSong={currentSong ? {
+                ...currentSong,
+                title: audioData?.trackName || currentSong.title,
+                artist: audioData?.artist || currentSong.artist,
+                artwork: audioData?.coverArt || currentSong.artwork,
+              } : null}
+              isPlaying={isPlaying}
+              onTogglePlay={onTogglePlay}
+              onNext={onNext}
+              onPrev={onPrev}
+              currentTimeSec={currentTimeSec}
+              durationSec={durationSec}
+              onRateSong={onRateSong}
+              isLiked={currentSong ? likedSongs.has(audioData?.videoId || currentSong.id) : false}
+              isLoggedIn={status === "authenticated"}
+              onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+              isRightSidebarOpen={isRightSidebarOpen}
+              rightSidebarMode={rightSidebarMode}
+              onSetRightSidebarMode={setRightSidebarMode}
+              volume={volume}
+              onVolumeChange={setVolume}
+              onArtistClick={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
+            />
+          </m.div>
+        )}
 
-      {isExpandedPlayerOpen && currentSong && (
-        <ExpandedPlayer
-          onClose={() => setIsExpandedPlayerOpen(false)}
-          currentSong={{
-            ...currentSong,
-            title: audioData?.trackName || currentSong.title,
-            artist: audioData?.artist || currentSong.artist,
-            artwork: audioData?.coverArt || currentSong.artwork,
-            musicVideoId: audioData?.musicVideoId,
-          }}
-          onSongClick={onSongClick}
-          isPlaying={isPlaying}
-          onTogglePlay={onTogglePlay}
-          onNext={onNext}
-          onPrev={onPrev}
-          upNextQueue={upNextQueue}
-          onRemoveFromUpNext={onRemoveFromUpNext}
-          onClearQueue={onClearQueue}
-          onReorderUpNext={onReorderUpNext}
-          lyricsContent={
-            lyricsData?.lyrics.content ||
-            (lyricsLoading ? "Loading lyrics..." : "Lyrics not available for this track yet.")
-          }
-          lyricsSource={lyricsData?.lyrics.source || null}
-          currentTimeSec={currentTimeSec}
-          durationSec={durationSec}
-          onSeek={onSeek}
-          volume={volume}
-          onVolumeChange={setVolume}
-          geniusData={lyricsData?.geniusData}
-          knowFacts={knowFacts}
-          knowLoading={knowLoading}
-          onRateSong={onRateSong}
-          isLiked={currentSong ? likedSongs.has(audioData?.videoId || currentSong.id) : false}
-          isLoggedIn={status === "authenticated"}
-          playVideo={playVideo}
-          pauseVideo={pauseVideo}
-          pauseBackgroundPlayer={pauseBackgroundPlayer}
-          setCurrentTimeSec={setCurrentTimeSec}
-          setIsPlaying={setIsPlaying}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          onArtistClick={(name) => {
-            setIsExpandedPlayerOpen(false);
-            router.push(`/artist/${encodeURIComponent(name)}`);
-          }}
-        />
-      )}
+        {isExpandedPlayerOpen && currentSong && (
+          <ExpandedPlayer
+            key="expanded-player"
+            onClose={() => setIsExpandedPlayerOpen(false)}
+            currentSong={{
+              ...currentSong,
+              title: audioData?.trackName || currentSong.title,
+              artist: audioData?.artist || currentSong.artist,
+              artwork: audioData?.coverArt || currentSong.artwork,
+              musicVideoId: audioData?.musicVideoId,
+            }}
+            onSongClick={onSongClick}
+            isPlaying={isPlaying}
+            onTogglePlay={onTogglePlay}
+            onNext={onNext}
+            onPrev={onPrev}
+            upNextQueue={upNextQueue}
+            onRemoveFromUpNext={onRemoveFromUpNext}
+            onClearQueue={onClearQueue}
+            onReorderUpNext={onReorderUpNext}
+            lyricsContent={
+              lyricsData?.lyrics.content ||
+              (lyricsLoading ? "Loading lyrics..." : "Lyrics not available for this track yet.")
+            }
+            lyricsSource={lyricsData?.lyrics.source || null}
+            currentTimeSec={currentTimeSec}
+            durationSec={durationSec}
+            onSeek={onSeek}
+            volume={volume}
+            onVolumeChange={setVolume}
+            geniusData={lyricsData?.geniusData}
+            knowFacts={knowFacts}
+            knowLoading={knowLoading}
+            onRateSong={onRateSong}
+            isLiked={currentSong ? likedSongs.has(audioData?.videoId || currentSong.id) : false}
+            isLoggedIn={status === "authenticated"}
+            playVideo={playVideo}
+            pauseVideo={pauseVideo}
+            pauseBackgroundPlayer={pauseBackgroundPlayer}
+            setCurrentTimeSec={setCurrentTimeSec}
+            setIsPlaying={setIsPlaying}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            onArtistClick={(name) => {
+              setIsExpandedPlayerOpen(false);
+              router.push(`/artist/${encodeURIComponent(name)}`);
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       <RightSidebar
         isOpen={isRightSidebarOpen && !isExpandedPlayerOpen}
@@ -211,6 +224,10 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         onRemoveFromUpNext={onRemoveFromUpNext}
         onClearQueue={onClearQueue}
         onReorderUpNext={onReorderUpNext}
+        onNavigateArtist={(name) => {
+          setIsExpandedPlayerOpen(false);
+          router.push(`/artist/${encodeURIComponent(name)}`);
+        }}
       />
     </div>
   );

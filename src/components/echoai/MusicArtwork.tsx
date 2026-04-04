@@ -24,8 +24,10 @@ export function MusicArtwork({ src, alt = "", className = "", iconSize = 24 }: M
       <img
         src={src}
         alt={alt}
+        loading="lazy"
+        decoding="async"
         onError={() => setHasError(true)}
-        className={`h-full w-full object-cover transition-transform duration-500 ${className}`}
+        className={`h-full w-full object-cover transition-transform duration-500 animate-gpu ${className}`}
       />
     );
   }

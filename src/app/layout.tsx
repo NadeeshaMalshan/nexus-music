@@ -8,9 +8,9 @@ import { DashboardWrapper } from "@/components/echoai/DashboardWrapper";
 
 
 export const metadata: Metadata = {
-  title: "Nexus | Premium AI Ecosystem",
+  title: "Nexus Music | Premium AI Ecosystem",
   description:
-    "High-fidelity AI-powered music dashboard blending Spotify intelligence, YouTube playback, and Echo AI insights.",
+    "High-fidelity AI-powered music dashboard blending Spotify intelligence, YouTube playback, and Nexus AI insights.",
   manifest: "/manifest.json",
   icons: {
     apple: "/icons/icon-192x192.png",
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Nexus",
+    title: "Nexus Music",
   },
   formatDetection: {
     telephone: false,

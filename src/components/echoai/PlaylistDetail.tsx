@@ -17,9 +17,10 @@ interface PlaylistDetailProps {
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
   onPlayPlaylist?: (songs: Song[], startIndex: number) => void;
+  onNavigateArtist?: (name: string) => void;
 }
 
-export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentColor, currentSongId, onAddToQueue, onPlayNext, onPlayPlaylist }: PlaylistDetailProps) {
+export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentColor, currentSongId, onAddToQueue, onPlayNext, onPlayPlaylist, onNavigateArtist }: PlaylistDetailProps) {
   const { setOverrideArtwork } = useDashboard();
   const [currentPlaylist, setCurrentPlaylist] = useState<YouTubePlaylist>(playlist);
   const [tracks, setTracks] = useState<YouTubeTrack[]>([]);
@@ -247,12 +248,24 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
                     <span className={`text-[15px] font-semibold truncate group-hover:text-red-500 transition-colors ${isActive ? "text-red-500" : "text-white"}`}>
                       {track.title}
                     </span>
-                    <span className="text-[13px] text-zinc-500 font-medium truncate md:hidden">
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNavigateArtist?.(track.artist);
+                      }}
+                      className="text-[13px] text-zinc-500 font-medium truncate md:hidden hover:text-white transition-colors cursor-pointer"
+                    >
                       {track.artist}
                     </span>
                   </div>
                 </div>
-                <div className="hidden md:block w-48 text-[14px] text-zinc-400 font-medium truncate">
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigateArtist?.(track.artist);
+                  }}
+                  className="hidden md:block w-48 text-[14px] text-zinc-400 font-medium truncate hover:text-white transition-colors cursor-pointer"
+                >
                   {track.artist}
                 </div>
                 <div className="w-20 md:w-32 flex justify-end items-center gap-2 px-4 text-zinc-500 group-hover:text-zinc-300">

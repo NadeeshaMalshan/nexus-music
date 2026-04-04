@@ -26,6 +26,7 @@ interface RightSidebarProps {
   onRemoveFromUpNext?: (index: number) => void;
   onClearQueue?: () => void;
   onReorderUpNext?: (newQueue: Song[]) => void;
+  onNavigateArtist?: (name: string) => void;
 }
 
 export function RightSidebar({
@@ -46,6 +47,7 @@ export function RightSidebar({
   onRemoveFromUpNext,
   onClearQueue,
   onReorderUpNext,
+  onNavigateArtist,
 }: RightSidebarProps) {
   const [activeTab, setActiveTab] = useState<"queue" | "lyrics" | "jam">("queue");
 
@@ -143,7 +145,7 @@ export function RightSidebar({
                       <h2 className="text-[20px] font-black text-white tracking-tight">Queue</h2>
                       {upNextQueue.length > 0 && (
                         <button 
-                          onClick={onClearQueue}
+                          onClick={() => onClearQueue?.()}
                           className="px-2.5 py-1 rounded-full bg-white/5 border border-white/5 text-[11px] font-black text-white/40 hover:text-red-500 hover:bg-white/10 transition-all flex items-center gap-1.5"
                           title="Clear Queue"
                         >
@@ -205,7 +207,15 @@ export function RightSidebar({
                                     </div>
                                   )}
                                 </div>
-                                <p className="truncate text-[13px] font-medium text-white/40">{song.artist}</p>
+                                <p 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onNavigateArtist?.(song.artist);
+                                  }}
+                                  className="truncate text-[13px] font-medium text-white/40 hover:text-white transition-colors"
+                                >
+                                  {song.artist}
+                                </p>
                               </div>
                               
                               <div className="flex items-center gap-3">
@@ -323,7 +333,12 @@ export function RightSidebar({
                     })}
                   </div>
                   <div className="mt-20 border-t border-white/5 pt-8 pb-12 opacity-30">
-                    <p className="text-[13px] font-bold text-white mb-1">Written by {currentArtist || "Unknown"}</p>
+                    <p 
+                      onClick={() => onNavigateArtist?.(currentArtist)}
+                      className="text-[13px] font-bold text-white mb-1 hover:underline underline-offset-2 cursor-pointer"
+                    >
+                      Written by {currentArtist || "Unknown"}
+                    </p>
                     <p className="text-[11px] font-medium text-white/60 uppercase tracking-widest">Lyrics via {lyricsSource || "Unknown"}</p>
                   </div>
                 </div>

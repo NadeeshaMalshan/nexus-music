@@ -39,6 +39,15 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Apple-inspired Easing & Transitions */
+  --ease-apple: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --spring-soft: spring(100, 20, 15);
+  --transition-fast: 200ms var(--ease-apple);
+  --transition-medium: 400ms var(--ease-apple);
+  --transition-slow: 600ms var(--ease-apple);
 }
 
 .dark {
@@ -176,5 +185,18 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Shared Animation Layers */
+  .animate-gpu {
+    backface-visibility: hidden;
+    perspective: 1000px;
+    transform: translateZ(0);
+    will-change: transform, opacity;
+  }
+
+  /* Optimized Background Animation */
+  .bg-gradient-animate {
+    transition: background-image 2000ms var(--ease-apple), background-color 2000ms var(--ease-apple);
   }
 }

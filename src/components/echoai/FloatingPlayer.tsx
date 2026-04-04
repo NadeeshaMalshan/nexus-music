@@ -3,8 +3,9 @@
 import { Play, Pause, SkipBack, SkipForward, Maximize2, Heart, ListMusic, Volume2, Users, Mic2 } from "lucide-react";
 import { type Song } from "./types";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
-import { motion, AnimatePresence } from "motion/react";
+import { m, AnimatePresence } from "motion/react";
 import { MusicArtwork } from "./MusicArtwork";
+import { APPLE_EASE, SLIDE_UP_VARIANTS } from "@/lib/animations";
 
 interface FloatingPlayerProps {
   onExpand: () => void;
@@ -62,16 +63,12 @@ export function FloatingPlayer({
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
 
   return (
-    <div className="pointer-events-none fixed bottom-[calc(5rem+env(safe-area-inset-top,0px))] left-0 right-0 z-50 flex items-center justify-center px-4 md:bottom-10 lg:bottom-12">
-      <motion.div 
-        layout
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="group relative flex w-auto max-w-[calc(100vw-2rem)] items-center gap-3 md:gap-6 rounded-full bg-linear-to-br from-white/10 to-white/5 p-1.5 pl-4 md:pl-6 pr-5 md:pr-8 backdrop-blur-3xl border border-white/10 shadow-2xl pointer-events-auto transition-all duration-500 hover:bg-white/12"
-        style={{
-          boxShadow: `0 20px 40px -15px rgba(0,0,0,0.5), 0 0 20px -5px var(--art-accent, rgba(255,255,255,0.1))`
-        }}
-      >
+    <m.div 
+      className="group relative flex w-auto max-w-[calc(100vw-2rem)] items-center gap-3 md:gap-6 rounded-full bg-[#1c1c1e]/60 p-1.5 pl-4 md:pl-6 pr-5 md:pr-8 backdrop-blur-[32px] backdrop-saturate-[180%] border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.4)] pointer-events-auto transition-all duration-500 hover:bg-[#1c1c1e]/80 mx-auto md:mb-10 lg:mb-12"
+      style={{
+        boxShadow: `0 20px 40px -15px rgba(0,0,0,0.5), 0 0 20px -5px var(--art-accent, rgba(255,255,255,0.1))`
+      }}
+    >
         
         {/* Left Section: Playback Controls */}
         <div className={`flex items-center gap-3 md:gap-5 shrink-0 ${isIdle ? 'opacity-40 grayscale' : ''}`}>
@@ -106,7 +103,7 @@ export function FloatingPlayer({
         </div>
 
         {/* Center Section: Compact Dynamic Track Component */}
-        <motion.div 
+        <m.div 
           layout
           className="flex-1 min-w-0 max-w-[400px]"
         >
@@ -127,9 +124,9 @@ export function FloatingPlayer({
                  </div>
                )}
                {isIdle && (
-                 <motion.div 
+                 <m.div 
                    animate={{ opacity: [0.2, 0.4, 0.2] }}
-                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                   transition={{ duration: 3, repeat: Infinity, ease: APPLE_EASE }}
                    className="absolute inset-0 bg-linear-to-tr from-white/10 to-transparent"
                  />
                )}
@@ -160,12 +157,16 @@ export function FloatingPlayer({
             {/* Linear Progress Indicator */}
             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/5">
               <div
-                className="h-full transition-[width] duration-300 ease-out shadow-[0_0_8px_var(--art-accent,rgba(255,255,255,0.4))]"
-                style={{ width: `${progress}%`, backgroundColor: `var(--art-accent, white)` }}
+                className="h-full transition-[width] duration-500 animate-gpu shadow-[0_0_8px_var(--art-accent,rgba(255,255,255,0.4))]"
+                style={{ 
+                   width: `${progress}%`, 
+                   backgroundColor: `var(--art-accent, white)`,
+                   transitionTimingFunction: 'var(--ease-apple)'
+                }}
               />
             </div>
           </div>
-        </motion.div>
+        </m.div>
 
         {/* Right Section: Interactive Controls */}
         <div className="flex items-center gap-3 md:gap-6 shrink-0">
@@ -249,7 +250,6 @@ export function FloatingPlayer({
           
           
         </div>
-      </motion.div>
-    </div>
+    </m.div>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
+import { APPLE_EASE } from "@/lib/animations";
 import { 
   AudioLines, 
   Video, 
@@ -57,7 +58,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (val: boole
       className="relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none"
       style={{ backgroundColor: checked ? 'var(--art-accent, #FA243C)' : 'rgba(255,255,255,0.1)' }}
     >
-      <motion.div
+      <m.div
         animate={{ x: checked ? 22 : 2 }}
         transition={{ type: "spring", stiffness: 500, damping: 30 }}
         className="absolute top-1 left-0 w-4 h-4 rounded-full bg-white shadow-sm"
@@ -110,11 +111,11 @@ export function Settings() {
 
   return (
     <div className="flex-1 h-full overflow-y-auto bg-transparent px-4 py-8 md:px-10 md:py-12 lg:px-16 pb-40 custom-scrollbar">
-      <motion.div
+      <m.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="max-w-4xl mx-auto"
+        className="max-w-4xl mx-auto animate-gpu"
       >
   
         {/* ── Header ────────────────────────────────────────────────────────── */}
@@ -126,7 +127,7 @@ export function Settings() {
         </header>
 
               {/* ── Account Section ────────────────────────────────────────────────── */}
-        <motion.div variants={itemVariants} className="mb-12">
+        <m.div variants={itemVariants} className="mb-12">
           {status === "authenticated" ? (
             <div className="bg-white/2 backdrop-blur-xl border border-white/5 rounded-[28px] p-6 flex items-center justify-between group hover:bg-white/5 transition-all duration-500">
               <div className="flex items-center gap-5">
@@ -167,11 +168,11 @@ export function Settings() {
               </button>
             </div>
           )}
-        </motion.div>
+        </m.div>
 
 
         {/* ── Playback Section ──────────────────────────────────────────────── */}
-        <motion.section variants={itemVariants} className="mb-12">
+        <m.section variants={itemVariants} className="mb-12">
           <div className="flex items-center gap-2 mb-6 text-white/30 uppercase tracking-widest text-[11px] font-bold">
             <Music size={14} />
             <span>Playback Experience</span>
@@ -216,10 +217,10 @@ export function Settings() {
               />
             </SettingsRow>
           </div>
-        </motion.section>
+        </m.section>
 
         {/* ── Quality Section ────────────────────────────────────────────────── */}
-        <motion.section variants={itemVariants} className="mb-12">
+        <m.section variants={itemVariants} className="mb-12">
           <div className="flex items-center gap-2 mb-6 text-white/30 uppercase tracking-widest text-[11px] font-bold">
             <ShieldCheck size={14} />
             <span>Audio & Video Quality</span>
@@ -275,10 +276,10 @@ export function Settings() {
               />
             </SettingsRow>
           </div>
-        </motion.section>
+        </m.section>
 
         {/* ── Performance Section ────────────────────────────────────────────── */}
-        <motion.section variants={itemVariants} className="mb-12">
+        <m.section variants={itemVariants} className="mb-12">
           <div className="flex items-center gap-2 mb-6 text-white/30 uppercase tracking-widest text-[11px] font-bold">
             <Monitor size={14} />
             <span>Accessibility & Interface</span>
@@ -296,7 +297,7 @@ export function Settings() {
               />
             </SettingsRow>
           </div>
-        </motion.section>
+        </m.section>
 
         {/* ── Footer Info ───────────────────────────────────────────────────── */}
         <footer className="mt-20 text-center pb-12">
@@ -308,7 +309,7 @@ export function Settings() {
           </div>
           <p className="text-white/10 text-[12px] font-medium">Version 2.4.0 (2024.04)</p>
         </footer>
-      </motion.div>
+      </m.div>
     </div>
   );
 }

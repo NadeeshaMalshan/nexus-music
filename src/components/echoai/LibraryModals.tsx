@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { X, Search, Plus, Minus, Music2, Sparkles, Loader2, ListPlus, Wand2, ChevronRight } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { m, AnimatePresence } from "motion/react";
+import { APPLE_EASE, SLIDE_UP_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
 import Image from "next/image";
 
 interface Song {
@@ -78,16 +79,17 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-          <motion.div 
+          <m.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/60 backdrop-blur-xl"
             onClick={onClose}
           />
-          <motion.div 
+          <m.div 
             initial={{ opacity: 0, scale: 0.95, y: 30 }} 
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 30 }} 
-            className="w-full h-full md:h-auto md:max-w-4xl md:max-h-[85vh] overflow-hidden md:rounded-[40px] bg-white/5 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl flex flex-col relative z-10"
+            transition={MOTION_CONFIG.transition}
+            className="w-full h-full md:h-auto md:max-w-4xl md:max-h-[85vh] overflow-hidden md:rounded-[40px] bg-white/5 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl flex flex-col relative z-10 animate-gpu"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header Area */}
@@ -152,9 +154,12 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                     {/* Search Result Overlay */}
                     <AnimatePresence>
                        {searchResults.length > 0 && (
-                          <motion.div 
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                            className="absolute top-16 left-0 right-0 z-20 bg-[#161618]/95 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.4)] overflow-hidden"
+                          <m.div 
+                            initial={{ opacity: 0, y: 10 }} 
+                            animate={{ opacity: 1, y: 0 }} 
+                            exit={{ opacity: 0, y: 10 }}
+                            transition={MOTION_CONFIG.transition}
+                            className="absolute top-16 left-0 right-0 z-20 bg-[#161618]/95 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.4)] overflow-hidden animate-gpu"
                           >
                              {searchResults.slice(0, 5).map(song => (
                                 <div key={song.id} onClick={() => addSong(song)} className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer transition-all border-b border-white/5 last:border-0 group">
@@ -168,19 +173,19 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                                    </div>
                                 </div>
                              ))}
-                          </motion.div>
+                          </m.div>
                        )}
                     </AnimatePresence>
                   </div>
 
                   <div className="space-y-4">
-                     <h3 className="text-[14px] font-black uppercase text-white/20 tracking-widest pl-1">Selected Tracks ({addedSongs.length})</h3>
-                     <div className="space-y-2 max-h-[400px] overflow-y-auto no-scrollbar">
-                        {addedSongs.map((song, idx) => (
-                           <motion.div 
-                              layout key={song.id} 
-                              className="flex items-center gap-4 p-3 rounded-2xl bg-white/3 border border-white/5 hover:border-white/10 transition-all group"
-                           >
+                      <h3 className="text-[14px] font-black uppercase text-white/20 tracking-widest pl-1">Selected Tracks ({addedSongs.length})</h3>
+                      <div className="space-y-2 max-h-[400px] overflow-y-auto no-scrollbar">
+                         {addedSongs.map((song, idx) => (
+                            <m.div 
+                               layout key={song.id} 
+                               className="flex items-center gap-4 p-3 rounded-2xl bg-white/3 border border-white/5 hover:border-white/10 transition-all group animate-gpu"
+                            >
                               <div className="text-[11px] font-black text-white/20 w-4 text-center">{idx + 1}</div>
                               <img src={song.artwork} alt="" className="w-12 h-12 rounded-xl shadow-md" />
                               <div className="flex-1 min-w-0">
@@ -190,7 +195,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                               <button onClick={() => setAddedSongs(addedSongs.filter(s => s.id !== song.id))} className="p-2 text-white/10 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
                                  <Minus size={20} />
                               </button>
-                           </motion.div>
+                           </m.div>
                         ))}
                         {addedSongs.length === 0 && (
                            <div className="py-20 flex flex-col items-center justify-center text-center opacity-10">
@@ -203,7 +208,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                   </div>
                </div>
             </div>
-          </motion.div>
+          </m.div>
         </div>
       )}
     </AnimatePresence>
@@ -262,16 +267,17 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-          <motion.div 
+          <m.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/80 backdrop-blur-2xl"
             onClick={onClose}
           />
-          <motion.div 
+          <m.div 
             initial={{ opacity: 0, scale: 0.95, y: 30 }} 
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 30 }} 
-            className="w-full h-full md:h-auto md:max-w-5xl md:max-h-[90vh] overflow-hidden md:rounded-[48px] bg-white/[0.03] border border-white/10 shadow-[0_50px_150px_rgba(0,0,0,0.9)] backdrop-blur-3xl flex flex-col relative z-10"
+            transition={MOTION_CONFIG.transition}
+            className="w-full h-full md:h-auto md:max-w-5xl md:max-h-[90vh] overflow-hidden md:rounded-[48px] bg-white/[0.03] border border-white/10 shadow-[0_50px_150px_rgba(0,0,0,0.9)] backdrop-blur-3xl flex flex-col relative z-10 animate-gpu"
             onClick={(e) => e.stopPropagation()}
           >
             {/* AI Top Bar */}
@@ -293,10 +299,16 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto no-scrollbar p-6 md:p-12">
-               {step === 'input' && (
-                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center py-8 md:py-12 space-y-8 md:space-y-12">
-                   <div className="text-center space-y-3 md:space-y-4">
+             <div className="flex-1 overflow-y-auto no-scrollbar p-6 md:p-12">
+                {step === 'input' && (
+                  <m.div 
+                    initial={{ opacity: 0, y: 20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={MOTION_CONFIG.transition}
+                    className="flex flex-col items-center justify-center py-8 md:py-12 space-y-8 md:space-y-12 animate-gpu"
+                  >
+ 
+                  <div className="text-center space-y-3 md:space-y-4">
                      <h3 className="text-4xl md:text-5xl lg:text-[64px] font-black text-white leading-none tracking-tighter">What's the <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/40">vibe?</span></h3>
                      <p className="text-white/20 text-base md:text-xl font-bold max-w-md mx-auto">Describe a mood, a memory, or an activity you're planning.</p>
                    </div>
@@ -333,7 +345,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                         ))}
                      </div>
                    </div>
-                 </motion.div>
+                 </m.div>
                )}
 
                {step === 'loading' && (
@@ -349,8 +361,13 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                  </div>
                )}
 
-               {step === 'results' && (
-                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 md:space-y-12 pb-20">
+                {step === 'results' && (
+                  <m.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    transition={MOTION_CONFIG.transition}
+                    className="space-y-10 md:space-y-12 pb-20 animate-gpu"
+                  >
                     <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-10 text-center md:text-left">
                        <div className="w-40 h-40 md:w-56 md:h-56 rounded-3xl md:rounded-[40px] bg-linear-to-tr from-white/10 to-white/5 flex items-center justify-center border border-white/10 shadow-2xl relative overflow-hidden shrink-0">
                           {generatedResult.songs.length > 0 && <Image src={generatedResult.songs[0].artwork} alt="" fill className="object-cover opacity-20" />}
@@ -393,10 +410,10 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                           </div>
                        ))}
                     </div>
-                 </motion.div>
-               )}
-            </div>
-          </motion.div>
+                  </m.div>
+                )}
+             </div>
+          </m.div>
         </div>
       )}
     </AnimatePresence>

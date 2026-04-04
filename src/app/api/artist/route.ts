@@ -80,10 +80,14 @@ export async function GET(request: Request) {
       }
     }
 
-    // 2. Fetch full artist details
+    // 2. Fetch full artist details & all songs
     let details: any;
+    let allArtistSongs: any[] = [];
     try {
-      details = await api.getArtist(artistId);
+      [details, allArtistSongs] = await Promise.all([
+        api.getArtist(artistId),
+        api.getArtistSongs(artistId).catch(() => [])
+      ]);
     } catch (err) {
       console.error(`[Artist API] Failed to getArtist for ID ${artistId}:`, err);
       // Fallback: use basic info from search if details fail
@@ -104,8 +108,14 @@ export async function GET(request: Request) {
     const mainImage = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].url : "";
     const smallImage = thumbnails.length > 0 ? thumbnails[0].url : "";
 
-    // 3. Map top tracks & fetch metadata in bulk
-    const rawTopTracks = (details.topSongs || []).slice(0, 50);
+    // 4. Map top tracks & fetch metadata in bulk
+    // We combine topSongs and allArtistSongs, prioritizing topSongs for the initial 50
+    const rawTopTracks = [
+      ...(details.topSongs || []),
+      ...(allArtistSongs || [])
+    ].filter((v, i, a) => a.findIndex(t => t.videoId === v.videoId) === i)
+    .slice(0, 500); // Increased limit for a truly "All Songs" experience
+
     const trackIds = rawTopTracks.map((t: any) => t.videoId).filter(Boolean);
     
     // Batch fetch metadata (duration, views)
@@ -116,21 +126,29 @@ export async function GET(request: Request) {
           const headers: any = {};
           if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
 
-          const vidRes = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${trackIds.join(",")}`,
-            { headers }
-          );
-          if (vidRes.ok) {
-             const vidData = await vidRes.json();
-             vidData.items?.forEach((video: any) => {
-                metadataMap[video.id] = {
-                   duration: parseISO8601Duration(video.contentDetails?.duration || ""),
-                   views: video.statistics?.viewCount || "0"
-                };
-             });
-          } else {
-             console.warn("[Artist API] YouTube Metadata API responded with status:", vidRes.status);
+          // Fetch metadata in chunks of 50 (YouTube API limit)
+          const chunks = [];
+          for (let i = 0; i < trackIds.length; i += 50) {
+            chunks.push(trackIds.slice(i, i + 50));
           }
+
+          await Promise.all(chunks.map(async (chunk) => {
+            const vidRes = await fetch(
+              `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${chunk.join(",")}`,
+              { headers }
+            );
+            if (vidRes.ok) {
+               const vidData = await vidRes.json();
+               vidData.items?.forEach((video: any) => {
+                  metadataMap[video.id] = {
+                     duration: parseISO8601Duration(video.contentDetails?.duration || ""),
+                     views: video.statistics?.viewCount || "0"
+                  };
+               });
+            } else {
+               console.warn("[Artist API] YouTube Metadata API responded with status:", vidRes.status);
+            }
+          }));
        } catch (err) {
           console.warn("[Artist API] Metadata batch fetch failed:", err);
        }

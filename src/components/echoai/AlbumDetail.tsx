@@ -5,7 +5,8 @@ import { type Song } from "./types";
 import { Play, Shuffle, Loader2, Disc, Music2, Clock, Calendar, User, ChevronLeft } from "lucide-react";
 import Image from "next/image";
 import { AudioVisualizer } from "./AudioVisualizer";
-import { motion, AnimatePresence } from "motion/react";
+import { m, AnimatePresence } from "motion/react";
+import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { useDashboard } from "@/context/DashboardContext";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 
@@ -138,10 +139,11 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
         </button>
 
         <header className="flex flex-col md:flex-row items-end gap-10">
-          <motion.div 
+          <m.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="relative w-56 h-56 lg:w-72 lg:h-72 shrink-0 shadow-[0_40px_80px_rgba(0,0,0,0.6)] rounded-3xl overflow-hidden group border border-white/10"
+            transition={{ duration: 0.6, ease: APPLE_EASE }}
+            className="relative w-56 h-56 lg:w-72 lg:h-72 shrink-0 shadow-[0_40px_80px_rgba(0,0,0,0.6)] rounded-3xl overflow-hidden group border border-white/10 animate-gpu"
           >
             <Image 
               src={albumData.thumbnails?.[albumData.thumbnails.length - 1]?.url || ""} 
@@ -149,7 +151,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
               fill 
               className="object-cover transition-transform duration-1000 group-hover:scale-110" 
             />
-          </motion.div>
+          </m.div>
 
           <div className="flex-1 space-y-4">
             <div className="flex items-center gap-2">
@@ -231,10 +233,10 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
                 onSwipeRight={() => onPlayNext?.(song)}
                 onSwipeLeft={() => onAddToQueue?.(song)}
               >
-                <motion.div
+                <m.div
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
+                  transition={{ delay: i * 0.05, ease: APPLE_EASE }}
                   onClick={() => handleTrackClick(track, i)}
                   className={`group flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer border ${
                     isActive ? "bg-white/10 border-white/10 shadow-2xl" : "hover:bg-white/5 border-transparent hover:border-white/10"
@@ -254,14 +256,20 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
                       <span className={`text-[16px] font-bold truncate transition-colors ${isActive ? "text-red-500" : "text-white"}`}>
                         {track.title}
                       </span>
-                      <span className="text-[12px] text-white/30 font-bold tracking-tight">
+                      <span 
+                        onClick={(e) => {
+                           e.stopPropagation();
+                           onNavigateArtist?.(track.artist || artistName);
+                        }}
+                        className="text-[12px] text-white/30 font-bold tracking-tight hover:text-white transition-colors cursor-pointer"
+                      >
                         {track.artist || artistName}
                       </span>
                     </div>
                   </div>
 
                   <span className="text-xs font-black text-white/25 tracking-widest pr-4">{track.duration || "0:00"}</span>
-                </motion.div>
+                </m.div>
               </SwipeableSongRow>
             );
           })}

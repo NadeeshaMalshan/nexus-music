@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { m, AnimatePresence } from "motion/react";
+import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import {
   ArrowLeft,
   Play,
@@ -17,7 +18,8 @@ import {
   Verified,
   Loader2,
   Video,
-  UserPlus
+  UserPlus,
+  Share2
 } from "lucide-react";
 import Image from "next/image";
 import { useDashboard } from "@/context/DashboardContext";
@@ -89,7 +91,7 @@ function fmtMs(ms: number) {
 
 // ─── ArtistPage ───────────────────────────────────────────────────────────────
 export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePlaylist, onNavigateAlbum }: ArtistPageProps) {
-  const { onSongClick, onAddToQueue, onPlayNext, currentSong, isPlaying, palette, setOverrideArtwork } =
+  const { onSongClick, onAddToQueue, onPlayNext, currentSong, isPlaying, palette, setOverrideArtwork, setViewMode, setIsExpandedPlayerOpen } =
     useDashboard();
 
   const [data, setData] = useState<ArtistData | null>(null);
@@ -103,6 +105,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
   const [effectiveChannelId, setEffectiveChannelId] = useState<string | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const visibleTracks = showAllTracks ? data?.topTracks : data?.topTracks.slice(0, 5);
@@ -349,21 +352,22 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
   const heroGradient = `linear-gradient(to bottom, ${palette.primary}cc 0%, ${palette.secondary}66 50%, transparent 100%)`;
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, x: 40 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -40 }}
-      transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-      className="flex flex-col h-full w-full relative overflow-hidden"
+      transition={MOTION_CONFIG.transition}
+      className="flex flex-col h-full w-full relative overflow-hidden animate-gpu"
     >
       {/* ── Floating Header (appears on scroll) ─── */}
       <AnimatePresence>
         {headerScrolled && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="absolute top-0 left-0 right-0 z-40 flex items-center gap-4 px-6 py-4 bg-black/60 backdrop-blur-3xl border-b border-white/5"
+            transition={MOTION_CONFIG.transition}
+            className="absolute top-0 left-0 right-0 z-40 flex items-center gap-4 px-6 py-4 bg-black/60 backdrop-blur-3xl border-b border-white/5 animate-gpu"
           >
             <button
               onClick={onBack}
@@ -372,7 +376,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
               <ArrowLeft size={18} />
             </button>
             <h2 className="text-lg font-black text-white truncate">{data?.name || artistName}</h2>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 
@@ -384,12 +388,12 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
         {/* ═══════════════════════════════ LOADING ══════════════════════════ */}
         {loading && (
           <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-6">
-            <motion.div
+            <m.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
             >
               <Disc3 size={48} className="text-white/20" />
-            </motion.div>
+            </m.div>
             <p className="text-white/40 font-bold text-lg">Loading artist...</p>
           </div>
         )}
@@ -501,18 +505,58 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                     <span className="text-sm">{isSubscribed ? "Subscribed" : "Follow"}</span>
                   </button>
 
-                  <button
-                    className="p-3 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white/60 hover:text-white transition-all hover:bg-black/60"
-                    title="More options"
-                  >
-                    <MoreHorizontal size={20} />
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowHeaderMenu(!showHeaderMenu)}
+                      className={`p-3 rounded-full backdrop-blur-xl border border-white/10 transition-all ${
+                        showHeaderMenu 
+                          ? "bg-white text-black border-white" 
+                          : "bg-black/40 text-white/60 hover:text-white hover:bg-black/60"
+                      }`}
+                      title="More options"
+                    >
+                      <MoreHorizontal size={20} />
+                    </button>
+
+                    <AnimatePresence>
+                      {showHeaderMenu && (
+                        <m.div
+                          initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                          transition={MOTION_CONFIG.transition}
+                          className="absolute bottom-full mb-3 right-0 z-50 min-w-[200px] rounded-2xl bg-[#1C1C1E]/95 backdrop-blur-3xl border border-white/10 shadow-2xl overflow-hidden animate-gpu"
+                        >
+                          <button
+                            onClick={(e) => {
+                               e.stopPropagation();
+                               if (navigator.share) {
+                                  navigator.share({
+                                    title: `${data.name} on Nexus`,
+                                    text: `Check out ${data.name}'s official artist profile on Nexus!`,
+                                    url: window.location.href
+                                  }).catch(() => {});
+                               } else {
+                                  // Fallback: Copy to clipboard
+                                  navigator.clipboard.writeText(window.location.href);
+                               }
+                               setShowHeaderMenu(false);
+                            }}
+                            className="flex items-center gap-3 w-full px-4 py-3.5 text-[15px] font-bold text-white hover:bg-white/8 transition-colors text-left"
+                          >
+                            <Share2 size={17} className="text-white/50" />
+                            Share Artist
+                          </button>
+                        </m.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* ── Action Bar ───────────────────────────────────────────────── */}
-            <div className="flex items-center gap-4 px-6 md:px-10 py-6 border-b border-white/5">
+            <div className="flex flex-wrap items-center gap-4 px-6 md:px-10 py-6 border-b border-white/5">
               <button
                 onClick={handlePlayAll}
                 className="flex items-center gap-2.5 px-7 py-3.5 rounded-full font-black text-black transition-all hover:scale-105 active:scale-95 shadow-lg"
@@ -535,9 +579,22 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
 
               {/* ── Top Songs ────────────────────────────────────────────── */}
               <section>
-                <h2 className="text-2xl font-black text-white tracking-tight mb-6 px-1">
-                  Top Songs
-                </h2>
+                <div className="flex items-center justify-between mb-6 px-1">
+                  <div className="overflow-hidden">
+                    <AnimatePresence mode="wait">
+                      <m.h2
+                        key={showAllTracks ? "all" : "top"}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={MOTION_CONFIG.transition}
+                        className="text-2xl font-black text-white tracking-tight"
+                      >
+                        {showAllTracks ? "All Songs" : "Top Songs"}
+                      </m.h2>
+                    </AnimatePresence>
+                  </div>
+                </div>
                 <div className="flex flex-col gap-1">
                   {visibleTracks?.map((track, idx) => (
                     <SwipeableSongRow
@@ -546,16 +603,16 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                       onSwipeRight={() => track.videoId && onPlayNext(trackToSong(track))}
                       onSwipeLeft={() => track.videoId && onAddToQueue(trackToSong(track))}
                     >
-                      <motion.div
-                        initial={{ opacity: 0, x: -12 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.04 }}
-                        className={`group relative flex items-center gap-4 rounded-2xl px-4 py-3 transition-all cursor-pointer ${
-                          currentSong?.id === track.videoId
-                            ? "bg-white/8"
-                            : "hover:bg-white/5"
-                        }`}
-                        onClick={() => {
+                    <m.div
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.04, ...MOTION_CONFIG.transition }}
+                      className={`group relative flex items-center gap-4 rounded-2xl px-4 py-3 transition-all cursor-pointer animate-gpu ${
+                        currentSong?.id === track.videoId
+                          ? "bg-white/8"
+                          : "hover:bg-white/5"
+                      }`}
+                      onClick={() => {
                           if (track.videoId) {
                             onSongClick(trackToSong(track));
                             setOpenMenuId(null);
@@ -566,15 +623,16 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                       <div className="w-6 shrink-0 text-center">
                         <AnimatePresence mode="wait">
                           {isCurrentlyPlaying(track) ? (
-                            <motion.div
+                            <m.div
                               key="bars"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
-                              className="flex items-end justify-center gap-[2px] h-5"
+                              transition={MOTION_CONFIG.transition}
+                              className="flex items-end justify-center gap-[2px] h-5 animate-gpu"
                             >
                               {[0, 1, 2].map((i) => (
-                                <motion.div
+                                <m.div
                                   key={i}
                                   className="w-[3px] rounded-full"
                                   style={{ backgroundColor: "var(--art-accent, #FA243C)" }}
@@ -587,17 +645,18 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                                   }}
                                 />
                               ))}
-                            </motion.div>
+                            </m.div>
                           ) : (
-                            <motion.span
+                            <m.span
                               key="num"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
-                              className="text-sm font-bold text-white/30 group-hover:opacity-0 transition-opacity"
+                              transition={MOTION_CONFIG.transition}
+                              className="text-sm font-bold text-white/30 group-hover:opacity-0 transition-opacity animate-gpu"
                             >
                               {idx + 1}
-                            </motion.span>
+                            </m.span>
                           )}
                         </AnimatePresence>
                         {!isCurrentlyPlaying(track) && (
@@ -671,11 +730,12 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
 
                         <AnimatePresence>
                           {openMenuId === track.spotifyId && (
-                            <motion.div
+                            <m.div
                               initial={{ opacity: 0, scale: 0.9, y: -8 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.9, y: -8 }}
-                              className="absolute right-0 top-10 z-50 min-w-[200px] rounded-2xl bg-[#1C1C1E]/95 backdrop-blur-3xl border border-white/10 shadow-2xl overflow-hidden"
+                              transition={MOTION_CONFIG.transition}
+                              className="absolute right-0 top-10 z-50 min-w-[200px] rounded-2xl bg-[#1C1C1E]/95 backdrop-blur-3xl border border-white/10 shadow-2xl overflow-hidden animate-gpu"
                             >
                               {track.videoId && (
                                 <>
@@ -703,11 +763,11 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                                   </button>
                                 </>
                               )}
-                            </motion.div>
+                            </m.div>
                           )}
                         </AnimatePresence>
                       </div>
-                      </motion.div>
+                      </m.div>
                     </SwipeableSongRow>
                   ))}
                   {data.topTracks.length > 5 && (
@@ -729,12 +789,12 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                   </h2>
                   <div className="flex gap-6 overflow-x-auto no-scrollbar pb-4 px-1">
                     {[...(data.albums || []), ...(data.singles || [])].map((item, i) => (
-                      <motion.div
+                      <m.div
                         key={item.id + i}
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 + i * 0.05 }}
-                        className="group flex flex-col gap-3 shrink-0 w-[160px] md:w-[180px] cursor-pointer"
+                        transition={{ delay: 0.2 + i * 0.05, ...MOTION_CONFIG.transition }}
+                        className="group flex flex-col gap-3 shrink-0 w-[160px] md:w-[180px] cursor-pointer animate-gpu"
                         onClick={() => onNavigateAlbum?.(item.id)}
                       >
                         <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white/5 shadow-2xl transition-transform duration-500 group-hover:scale-105">
@@ -761,7 +821,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                             {item.type} • {item.year}
                           </p>
                         </div>
-                      </motion.div>
+                      </m.div>
                     ))}
                   </div>
                 </section>
@@ -775,12 +835,12 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                   </h2>
                   <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 px-1">
                     {data.videos.map((v, i) => (
-                      <motion.div
+                      <m.div
                         key={v.id}
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 + i * 0.05 }}
-                        className="group flex flex-col gap-3 shrink-0 w-[240px] md:w-[280px] cursor-pointer"
+                        transition={{ delay: 0.3 + i * 0.05, ...MOTION_CONFIG.transition }}
+                        className="group flex flex-col gap-3 shrink-0 w-[240px] md:w-[280px] cursor-pointer animate-gpu"
                         onClick={() => {
                            onSongClick({
                              id: v.id,
@@ -790,6 +850,8 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                              duration: "0:00",
                              color: palette.accent
                            });
+                           setViewMode("video");
+                           setIsExpandedPlayerOpen(true);
                         }}
                       >
                         <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-white/5 shadow-2xl">
@@ -799,7 +861,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                           </div>
                         </div>
                         <h4 className="font-bold text-white text-[14px] leading-tight line-clamp-2">{v.name}</h4>
-                      </motion.div>
+                      </m.div>
                     ))}
                   </div>
                 </section>
@@ -813,12 +875,12 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                   </h2>
                   <div className="flex gap-6 overflow-x-auto no-scrollbar pb-4 px-1">
                     {data.playlists.map((p, i) => (
-                      <motion.div
+                      <m.div
                         key={`${p.id}-${i}`}
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 + i * 0.05 }}
-                        className="group flex flex-col gap-3 shrink-0 w-[160px] md:w-[180px] cursor-pointer"
+                        transition={{ delay: 0.4 + i * 0.05, ...MOTION_CONFIG.transition }}
+                        className="group flex flex-col gap-3 shrink-0 w-[160px] md:w-[180px] cursor-pointer animate-gpu"
                         onClick={() => onNavigatePlaylist?.(p.id)}
                       >
                         <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white/5 shadow-2xl">
@@ -843,7 +905,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                           <h4 className="font-bold text-white text-[14px] leading-tight truncate">{p.name}</h4>
                           <p className="text-[11px] font-bold text-white/30 truncate mt-0.5">{p.author}</p>
                         </div>
-                      </motion.div>
+                      </m.div>
                     ))}
                   </div>
                 </section>
@@ -860,12 +922,12 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
 
                   <div className="flex gap-6 overflow-x-auto no-scrollbar pb-4 px-1">
                     {data.relatedArtists.map((artist, i) => (
-                      <motion.div
+                      <m.div
                         key={`${artist.id}-${i}`}
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 + i * 0.05 }}
-                        className="group flex flex-col items-center gap-3 shrink-0 w-[140px] md:w-[160px] cursor-pointer"
+                        transition={{ delay: 0.3 + i * 0.05, ...MOTION_CONFIG.transition }}
+                        className="group flex flex-col items-center gap-3 shrink-0 w-[140px] md:w-[160px] cursor-pointer animate-gpu"
                         onClick={() => onNavigateArtist?.(artist.name)}
                       >
                         <div className="relative w-full aspect-square rounded-full overflow-hidden bg-white/5 border-2 border-white/0 group-hover:border-(--art-accent,#FA243C) transition-all duration-300 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
@@ -895,7 +957,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                             </p>
                           )}
                         </div>
-                      </motion.div>
+                      </m.div>
                     ))}
                   </div>
                 </section>
@@ -913,6 +975,6 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
           onClick={() => setOpenMenuId(null)}
         />
       )}
-    </motion.div>
+    </m.div>
   );
 }

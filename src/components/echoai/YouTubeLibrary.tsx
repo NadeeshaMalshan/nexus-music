@@ -10,7 +10,8 @@ import {
 import { type YouTubePlaylist } from "@/lib/youtubeData";
 import { type Song } from "./types";
 import { CreatePlaylistModal, AiPlaylistModal } from "./LibraryModals";
-import { motion, AnimatePresence } from "motion/react";
+import { m, AnimatePresence } from "motion/react";
+import { APPLE_EASE, SLIDE_UP_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
 
 interface YouTubeLibraryProps {
   onPlaylistClick?: (playlist: YouTubePlaylist) => void;
@@ -203,12 +204,13 @@ export function YouTubeLibrary({
            ) : (
               <AnimatePresence mode="wait">
                  {activeTab === "playlists" && (
-                    <motion.div 
+                    <m.div 
                        key="playlists-pane"
-                       initial={{ opacity: 0, y: 10 }}
-                       animate={{ opacity: 1, y: 0 }}
-                       exit={{ opacity: 0, y: -10 }}
-                       className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-12"
+                       variants={SLIDE_UP_VARIANTS}
+                       initial="initial"
+                       animate="animate"
+                       exit="exit"
+                       className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-12 animate-gpu"
                     >
                        <div 
                           onClick={() => setActiveTab("liked")}
@@ -251,16 +253,17 @@ export function YouTubeLibrary({
                              <p className="text-xs md:text-[14px] text-white/20 font-bold">{playlist.itemCount} Items</p>
                           </div>
                        ))}
-                    </motion.div>
+                    </m.div>
                  )}
 
                  {activeTab === "history" && (
-                    <motion.div 
+                    <m.div 
                        key="history-pane"
-                       initial={{ opacity: 0, y: 10 }}
-                       animate={{ opacity: 1, y: 0 }}
-                       exit={{ opacity: 0, y: -10 }}
-                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4"
+                       variants={SLIDE_UP_VARIANTS}
+                       initial="initial"
+                       animate="animate"
+                       exit="exit"
+                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 animate-gpu"
                     >
                         {unifiedHistory.map((track, idx) => (
                            <div 
@@ -274,7 +277,7 @@ export function YouTubeLibrary({
                               }}
                               className="group flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-white/3 border border-white/5 hover:bg-white/8 transition-all cursor-pointer relative overflow-hidden"
                            >
-                              <div className="h-12 w-12 md:h-16 md:w-16 shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shadow-lg relative">
+                              <div className="h-12 w-12 md:h-16 md:h-16 shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shadow-lg relative">
                                  {track.artwork ? (
                                     <Image src={track.artwork} alt="" fill className="object-cover" />
                                  ) : (
@@ -319,16 +322,17 @@ export function YouTubeLibrary({
                               </div>
                            </div>
                         ))}
-                    </motion.div>
+                    </m.div>
                  )}
 
                  {activeTab === "liked" && (
-                    <motion.div 
+                    <m.div 
                        key="liked-pane"
-                       initial={{ opacity: 0, y: 10 }}
-                       animate={{ opacity: 1, y: 0 }}
-                       exit={{ opacity: 0, y: -10 }}
-                       className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"
+                       variants={SLIDE_UP_VARIANTS}
+                       initial="initial"
+                       animate="animate"
+                       exit="exit"
+                       className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 animate-gpu"
                     >
                        {filteredLiked.map((track, idx) => {
                           const likedSongsList: Song[] = filteredLiked.map(t => ({
@@ -383,7 +387,7 @@ export function YouTubeLibrary({
                             </div>
                           );
                        })}
-                    </motion.div>
+                    </m.div>
                  )}
               </AnimatePresence>
            )}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles, UserRound } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { m, AnimatePresence } from "motion/react";
+import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { type Song } from "./types";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 import { SongMenu } from "./SongMenu";
@@ -307,11 +308,12 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   }, [extractDominantColor, searchResults, songColors]);
 
   return (
-    <motion.div 
+    <m.div 
       initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
       exit={{ opacity: 0 }} 
-      className="flex-1 h-full overflow-y-auto bg-transparent relative custom-scrollbar flex flex-col"
+      transition={MOTION_CONFIG.transition}
+      className="flex-1 h-full overflow-y-auto bg-transparent relative custom-scrollbar flex flex-col animate-gpu"
     >
       <div className="flex w-full flex-col px-6 py-10 md:px-12 md:py-12 pb-48 text-left">
         <div className="flex items-center justify-between mb-8 md:mb-10">
@@ -325,11 +327,11 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
           </button>
         </div>
 
-        <motion.div 
+        <m.div 
           initial={{ y: -10, opacity: 0 }} 
           animate={{ y: 0, opacity: 1 }} 
-          transition={{ delay: 0.1 }} 
-          className="mb-8 w-full max-w-4xl"
+          transition={{ delay: 0.1, ...MOTION_CONFIG.transition }} 
+          className="mb-8 w-full max-w-4xl animate-gpu"
         >
           <form
             onSubmit={(e) => {
@@ -382,14 +384,14 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
               </button>
             ))}
           </div>
-        </motion.div>
+        </m.div>
 
         {!searchQuery && !identifiedSong && (
-          <motion.div 
+          <m.div 
             initial={{ y: -10, opacity: 0 }} 
             animate={{ y: 0, opacity: 1 }} 
-            transition={{ delay: 0.2 }} 
-            className="w-full max-w-3xl py-12 md:py-20 space-y-6 md:space-y-8"
+            transition={{ delay: 0.2, ...MOTION_CONFIG.transition }} 
+            className="w-full max-w-3xl py-12 md:py-20 space-y-6 md:space-y-8 animate-gpu"
           >
              <div className="w-16 h-16 md:w-20 md:h-20 bg-linear-to-tr from-white/10 to-transparent rounded-2xl md:rounded-3xl flex items-center justify-center opacity-40">
                 <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-white" />
@@ -398,7 +400,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight">Curation Studio</h2>
                <p className="text-lg md:text-xl font-bold text-white/20 max-w-md">Browse millions of tracks or use Nexus Intelligence to discover the perfect setlist for your vibe.</p>
              </div>
-          </motion.div>
+          </m.div>
         )}
 
         {identifiedSong && !searchQuery && (
@@ -419,7 +421,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
         )}
 
         {searchQuery && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-5xl">
+          <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={MOTION_CONFIG.transition} className="w-full max-w-5xl animate-gpu">
             <h2 className="text-[24px] font-black text-white mb-6 px-1">
               {searchLoading ? "Finding..." : activeCategory === "Top" ? "Top Results" : activeCategory}
             </h2>
@@ -444,11 +446,11 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                     })();
                   }}
                 >
-                  <motion.div
+                  <m.div
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.03 }}
-                    className="group flex cursor-pointer items-center justify-between rounded-2xl p-3 px-4 transition-all hover:bg-white/[0.04]"
+                    transition={{ delay: index * 0.03, ...MOTION_CONFIG.transition }}
+                    className="group flex cursor-pointer items-center justify-between rounded-2xl p-3 px-4 transition-all hover:bg-white/[0.04] animate-gpu"
                     onClick={() => {
                       // For Artist category → navigate to artist page
                       if (song.type === "ARTIST") {
@@ -478,7 +480,13 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                       <div className="flex flex-col flex-1 min-w-0 pr-4">
                         <p className="truncate text-[18px] font-bold text-white leading-tight mb-1">{song.title}</p>
                         <div className="flex items-center gap-2">
-                          <p className="truncate text-[15px] font-medium text-white/40">
+                          <p 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onNavigateArtist?.(song.artist);
+                            }}
+                            className="truncate text-[15px] font-medium text-white/40 hover:text-white/80 transition-colors cursor-pointer"
+                          >
                             {song.artist}
                           </p>
                           {(!song.type || song.type === "SONG") && song.views && (
@@ -551,7 +559,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                         isLiked={likedSongs.has(song.id)}
                       />
                     </div>
-                  </motion.div>
+                  </m.div>
                 </SwipeableSongRow>
               ))}
             </div>
@@ -562,9 +570,9 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                 <p className="text-[17px] text-white/30 mt-2 font-medium">Try spelling it differently or browse categories.</p>
               </div>
             )}
-          </motion.div>
+          </m.div>
         )}
       </div>
-    </motion.div>
+    </m.div>
   );
 }

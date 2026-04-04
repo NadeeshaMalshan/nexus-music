@@ -9,7 +9,8 @@ import Link from "next/link";
 import { useDashboard } from "@/context/DashboardContext";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
+import { m, AnimatePresence } from "motion/react";
+import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { CreatePlaylistModal, AiPlaylistModal } from "./LibraryModals";
 
 const formatCount = (count: string | number) => {
@@ -157,11 +158,12 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
           {/* Search Dropdown */}
           <AnimatePresence>
             {(isSearchFocused && (searchQuery || searchResults.length > 0)) && (
-              <motion.div 
+              <m.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="absolute top-full left-0 right-0 mt-3 bg-[#1C1C1E]/95 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] border border-white/10 z-60 py-4"
+                transition={MOTION_CONFIG.transition}
+                className="absolute top-full left-0 right-0 mt-3 bg-[#1C1C1E]/95 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] border border-white/10 z-60 py-4 animate-gpu"
               >
                 <div className="max-h-[70vh] overflow-y-auto no-scrollbar">
                   {searchQuery && (
@@ -278,7 +280,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                     </div>
                   )}
                 </div>
-              </motion.div>
+              </m.div>
             )}
           </AnimatePresence>
           {isSearchFocused && <div className="fixed inset-0 z-40" onClick={() => setIsSearchFocused(false)} />}

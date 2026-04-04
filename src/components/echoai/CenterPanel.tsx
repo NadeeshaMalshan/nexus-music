@@ -324,6 +324,7 @@ export function CenterPanel(props: CenterPanelProps) {
                   onPlayPlaylist={onPlayPlaylist}
                   currentSongId={currentSongId}
                   onNavigateArtist={onNavigateArtist}
+                  onBack={() => router.back()}
                 />
             </m.div>
           )}

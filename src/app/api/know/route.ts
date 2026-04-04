@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { HfInference } from "@huggingface/inference";
+// Migrated from HuggingFace to Gemini API
 import { Redis } from "@upstash/redis";
 
 // Initialize Redis client if environment variables are present
@@ -10,7 +10,7 @@ const redis = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_R
     })
   : null;
 
-const hf = new HfInference(process.env.HUGGINGFACE_TOKEN || process.env.HF_TOKEN);
+const googleApiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 
 const FALLBACK_FACTS = [
   "Did you know this song has a hidden backstory that fans are still decoding?",
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
     // 2. IF CACHE MISS -> Fetch Genius
     const rawData = await fetchGeniusRawData(track, artist);
     
-    // 3. AI Fact Generation (Dual Model Strategy)
+    // 3. AI Fact Generation (Gemini)
     const prompt = `Generate 5-7 immersive, highly specific "Behind the Lyrics" story snippets for the track "${track}" by "${artist}". 
 Focus on:
 1. Recording studio secrets and behind-the-scenes moments.
@@ -91,40 +91,36 @@ RULES:
 - IMPORTANT: ALL SNIPPETS MUST BE IN THE ENGLISH LANGUAGE ONLY.
 - NEVER use generic PR phrases (e.g., "is a testament to", "significant milestone", "reflection of journey").
 - Each snippet must be a unique, fact-heavy, single sentence.
-- Output ONLY a valid JSON array of strings. No intro/outro text.`;
+- Output ONLY a valid JSON array of strings. No intro/outro text, no code blocks.`;
 
     let facts: string[] | null = null;
     
-    const tryModel = async (model: string) => {
+    if (googleApiKey) {
       try {
-        const response = await hf.chatCompletion({
-          model,
-          messages: [
-            { role: "system", content: "You are a professional music historian and curator. Output ONLY a valid JSON array of strings, nothing else." },
-            { role: "user", content: prompt }
-          ],
-          max_tokens: 500,
-          temperature: 0.7,
-        });
-        
-        let content = response.choices[0].message.content?.trim() || "";
-        if (content.includes("[") && content.includes("]")) {
-          content = content.substring(content.indexOf("["), content.lastIndexOf("]") + 1);
-        }
-        const parsed = JSON.parse(content);
-        return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
-      } catch (e) {
-        console.error(`Model ${model} failed:`, e);
-        return null;
-      }
-    };
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) throw new Error("GEMINI_API_KEY is not defined");
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // Primary: Mistral
-    facts = await tryModel("mistralai/Mistral-7B-Instruct-v0.2");
-    
-    // Secondary: Zephyr (Better for instruction following if Mistral is busy)
-    if (!facts) {
-      facts = await tryModel("HuggingFaceH4/zephyr-7b-beta");
+        const result = await model.generateContent(prompt);
+        const content = result.response.text().trim();
+        
+        // Robustly extract JSON array even if model wraps it in markdown backticks
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          try {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              facts = parsed;
+            }
+          } catch (e) {
+            console.warn("[Know] Gemini JSON parsing failed.");
+          }
+        }
+      } catch (e) {
+        console.error("Gemini fact generation failed:", e);
+      }
     }
 
     if (facts) {

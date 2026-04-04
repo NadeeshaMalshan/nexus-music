@@ -4,15 +4,7 @@
  * All results come from music.youtube.com (node-youtube-music).
  */
 
-let ytmusicInstance: any = null;
-async function getYTMusic() {
-  if (!ytmusicInstance) {
-    const m = await import("ytmusic-api");
-    ytmusicInstance = new m.default();
-    await ytmusicInstance.initialize();
-  }
-  return ytmusicInstance;
-}
+import { getYTMusic } from "./ytmClient";
 const RETRY_DELAY_MS = 300;
 const RETRIES = 2;
 

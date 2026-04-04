@@ -1,15 +1,6 @@
 import { searchSongsRobust } from "./ytmSearchService";
 import { formatDuration } from "./format";
-
-let ytmusicInstance: any = null;
-async function getYTMusic() {
-  if (!ytmusicInstance) {
-    const m = await import("ytmusic-api");
-    ytmusicInstance = new m.default();
-    await ytmusicInstance.initialize();
-  }
-  return ytmusicInstance;
-}
+import { getYTMusic } from "./ytmClient";
 
 const RETRIES = 2;
 const RETRY_DELAY_MS = 400;
@@ -21,6 +12,7 @@ function sleep(ms: number) {
 async function fetchSuggestionsWithRetry(videoId: string): Promise<any[]> {
   for (let i = 0; i <= RETRIES; i++) {
     try {
+      if (!videoId) return [];
       const ytmusic = await getYTMusic();
       const suggestions = await ytmusic.getUpNexts(videoId);
 
@@ -62,17 +54,25 @@ async function fetchSuggestionsWithRetry(videoId: string): Promise<any[]> {
           return {
             youtubeId: item.videoId,
             title: item.title || item.name || "Unknown Title",
-            artists: [{ name: artistName }], // Plural for backward compat
-            artist: artistName,               // Singular for Song type
-            duration: formattedDuration,      // String for Song type
-            durationObj: { totalSeconds: durationSec, label: formattedDuration }, // Object for legacy routes
+            artists: [{ name: artistName }], 
+            artist: artistName,               
+            duration: formattedDuration,      
+            durationObj: { totalSeconds: durationSec, label: formattedDuration }, 
             thumbnail: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "",
-            thumbnailUrl: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "" // Backward compat
+            thumbnailUrl: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "" 
           };
         });
       }
-    } catch (err) {
-      console.warn(`[youtubeMusicRelated] Attempt ${i + 1} failed for ${videoId}:`, err);
+    } catch (err: any) {
+      const status = err?.response?.status || err?.status;
+      console.warn(`[youtubeMusicRelated] Attempt ${i + 1} failed for ${videoId} (Status: ${status}):`, err?.message || err);
+      
+      // If it's a 400 Bad Request, return empty immediately instead of retrying to prevent blocking
+      if (status === 400) {
+        console.warn("[youtubeMusicRelated] 400 Bad Request - returning empty array to prevent blocking.");
+        return [];
+      }
+
       if (i < RETRIES) await sleep(RETRY_DELAY_MS);
     }
   }

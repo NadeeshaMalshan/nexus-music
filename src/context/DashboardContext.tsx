@@ -350,8 +350,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
     const controller = new AbortController();
     async function loadDirectUrl() {
+      if (!currentSong?.id) {
+        console.warn("[DashboardContext] Skipping loadDirectUrl - currentSong.id is missing");
+        return;
+      }
+      console.log(`[DashboardContext] Loading direct URL for: ${currentSong.id}`);
       try {
-        const response = await fetch(`/api/get-audio-url?videoId=${currentSong?.id}`, {
+        const response = await fetch(`/api/get-audio-url?videoId=${currentSong.id}`, {
           signal: controller.signal,
           cache: "no-store",
         });

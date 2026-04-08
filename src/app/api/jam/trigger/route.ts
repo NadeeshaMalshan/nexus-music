@@ -19,8 +19,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing roomId or type" }, { status: 400 });
     }
 
-    // Trigger event on the room's channel
-    await pusher.trigger(`jam-${roomId}`, "sync-event", {
+    // Must match presence channel subscribed in JamContext (`presence-jam-${id}`)
+    await pusher.trigger(`presence-jam-${roomId}`, "sync-event", {
       type,
       payload,
     });

@@ -33,6 +33,10 @@ const PUSHER_CLUSTER = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || "";
 
 export function JamProvider({ children }: { children: React.ReactNode }) {
   const dashboard = useDashboard();
+  // Pusher handlers bind once per connection; always read latest player state through this ref.
+  const dashboardRef = useRef(dashboard);
+  dashboardRef.current = dashboard;
+
   const [jamState, setJamState] = useState<JamState>({
     roomId: null,
     participants: 0,
@@ -107,7 +111,8 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
   // Atomic Play/Pause/Seek with Ready Check
   const safePlay = useCallback(async (startTime: number = 0) => {
-    const player = dashboard.ytPlayerRef.current;
+    const d = dashboardRef.current;
+    const player = d.ytPlayerRef.current;
     if (!player) return;
     
     setSyncing(1200); // Lock sync for 1.2s on play
@@ -125,36 +130,38 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
             if (startTime > 0) {
                const playerTime = (player as any).getCurrentTime();
                if (Math.abs(startTime - playerTime) > 0.5) {
-                   dashboard.onSeek(startTime);
+                   d.onSeek(startTime);
                }
             }
-            dashboard.playVideo();
+            d.playVideo();
         } catch (e) {
             console.warn("[Jam] Play failed, retrying in 500ms...", e);
             setTimeout(trySeekAndPlay, 500);
         }
     };
     trySeekAndPlay();
-  }, [dashboard]);
+  }, []);
 
   const safePause = useCallback(() => {
     setSyncing(800); // Lock sync for 800ms on pause
-    if (dashboard.isPlaying) {
-        dashboard.setIsPlaying(false);
+    const d = dashboardRef.current;
+    if (d.isPlaying) {
+        d.setIsPlaying(false);
     }
     try {
-        dashboard.pauseVideo();
+        d.pauseVideo();
     } catch (e) {
         console.warn("[Jam] Pause failed", e);
     }
-  }, [dashboard, dashboard.isPlaying]);
+  }, []);
 
   // Smooth Sync Logic
   const applySmoothSync = useCallback((targetTime: number) => {
-    const player = dashboard.ytPlayerRef.current as any;
+    const d = dashboardRef.current;
+    const player = d.ytPlayerRef.current as any;
     if (!player) return;
 
-    const diff = targetTime - dashboard.currentTimeSec;
+    const diff = targetTime - d.currentTimeSec;
     const absDiff = Math.abs(diff);
 
     // 1. Threshold Check: If drift is negligible (< 100ms), do nothing
@@ -165,7 +172,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
     // 2. Force Update Threshold: If drift is greater than 500ms (as requested), snap immediately
     if (absDiff > 0.5) {
-        dashboard.onSeek(targetTime);
+        d.onSeek(targetTime);
         if (player.getPlaybackRate() !== 1) player.setPlaybackRate(1);
         return;
     }
@@ -185,9 +192,9 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         }
     } catch (e) {
         // Only snap if we absolutely have to or if drift remains high
-        if (absDiff > 0.3) dashboard.onSeek(targetTime);
+        if (absDiff > 0.3) d.onSeek(targetTime);
     }
-  }, [dashboard]);
+  }, []);
 
   // Connect and Subscribe to Channel
   const connectToJam = useCallback((id: string, customName?: string, isHost: boolean = false) => {
@@ -212,8 +219,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     channelRef.current = channel;
 
     const handleEvent = (data: any) => {
-        // (Event handling logic stays same)
-        // ... omitted for brevity but preserved in actual tool call
+        const d = dashboardRef.current;
         const { type, payload } = data;
         if (payload?.senderId === senderIdRef.current) return;
         
@@ -251,10 +257,10 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
             case "join":
                 if (currentState.isHost) {
                    // TOTAL RESET on join as requested
-                   dashboard.setUpNextQueue([]);
-                   dashboard.setCurrentSong(null);
+                   d.setUpNextQueue([]);
+                   d.setCurrentSong(null);
                    safePause();
-                   dashboard.onSeek(0);
+                   d.onSeek(0);
                    
                    // Broadcast the reset state to the new member
                    broadcast("sync-play", { 
@@ -267,11 +273,11 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
                 break;
             case "sync-play":
                 const targetSongId = payload.song?.id;
-                // If song mismatch, sync song first
-                if (targetSongId && targetSongId !== dashboard.currentSong?.id) {
-                    dashboard.onSongClick(payload.song, false);
+                // If song mismatch, sync song first (must use live state — handler closure is long-lived)
+                if (targetSongId && targetSongId !== d.currentSong?.id) {
+                    d.onSongClick(payload.song, false);
                 } else if (!targetSongId) {
-                    dashboard.setCurrentSong(null);
+                    d.setCurrentSong(null);
                 }
                 
                 if (payload.isPlaying) {
@@ -283,13 +289,13 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
                 }
                 break;
             case "sync-song":
-                if (payload.song.id !== dashboard.currentSong?.id) {
-                    dashboard.onSongClick(payload.song, false);
+                if (payload.song.id !== d.currentSong?.id) {
+                    d.onSongClick(payload.song, false);
                 }
                 break;
             case "sync-queue":
-                if (JSON.stringify(payload.queue) !== JSON.stringify(dashboard.upNextQueue)) {
-                    dashboard.setUpNextQueue(payload.queue);
+                if (JSON.stringify(payload.queue) !== JSON.stringify(d.upNextQueue)) {
+                    d.setUpNextQueue(payload.queue);
                 }
                 break;
             case "sync-seek":
@@ -317,10 +323,11 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         
         // Clear local state only if we joined (NOT if we started it as host)
         if (!jamStateRef.current.isHost) {
-            dashboard.setUpNextQueue([]);
-            dashboard.setCurrentSong(null);
+            const d = dashboardRef.current;
+            d.setUpNextQueue([]);
+            d.setCurrentSong(null);
             safePause(); // Explicitly call safePause to stop the actual audio/video player hardware
-            dashboard.onSeek(0);
+            d.onSeek(0);
             
             console.log(`[Jam] Successfully joined session. Clear local state and stop background playback.`);
         }
@@ -346,7 +353,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         console.log(`[Jam] User Left. Total participants: ${channel.members?.count}`);
     });
 
-  }, [dashboard, broadcast, safePlay, safePause]);
+  }, [broadcast, safePlay, safePause, applySmoothSync]);
 
   // Sync state hooks - Optimized to prevent flooding
   useEffect(() => {
@@ -427,8 +434,9 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   };
 
   const leaveJam = () => {
-    if (pusherRef.current) {
-        pusherRef.current.unsubscribe(`jam-${jamState.roomId}`);
+    const id = jamState.roomId;
+    if (pusherRef.current && id) {
+        pusherRef.current.unsubscribe(`presence-jam-${id}`);
         pusherRef.current.disconnect();
     }
     setJamState({ roomId: null, participants: 0, listeners: [], isHost: false, isJoining: false });

@@ -5,6 +5,7 @@ import TrackPlayer, { Event, State, usePlaybackState, useProgress } from 'react-
 
 import { apiGetAudioUrl } from '@/src/api/endpoints';
 import { getApiBaseUrl } from '@/src/api/baseUrl';
+import { fetchPipedAudioUrl } from '@/src/api/pipedAudio';
 import { ensureTrackPlayer, type NexusTrack } from '@/src/player/trackPlayer';
 import type { Song } from '@/src/types/echoai';
 import { useSettings } from '@/src/context/SettingsContext';
@@ -52,7 +53,7 @@ function toTrack(song: Song, url: string): NexusTrack {
     artwork: song.artwork,
     videoId: song.id,
     userAgent: STREAM_USER_AGENT,
-    // Direct googlevideo URLs need YouTube Referer; proxied Next routes need a normal UA/Accept.
+    // Proxied Next stream: simple UA. Direct CDN (API or Piped on-device): YouTube Referer helps ExoPlayer.
     headers: proxied
       ? {
           Accept: '*/*',
@@ -61,6 +62,7 @@ function toTrack(song: Song, url: string): NexusTrack {
       : {
           Referer: 'https://www.youtube.com/',
           Origin: 'https://www.youtube.com',
+          'User-Agent': STREAM_USER_AGENT,
         },
   };
 }
@@ -149,8 +151,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * Prefer direct CDN URL from `/api/get-audio-url` — ExoPlayer handles that reliably with
-   * Referer headers. If the API fails (Vercel/YouTube), fall back to `/api/audio/stream` proxy.
+   * 1) Next `/api/get-audio-url` (direct CDN URL when server extraction works).
+   * 2) Piped API on the device — works when the server cannot reach YouTube/Piped but the phone can.
+   * 3) `/api/audio/stream` on Next (last resort).
    */
   const ensureSongIsPlayable = useCallback(async (song: Song): Promise<{ song: Song; url: string }> => {
     if (!song.id?.trim()) {
@@ -162,8 +165,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         return { song, url: url.trim() };
       }
     } catch {
-      /* use stream proxy below — common when /api/get-audio-url cannot extract a direct CDN URL */
+      /* try Piped + proxy */
     }
+
+    const piped = await fetchPipedAudioUrl(song.id);
+    if (piped) {
+      return { song, url: piped };
+    }
+
     return { song, url: streamProxyUrl(song.id) };
   }, []);
 

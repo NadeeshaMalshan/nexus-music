@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import ytdl from "@distube/ytdl-core";
 import { Readable } from "stream";
 
-import { getYoutubeDirectAudioUrl } from "@/lib/youtubeDirectAudioUrl";
+import { getYoutubeDirectAudioUrl, getYoutubeInfoWithRetry, getYtdlSharedOptions } from "@/lib/youtubeDirectAudioUrl";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -31,14 +31,13 @@ export async function GET(req: NextRequest) {
   const rangeHeader = req.headers.get("range");
 
   try {
-    const info = await ytdl.getInfo(videoUrl, {
-      requestOptions: { headers: { "User-Agent": CHROME_UA } },
-    });
+    const info = await getYoutubeInfoWithRetry(videoUrl);
     if (!info.formats?.length) {
       throw new Error("No formats found");
     }
 
     const stream = ytdl.downloadFromInfo(info, {
+      ...getYtdlSharedOptions(),
       quality: "highestaudio",
       filter: "audioonly",
       range: rangeHeader ? { start: Number(rangeHeader.replace(/\D/g, "")) } : undefined,

@@ -42,6 +42,16 @@ function streamProxyUrl(videoId: string): string {
   return `${base}/api/audio/stream?videoId=${encodeURIComponent(videoId)}`;
 }
 
+/** Avoid spamming Metro when many tracks resolve via proxy (expected on some serverless hosts). */
+const warnedAudioFallback = new Set<string>();
+
+function warnAudioFallbackOnce(videoId: string, e: unknown) {
+  if (warnedAudioFallback.has(videoId)) return;
+  warnedAudioFallback.add(videoId);
+  if (warnedAudioFallback.size > 64) warnedAudioFallback.clear();
+  console.warn('[Dashboard] get-audio-url failed, using stream proxy', e);
+}
+
 function toTrack(song: Song, url: string): NexusTrack {
   const proxied = url.includes('/api/audio/stream');
   return {
@@ -162,7 +172,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         return { song, url: url.trim() };
       }
     } catch (e) {
-      console.warn('[Dashboard] get-audio-url failed, trying stream proxy', e);
+      warnAudioFallbackOnce(song.id, e);
     }
     return { song, url: streamProxyUrl(song.id) };
   }, []);

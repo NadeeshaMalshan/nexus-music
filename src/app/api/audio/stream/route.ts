@@ -36,12 +36,26 @@ export async function GET(req: NextRequest) {
       throw new Error("No formats found");
     }
 
-    const stream = ytdl.downloadFromInfo(info, {
-      ...getYtdlSharedOptions(),
-      quality: "highestaudio",
-      filter: "audioonly",
-      range: rangeHeader ? { start: Number(rangeHeader.replace(/\D/g, "")) } : undefined,
-    });
+    const range =
+      rangeHeader ? { start: Number(rangeHeader.replace(/\D/g, "")) } : undefined;
+
+    let stream: Readable;
+    try {
+      stream = ytdl.downloadFromInfo(info, {
+        ...getYtdlSharedOptions(),
+        quality: "highestaudio",
+        filter: "audioonly",
+        range,
+      });
+    } catch (e0) {
+      console.warn("[audio/stream] audioonly failed, trying muxed audio:", e0);
+      stream = ytdl.downloadFromInfo(info, {
+        ...getYtdlSharedOptions(),
+        quality: "highestaudio",
+        filter: "audio",
+        range,
+      });
+    }
 
     const webStream = nodeReadableToWeb(stream);
     const responseHeaders = new Headers();

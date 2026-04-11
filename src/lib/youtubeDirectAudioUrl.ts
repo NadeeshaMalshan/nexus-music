@@ -110,5 +110,54 @@ export async function getYoutubeDirectAudioUrl(videoId: string): Promise<string 
     console.warn("[youtubeDirectAudioUrl] play-dl:", e instanceof Error ? e.message : e);
   }
 
+  const piped = await getPipedAudioUrl(videoId);
+  if (piped) return piped;
+
   return null;
+}
+
+type PipedStreamsResponse = { audioStreams?: Array<{ url?: string; bitrate?: number; mimeType?: string }> };
+
+/**
+ * Last-resort public metadata API (returns direct audio URLs). Works when ytdl/play-dl fail on
+ * serverless IPs. Set `PIPED_API_BASE_URL` to a Piped instance (default below), or `off` to skip.
+ *
+ * @see https://github.com/TeamPiped/Piped/wiki/Instances
+ */
+export async function getPipedAudioUrl(videoId: string): Promise<string | null> {
+  const raw = process.env.PIPED_API_BASE_URL?.trim();
+  if (raw?.toLowerCase() === "off" || raw === "0") return null;
+
+  const base = (raw || "https://pipedapi.kavin.rocks").replace(/\/+$/, "");
+
+  try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 15_000);
+    const r = await fetch(`${base}/streams/${encodeURIComponent(videoId)}`, {
+      signal: ac.signal,
+      headers: {
+        Accept: "application/json",
+        "User-Agent": CHROME_UA,
+      },
+    });
+    clearTimeout(t);
+
+    if (!r.ok) {
+      console.warn("[youtubeDirectAudioUrl] Piped HTTP", r.status);
+      return null;
+    }
+
+    const data = (await r.json()) as PipedStreamsResponse;
+    const streams = data.audioStreams;
+    if (!Array.isArray(streams) || streams.length === 0) return null;
+
+    const withUrl = streams.filter((s): s is typeof s & { url: string } => typeof s.url === "string" && s.url.length > 0);
+    if (withUrl.length === 0) return null;
+
+    withUrl.sort((a, b) => (b.bitrate ?? 0) - (a.bitrate ?? 0));
+    return withUrl[0].url;
+  } catch (e) {
+    console.warn("[youtubeDirectAudioUrl] Piped:", e instanceof Error ? e.message : e);
+    return null;
+  }
 }

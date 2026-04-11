@@ -42,14 +42,19 @@ function streamProxyUrl(videoId: string): string {
   return `${base}/api/audio/stream?videoId=${encodeURIComponent(videoId)}`;
 }
 
-/** Avoid spamming Metro when many tracks resolve via proxy (expected on some serverless hosts). */
-const warnedAudioFallback = new Set<string>();
+/**
+ * Direct URL extraction often fails on serverless (Vercel) — proxy is normal. Log once per app
+ * launch so Metro is not filled with one line per queued track.
+ */
+let loggedGetAudioUrlFallback = false;
 
-function warnAudioFallbackOnce(videoId: string, e: unknown) {
-  if (warnedAudioFallback.has(videoId)) return;
-  warnedAudioFallback.add(videoId);
-  if (warnedAudioFallback.size > 64) warnedAudioFallback.clear();
-  console.warn('[Dashboard] get-audio-url failed, using stream proxy', e);
+function warnAudioFallbackOnce(_videoId: string, e: unknown) {
+  if (loggedGetAudioUrlFallback) return;
+  loggedGetAudioUrlFallback = true;
+  console.warn(
+    '[Dashboard] /api/get-audio-url failed (using /api/audio/stream instead). Common on Vercel without YOUTUBE_COOKIE.',
+    e
+  );
 }
 
 function toTrack(song: Song, url: string): NexusTrack {

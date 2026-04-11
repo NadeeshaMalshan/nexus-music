@@ -53,6 +53,8 @@ function toTrack(song: Song, url: string): NexusTrack {
     artwork: song.artwork,
     videoId: song.id,
     userAgent: STREAM_USER_AGENT,
+    // Next.js proxy serves transcoded WebM; hint helps ExoPlayer on some devices.
+    ...(proxied ? { contentType: 'audio/webm' as const } : {}),
     // Proxied Next stream: simple UA. Direct CDN (API or Piped on-device): YouTube Referer helps ExoPlayer.
     headers: proxied
       ? {
@@ -75,6 +77,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [queueSongs, setQueueSongs] = useState<Song[]>([]);
   const [volume, setVolumeState] = useState(0.9);
+  const queueSongsRef = useRef<Song[]>([]);
+  useEffect(() => {
+    queueSongsRef.current = queueSongs;
+  }, [queueSongs]);
 
   const isPlaying = playback.state === State.Playing;
   const currentTimeSec = progress.position;
@@ -98,6 +104,18 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           ? (e as { message: string }).message
           : 'Playback failed. Rebuild a dev client (not Expo Go) if audio never starts.';
       Alert.alert('Playback error', msg);
+    });
+    return () => {
+      sub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    const sub = TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async () => {
+      const idx = await TrackPlayer.getActiveTrackIndex();
+      if (idx == null || idx < 0) return;
+      const next = queueSongsRef.current[idx];
+      if (next) setCurrentSong(next);
     });
     return () => {
       sub.remove();
@@ -151,26 +169,27 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * 1) Next `/api/get-audio-url` (direct CDN URL when server extraction works).
-   * 2) Piped API on the device — works when the server cannot reach YouTube/Piped but the phone can.
+   * 1) Piped on the device — often works when the server cannot extract URLs (e.g. Vercel without cookies).
+   * 2) Next `/api/get-audio-url` (direct CDN when server extraction works).
    * 3) `/api/audio/stream` on Next (last resort).
    */
   const ensureSongIsPlayable = useCallback(async (song: Song): Promise<{ song: Song; url: string }> => {
     if (!song.id?.trim()) {
       throw new Error('Missing video id for this track.');
     }
+
+    const piped = await fetchPipedAudioUrl(song.id);
+    if (piped) {
+      return { song, url: piped };
+    }
+
     try {
       const { url } = await apiGetAudioUrl(song.id);
       if (url?.trim()) {
         return { song, url: url.trim() };
       }
     } catch {
-      /* try Piped + proxy */
-    }
-
-    const piped = await fetchPipedAudioUrl(song.id);
-    if (piped) {
-      return { song, url: piped };
+      /* fall through to proxy */
     }
 
     return { song, url: streamProxyUrl(song.id) };

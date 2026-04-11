@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { Alert } from 'react-native';
 import TrackPlayer, { Event, State, usePlaybackState, useProgress } from 'react-native-track-player';
 
+import { apiGetAudioUrl } from '@/src/api/endpoints';
 import { getApiBaseUrl } from '@/src/api/baseUrl';
 import { ensureTrackPlayer, type NexusTrack } from '@/src/player/trackPlayer';
 import type { Song } from '@/src/types/echoai';
@@ -51,8 +52,12 @@ function toTrack(song: Song, url: string): NexusTrack {
     artwork: song.artwork,
     videoId: song.id,
     userAgent: STREAM_USER_AGENT,
+    // Direct googlevideo URLs need YouTube Referer; proxied Next routes need a normal UA/Accept.
     headers: proxied
-      ? {}
+      ? {
+          Accept: '*/*',
+          'User-Agent': STREAM_USER_AGENT,
+        }
       : {
           Referer: 'https://www.youtube.com/',
           Origin: 'https://www.youtube.com',
@@ -112,9 +117,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         ]);
 
         if (!mounted) return;
+        const songs: Song[] = queueRaw ? (JSON.parse(queueRaw) as Song[]) : [];
         if (songRaw) setCurrentSong(JSON.parse(songRaw) as Song);
-        if (queueRaw) setQueueSongs(JSON.parse(queueRaw) as Song[]);
+        if (queueRaw) setQueueSongs(songs);
         if (volRaw) setVolumeState(Number(volRaw));
+        // Do not preload Track Player here (Vercel proxy streams often fail or hang in headless
+        // init). Restore queue on first play via onTogglePlay / onPlayPlaylist instead.
       } catch {
         // ignore
       }
@@ -140,10 +148,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setVolumeState(next);
   }, []);
 
-  /** Play through Next `/api/audio/stream` on your API host (Vercel or local) — avoids brittle direct googlevideo URLs on device. */
+  /**
+   * Prefer direct CDN URL from `/api/get-audio-url` — ExoPlayer handles that reliably with
+   * Referer headers. If the API fails (Vercel/YouTube), fall back to `/api/audio/stream` proxy.
+   */
   const ensureSongIsPlayable = useCallback(async (song: Song): Promise<{ song: Song; url: string }> => {
     if (!song.id?.trim()) {
       throw new Error('Missing video id for this track.');
+    }
+    try {
+      const { url } = await apiGetAudioUrl(song.id);
+      if (url?.trim()) {
+        return { song, url: url.trim() };
+      }
+    } catch (e) {
+      console.warn('[Dashboard] get-audio-url failed, trying stream proxy', e);
     }
     return { song, url: streamProxyUrl(song.id) };
   }, []);
@@ -229,13 +248,18 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const onTogglePlay = useCallback(async () => {
     await ensureTrackPlayer();
+    const queue = await TrackPlayer.getQueue();
+    if (queue.length === 0 && currentSong) {
+      await onPlayPlaylist([currentSong], 0);
+      return;
+    }
     const state = await TrackPlayer.getState();
     if (state === State.Playing) {
       await TrackPlayer.pause();
     } else {
       await TrackPlayer.play();
     }
-  }, []);
+  }, [currentSong, onPlayPlaylist]);
 
   const onSeek = useCallback(async (t: number) => {
     await ensureTrackPlayer();

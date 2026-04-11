@@ -55,7 +55,7 @@ export async function apiAudio(query: string) {
 }
 
 export async function apiGetAudioUrl(videoId: string) {
-  return apiFetchJson<GetAudioUrlResponse>(`/api/get-audio-url${qs({ videoId })}`);
+  return apiFetchJson<GetAudioUrlResponse>(`/api/get-audio-url${qs({ videoId })}`, { timeoutMs: 30_000 });
 }
 
 export async function apiRecommendations(payload?: unknown) {

@@ -42,22 +42,6 @@ function streamProxyUrl(videoId: string): string {
   return `${base}/api/audio/stream?videoId=${encodeURIComponent(videoId)}`;
 }
 
-/**
- * Direct URL extraction often fails on serverless (Vercel) — proxy is normal. Log once per app
- * launch so Metro is not filled with one line per queued track.
- */
-let loggedGetAudioUrlFallback = false;
-
-function warnAudioFallbackOnce(_videoId: string, e: unknown) {
-  if (loggedGetAudioUrlFallback) return;
-  loggedGetAudioUrlFallback = true;
-  // Expected on many hosts: direct CDN URL fails → we use /api/audio/stream. Not a user-facing error.
-  console.debug(
-    '[Dashboard] /api/get-audio-url unavailable; using stream proxy.',
-    __DEV__ ? e : ''
-  );
-}
-
 function toTrack(song: Song, url: string): NexusTrack {
   const proxied = url.includes('/api/audio/stream');
   return {
@@ -177,8 +161,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       if (url?.trim()) {
         return { song, url: url.trim() };
       }
-    } catch (e) {
-      warnAudioFallbackOnce(song.id, e);
+    } catch {
+      /* use stream proxy below — common when /api/get-audio-url cannot extract a direct CDN URL */
     }
     return { song, url: streamProxyUrl(song.id) };
   }, []);

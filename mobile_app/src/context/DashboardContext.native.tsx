@@ -5,7 +5,7 @@ import TrackPlayer, { Event, State, usePlaybackState, useProgress } from 'react-
 
 import { apiGetAudioUrl } from '@/src/api/endpoints';
 import { getApiBaseUrl } from '@/src/api/baseUrl';
-import { fetchPipedAudioUrl } from '@/src/api/pipedAudio';
+import { fetchPipedAudio } from '@/src/api/pipedAudio';
 import { ensureTrackPlayer, type NexusTrack } from '@/src/player/trackPlayer';
 import type { Song } from '@/src/types/echoai';
 import { useSettings } from '@/src/context/SettingsContext';
@@ -43,8 +43,9 @@ function streamProxyUrl(videoId: string): string {
   return `${base}/api/audio/stream?videoId=${encodeURIComponent(videoId)}`;
 }
 
-function toTrack(song: Song, url: string): NexusTrack {
+function toTrack(song: Song, url: string, opts?: { contentType?: string }): NexusTrack {
   const proxied = url.includes('/api/audio/stream');
+  const contentType = opts?.contentType ?? (proxied ? 'audio/webm' : undefined);
   return {
     id: song.id,
     url,
@@ -52,10 +53,8 @@ function toTrack(song: Song, url: string): NexusTrack {
     artist: song.artist,
     artwork: song.artwork,
     videoId: song.id,
-    userAgent: STREAM_USER_AGENT,
-    // Next.js proxy serves transcoded WebM; hint helps ExoPlayer on some devices.
-    ...(proxied ? { contentType: 'audio/webm' as const } : {}),
-    // Proxied Next stream: simple UA. Direct CDN (API or Piped on-device): YouTube Referer helps ExoPlayer.
+    ...(contentType ? { contentType } : {}),
+    // Use headers only for UA (duplicate userAgent field can confuse some ExoPlayer paths).
     headers: proxied
       ? {
           Accept: '*/*',
@@ -173,14 +172,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
    * 2) Next `/api/get-audio-url` (direct CDN when server extraction works).
    * 3) `/api/audio/stream` on Next (last resort).
    */
-  const ensureSongIsPlayable = useCallback(async (song: Song): Promise<{ song: Song; url: string }> => {
+  const ensureSongIsPlayable = useCallback(async (song: Song): Promise<{ song: Song; url: string; contentType?: string }> => {
     if (!song.id?.trim()) {
       throw new Error('Missing video id for this track.');
     }
 
-    const piped = await fetchPipedAudioUrl(song.id);
+    const piped = await fetchPipedAudio(song.id);
     if (piped) {
-      return { song, url: piped };
+      return { song, url: piped.url, contentType: piped.contentType };
     }
 
     try {
@@ -197,7 +196,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   /** Resolve URLs in order; skip tracks that fail (e.g. bad id) so one failure does not block playback. */
   const buildPlayableQueue = useCallback(async (songs: Song[]) => {
-    const out: { song: Song; url: string }[] = [];
+    const out: { song: Song; url: string; contentType?: string }[] = [];
     let lastError = '';
     for (const s of songs) {
       try {
@@ -221,7 +220,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           );
         }
 
-        const tracks = playable.map((pl) => toTrack(pl.song, pl.url));
+        const tracks = playable.map((pl) =>
+          toTrack(pl.song, pl.url, pl.contentType ? { contentType: pl.contentType } : undefined)
+        );
         const targetId = songs[Math.min(Math.max(0, startIndex), songs.length - 1)]?.id;
         let si = playable.findIndex((pl) => pl.song.id === targetId);
         if (si < 0) si = 0;
@@ -259,9 +260,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const { url } = await ensureSongIsPlayable(song);
+        const { url, contentType } = await ensureSongIsPlayable(song);
         const nextIdx = queueSongs.length;
-        await TrackPlayer.add([toTrack(song, url)]);
+        await TrackPlayer.add([toTrack(song, url, contentType ? { contentType } : undefined)]);
         await TrackPlayer.skip(nextIdx);
         await TrackPlayer.play();
         setQueueSongs((prev) => [...prev, song]);

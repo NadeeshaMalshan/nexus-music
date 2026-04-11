@@ -60,7 +60,7 @@ export interface ExpandedPlayerProps {
   };
   knowFacts?: string[];
   knowLoading?: boolean;
-  onRateSong: (videoId: string, rating: "like" | "none") => void;
+  onRateSong: (videoId: string, rating: "like" | "none", meta?: { title: string; artist: string }) => void | Promise<void>;
   isLiked?: boolean;
   isLoggedIn?: boolean;
   playVideo: () => void;

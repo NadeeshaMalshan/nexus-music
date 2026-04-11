@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { fetchChannelStats, searchOfficialChannel } from "@/lib/youtubeData";
+import { getRequestAccessToken } from "@/lib/requestAccessToken";
 
 export async function GET(request: Request) {
   try {
@@ -12,12 +11,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Missing channelId" }, { status: 400 });
     }
 
-    const session = await getServerSession(authOptions);
-    if (!session || !session.accessToken) {
+    const accessToken = await getRequestAccessToken(request);
+    if (!accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let stats = await fetchChannelStats(session.accessToken, channelId);
+    let stats = await fetchChannelStats(accessToken, channelId);
     if (!stats) return NextResponse.json({ error: "No statistics found" }, { status: 404 });
 
     const subs = parseInt(stats.statistics?.subscriberCount || "0");
@@ -35,14 +34,14 @@ export async function GET(request: Request) {
     if (isTopicOrSmall) {
       // Search for the primary channel with the same name
       const query = name.replace(/\s*-\s*Topic$/i, "").trim();
-      const officialCandidate = await searchOfficialChannel(session.accessToken, query);
+      const officialCandidate = await searchOfficialChannel(accessToken, query);
       
       const fs = require('fs');
       fs.appendFileSync('debug.log', `[Stats API] Candidate for ${query}: ${JSON.stringify(officialCandidate)}\n`);
 
       if (officialCandidate && officialCandidate.id?.channelId && officialCandidate.id.channelId !== channelId) {
         // Fetch stats for the candidate to compare
-        const officialStats = await fetchChannelStats(session.accessToken, officialCandidate.id.channelId);
+        const officialStats = await fetchChannelStats(accessToken, officialCandidate.id.channelId);
         const officialSubs = parseInt(officialStats?.statistics?.subscriberCount || "0");
         
         fs.appendFileSync('debug.log', `[Stats API] Compared: Target (${subs}) vs Candidate (${officialSubs})\n`);

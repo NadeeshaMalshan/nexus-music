@@ -1,33 +1,33 @@
 import { NextResponse } from "next/server";
-import play from "play-dl";
+
+import { getYoutubeDirectAudioUrl } from "@/lib/youtubeDirectAudioUrl";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
+/**
+ * Returns a direct CDN URL for clients that need a string (e.g. some web players).
+ * Extraction uses ytdl-core, then play-dl — see `getYoutubeDirectAudioUrl`.
+ */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const videoId = searchParams.get('videoId') || searchParams.get('id');
-  
-  if (!videoId || videoId === 'undefined' || videoId === 'null') {
+  const videoId = searchParams.get("videoId") || searchParams.get("id");
+
+  if (!videoId || videoId === "undefined" || videoId === "null") {
     return NextResponse.json({ error: "Invalid or missing videoId" }, { status: 400 });
   }
 
-  console.log(`[get-audio-url] Extracting for videoId: ${videoId}`);
-  try {
-    const info = await play.video_info(`https://www.youtube.com/watch?v=${videoId}`);
-    const stream = await play.stream_from_info(info, { quality: 2 });
+  console.log(`[get-audio-url] videoId: ${videoId}`);
+  const url = await getYoutubeDirectAudioUrl(videoId);
 
-    if (!stream || !(stream as any).url) {
-      console.error(`[get-audio-url] Failed to extract URL for ${videoId}`);
-      return NextResponse.json({ error: "Could not extract direct URL" }, { status: 404 });
-    }
-
-    console.log(`[get-audio-url] Successfully extracted URL (length: ${(stream as any).url.length})`);
-    return NextResponse.json({ url: (stream as any).url });
-  } catch (error: any) {
-    console.error("[get-audio-url] Fatal Error:", error);
+  if (!url) {
     return NextResponse.json(
-      { error: "Failed to extract audio URL", details: error.message },
+      { error: "Failed to extract audio URL", details: "ytdl and play-dl both failed" },
       { status: 500 }
     );
   }
+
+  console.log(`[get-audio-url] OK (len ${url.length})`);
+  return NextResponse.json({ url });
 }

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
 import { type Song } from "./types";
-import { CreatePlaylistModal, AiPlaylistModal } from "./LibraryModals";
+import { CreatePlaylistModal, AiPlaylistModal, LibraryHistoryPane } from "./LibraryModals";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, SLIDE_UP_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
 
@@ -41,7 +41,11 @@ export function YouTubeLibrary({
   const [playlists, setPlaylists] = useState<YouTubePlaylist[]>([]);
   const [likedSongs, setLikedSongs] = useState<any[]>([]);
   const [ytHistory, setYtHistory] = useState<any[]>([]);
-  
+  const [historyFeedMeta, setHistoryFeedMeta] = useState<{
+    source: string;
+    ytmBrowseAvailable: boolean;
+  } | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -64,6 +68,13 @@ export function YouTubeLibrary({
         if (hRes.ok) {
            const hData = await hRes.json();
            setYtHistory(Array.isArray(hData.tracks) ? hData.tracks : []);
+           setHistoryFeedMeta({
+             source: typeof hData.source === "string" ? hData.source : "youtube.activities",
+             ytmBrowseAvailable: !!hData.ytmBrowseAvailable,
+           });
+        } else {
+          setYtHistory([]);
+          setHistoryFeedMeta(null);
         }
       } catch (err) {
         setError("Failed to sync library data.");
@@ -84,16 +95,29 @@ export function YouTubeLibrary({
     [likedSongs, searchQuery]
   );
 
+  const historySubtitle = useMemo(() => {
+    if (!historyFeedMeta) return null;
+    if (historyFeedMeta.source === "youtube.ytm_browse") return "YouTube Music history";
+    if (historyFeedMeta.source === "youtube.mixed") return "YouTube Music history · merged with channel activity";
+    return "Recent music activity on your channel";
+  }, [historyFeedMeta]);
+
   const unifiedHistory = useMemo(() => {
     const local = playedHistory.map(s => ({ ...s, source: "App" as const }));
-    const remote = ytHistory.map(t => ({
+    const remoteLabel =
+      historyFeedMeta?.source === "youtube.ytm_browse"
+        ? ("YT Music" as const)
+        : historyFeedMeta?.source === "youtube.mixed"
+          ? ("YT Music+" as const)
+          : ("YouTube" as const);
+    const remote = ytHistory.map((t) => ({
       id: t.videoId,
       title: t.title,
       artist: t.artist,
       artwork: t.thumbnailUrl,
       duration: t.duration || "0:00",
-      source: "YouTube" as const,
-      color: accentColor
+      source: remoteLabel,
+      color: accentColor,
     }));
 
     const seenIds = new Set(local.map(s => s.id));
@@ -102,8 +126,8 @@ export function YouTubeLibrary({
     return [...local, ...uniqueRemote].filter(s => 
       (s.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
       (s.artist?.toLowerCase() || "").includes(searchQuery.toLowerCase())
-    ).map(track => ({ ...track, source: (track as any).source || "YouTube" }));
-  }, [playedHistory, ytHistory, searchQuery, accentColor]);
+    );
+  }, [playedHistory, ytHistory, searchQuery, accentColor, historyFeedMeta?.source]);
 
   if (!session) {
     return (
@@ -257,72 +281,16 @@ export function YouTubeLibrary({
                  )}
 
                  {activeTab === "history" && (
-                    <m.div 
-                       key="history-pane"
-                       variants={SLIDE_UP_VARIANTS}
-                       initial="initial"
-                       animate="animate"
-                       exit="exit"
-                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 animate-gpu"
-                    >
-                        {unifiedHistory.map((track, idx) => (
-                           <div 
-                              key={`hist-${idx}`}
-                              onClick={() => {
-                                if (onPlayPlaylist) {
-                                  onPlayPlaylist(unifiedHistory as Song[], idx);
-                                } else {
-                                  onSongClick?.(track as Song);
-                                }
-                              }}
-                              className="group flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-white/3 border border-white/5 hover:bg-white/8 transition-all cursor-pointer relative overflow-hidden"
-                           >
-                              <div className="h-12 w-12 md:h-16 md:h-16 shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shadow-lg relative">
-                                 {track.artwork ? (
-                                    <Image src={track.artwork} alt="" fill className="object-cover" />
-                                 ) : (
-                                    <div className="h-full w-full flex items-center justify-center">
-                                       <Music2 className="text-white/10 w-5 h-5 md:w-6 md:h-6" />
-                                    </div>
-                                 )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                 <p className="truncate font-bold text-white text-sm md:text-[16px] mb-0.5">{track.title}</p>
-                                 <p className="truncate text-xs md:text-[13px] text-white/40 font-medium">{track.artist}</p>
-                              </div>
-                              <div className="flex flex-row items-center gap-2 shrink-0">
-                                 <div className="hidden group-hover:flex items-center gap-1">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onPlayNext?.(track as Song);
-                                      }}
-                                      className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all focus:outline-none"
-                                      title="Play Next"
-                                    >
-                                      <PlaySquare size={16} />
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onAddToQueue?.(track as Song);
-                                      }}
-                                      className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all focus:outline-none"
-                                      title="Add to Queue"
-                                    >
-                                      <ListPlus size={16} />
-                                    </button>
-                                 </div>
-                               <span 
-                                 className={`text-[8px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter transition-colors`}
-                                 style={(track as any).source === "App" ? { backgroundColor: `${accentColor}33`, color: accentColor } : { backgroundColor: 'rgb(255 255 255 / 0.1)', color: 'rgb(255 255 255 / 0.4)' }}
-                               >
-                                  {(track as any).source}
-                               </span>
-                              </div>
-                           </div>
-                        ))}
-                    </m.div>
+                    <LibraryHistoryPane
+                      key="history-pane"
+                      tracks={unifiedHistory}
+                      accentColor={accentColor}
+                      subtitle={historySubtitle}
+                      onPlayPlaylist={onPlayPlaylist}
+                      onSongClick={onSongClick}
+                      onPlayNext={onPlayNext}
+                      onAddToQueue={onAddToQueue}
+                    />
                  )}
 
                  {activeTab === "liked" && (

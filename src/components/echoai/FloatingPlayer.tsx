@@ -6,6 +6,7 @@ import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { m, AnimatePresence } from "motion/react";
 import { MusicArtwork } from "./MusicArtwork";
 import { APPLE_EASE, SLIDE_UP_VARIANTS } from "@/lib/animations";
+import { useDashboard } from "@/context/DashboardContext";
 
 interface FloatingPlayerProps {
   onExpand: () => void;
@@ -16,7 +17,7 @@ interface FloatingPlayerProps {
   onPrev: () => void;
   currentTimeSec: number;
   durationSec: number;
-  onRateSong: (videoId: string, rating: "like" | "none") => void;
+  onRateSong: (videoId: string, rating: "like" | "none", meta?: { title: string; artist: string }) => void | Promise<void>;
   isLiked?: boolean;
   isLoggedIn?: boolean;
   onToggleRightSidebar?: () => void;
@@ -48,6 +49,7 @@ export function FloatingPlayer({
   onVolumeChange,
   onArtistClick,
 }: FloatingPlayerProps) {
+  const { resolveLikedLibraryRateVideoId } = useDashboard();
   const isIdle = !currentSong;
   const displaySong = currentSong || {
     id: "idle",
@@ -172,7 +174,10 @@ export function FloatingPlayer({
         <div className="flex items-center gap-3 md:gap-6 shrink-0">
           {isLoggedIn && !isIdle && (
             <button
-              onClick={() => onRateSong(displaySong.id, isLiked ? "none" : "like")}
+              onClick={() => {
+                if (isLiked) void onRateSong(resolveLikedLibraryRateVideoId(displaySong as Song), "none");
+                else void onRateSong(displaySong.id, "like", { title: displaySong.title, artist: displaySong.artist });
+              }}
               className="transition-all transform hover:scale-110 active:scale-95"
             >
               <Heart

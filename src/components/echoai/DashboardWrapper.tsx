@@ -24,7 +24,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     isPlaying,
     currentTimeSec,
     durationSec,
-    likedSongs,
+    songIsInLikedLibrary,
     onTogglePlay,
     onNext,
     onPrev,
@@ -57,6 +57,15 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   } = useDashboard();
 
   const themeColor = palette.accent;
+
+  const mergedCurrentForLiked =
+    currentSong &&
+    ({
+      ...currentSong,
+      title: audioData?.trackName || currentSong.title,
+      artist: audioData?.artist || currentSong.artist,
+      musicVideoId: audioData?.musicVideoId ?? currentSong.musicVideoId,
+    });
 
   // Sync PWA status bar/theme color with artwork accent
   useEffect(() => {
@@ -142,7 +151,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
               currentTimeSec={currentTimeSec}
               durationSec={durationSec}
               onRateSong={onRateSong}
-              isLiked={currentSong ? likedSongs.has(audioData?.videoId || currentSong.id) : false}
+              isLiked={mergedCurrentForLiked ? songIsInLikedLibrary(mergedCurrentForLiked, audioData) : false}
               isLoggedIn={status === "authenticated"}
               onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
               isRightSidebarOpen={isRightSidebarOpen}
@@ -189,7 +198,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
             knowFacts={knowFacts}
             knowLoading={knowLoading}
             onRateSong={onRateSong}
-            isLiked={currentSong ? likedSongs.has(audioData?.videoId || currentSong.id) : false}
+            isLiked={mergedCurrentForLiked ? songIsInLikedLibrary(mergedCurrentForLiked, audioData) : false}
             isLoggedIn={status === "authenticated"}
             playVideo={playVideo}
             pauseVideo={pauseVideo}

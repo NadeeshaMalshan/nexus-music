@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { fetchPlaylistItems } from "@/lib/youtubeData";
 import { NextResponse } from "next/server";
+import { getRequestAccessToken } from "@/lib/requestAccessToken";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,14 +10,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Playlist ID is required" }, { status: 400 });
   }
 
-  const session = (await getServerSession(authOptions)) as any;
-  if (!session?.accessToken) {
+  const accessToken = await getRequestAccessToken(request);
+  if (!accessToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const musicOnly = playlistId === "LL";
-    const items = await fetchPlaylistItems(session.accessToken, playlistId, musicOnly);
+    const items = await fetchPlaylistItems(accessToken, playlistId, musicOnly);
     return NextResponse.json(items);
   } catch (error) {
     console.error("Error fetching YouTube playlist items:", error);

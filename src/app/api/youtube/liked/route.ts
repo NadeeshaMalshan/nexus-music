@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { fetchLikedSongs } from "@/lib/youtubeData";
+import { getRequestAccessToken } from "@/lib/requestAccessToken";
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.accessToken) {
+export async function GET(req: Request) {
+  const accessToken = await getRequestAccessToken(req);
+  if (!accessToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const tracks = await fetchLikedSongs(session.accessToken as string);
+    const tracks = await fetchLikedSongs(accessToken);
     return NextResponse.json(tracks);
   } catch (error) {
     console.error("API Fetch Liked Songs Error:", error);

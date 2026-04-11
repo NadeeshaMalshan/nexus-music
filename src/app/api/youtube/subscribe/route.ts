@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { subscribeToChannel } from "@/lib/youtubeData";
+import { getRequestAccessToken } from "@/lib/requestAccessToken";
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.accessToken) {
+    const accessToken = await getRequestAccessToken(request);
+    if (!accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -15,7 +14,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing channelId" }, { status: 400 });
     }
 
-    await subscribeToChannel(session.accessToken, channelId);
+    await subscribeToChannel(accessToken, channelId);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("[YouTube Subscribe] Error:", error);

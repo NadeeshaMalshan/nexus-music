@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { rateVideo } from "@/lib/youtubeData";
+import { getRequestAccessToken } from "@/lib/requestAccessToken";
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.accessToken) {
+  const accessToken = await getRequestAccessToken(req);
+  if (!accessToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -17,7 +15,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    await rateVideo(session.accessToken as string, videoId, rating);
+    await rateVideo(accessToken, videoId, rating);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("API Rate Video Error:", error);

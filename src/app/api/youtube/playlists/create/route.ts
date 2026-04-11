@@ -1,11 +1,10 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { createPlaylist, addSongToPlaylist } from "@/lib/youtubeData";
 import { NextResponse } from "next/server";
+import { getRequestAccessToken } from "@/lib/requestAccessToken";
 
 export async function POST(request: Request) {
-  const session = (await getServerSession(authOptions)) as any;
-  if (!session?.accessToken) {
+  const accessToken = await getRequestAccessToken(request);
+  if (!accessToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -17,13 +16,13 @@ export async function POST(request: Request) {
     }
 
     // 1. Create the playlist
-    const playlistId = await createPlaylist(session.accessToken, title, description);
+    const playlistId = await createPlaylist(accessToken, title, description);
 
     // 2. Add songs to it
     if (videoIds && videoIds.length > 0) {
       // YouTube API prefers sequential or limited parallel for item insertion
       for (const videoId of videoIds) {
-        await addSongToPlaylist(session.accessToken, playlistId, videoId);
+        await addSongToPlaylist(accessToken, playlistId, videoId);
       }
     }
 

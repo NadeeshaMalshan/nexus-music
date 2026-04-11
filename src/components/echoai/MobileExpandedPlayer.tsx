@@ -50,7 +50,7 @@ export function MobileExpandedPlayer({
   onReorderUpNext,
   onArtistClick,
 }: ExpandedPlayerProps) {
-  const { palette } = useDashboard();
+  const { palette, resolveLikedLibraryRateVideoId } = useDashboard();
   const { settings } = useSettings();
   const { jamState } = useJam();
   const [jamWarning, setJamWarning] = useState<string | null>(null);
@@ -384,8 +384,11 @@ export function MobileExpandedPlayer({
                         <ChevronDown size={28} className="text-white/70" />
                     </button>
                     {isLoggedIn && (
-                        <button 
-                            onClick={() => onRateSong(currentSong.id, isLiked ? "none" : "like")} 
+                        <button
+                            onClick={() => {
+                              if (isLiked) void onRateSong(resolveLikedLibraryRateVideoId(currentSong), "none");
+                              else void onRateSong(currentSong.id, "like", { title: currentSong.title, artist: currentSong.artist });
+                            }}
                             className="p-2 rounded-full bg-white/5 backdrop-blur-md"
                         >
                             <Heart size={24} style={{ fill: isLiked ? 'var(--art-accent, #FA243C)' : 'none', color: isLiked ? 'var(--art-accent, #FA243C)' : 'rgb(255 255 255 / 0.7)' }} />

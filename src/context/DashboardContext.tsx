@@ -18,6 +18,28 @@ type AudioPayload = {
   directUrl?: string; // Direct YouTube stream URL
 };
 
+type LikedLibraryTrackRow = { videoId: string; title: string; artist: string };
+
+/** Collapse case/spacing/diacritics so "Sorry" search rows match YT liked metadata. */
+function normLikedTitle(s: string) {
+  return s
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normLikedArtist(s: string) {
+  return s
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s*-\s*topic\s*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 type LyricsPayload = {
   success: boolean;
   lyrics: {
@@ -47,6 +69,10 @@ type DashboardContextType = {
   knowFacts: string[];
   knowLoading: boolean;
   likedSongs: Set<string>;
+  /** Snapshot from /api/youtube/liked for title/artist matching when video ids differ (e.g. search vs LL). */
+  likedLibraryTracks: LikedLibraryTrackRow[];
+  songIsInLikedLibrary: (song: { id: string; title: string; artist: string; musicVideoId?: string }, audio?: AudioPayload | null) => boolean;
+  resolveLikedLibraryRateVideoId: (song: { id: string; title: string; artist: string; musicVideoId?: string }) => string;
   upNextQueue: Song[];
   playedHistory: Song[];
   aiLoading: boolean;
@@ -77,7 +103,7 @@ type DashboardContextType = {
   onSeek: (time: number) => void;
   onSongClick: (song: Song, reset?: boolean) => void;
   onPlayPlaylist: (songs: Song[], startIndex: number) => void;
-  onRateSong: (songId: string, rating: "like" | "none") => Promise<void>;
+  onRateSong: (songId: string, rating: "like" | "none", meta?: { title: string; artist: string }) => Promise<void>;
   onRemoveFromQueue: (index: number) => void;
   onRemoveFromUpNext: (index: number) => void;
   onReorderQueue: (newQueue: Song[]) => void;
@@ -156,6 +182,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [knowFacts, setKnowFacts] = useState<string[]>([]);
   const [knowLoading, setKnowLoading] = useState(false);
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
+  const [likedLibraryTracks, setLikedLibraryTracks] = useState<LikedLibraryTrackRow[]>([]);
+  const likedLibraryRollbackRef = useRef<LikedLibraryTrackRow | null>(null);
   const [viewMode, setViewMode] = useState<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const viewModeRef = useRef<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const userIntentRef = useRef<"playing" | "paused">("paused");
@@ -290,8 +318,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         .then((res) => res.json())
         .then((tracks) => {
           if (Array.isArray(tracks)) {
-            const ids = new Set(tracks.map((t: any) => t.videoId));
-            setLikedSongs(ids);
+            const rows: LikedLibraryTrackRow[] = tracks
+              .map((t: any) => ({
+                videoId: String(t.videoId || "").trim(),
+                title: String(t.title ?? ""),
+                artist: String(t.artist ?? ""),
+              }))
+              .filter((r) => r.videoId);
+            setLikedSongs(new Set(rows.map((r) => r.videoId)));
+            setLikedLibraryTracks(rows);
           }
         })
         .catch((err) => console.error("Error fetching liked songs:", err));
@@ -1010,12 +1045,69 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     onSeek(0);
   }, [onSeek]);
 
-  const onRateSong = useCallback(async (songId: string, rating: "like" | "none") => {
+  const songIsInLikedLibrary = useCallback(
+    (song: { id: string; title: string; artist: string; musicVideoId?: string }, audio?: AudioPayload | null) => {
+      if (likedSongs.has(song.id)) return true;
+      if (audio?.videoId && likedSongs.has(audio.videoId)) return true;
+      if (audio?.musicVideoId && likedSongs.has(audio.musicVideoId)) return true;
+      if (song.musicVideoId && likedSongs.has(song.musicVideoId)) return true;
+      const nt = normLikedTitle(song.title);
+      const na = normLikedArtist(song.artist);
+      if (!nt || !na) return false;
+      return likedLibraryTracks.some((t) => normLikedTitle(t.title) === nt && normLikedArtist(t.artist) === na);
+    },
+    [likedSongs, likedLibraryTracks],
+  );
+
+  const resolveLikedLibraryRateVideoId = useCallback(
+    (song: { id: string; title: string; artist: string; musicVideoId?: string }) => {
+      if (likedSongs.has(song.id)) return song.id;
+      if (song.musicVideoId && likedSongs.has(song.musicVideoId)) return song.musicVideoId;
+      const nt = normLikedTitle(song.title);
+      const na = normLikedArtist(song.artist);
+      const hit = likedLibraryTracks.find((t) => normLikedTitle(t.title) === nt && normLikedArtist(t.artist) === na);
+      return hit?.videoId ?? song.id;
+    },
+    [likedSongs, likedLibraryTracks],
+  );
+
+  const onRateSong = useCallback(async (songId: string, rating: "like" | "none", meta?: { title: string; artist: string }) => {
     if (!session?.user) return;
     const targetId = (songId === currentSong?.id && audioData?.videoId) ? audioData.videoId : songId;
+
+    const libraryMeta =
+      meta ??
+      (rating === "like" && songId === currentSong?.id && currentSong
+        ? { title: currentSong.title, artist: currentSong.artist }
+        : undefined);
+
+    const idsToTouch = new Set<string>([targetId, songId]);
+    if (songId === currentSong?.id && currentSong) {
+      if (audioData?.videoId) idsToTouch.add(audioData.videoId);
+      if (audioData?.musicVideoId) idsToTouch.add(audioData.musicVideoId);
+      if (currentSong.musicVideoId) idsToTouch.add(currentSong.musicVideoId);
+    }
+
+    if (rating === "none") {
+      setLikedLibraryTracks((prev) => {
+        const removed = prev.find((t) => t.videoId === targetId);
+        likedLibraryRollbackRef.current = removed ?? null;
+        return prev.filter((t) => t.videoId !== targetId);
+      });
+    } else if (rating === "like" && libraryMeta) {
+      setLikedLibraryTracks((prev) => [
+        ...prev.filter((t) => t.videoId !== targetId),
+        { videoId: targetId, title: libraryMeta.title, artist: libraryMeta.artist },
+      ]);
+    }
+
     setLikedSongs((prev) => {
       const next = new Set(prev);
-      if (rating === "like") next.add(targetId); else next.delete(targetId);
+      if (rating === "like") {
+        for (const id of idsToTouch) next.add(id);
+      } else {
+        for (const id of idsToTouch) next.delete(id);
+      }
       return next;
     });
     try {
@@ -1028,11 +1120,25 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       setLikedSongs((prev) => {
         const next = new Set(prev);
-        if (rating === "like") next.delete(targetId); else next.add(targetId);
+        if (rating === "like") {
+          for (const id of idsToTouch) next.delete(id);
+        } else {
+          next.add(targetId);
+        }
         return next;
       });
+      if (rating === "none") {
+        const r = likedLibraryRollbackRef.current;
+        likedLibraryRollbackRef.current = null;
+        if (r) {
+          setLikedLibraryTracks((prev) => (prev.some((t) => t.videoId === r.videoId) ? prev : [...prev, r]));
+        }
+      }
+      if (rating === "like" && libraryMeta) {
+        setLikedLibraryTracks((prev) => prev.filter((t) => t.videoId !== targetId));
+      }
     }
-  }, [session?.user, currentSong?.id, audioData?.videoId]);
+  }, [session?.user, currentSong?.id, currentSong?.title, currentSong?.artist, currentSong?.musicVideoId, audioData?.videoId, audioData?.musicVideoId]);
 
   const sessionHandlersRef = useRef({ onTogglePlay, onNext, onPrev, onSeek });
   useEffect(() => {
@@ -1141,6 +1247,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     knowFacts,
     knowLoading,
     likedSongs,
+    likedLibraryTracks,
+    songIsInLikedLibrary,
+    resolveLikedLibraryRateVideoId,
     upNextQueue,
     playedHistory,
     aiLoading,
@@ -1193,7 +1302,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }), [
     audioData, queueSongs, currentSong, isPlaying, currentTimeSec, 
     durationSec, volume, lyricsData, lyricsLoading, knowFacts, 
-    knowLoading, likedSongs, upNextQueue, playedHistory, aiLoading, 
+    knowLoading, likedSongs, likedLibraryTracks, songIsInLikedLibrary, resolveLikedLibraryRateVideoId, upNextQueue, playedHistory, aiLoading, 
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
     setIsPlaying, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork

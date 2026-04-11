@@ -46,7 +46,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
   const [songColors, setSongColors] = useState<Record<string, string>>({});
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const { likedSongs, onRateSong } = useDashboard();
+  const { songIsInLikedLibrary, resolveLikedLibraryRateVideoId, onRateSong } = useDashboard();
   const searchTimeoutRef = useRef<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -555,8 +555,12 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                            const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
                            onPlayNext?.({ ...song, artwork: highResArtwork });
                         }}
-                        onLike={() => onRateSong?.(song.id, likedSongs.has(song.id) ? "none" : "like")}
-                        isLiked={likedSongs.has(song.id)}
+                        onLike={() => {
+                          const liked = songIsInLikedLibrary(song);
+                          if (liked) void onRateSong?.(resolveLikedLibraryRateVideoId(song), "none");
+                          else void onRateSong?.(song.id, "like", { title: song.title, artist: song.artist });
+                        }}
+                        isLiked={songIsInLikedLibrary(song)}
                       />
                     </div>
                   </m.div>

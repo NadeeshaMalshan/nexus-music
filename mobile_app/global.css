@@ -1,0 +1,15 @@
+:root {
+  /* Minimal token set; mirrors your web CSS variable approach. */
+  --color-background: 255 255 255;
+  --color-foreground: 17 17 17;
+  --color-accent: 10 132 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: 0 0 0;
+    --color-foreground: 255 255 255;
+    --color-accent: 10 132 255;
+  }
+}
+

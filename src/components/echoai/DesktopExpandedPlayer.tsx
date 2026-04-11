@@ -49,7 +49,7 @@ export function DesktopExpandedPlayer({
   onReorderUpNext,
   onArtistClick,
 }: ExpandedPlayerProps) {
-  const { palette } = useDashboard();
+  const { palette, resolveLikedLibraryRateVideoId } = useDashboard();
   const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">(viewMode === "video" ? "controls" : "lyrics");
   const [imageError, setImageError] = useState(false);
@@ -253,7 +253,13 @@ export function DesktopExpandedPlayer({
             </button>
           </div>
           {isLoggedIn && (
-            <button onClick={() => onRateSong(currentSong.id, isLiked ? "none" : "like")} className="mt-1 rounded-full bg-white/5 p-2 hover:bg-white/10">
+            <button
+              onClick={() => {
+                if (isLiked) void onRateSong(resolveLikedLibraryRateVideoId(currentSong), "none");
+                else void onRateSong(currentSong.id, "like", { title: currentSong.title, artist: currentSong.artist });
+              }}
+              className="mt-1 rounded-full bg-white/5 p-2 hover:bg-white/10"
+            >
               <Heart size={24} style={{ fill: isLiked ? 'var(--art-accent, #FA243C)' : 'none', color: isLiked ? 'var(--art-accent, #FA243C)' : 'rgb(255 255 255 / 0.7)' }} />
             </button>
           )}

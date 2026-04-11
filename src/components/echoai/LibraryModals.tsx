@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { X, Search, Plus, Minus, Music2, Sparkles, Loader2, ListPlus, Wand2, ChevronRight } from "lucide-react";
+import { X, Search, Plus, Minus, Music2, Sparkles, Loader2, ListPlus, Wand2, ChevronRight, PlaySquare, History } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, SLIDE_UP_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
 import Image from "next/image";
+import { type Song } from "./types";
 
-interface Song {
+interface CreateModalSong {
   id: string;
   title: string;
   artist: string;
@@ -22,8 +23,8 @@ interface ModalProps {
 export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: ModalProps) {
   const [playlistName, setPlaylistName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Song[]>([]);
-  const [addedSongs, setAddedSongs] = useState<Song[]>([]);
+  const [searchResults, setSearchResults] = useState<CreateModalSong[]>([]);
+  const [addedSongs, setAddedSongs] = useState<CreateModalSong[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -70,7 +71,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
     }
   };
 
-  const addSong = (song: Song) => {
+  const addSong = (song: CreateModalSong) => {
     if (!addedSongs.find(s => s.id === song.id)) setAddedSongs([...addedSongs, song]);
     setSearchQuery("");
   };
@@ -218,7 +219,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
 export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: ModalProps) {
   const [step, setStep] = useState<'input' | 'loading' | 'results'>('input');
   const [prompt, setPrompt] = useState("");
-  const [generatedResult, setGeneratedResult] = useState<{ name: string, songs: Song[] }>({ name: "", songs: [] });
+  const [generatedResult, setGeneratedResult] = useState<{ name: string, songs: CreateModalSong[] }>({ name: "", songs: [] });
   const [isSaving, setIsSaving] = useState(false);
 
   const handleGenerate = async () => {
@@ -240,7 +241,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
           title: rec.title,
           artist: rec.artist,
           artwork: rec.thumbnail
-        })) as Song[]
+        })) as CreateModalSong[]
       });
       setStep('results');
     } catch (err) {
@@ -417,5 +418,117 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
         </div>
       )}
     </AnimatePresence>
+  );
+}
+
+/** History list for Library (YouTube Music browse + OAuth activity); lives here alongside other library modals/panes. */
+export type LibraryHistoryRow = Song & { source?: string };
+
+interface LibraryHistoryPaneProps {
+  tracks: LibraryHistoryRow[];
+  accentColor: string;
+  subtitle?: string | null;
+  onPlayPlaylist?: (songs: Song[], startIndex: number) => void;
+  onSongClick?: (song: Song, reset?: boolean) => void;
+  onPlayNext?: (song: Song) => void;
+  onAddToQueue?: (song: Song) => void;
+}
+
+export function LibraryHistoryPane({
+  tracks,
+  accentColor,
+  subtitle,
+  onPlayPlaylist,
+  onSongClick,
+  onPlayNext,
+  onAddToQueue,
+}: LibraryHistoryPaneProps) {
+  return (
+    <m.div
+      variants={SLIDE_UP_VARIANTS}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="animate-gpu space-y-4"
+    >
+      {subtitle ? (
+        <p className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-white/35 px-1">{subtitle}</p>
+      ) : null}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+        {tracks.length === 0 ? (
+          <div className="col-span-full flex flex-col items-center justify-center py-20 md:py-28 text-center px-4">
+            <History className="w-12 h-12 md:w-14 md:h-14 text-white/15 mb-4" />
+            <p className="text-lg font-black text-white/40">No history yet</p>
+            <p className="text-sm text-white/25 font-medium mt-2 max-w-sm">
+              Play music in Nexus to build app history. Server admins can set <span className="text-white/45">YTM_COOKIE</span> to pull the YouTube Music history shelf as well.
+            </p>
+          </div>
+        ) : (
+          tracks.map((track, idx) => (
+            <div
+              key={`hist-${track.id}-${idx}`}
+              onClick={() => {
+                if (onPlayPlaylist) {
+                  onPlayPlaylist(tracks as Song[], idx);
+                } else {
+                  onSongClick?.(track as Song);
+                }
+              }}
+              className="group flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-white/3 border border-white/5 hover:bg-white/8 transition-all cursor-pointer relative overflow-hidden"
+            >
+              <div className="h-12 w-12 md:h-16 md:h-16 shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shadow-lg relative">
+                {track.artwork ? (
+                  <Image src={track.artwork} alt="" fill className="object-cover" />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center">
+                    <Music2 className="text-white/10 w-5 h-5 md:w-6 md:h-6" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="truncate font-bold text-white text-sm md:text-[16px] mb-0.5">{track.title}</p>
+                <p className="truncate text-xs md:text-[13px] text-white/40 font-medium">{track.artist}</p>
+              </div>
+              <div className="flex flex-row items-center gap-2 shrink-0">
+                <div className="hidden group-hover:flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPlayNext?.(track as Song);
+                    }}
+                    className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all focus:outline-none"
+                    title="Play Next"
+                  >
+                    <PlaySquare size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddToQueue?.(track as Song);
+                    }}
+                    className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all focus:outline-none"
+                    title="Add to Queue"
+                  >
+                    <ListPlus size={16} />
+                  </button>
+                </div>
+                <span
+                  className="text-[8px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter transition-colors"
+                  style={
+                    track.source === "App"
+                      ? { backgroundColor: `${accentColor}33`, color: accentColor }
+                      : { backgroundColor: "rgb(255 255 255 / 0.1)", color: "rgb(255 255 255 / 0.4)" }
+                  }
+                >
+                  {track.source || "YouTube"}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </m.div>
   );
 }

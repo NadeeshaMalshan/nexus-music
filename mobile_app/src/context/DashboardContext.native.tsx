@@ -51,9 +51,10 @@ let loggedGetAudioUrlFallback = false;
 function warnAudioFallbackOnce(_videoId: string, e: unknown) {
   if (loggedGetAudioUrlFallback) return;
   loggedGetAudioUrlFallback = true;
-  console.warn(
-    '[Dashboard] /api/get-audio-url failed (using /api/audio/stream instead). Common on Vercel without YOUTUBE_COOKIE.',
-    e
+  // Expected on many hosts: direct CDN URL fails → we use /api/audio/stream. Not a user-facing error.
+  console.debug(
+    '[Dashboard] /api/get-audio-url unavailable; using stream proxy.',
+    __DEV__ ? e : ''
   );
 }
 

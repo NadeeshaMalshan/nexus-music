@@ -181,9 +181,9 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                     </div>
                   )}
 
-                  {searchResults.map((item) => (
+                  {searchResults.map((item, idx) => (
                     <div 
-                      key={item.videoId || item.id}
+                      key={`${item.type ?? "r"}-${item.videoId || item.id}-${idx}`}
                       onClick={() => {
                         if (item.type === "ARTIST") {
                           router.push(`/artist/${encodeURIComponent(item.name)}`);
@@ -344,9 +344,9 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
 
                 <div className="h-4" /> {/* Spacer */}
 
-                {playlists.slice(0, 10).map((pl) => (
+                {playlists.slice(0, 10).map((pl, plIdx) => (
                   <Link
-                    key={pl.id}
+                    key={`sidebar-pl-${plIdx}-${pl.id}`}
                     href={`/playlists/${pl.id}`}
                     onClick={() => setSelectedPlaylist(pl)}
                     className={`flex items-center gap-4 rounded-2xl px-4 py-2.5 transition-all hover:bg-white/5 group ${pathname.includes(pl.id) ? "text-white" : "text-white/40"}`}

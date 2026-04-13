@@ -71,6 +71,39 @@ async function searchYouTubeMusic(query: string): Promise<SearchItem[]> {
   return items;
 }
 
+async function searchYouTubeMusicVideos(query: string): Promise<SearchItem[]> {
+  const { searchVideosRobust } = await import("@/lib/ytmSearchService");
+  const results = await searchVideosRobust(query);
+  const items: SearchItem[] = [];
+  for (const r of results) {
+    const item = musicVideoToItem(r);
+    if (item) items.push(item);
+    if (items.length >= 12) break;
+  }
+  return items;
+}
+
+async function searchYouTubeMusicAlbums(query: string) {
+  const { searchAlbumsRobust } = await import("@/lib/ytmSearchService");
+  const results = await searchAlbumsRobust(query);
+
+  return (results || [])
+    .map((a: any) => ({
+      type: "ALBUM" as const,
+      id: (a as any).browseId || (a as any).albumId || (a as any).id || "",
+      title: a.title || a.name || "Unknown Album",
+      author:
+        a.artist?.name ||
+        a.artist ||
+        a.author ||
+        (a.artists?.map((x: any) => x?.name).filter(Boolean).join(", ") || "Unknown Artist"),
+      thumbnail: a.thumbnailUrl || a.thumbnail || "",
+      year: (a as any).year,
+    }))
+    .filter((x: any) => x.id)
+    .slice(0, 12);
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -93,6 +126,47 @@ export async function GET(request: Request) {
        return NextResponse.json({ items: playlists, source: "music.youtube.com" });
     }
 
+    if (type === "albums") {
+      const albums = await searchYouTubeMusicAlbums(q);
+      return NextResponse.json({ items: albums, source: "music.youtube.com" as const });
+    }
+
+    if (type === "videos" || type === "musicVideos") {
+      const videos = await searchYouTubeMusicVideos(q);
+      let finalItems: any[] = videos;
+
+      // Batch fetch view counts for videos
+      const ids = finalItems.map((i) => i.videoId).filter(Boolean);
+      if (ids.length > 0) {
+        try {
+          const { getServerSession } = await import("next-auth/next");
+          const { authOptions } = await import("@/lib/auth");
+          const session = await getServerSession(authOptions);
+
+          const headers: any = {};
+          if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
+
+          const vidRes = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${ids.join(",")}`,
+            { headers }
+          );
+          if (vidRes.ok) {
+            const vidData = await vidRes.json();
+            const viewsMap: Record<string, string> = {};
+            vidData.items?.forEach((v: any) => {
+              viewsMap[v.id] = v.statistics?.viewCount || "0";
+            });
+
+            finalItems = finalItems.map((item) => ({ ...item, views: viewsMap[item.videoId] || "0" }));
+          }
+        } catch (err) {
+          console.warn("[Search API] View count batch fetch failed:", err);
+        }
+      }
+
+      return NextResponse.json({ items: finalItems.slice(0, 12), source: "music.youtube.com" as const });
+    }
+
     // Default: Songs (with Top Artist Heuristic)
     const { searchArtistsRobust } = await import("@/lib/ytmSearchService");
     const [artists, songs] = await Promise.all([
@@ -105,8 +179,10 @@ export async function GET(request: Request) {
     let finalItems: any[] = topArtist ? [topArtist, ...songs] : songs;
     
     // Batch fetch view counts for songs
-    const songIds = finalItems.filter(i => !i.type || i.type === "SONG").map(s => s.videoId);
-    if (songIds.length > 0) {
+    const videoIds = finalItems
+      .filter((i) => i && i.videoId && i.type !== "ARTIST" && i.type !== "PLAYLIST")
+      .map((s) => s.videoId);
+    if (videoIds.length > 0) {
        try {
           const { getServerSession } = await import("next-auth/next");
           const { authOptions } = await import("@/lib/auth");
@@ -116,7 +192,7 @@ export async function GET(request: Request) {
           if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
 
           const vidRes = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${songIds.join(",")}`,
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds.join(",")}`,
             { headers }
           );
           if (vidRes.ok) {
@@ -127,7 +203,7 @@ export async function GET(request: Request) {
              });
              
              finalItems = finalItems.map(item => {
-                if (!item.type || item.type === "SONG") {
+                if (item && item.videoId && item.type !== "ARTIST" && item.type !== "PLAYLIST") {
                    return { ...item, views: viewsMap[item.videoId] || "0" };
                 }
                 return item;

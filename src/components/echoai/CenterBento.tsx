@@ -81,8 +81,8 @@ export function CenterBento({
           <article className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 lg:col-span-2">
             <h3 className="text-lg font-semibold text-white">Mood Distribution</h3>
             <div className="mt-4 space-y-3">
-              {aiPlaylists.map((playlist) => (
-                <div key={playlist.id}>
+              {aiPlaylists.map((playlist, moodIdx) => (
+                <div key={`mood-${moodIdx}-${playlist.id}`}>
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span className="text-white/80">{playlist.mood}</span>
                     <span className="text-white/50">{playlist.bpm} BPM avg</span>
@@ -116,9 +116,9 @@ export function CenterBento({
         <p className="text-sm text-white/50">No results yet. Try searching for a track.</p>
       ) : (
         <div className={`grid grid-cols-1 gap-6 ${view === "explorer" ? "lg:grid-cols-3" : "lg:grid-cols-2 2xl:grid-cols-3"}`}>
-          {(view === "home" ? featuredItems : explorerItems).map((item) => (
+          {(view === "home" ? featuredItems : explorerItems).map((item, itemIdx) => (
             <button
-              key={item.videoId}
+              key={`bento-grid-${itemIdx}-${item.videoId}`}
               type="button"
               onClick={() => onSelectTrack(item)}
               className="group relative cursor-pointer text-left"
@@ -147,9 +147,9 @@ export function CenterBento({
 
       {view === "home" && searchResults.length > 6 && (
         <div className="mt-6 space-y-2">
-          {searchResults.slice(6).map((item) => (
+          {searchResults.slice(6).map((item, itemIdx) => (
             <button
-              key={item.videoId}
+              key={`bento-list-${itemIdx + 6}-${item.videoId}`}
               type="button"
               onClick={() => onSelectTrack(item)}
               className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-2 text-left transition hover:border-white/20"

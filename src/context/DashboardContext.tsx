@@ -979,6 +979,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (shouldResetQueue) {
       setUpNextQueue([]);
     }
+    if (song.preferVideoPlayback) {
+      setViewMode("video");
+      setIsExpandedPlayerOpen(true);
+    }
     userIntentRef.current = "playing";
     try { audioCtxRef.current?.resume(); } catch {}
     setCurrentSong(song);
@@ -991,7 +995,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const filtered = prev.filter((s) => s.id !== song.id);
       return [song, ...filtered].slice(0, 50); // Keep last 50
     });
-  }, []);
+  }, [setViewMode, setIsExpandedPlayerOpen]);
 
   const lastNextCallRef = useRef(0);
   const onNext = useCallback(() => {

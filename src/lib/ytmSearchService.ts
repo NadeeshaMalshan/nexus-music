@@ -13,12 +13,20 @@ function sleep(ms: number) {
 }
 
 /** Strips bracketed noise from a query and retries search */
-async function searchWithRetry(query: string, type: "songs" | "videos" = "songs"): Promise<any[]> {
+async function searchWithRetry(
+  query: string,
+  type: "songs" | "videos" | "albums" = "songs"
+): Promise<any[]> {
   let lastErr: unknown;
   for (let i = 0; i <= RETRIES; i++) {
     try {
       const ytmusic = await getYTMusic();
-      const results = type === "songs" ? await ytmusic.searchSongs(query) : await ytmusic.searchVideos(query);
+      const results =
+        type === "songs"
+          ? await ytmusic.searchSongs(query)
+          : type === "videos"
+            ? await ytmusic.searchVideos(query)
+            : await (ytmusic as any).searchAlbums(query);
       if (results && results.length > 0) return results.map(mapYTMToMusicVideo);
     } catch (err) {
       lastErr = err;
@@ -80,7 +88,9 @@ function mapYTMToMusicVideo(item: any) {
     duration: formattedDuration,      // String for Song type
     durationObj: { totalSeconds: durationSec, label: formattedDuration }, // Object for legacy routes
     thumbnail: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "",
-    thumbnailUrl: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "" // Backward compat
+    thumbnailUrl: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "", // Backward compat
+    // "MUSIC_VIDEO_TYPE_ATV" = audio track; anything else (OMV, UGC…) = actual video
+    videoType: item.videoType ?? null,
   };
 }
 
@@ -124,6 +134,32 @@ export async function searchVideosRobust(query: string): Promise<any[]> {
   if (!query?.trim()) return [];
   const res = await searchWithRetry(query, "videos");
   return res || [];
+}
+
+export async function searchAlbumsRobust(query: string): Promise<any[]> {
+  if (!query?.trim()) return [];
+
+  const full = await searchWithRetry(query.trim(), "albums");
+  if (full.length >= 3) return full;
+
+  const stripped = query
+    .replace(/\(feat\.?.*?\)/gi, "")
+    .replace(/\[.*?\]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  if (stripped !== query.trim()) {
+    const clean = await searchWithRetry(stripped, "albums");
+    if (clean.length >= 3) return clean;
+  }
+
+  const words = stripped.split(/\s+/).slice(0, 3).join(" ");
+  if (words !== stripped) {
+    const short = await searchWithRetry(words, "albums");
+    if (short.length > 0) return short;
+  }
+
+  return full.length > 0 ? full : [];
 }
 
 export async function searchArtistsRobust(query: string): Promise<any[]> {

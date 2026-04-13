@@ -191,7 +191,7 @@ export function JamSession() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  key={listener.id} 
+                  key={`jam-listener-${idx}-${listener.id}`} 
                   className="group flex items-center justify-between rounded-2xl border border-white/5 bg-white/2 p-3 transition-all hover:bg-white/6"
                 >
                   <div className="flex items-center gap-3">

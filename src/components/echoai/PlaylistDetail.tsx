@@ -10,6 +10,7 @@ import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE } from "@/lib/animations";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 import { useDashboard } from "@/context/DashboardContext";
+import { titleSuggestsMusicVideo } from "@/lib/musicVideoTitle";
 
 interface PlaylistDetailProps {
   playlist: YouTubePlaylist;
@@ -116,6 +117,7 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
         artwork: t.thumbnailUrl,
         duration: t.duration || "0:00",
         color: accentColor,
+        preferVideoPlayback: titleSuggestsMusicVideo(t.title),
       }));
       onPlayPlaylist(mappedSongs, index);
     } else {
@@ -125,7 +127,8 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
         artist: track.artist,
         artwork: track.thumbnailUrl,
         duration: track.duration || "0:00",
-        color: accentColor
+        color: accentColor,
+        preferVideoPlayback: titleSuggestsMusicVideo(track.title),
       });
     }
   };
@@ -139,6 +142,7 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
       artwork: track.thumbnailUrl,
       duration: track.duration || "0:00",
       color: accentColor,
+      preferVideoPlayback: titleSuggestsMusicVideo(track.title),
     }));
     if (onPlayPlaylist) {
       onPlayPlaylist(mappedSongs, 0);
@@ -158,6 +162,7 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
       artwork: track.thumbnailUrl,
       duration: track.duration || "0:00",
       color: accentColor,
+      preferVideoPlayback: titleSuggestsMusicVideo(track.title),
     }));
     if (onPlayPlaylist) {
       onPlayPlaylist(mappedSongs, 0);
@@ -264,11 +269,12 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
                 artwork: track.thumbnailUrl,
                 duration: track.duration || "0:00",
                 color: accentColor,
+                preferVideoPlayback: titleSuggestsMusicVideo(track.title),
               };
 
               return (
                 <SwipeableSongRow
-                  key={track.id + i}
+                  key={`pl-${i}-${track.videoId}`}
                   onSwipeRight={() => onPlayNext?.(song)}
                   onSwipeLeft={() => onAddToQueue?.(song)}
                 >
@@ -290,7 +296,13 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
                     </div>
 
                     <div className="flex-1 flex items-center gap-4 md:gap-5 min-w-0">
-                      <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden shrink-0 bg-zinc-900 shadow-xl border border-white/10">
+                      <div
+                        className={`relative rounded-xl overflow-hidden shrink-0 bg-zinc-900 shadow-xl border border-white/10 ${
+                          titleSuggestsMusicVideo(track.title)
+                            ? "h-12 md:h-14 w-auto aspect-video"
+                            : "w-12 h-12 md:w-14 md:h-14"
+                        }`}
+                      >
                         <Image src={track.thumbnailUrl} alt={track.title} fill className="object-cover" />
                       </div>
                       <div className="flex flex-col min-w-0">

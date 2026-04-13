@@ -218,6 +218,7 @@ export async function POST(request: Request) {
       artist: m.artists ? m.artists.map((a: any) => a.name).join(", ") : "Unknown Artist",
       thumbnail: m.thumbnailUrl || "",
       duration: m.duration || "0:00",
+      videoType: m.videoType ?? null,
     }));
 
     console.log(`[Recommendations] Processing ${tracks.length} diverse tracks.`);

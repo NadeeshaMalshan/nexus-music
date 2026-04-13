@@ -24,6 +24,7 @@ import {
 import Image from "next/image";
 import { useDashboard } from "@/context/DashboardContext";
 import { type Song } from "./types";
+import { titleSuggestsMusicVideo } from "@/lib/musicVideoTitle";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -91,8 +92,7 @@ function fmtMs(ms: number) {
 
 // ─── ArtistPage ───────────────────────────────────────────────────────────────
 export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePlaylist, onNavigateAlbum }: ArtistPageProps) {
-  const { onSongClick, onAddToQueue, onPlayNext, currentSong, isPlaying, palette, setOverrideArtwork, setViewMode, setIsExpandedPlayerOpen } =
-    useDashboard();
+  const { onSongClick, onAddToQueue, onPlayNext, currentSong, isPlaying, palette, setOverrideArtwork } = useDashboard();
 
   const [data, setData] = useState<ArtistData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -241,6 +241,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
     artwork: t.thumbnail || t.albumArt,
     duration: t.duration || fmtMs(t.durationMs),
     color: palette.accent,
+    preferVideoPlayback: titleSuggestsMusicVideo(t.name),
   });
 
   const formatCount = (count: number | string) => {
@@ -290,6 +291,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
           artwork: s.artwork,
           duration: s.duration,
           color: palette.accent,
+          preferVideoPlayback: titleSuggestsMusicVideo(s.title),
         }));
         onSongClick(songs[0]);
         // Add rest to queue
@@ -321,6 +323,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
             artwork: i.thumbnailUrl,
             duration: i.duration,
             color: palette.accent,
+            preferVideoPlayback: titleSuggestsMusicVideo(i.title),
           }));
           onSongClick(songs[0]);
           songs.slice(1).forEach((s: any) => onAddToQueue(s));
@@ -337,6 +340,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
            artwork: s.artwork,
            duration: s.duration,
            color: palette.accent,
+           preferVideoPlayback: titleSuggestsMusicVideo(s.title),
          }));
          onSongClick(songs[0]);
          songs.slice(1).forEach((s: any) => onAddToQueue(s));
@@ -598,7 +602,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                 <div className="flex flex-col gap-1">
                   {visibleTracks?.map((track, idx) => (
                     <SwipeableSongRow
-                      key={track.videoId || track.spotifyId || idx}
+                      key={`artist-top-${idx}-${track.videoId || track.spotifyId || "t"}`}
                       disableDrag={openMenuId === track.spotifyId}
                       onSwipeRight={() => track.videoId && onPlayNext(trackToSong(track))}
                       onSwipeLeft={() => track.videoId && onAddToQueue(trackToSong(track))}
@@ -669,7 +673,13 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                       </div>
 
                       {/* Album Art */}
-                      <div className="relative w-12 h-12 shrink-0 rounded-xl overflow-hidden border border-white/10 shadow-lg">
+                      <div
+                        className={`relative shrink-0 rounded-xl overflow-hidden border border-white/10 shadow-lg ${
+                          titleSuggestsMusicVideo(track.name)
+                            ? "h-12 w-auto aspect-video"
+                            : "w-12 h-12"
+                        }`}
+                      >
                         <Image
                           src={
                             track.thumbnail ||
@@ -836,7 +846,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                   <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 px-1">
                     {data.videos.map((v, i) => (
                       <m.div
-                        key={v.id}
+                        key={`artist-video-${v.id}-${i}`}
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 + i * 0.05, ...MOTION_CONFIG.transition }}
@@ -848,10 +858,9 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                              artist: data.name,
                              artwork: v.image,
                              duration: "0:00",
-                             color: palette.accent
+                             color: palette.accent,
+                             preferVideoPlayback: true,
                            });
-                           setViewMode("video");
-                           setIsExpandedPlayerOpen(true);
                         }}
                       >
                         <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-white/5 shadow-2xl">

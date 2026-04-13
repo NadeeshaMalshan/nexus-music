@@ -162,8 +162,8 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                             transition={MOTION_CONFIG.transition}
                             className="absolute top-16 left-0 right-0 z-20 bg-[#161618]/95 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.4)] overflow-hidden animate-gpu"
                           >
-                             {searchResults.slice(0, 5).map(song => (
-                                <div key={song.id} onClick={() => addSong(song)} className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer transition-all border-b border-white/5 last:border-0 group">
+                             {searchResults.slice(0, 5).map((song, si) => (
+                                <div key={`create-search-${si}-${song.id}`} onClick={() => addSong(song)} className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer transition-all border-b border-white/5 last:border-0 group">
                                    <img src={song.artwork} alt="" className="w-12 h-12 rounded-xl object-cover" />
                                    <div className="flex-1 min-w-0">
                                       <p className="text-white font-bold truncate">{song.title}</p>
@@ -184,7 +184,8 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                       <div className="space-y-2 max-h-[400px] overflow-y-auto no-scrollbar">
                          {addedSongs.map((song, idx) => (
                             <m.div 
-                               layout key={song.id} 
+                               layout 
+                               key={`added-${idx}-${song.id}`} 
                                className="flex items-center gap-4 p-3 rounded-2xl bg-white/3 border border-white/5 hover:border-white/10 transition-all group animate-gpu"
                             >
                               <div className="text-[11px] font-black text-white/20 w-4 text-center">{idx + 1}</div>
@@ -398,8 +399,8 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
-                       {generatedResult.songs.map((song) => (
-                          <div key={song.id} className="flex items-center gap-4 p-3 md:p-4 rounded-2xl md:rounded-3xl bg-white/3 border border-white/5 hover:bg-white/5 transition-all group">
+                       {generatedResult.songs.map((song, gi) => (
+                          <div key={`ai-gen-${gi}-${song.id}`} className="flex items-center gap-4 p-3 md:p-4 rounded-2xl md:rounded-3xl bg-white/3 border border-white/5 hover:bg-white/5 transition-all group">
                              <img src={song.artwork} alt="" className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl object-cover shadow-xl grayscale-[0.2] group-hover:grayscale-0 transition-all" />
                              <div className="flex-1 min-w-0 pr-2">
                                 <p className="text-sm md:text-[17px] font-black text-white truncate leading-tight mb-0.5 md:mb-1">{song.title}</p>

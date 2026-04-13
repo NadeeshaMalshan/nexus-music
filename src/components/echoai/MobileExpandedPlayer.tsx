@@ -622,7 +622,7 @@ export function MobileExpandedPlayer({
                       <div className="space-y-1">
                         {upNextQueue.map((song, i) => (
                           <div 
-                            key={song.id} 
+                            key={`upnext-${i}-${song.id}`} 
                             onClick={() => onSongClick(song, false)} 
                             className="flex items-center gap-4 py-2.5 px-2 rounded-xl active:bg-white/5 transition-all"
                           >

@@ -6,6 +6,7 @@ import { type Song } from "./types";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 import { SongMenu } from "./SongMenu";
 import { useDashboard } from "@/context/DashboardContext";
+import { titleSuggestsMusicVideo } from "@/lib/musicVideoTitle";
 
 interface SearchPageProps {
   onClose: () => void;
@@ -22,10 +23,12 @@ type SearchItem = {
   author: string;
   duration: string;
   thumbnail: string;
-  type?: "ARTIST" | "PLAYLIST" | "SONG";
+  type?: "ARTIST" | "PLAYLIST" | "SONG" | "ALBUM";
   id?: string;
   name?: string;
   views?: string;
+  /** Mixed into Top results: play as music video in expanded player */
+  fromVideosShelf?: boolean;
 };
 
 const formatCount = (count: string | number) => {
@@ -44,15 +47,17 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const [identifiedSong, setIdentifiedSong] = useState<string | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
+  const [resultsByCategory, setResultsByCategory] = useState<Record<string, SearchItem[]>>({});
   const [songColors, setSongColors] = useState<Record<string, string>>({});
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const { songIsInLikedLibrary, resolveLikedLibraryRateVideoId, onRateSong } = useDashboard();
   const searchTimeoutRef = useRef<number | null>(null);
+  const searchRunIdRef = useRef(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
   // Category list
-  const categories = ["Top", "Songs", "Artists", "Albums", "Playlists", "Remixes"];
+  const categories = ["Top", "Songs", "Videos", "Artists", "Albums", "Playlists", "Remixes"];
 
   // Handle initial query from URL
   useEffect(() => {
@@ -197,31 +202,61 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
     const cat = categoryOverride ?? activeCategory;
     if (!query) {
       setSearchResults([]);
+      setResultsByCategory({});
       return;
     }
     setSearchLoading(true);
-    
-    // Determine the type for the API
-    let type = "songs";
-    if (cat === "Artists") type = "artists";
-    else if (cat === "Playlists") type = "playlists";
     
     // Remixes as a local modification of songs search
     let finalQuery = query;
     if (cat === "Remixes") finalQuery += " remix";
     
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(finalQuery)}&type=${type}`, {
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        throw new Error("Search request failed");
-      }
-      const payload = (await response.json()) as { items: SearchItem[] };
-      setSearchResults(payload.items || []);
+      const runId = ++searchRunIdRef.current;
+
+      const fetchType = async (type: string): Promise<SearchItem[]> => {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(finalQuery)}&type=${type}`, { cache: "no-store" });
+        if (!res.ok) return [];
+        const payload = (await res.json()) as { items: SearchItem[] };
+        return payload.items || [];
+      };
+
+      const [songs, videos, artists, albums, playlists] = await Promise.all([
+        fetchType("songs"),
+        fetchType("videos"),
+        fetchType("artists"),
+        fetchType("albums"),
+        fetchType("playlists"),
+      ]);
+
+      if (runId !== searchRunIdRef.current) return; // ignore stale results
+
+      const byCat: Record<string, SearchItem[]> = {
+        Songs: songs,
+        Videos: videos,
+        Artists: artists,
+        Albums: albums,
+        Playlists: playlists,
+      };
+      setResultsByCategory(byCat);
+
+      // What we show depends on current tab
+      if (cat === "Top") {
+        setSearchResults([
+          ...(artists || []).slice(0, 2),
+          ...(songs || []).slice(0, 6),
+          ...(videos || []).slice(0, 4).map((v) => ({ ...v, fromVideosShelf: true })),
+        ]);
+      } else if (cat === "Songs") setSearchResults(songs);
+      else if (cat === "Videos") setSearchResults(videos);
+      else if (cat === "Artists") setSearchResults(artists);
+      else if (cat === "Albums") setSearchResults(albums);
+      else if (cat === "Playlists") setSearchResults(playlists);
+      else setSearchResults(songs);
     } catch (error) {
       console.error("Search failed:", error);
       setSearchResults([]);
+      setResultsByCategory({});
     } finally {
       setSearchLoading(false);
     }
@@ -271,6 +306,18 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
          type: "PLAYLIST"
        };
     }
+    if (item.type === "ALBUM") {
+      return {
+        id: item.id || `album-${idx}`,
+        title: item.title,
+        artist: `Album · ${item.author || "Unknown Artist"}`,
+        artwork: item.thumbnail,
+        duration: "",
+        color: "var(--art-accent, #FA243C)",
+        type: "ALBUM"
+      };
+    }
+    const mvFromTitle = titleSuggestsMusicVideo(item.title);
     return {
       id: item.videoId || `search-${idx}`,
       title: item.title,
@@ -278,8 +325,10 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
       artwork: item.thumbnail,
       duration: item.duration,
       color: songColors[item.videoId] || "var(--art-accent, #FA243C)",
-      type: "SONG",
-      views: item.views
+      type: activeCategory === "Videos" || item.fromVideosShelf ? "VIDEO" : "SONG",
+      views: item.views,
+      preferVideoPlayback:
+        activeCategory === "Videos" || (activeCategory === "Top" && !!item.fromVideosShelf) || mvFromTitle,
     };
   });
 
@@ -372,7 +421,25 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                 key={cat}
                 onClick={() => {
                   setActiveCategory(cat);
-                  void runSearch(searchQuery, cat);
+                  const q = searchQuery.trim();
+                  if (!q) return;
+
+                  // Instantly show cached results from the last dynamic run
+                  if (cat === "Top") {
+                    if (resultsByCategory.Songs || resultsByCategory.Videos || resultsByCategory.Artists) {
+                      setSearchResults([
+                        ...(resultsByCategory.Artists || []).slice(0, 2),
+                        ...(resultsByCategory.Songs || []).slice(0, 6),
+                        ...(resultsByCategory.Videos || []).slice(0, 4).map((v) => ({ ...v, fromVideosShelf: true })),
+                      ]);
+                      return;
+                    }
+                  } else if (resultsByCategory[cat]) {
+                    setSearchResults(resultsByCategory[cat]);
+                    return;
+                  }
+
+                  void runSearch(q, cat);
                 }}
                 className={`px-6 py-2.5 rounded-full text-[13px] md:text-sm font-black tracking-wide transition-all uppercase whitespace-nowrap border ${
                   activeCategory === cat 
@@ -428,7 +495,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
             <div className="flex flex-col gap-1">
               {mappedSongs.map((song, index) => (
                 <SwipeableSongRow
-                  key={song.id}
+                  key={`${song.type ?? "row"}-${song.id}-${index}`}
                   disableDrag={openMenuId === song.id}
                   className={openMenuId === song.id ? "z-50" : "z-10"}
                   onSwipeLeft={() => {
@@ -462,16 +529,31 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                         window.location.href = `/playlists/${song.id}`;
                         return;
                       }
+                      // For Albums → navigate to album page
+                      if (song.type === "ALBUM") {
+                        window.location.href = `/album/${song.id}`;
+                        return;
+                      }
                       void (async () => {
                         const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
                         const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
                         onSongSelect({ ...song, artwork: highResArtwork, color: dynamicColor });
+
+                        // Close search after starting playback
                         onClose();
                       })();
                     }}
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className={`relative h-[64px] w-[64px] shrink-0 overflow-hidden ${song.type === "ARTIST" ? "rounded-full" : "rounded-xl"} border border-white/10 shadow-lg`}>
+                      <div
+                        className={`relative shrink-0 overflow-hidden border border-white/10 shadow-lg ${
+                          song.type === "ARTIST"
+                            ? "h-[64px] w-[64px] rounded-full"
+                            : song.type === "VIDEO" || titleSuggestsMusicVideo(song.title)
+                              ? "h-16 aspect-video rounded-xl"
+                              : "h-[64px] w-[64px] rounded-xl"
+                        }`}
+                      >
                         <img src={song.artwork?.replace(/([=|-][swh])\d+/g, '$1600') || song.artwork} alt={song.title} className="h-full w-full object-cover" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                            <Play fill="white" className="text-white w-6 h-6 ml-1" />
@@ -489,7 +571,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                           >
                             {song.artist}
                           </p>
-                          {(!song.type || song.type === "SONG") && song.views && (
+                          {(!song.type || song.type === "SONG" || song.type === "VIDEO") && song.views && (
                             <>
                               <span className="text-white/10 text-[10px]">•</span>
                               <span className="text-[12px] font-bold text-white/20 uppercase tracking-widest leading-none">

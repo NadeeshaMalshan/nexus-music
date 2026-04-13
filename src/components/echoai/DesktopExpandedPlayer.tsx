@@ -525,7 +525,7 @@ export function DesktopExpandedPlayer({
                        <div className="space-y-1">
                          {upNextQueue.map((s, i) => (
                            <div 
-                             key={s.id} 
+                             key={`upnext-${i}-${s.id}`} 
                              onClick={() => onSongClick(s, false)} 
                              className="flex items-center gap-4 py-2.5 px-3 rounded-xl hover:bg-white/5 group cursor-pointer transition-all active:scale-[0.98]"
                            >

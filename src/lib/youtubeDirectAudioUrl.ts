@@ -88,11 +88,13 @@ export async function getYoutubeInfoWithRetry(videoUrl: string) {
  * Best-effort direct googlevideo URL for a YouTube video. Tries @distube/ytdl-core with
  * several player-client orders, then play-dl (often succeeds when ytdl fails on serverless).
  */
-export async function getYoutubeDirectAudioUrl(videoId: string): Promise<string | null> {
+export async function getYoutubeDirectAudioUrl(videoId: string, isLive: boolean = false): Promise<string | null> {
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
   try {
     const info = await getYoutubeInfoWithRetry(videoUrl);
+    // If live, we might want to be more careful with format selection, but ytdl-core's highestaudio
+    // for live often points to an HLS stream which is fine.
     const url = pickFormatUrl(info.formats);
     if (url) return url;
   } catch {
@@ -100,7 +102,8 @@ export async function getYoutubeDirectAudioUrl(videoId: string): Promise<string 
   }
 
   try {
-    const stream = await play.stream(videoUrl, { quality: 2 });
+    // For live streams in music mode, we use lowest quality to save data
+    const stream = await play.stream(videoUrl, { quality: isLive ? 0 : 2 });
     const url =
       stream && typeof stream === "object" && stream !== null && "url" in stream
         ? String((stream as unknown as { url: string }).url)

@@ -170,7 +170,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         iframe is never destroyed and background audio continues even when minimised.
         In music mode it only mounts when actually open (background player handles audio).
       */}
-      {currentSong && (isExpandedPlayerOpen || viewMode === "video") && (
+      {currentSong && (isExpandedPlayerOpen || viewMode === "video" || currentSong.isLive) && (
         <div
           className="fixed z-50 transition-none"
           style={

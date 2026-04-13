@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
 import YouTube from "react-youtube";
-import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus, PlaySquare, Users } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus, PlaySquare, Users, Maximize } from "lucide-react";
 import { m, AnimatePresence, Reorder, useDragControls } from "motion/react";
 import { APPLE_EASE, SLIDE_UP_VARIANTS, EXPO_OUT, MOTION_CONFIG, APPLE_LYRICS_TRANSITION } from "@/lib/animations";
 import { type Song, type ExpandedPlayerProps } from "./types";
@@ -54,6 +54,18 @@ export function MobileExpandedPlayer({
   const { settings } = useSettings();
   const { jamState } = useJam();
   const [jamWarning, setJamWarning] = useState<string | null>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = () => {
+    if (!videoContainerRef.current) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      videoContainerRef.current.requestFullscreen().catch(err => {
+        console.warn(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    }
+  };
 
   useEffect(() => {
     if (jamWarning) {
@@ -234,17 +246,17 @@ export function MobileExpandedPlayer({
   }, [viewMode]);
 
   useEffect(() => {
-    if (viewMode === "video" && ytPlayerInstance.current) {
+    if ((viewMode === "video" || currentSong.isLive) && ytPlayerInstance.current) {
       if (isPlaying) ytPlayerInstance.current.playVideo();
       else ytPlayerInstance.current.pauseVideo();
     }
-  }, [isPlaying, viewMode]);
+  }, [isPlaying, viewMode, currentSong.isLive]);
 
   useEffect(() => {
-    if (viewMode === "video" && ytPlayerInstance.current) {
+    if ((viewMode === "video" || currentSong.isLive) && ytPlayerInstance.current) {
       try { ytPlayerInstance.current.setVolume(volume); } catch { /* ignore */ }
     }
-  }, [volume, viewMode]);
+  }, [volume, viewMode, currentSong.isLive]);
 
   const youtubeOpts = {
     height: '100%',
@@ -283,13 +295,15 @@ export function MobileExpandedPlayer({
 
   const renderTabSelector = () => (
     <div className="flex w-full items-center justify-around px-4">
-      <button
-        type="button"
-        onClick={() => setActiveTab(activeTab === "lyrics" ? "controls" : "lyrics")}
-        className={`p-3 rounded-xl transition-all ${activeTab === "lyrics" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}
-      >
-        <Mic2 size={24} />
-      </button>
+      {!currentSong.isLive && (
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === "lyrics" ? "controls" : "lyrics")}
+          className={`p-3 rounded-xl transition-all ${activeTab === "lyrics" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}
+        >
+          <Mic2 size={24} />
+        </button>
+      )}
       <button
         type="button"
         onClick={() => setActiveTab(activeTab === "queue" ? "controls" : "queue")}
@@ -347,13 +361,49 @@ export function MobileExpandedPlayer({
       </div>
 
       {/* Volume */}
-      <div className="mt-4 flex items-center gap-4 px-2">
-        <Volume2 size={14} className="text-white/30" />
-        <div onClick={handleVolumeClick} className="relative h-1 flex-1 rounded-full bg-white/10">
-          <div className="absolute inset-y-0 left-0 rounded-full bg-white/40" style={{ width: `${volume}%` }} />
-          <div className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white border border-white/10 shadow-sm" style={{ left: `${volume}%` }} />
+      <div className="mt-8 flex items-center gap-5 px-4">
+        <m.div 
+          animate={{ scale: volume === 0 ? 0.8 : 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          <Volume2 size={16} className="text-white/20" />
+        </m.div>
+        
+        <div className="relative h-7 flex-1 flex items-center group">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={volume}
+            onChange={(e) => onVolumeChange(parseInt(e.target.value))}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
+          />
+          {/* Track Layout */}
+          <div className="relative h-1.5 w-full rounded-full bg-white/5 z-10 pointer-events-none overflow-hidden">
+             <m.div 
+                className="absolute inset-y-0 left-0 bg-white/40"
+                animate={{ width: `${volume}%` }}
+                transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
+             />
+          </div>
+          {/* Knob */}
+          <m.div 
+            className="absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.5)] z-20 pointer-events-none border border-black/10"
+            animate={{ left: `${volume}%`, scale: volume > 0 ? 1 : 0.8 }}
+            transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
+            style={{ x: "-50%" }}
+          >
+             <div className="absolute inset-0 rounded-full bg-linear-to-b from-white to-white/90" />
+          </m.div>
         </div>
-        <Volume2 size={20} className="text-white/30" />
+
+        <m.div 
+          animate={{ scale: volume > 80 ? 1.2 : 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          <Volume2 size={24} className="text-white/30" />
+        </m.div>
       </div>
     </div>
   );
@@ -475,41 +525,69 @@ export function MobileExpandedPlayer({
                     layoutId="compact-art"
                     className={`w-full max-w-[340px] shadow-[0_30px_60px_rgba(0,0,0,0.5)] rounded-[20px] overflow-hidden animate-gpu ${viewMode === 'video' ? 'aspect-video' : 'aspect-square'}`}
                 >
-                    {viewMode === "video" ? (
-                        <YouTube 
-                            key={`mobile-yt-${videoKey}`}
-                            videoId={currentSong.musicVideoId || currentSong.id} 
-                            opts={youtubeOpts} 
-                            onReady={e => { 
-                                ytPlayerInstance.current = e.target; 
-                                e.target.setVolume(volume); 
-                                const vq = settings.videoQuality === "auto" ? "default" : settings.videoQuality;
-                                try { e.target.setPlaybackQuality(vq); } catch(err) {}
-                                if(isPlaying) e.target.playVideo(); 
-                            }}
-                            onStateChange={e => {
-                                if (e.data === 0) {
-                                    // Ended → advance queue
-                                    onNext();
-                                } else if (e.data === 1) {
-                                    setIsPlaying(true);
-                                } else if (e.data === 2) {
-                                    if (!isPlayingRef.current) {
-                                        setIsPlaying(false);
-                                    } else {
-                                        // Browser throttled — retry
-                                        setTimeout(() => {
-                                            try {
-                                                if (ytPlayerInstance.current?.getPlayerState?.() === 2 && isPlayingRef.current)
-                                                    ytPlayerInstance.current.playVideo();
-                                            } catch { /* ignore */ }
-                                        }, 400);
+                    {(viewMode === "video" || currentSong.isLive) && (
+                        <div 
+                          ref={videoContainerRef}
+                          className={`group/vid relative overflow-hidden ${viewMode === "music" ? "absolute inset-0 opacity-0 pointer-events-none" : "h-full w-full bg-black flex items-center justify-center"}`}
+                        >
+                            <YouTube 
+                                key={`mobile-yt-${videoKey}`}
+                                videoId={currentSong.musicVideoId || currentSong.id} 
+                                opts={youtubeOpts} 
+                                onReady={e => { 
+                                    ytPlayerInstance.current = e.target; 
+                                    e.target.setVolume(volume); 
+                                    const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
+                                    try { e.target.setPlaybackQuality(vq); } catch(err) {}
+                                    if(isPlaying) e.target.playVideo(); 
+                                }}
+                                onStateChange={e => {
+                                    if (e.data === 0) {
+                                        // Ended → advance queue
+                                        onNext();
+                                    } else if (e.data === 1) {
+                                        setIsPlaying(true);
+                                    } else if (e.data === 2) {
+                                        if (!isPlayingRef.current) {
+                                            setIsPlaying(false);
+                                        } else {
+                                            // Browser throttled — retry
+                                            setTimeout(() => {
+                                                try {
+                                                    if (ytPlayerInstance.current?.getPlayerState?.() === 2 && isPlayingRef.current)
+                                                        ytPlayerInstance.current.playVideo();
+                                                } catch { /* ignore */ }
+                                            }, 400);
+                                        }
                                     }
-                                }
-                            }}
-                            className="h-full w-full" 
-                        />
-                    ) : (
+                                }}
+                                className="h-full w-full scale-[1.15] translate-y-[2%] origin-center pointer-events-none" 
+                            />
+
+                            {/* Interaction Blocker */}
+                            <div 
+                              className="absolute inset-0 z-10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onTogglePlay();
+                              }}
+                            />
+                            
+                            {/* Fullscreen Button */}
+                            {viewMode === "video" && (
+                              <button
+                                className="absolute bottom-6 right-6 z-50 p-2.5 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 text-white opacity-60 active:scale-90 transition-all shadow-2xl"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFullscreen();
+                                }}
+                              >
+                                <Maximize size={18} />
+                              </button>
+                            )}
+                        </div>
+                    )}
+                    {viewMode === "music" && (
                         <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={64} />
                     )}
                 </m.div>

@@ -191,7 +191,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const [directAudioUrl, setDirectAudioUrl] = useState<string | null>(null);
   const nativeAudioRef = useRef<HTMLAudioElement | null>(null);
-  const isUsingNativeAudio = useMemo(() => viewMode === "music" && !!directAudioUrl, [viewMode, directAudioUrl]);
+  const isUsingNativeAudio = useMemo(() => {
+    if (currentSong?.isLive) return false;
+    return viewMode === "music" && !!directAudioUrl;
+  }, [viewMode, directAudioUrl, currentSong?.isLive]);
 
   // Keep latest state in refs for intervals and events to avoid closure staleness
   const settingsRef = useRef(settings);
@@ -242,13 +245,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     player: NonNullable<(typeof ytPlayerRef)["current"]>,
     videoId: string
   ) {
-    // If we're in video mode or if we haven't explicitly intended to play yet (e.g. restoration from localStorage)
+    // If we're in video mode, if we haven't explicitly intended to play yet, OR if it's a LIVE stream
     // we use cueVideoById to load the video metadata without starting playback automatically.
-    if (viewModeRef.current === "video" || userIntentRef.current === "paused") {
+    if (viewModeRef.current === "video" || userIntentRef.current === "paused" || currentSongRef.current?.isLive) {
       player.cueVideoById(videoId);
       
-      // Additional steps for video mode sync
-      if (viewModeRef.current === "video") {
+      // Additional steps for video/live mode sync
+      if (viewModeRef.current === "video" || currentSongRef.current?.isLive) {
         queueMicrotask(() => {
           try {
             player.pauseVideo();
@@ -439,7 +442,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
       console.log(`[DashboardContext] Loading direct URL for: ${currentSong.id}`);
       try {
-        const response = await fetch(`/api/get-audio-url?videoId=${currentSong.id}`, {
+        const response = await fetch(`/api/get-audio-url?videoId=${currentSong.id}&isLive=${currentSong.isLive || ""}`, {
           signal: controller.signal,
           cache: "no-store",
         });
@@ -748,7 +751,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           },
           onStateChange: (event: any) => {
             // Only sync isPlaying if we're NOT in video mode, to let the visible player lead state
-            if (viewModeRef.current === "music") {
+            // Also, for LIVE STREAMS in music mode, the ExpandedPlayer handles playback, so we skip sync here.
+            if (viewModeRef.current === "music" && !currentSongRef.current?.isLive) {
               if (event.data === 1) {
                 setIsPlaying(true);
                 userIntentRef.current = "playing";
@@ -765,9 +769,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 // Check if we already moved to next to avoid double trigger
                 onNextRef.current();
               }
-              
-              // RESILIENCE: If it paused while hidden, and we didn't initiate it, it might be the system.
-              // Browsers sometimes pause hidden iframes. 
             }
           },
         },
@@ -933,8 +934,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, [isPlaying]);
 
   const onTogglePlay = useCallback(() => {
-    if (viewMode === "video") {
+    if (viewMode === "video" || currentSongRef.current?.isLive) {
       setIsPlaying((v) => !v);
+      userIntentRef.current = isPlayingRef.current ? "paused" : "playing";
       return;
     }
 

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
 import YouTube from "react-youtube";
-import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus, PlaySquare } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus, PlaySquare, Maximize } from "lucide-react";
 import { m, AnimatePresence, Reorder } from "motion/react";
 import { APPLE_EASE, EXPO_OUT, MOTION_CONFIG, APPLE_LYRICS_TRANSITION } from "@/lib/animations";
 import { type ExpandedPlayerProps } from "./types";
@@ -85,6 +85,19 @@ export function DesktopExpandedPlayer({
   const scrollRef = useRef<HTMLDivElement>(null);
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
   const videoInitSeekRef = useRef<boolean>(false);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = () => {
+    if (!videoContainerRef.current) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      videoContainerRef.current.requestFullscreen().catch(err => {
+        console.warn(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    }
+  };
+
   const capturedTimeRef = useRef<number>(0);
 
   const plainLines = useMemo(() => (lyricsContent || "")
@@ -203,17 +216,17 @@ export function DesktopExpandedPlayer({
   }, [viewMode]);
 
   useEffect(() => {
-    if (viewMode === "video" && ytPlayerInstance.current) {
+    if ((viewMode === "video" || currentSong.isLive) && ytPlayerInstance.current) {
       if (isPlaying) ytPlayerInstance.current.playVideo();
       else ytPlayerInstance.current.pauseVideo();
     }
-  }, [isPlaying, viewMode]);
+  }, [isPlaying, viewMode, currentSong.isLive]);
 
   useEffect(() => {
-    if (viewMode === "video" && ytPlayerInstance.current) {
+    if ((viewMode === "video" || currentSong.isLive) && ytPlayerInstance.current) {
       try { ytPlayerInstance.current.setVolume(volume); } catch { /* ignore */ }
     }
-  }, [volume, viewMode]);
+  }, [volume, viewMode, currentSong.isLive]);
 
   const youtubeOpts = {
     height: '100%',
@@ -261,13 +274,15 @@ export function DesktopExpandedPlayer({
           <PlaySquare size={14} className="sm:h-4 sm:w-4" /> <span>Now Playing</span>
         </button>
       )}
-      <button
-        type="button"
-        onClick={() => setActiveTab("lyrics")}
-        className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all sm:gap-2 sm:px-6 sm:text-sm ${activeTab === "lyrics" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"}`}
-      >
-        <Mic2 size={14} className="sm:h-4 sm:w-4" /> <span>Lyrics</span>
-      </button>
+      {!currentSong.isLive && (
+        <button
+          type="button"
+          onClick={() => setActiveTab("lyrics")}
+          className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all sm:gap-2 sm:px-6 sm:text-sm ${activeTab === "lyrics" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"}`}
+        >
+          <Mic2 size={14} className="sm:h-4 sm:w-4" /> <span>Lyrics</span>
+        </button>
+      )}
       <button
         type="button"
         onClick={() => setActiveTab("queue")}
@@ -336,14 +351,45 @@ export function DesktopExpandedPlayer({
         <button onClick={onNext} className="text-white/80 active:scale-95 transition-transform"><SkipForward size={isCompact ? 32 : 42} fill="currentColor" /></button>
       </div>
 
-      <div className={`${isCompact ? "mt-1 px-6" : "mt-3 px-3 pb-1"} flex w-full items-center gap-4`}>
-        <Volume2 size={isCompact ? 18 : 20} className="text-white/60" />
-        <div onClick={handleVolumeClick} className="group relative h-4 flex-1 cursor-pointer flex items-center">
-          <div className="relative h-1.5 w-full rounded-full bg-white/20">
-            <div className="absolute inset-y-0 left-0 rounded-full bg-white/90" style={{ width: `${volume}%` }} />
-            <div className="absolute top-1/2 h-4 w-4 -translate-y-1/2 scale-0 group-hover:scale-100 rounded-full bg-white transition-transform" style={{ left: `${volume}%` }} />
+      <div className={`${isCompact ? "mt-4 px-6" : "mt-8 px-4 pb-2"} flex w-full items-center gap-5`}>
+        <m.div 
+          animate={{ scale: volume === 0 ? 0.8 : 1, opacity: volume === 0 ? 0.3 : 0.6 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          <Volume2 size={isCompact ? 16 : 18} className="text-white" />
+        </m.div>
+
+        <div className="relative group h-7 flex-1 flex items-center">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={volume}
+            onChange={(e) => onVolumeChange(parseInt(e.target.value))}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
+          />
+          <div className="relative h-1.5 w-full rounded-full bg-white/10 z-10 pointer-events-none overflow-hidden">
+            <m.div 
+                className="absolute inset-y-0 left-0 bg-white/90" 
+                animate={{ width: `${volume}%` }}
+                transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
+            />
           </div>
+          <m.div 
+            className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.5)] z-20 pointer-events-none transition-transform" 
+            animate={{ left: `${volume}%`, scale: volume > 0 ? 1 : 0.8 }}
+            transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
+            style={{ x: "-50%" }}
+          />
         </div>
+
+        <m.div 
+          animate={{ scale: volume > 80 ? 1.15 : 1, opacity: volume > 0 ? 0.6 : 0.3 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          <Volume2 size={isCompact ? 20 : 24} className="text-white" />
+        </m.div>
       </div>
 
       {viewMode === "music" && !isCompact && <div className="mt-6 flex w-full justify-start items-center gap-2 overflow-x-auto no-scrollbar">{renderTabSelector()}</div>}
@@ -402,43 +448,74 @@ export function DesktopExpandedPlayer({
       <div className={`relative z-10 mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-2 items-center gap-12 px-8 pb-8 overflow-y-auto lg:overflow-visible custom-scrollbar transition-all duration-700 animate-gpu ${viewMode === 'video' ? 'max-w-[1800px] lg:grid-cols-[1.8fr_1fr]' : 'max-w-[1400px]'}`}>
         <div className={`mx-auto flex w-full flex-col items-center justify-center ${viewMode === 'video' ? 'max-w-full' : 'max-w-[400px]'} animate-gpu`}>
           <m.div layout className={`group relative w-full overflow-hidden rounded-[32px] border border-white/10 bg-black shadow-2xl flex items-center justify-center animate-gpu ${viewMode === "music" ? "aspect-square" : "aspect-video"}`}>
-            {viewMode === "video" ? (
-              <YouTube 
-                key={`desktop-yt-${videoKey}`}
-                videoId={currentSong.musicVideoId || currentSong.id} 
-                opts={youtubeOpts} 
-                onReady={e => { 
-                  ytPlayerInstance.current = e.target; 
-                  e.target.setVolume(volume); 
-                  const vq = settings.videoQuality === "auto" ? "default" : settings.videoQuality;
-                  try { e.target.setPlaybackQuality(vq); } catch(err) {}
-                  if(isPlaying) e.target.playVideo(); 
-                }}
-                onStateChange={e => {
-                  if (e.data === 0) {
-                    // Ended → advance queue
-                    onNext();
-                  } else if (e.data === 1) {
-                    // Playing
-                    setIsPlaying(true);
-                  } else if (e.data === 2) {
-                    // Paused — only treat as user intent if isPlaying was already false
-                    if (!isPlayingRef.current) {
-                      setIsPlaying(false);
-                    } else {
-                      // Browser throttled us — retry after short delay
-                      setTimeout(() => {
-                        try {
-                          if (ytPlayerInstance.current?.getPlayerState?.() === 2 && isPlayingRef.current)
-                            ytPlayerInstance.current.playVideo();
-                        } catch { /* ignore */ }
-                      }, 400);
+            {(viewMode === "video" || currentSong.isLive) && (
+              <div 
+                ref={videoContainerRef}
+                className={`group/vid relative overflow-hidden ${viewMode === "music" ? "absolute inset-0 opacity-0 pointer-events-none" : "h-full w-full bg-black"}`}
+              >
+                <YouTube 
+                  key={`desktop-yt-${videoKey}`}
+                  videoId={currentSong.musicVideoId || currentSong.id} 
+                  opts={youtubeOpts} 
+                  onReady={e => { 
+                    ytPlayerInstance.current = e.target; 
+                    e.target.setVolume(volume); 
+                    // For live streams in music mode, force tiny quality to save data
+                    const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
+                    try { e.target.setPlaybackQuality(vq); } catch(err) {}
+                    if(isPlaying) e.target.playVideo(); 
+                  }}
+                  onStateChange={e => {
+                    if (e.data === 0) {
+                      onNext();
+                    } else if (e.data === 1) {
+                      setIsPlaying(true);
+                      // Force quality again after playback starts to ensure it sticks
+                      const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
+                      try { e.target.setPlaybackQuality(vq); } catch(err) {}
+                    } else if (e.data === 2) {
+                      if (!isPlayingRef.current) {
+                        setIsPlaying(false);
+                      } else {
+                        setTimeout(() => {
+                          try {
+                            if (ytPlayerInstance.current?.getPlayerState?.() === 2 && isPlayingRef.current)
+                              ytPlayerInstance.current.playVideo();
+                          } catch { /* ignore */ }
+                        }, 400);
+                      }
                     }
-                  }
-                }}
-                className="h-full w-full overflow-hidden" 
-              />
-            ) : (
+                  }}
+                  className="h-full w-full scale-[1.15] translate-y-[2%] origin-center pointer-events-none select-none" 
+                />
+
+                {/* Interaction Blocker - Prevents YT internal UI from showing while allowing custom play/pause */}
+                <div 
+                  className="absolute inset-0 z-10 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTogglePlay();
+                  }}
+                />
+                
+                {/* Fullscreen Overlay Button */}
+                {viewMode === "video" && (
+                  <m.button
+                    whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.2)" }}
+                    whileTap={{ scale: 0.95 }}
+                    className="absolute bottom-8 right-8 z-[60] p-2.5 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 text-white/80 opacity-60 hover:opacity-100 transition-all duration-300 pointer-events-auto"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFullscreen();
+                    }}
+                    title="Fullscreen"
+                  >
+                    <Maximize size={18} />
+                  </m.button>
+                )}
+              </div>
+            )}
+            {viewMode === "music" && (
               <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={48} />
             )}
           </m.div>

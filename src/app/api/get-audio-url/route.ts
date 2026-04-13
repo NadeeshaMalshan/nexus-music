@@ -13,13 +13,14 @@ export const maxDuration = 30;
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const videoId = searchParams.get("videoId") || searchParams.get("id");
+  const isLive = searchParams.get("isLive") === "true";
 
   if (!videoId || videoId === "undefined" || videoId === "null") {
     return NextResponse.json({ error: "Invalid or missing videoId" }, { status: 400 });
   }
 
-  console.log(`[get-audio-url] videoId: ${videoId}`);
-  const url = await getYoutubeDirectAudioUrl(videoId);
+  console.log(`[get-audio-url] videoId: ${videoId}, isLive: ${isLive}`);
+  const url = await getYoutubeDirectAudioUrl(videoId, isLive);
 
   if (!url) {
     return NextResponse.json(

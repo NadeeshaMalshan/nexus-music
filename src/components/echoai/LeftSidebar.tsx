@@ -12,6 +12,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { CreatePlaylistModal, AiPlaylistModal } from "./LibraryModals";
+import { parseYouTubeWatchUrl, songFromYouTubeVideoId } from "@/lib/parseYouTubeUrl";
 
 const formatCount = (count: string | number) => {
   const num = typeof count === "string" ? parseInt(count) : count;
@@ -67,10 +68,23 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
   }, [session]);
 
   const performSearch = useCallback(async (q: string) => {
-    if (!q.trim()) {
+    const trimmed = q.trim();
+    if (!trimmed) {
       setSearchResults([]);
       return;
     }
+
+    const parsed = parseYouTubeWatchUrl(trimmed);
+    if (parsed) {
+      const { videoId, isMusic, isLive } = parsed;
+      const song = await songFromYouTubeVideoId(videoId, accentColor, !isMusic, isLive);
+      onSongClick(song);
+      setSearchQuery("");
+      setSearchResults([]);
+      setIsSearchFocused(false);
+      return;
+    }
+
     setSearchLoading(true);
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
@@ -83,7 +97,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
     } finally {
       setSearchLoading(false);
     }
-  }, []);
+  }, [accentColor, onSongClick]);
 
   useEffect(() => {
     if (searchTimeoutRef.current) window.clearTimeout(searchTimeoutRef.current);

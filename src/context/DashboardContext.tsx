@@ -186,6 +186,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const likedLibraryRollbackRef = useRef<LikedLibraryTrackRow | null>(null);
   const [viewMode, setViewMode] = useState<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const viewModeRef = useRef<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
+  const prevViewModeRef = useRef<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const userIntentRef = useRef<"playing" | "paused">("paused");
 
   const [directAudioUrl, setDirectAudioUrl] = useState<string | null>(null);
@@ -206,6 +207,34 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     viewModeRef.current = viewMode;
+  }, [viewMode]);
+
+  // When video mode is closed (video → music transition), resume the hidden background player
+  // so audio keeps playing even after the expanded player is minimised.
+  useEffect(() => {
+    const wasVideo = prevViewModeRef.current === "video";
+    prevViewModeRef.current = viewMode;
+
+    if (!wasVideo || viewMode !== "music") return;   // only care about video → music
+    if (isUsingNativeAudio) return;                   // native audio will resume on its own
+
+    const player = ytPlayerRef.current;
+    if (!player || !playerReadyRef.current) return;
+
+    const targetId = audioData?.videoId || currentSong?.id;
+    if (!targetId) return;
+
+    if (userIntentRef.current === "playing") {
+      try {
+        // Force-reload from current position and unmute
+        lastProcessedIdRef.current = null;
+        const seekTo = Math.max(0, currentTimeSec - 0.3);
+        (player as any).loadVideoById({ videoId: targetId, startSeconds: seekTo });
+        player.setVolume(volumeRef.current);
+        setIsPlaying(true);
+      } catch { /* ignore */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode]);
 
   /** Hidden player: in video mode only cue + mute so expanded iframe is the sole audio source. */
@@ -353,7 +382,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
       setAudioData(null);
       try {
-        const response = await fetch(`/api/audio?query=${encodeURIComponent(audioQuery)}`, {
+        const url = currentSong?.isDirectLink
+          ? `/api/audio?query=${encodeURIComponent(audioQuery)}&videoId=${currentSong.id}&artist=${encodeURIComponent(currentSong.artist)}&title=${encodeURIComponent(currentSong.title)}${currentSong.preferVideoPlayback ? '&isVideo=true' : ''}`
+          : `/api/audio?query=${encodeURIComponent(audioQuery)}`;
+        const response = await fetch(url, {
           signal: controller.signal,
           cache: "no-store",
         });
@@ -365,6 +397,22 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         const payload = (await response.json()) as AudioPayload;
         audioCacheRef.current[audioQuery] = payload;
         setAudioData(payload);
+
+        // If this was a direct link, sync refined metadata (clean artist/title) back to the song object
+        if (currentSong?.isDirectLink && payload.videoId === currentSong.id) {
+          if (payload.trackName !== currentSong.title || payload.artist !== currentSong.artist) {
+            setCurrentSong((prev) =>
+              prev?.id === payload.videoId
+                ? {
+                    ...prev,
+                    title: payload.trackName || prev.title,
+                    artist: payload.artist || prev.artist,
+                    artwork: payload.coverArt || prev.artwork,
+                  }
+                : prev
+            );
+          }
+        }
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           console.error("Failed to load unified audio payload:", error);

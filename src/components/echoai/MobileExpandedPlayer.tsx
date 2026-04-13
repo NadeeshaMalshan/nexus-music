@@ -94,6 +94,20 @@ export function MobileExpandedPlayer({
   }, [activeTab]);
 
   const ytPlayerInstance = useRef<any>(null);
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+
+  // Fresh player key every time we enter video mode — prevents "page couldn't load"
+  // caused by old player cleanup racing with new player init on the same DOM element.
+  const [videoKey, setVideoKey] = useState(0);
+  const prevViewModeRef2 = useRef(viewMode);
+  useEffect(() => {
+    if (prevViewModeRef2.current !== "video" && viewMode === "video") {
+      setVideoKey((k) => k + 1);
+      ytPlayerInstance.current = null;
+    }
+    prevViewModeRef2.current = viewMode;
+  }, [viewMode]);
   const videoSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
@@ -188,14 +202,35 @@ export function MobileExpandedPlayer({
       videoSyncIntervalRef.current = setInterval(() => {
         try {
           const p = ytPlayerInstance.current;
-          if (p?.getPlayerState?.() === 1) {
+          if (!p) return;
+          const state = p.getPlayerState?.();
+          if (state === 1) {
             const time = p.getCurrentTime();
             if (time > 0 && Number.isFinite(time)) setCurrentTimeSec(time);
+          }
+          // Resilience: browser throttled the player while we want it playing
+          if (state === 2 && isPlayingRef.current) {
+            try { p.playVideo(); } catch { /* ignore */ }
           }
         } catch { /* ignore */ }
       }, 500);
     }
     return () => { if (videoSyncIntervalRef.current) clearInterval(videoSyncIntervalRef.current); };
+  }, [viewMode]);
+
+  // Resume on page becoming visible again (returning from background/lock screen)
+  useEffect(() => {
+    if (viewMode !== "video") return;
+    const handleVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      const p = ytPlayerInstance.current;
+      if (!p) return;
+      try {
+        if (p.getPlayerState?.() === 2 && isPlayingRef.current) p.playVideo();
+      } catch { /* ignore */ }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [viewMode]);
 
   useEffect(() => {
@@ -282,16 +317,18 @@ export function MobileExpandedPlayer({
   const renderControls = () => (
     <div className="flex w-full flex-col justify-center px-6">
       {/* Progress */}
-      <div className="space-y-4">
-        <div onClick={handleSeekClick} className="group relative h-1 w-full cursor-pointer rounded-full bg-white/10">
-          <div className="absolute inset-y-0 left-0 rounded-full bg-white/60" style={{ width: `${progress}%` }} />
-          <div className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 shadow-md" style={{ left: `${progress}%` }} />
+      {!currentSong.isLive && (
+        <div className="space-y-4">
+          <div onClick={handleSeekClick} className="group relative h-1 w-full cursor-pointer rounded-full bg-white/10">
+            <div className="absolute inset-y-0 left-0 rounded-full bg-white/60" style={{ width: `${progress}%` }} />
+            <div className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 shadow-md" style={{ left: `${progress}%` }} />
+          </div>
+          <div className="flex justify-between text-[11px] font-bold tracking-tight text-white/30">
+            <span>{formatSeconds(currentTimeSec)}</span>
+            <span>-{formatSeconds(safeDuration - currentTimeSec)}</span>
+          </div>
         </div>
-        <div className="flex justify-between text-[11px] font-bold tracking-tight text-white/30">
-          <span>{formatSeconds(currentTimeSec)}</span>
-          <span>-{formatSeconds(safeDuration - currentTimeSec)}</span>
-        </div>
-      </div>
+      )}
 
       {/* Main Controls */}
       <div className="mt-4 flex items-center justify-between px-8 py-4">
@@ -440,16 +477,36 @@ export function MobileExpandedPlayer({
                 >
                     {viewMode === "video" ? (
                         <YouTube 
+                            key={`mobile-yt-${videoKey}`}
                             videoId={currentSong.musicVideoId || currentSong.id} 
                             opts={youtubeOpts} 
                             onReady={e => { 
                                 ytPlayerInstance.current = e.target; 
                                 e.target.setVolume(volume); 
-                                // Apply video quality setting
                                 const vq = settings.videoQuality === "auto" ? "default" : settings.videoQuality;
                                 try { e.target.setPlaybackQuality(vq); } catch(err) {}
                                 if(isPlaying) e.target.playVideo(); 
-                            }} 
+                            }}
+                            onStateChange={e => {
+                                if (e.data === 0) {
+                                    // Ended → advance queue
+                                    onNext();
+                                } else if (e.data === 1) {
+                                    setIsPlaying(true);
+                                } else if (e.data === 2) {
+                                    if (!isPlayingRef.current) {
+                                        setIsPlaying(false);
+                                    } else {
+                                        // Browser throttled — retry
+                                        setTimeout(() => {
+                                            try {
+                                                if (ytPlayerInstance.current?.getPlayerState?.() === 2 && isPlayingRef.current)
+                                                    ytPlayerInstance.current.playVideo();
+                                            } catch { /* ignore */ }
+                                        }, 400);
+                                    }
+                                }
+                            }}
                             className="h-full w-full" 
                         />
                     ) : (

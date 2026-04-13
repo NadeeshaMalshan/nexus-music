@@ -64,6 +64,22 @@ export function DesktopExpandedPlayer({
   
   const ytPlayerInstance = useRef<any>(null);
   const videoSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Ref so callbacks always see the latest isPlaying without closure staleness
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+
+  // Increment key every time we ENTER video mode so the <YouTube> component
+  // gets a completely fresh DOM slot — avoids "page couldn't load" errors caused
+  // by the old player's cleanup racing with a new player init on the same element.
+  const [videoKey, setVideoKey] = useState(0);
+  const prevViewModeRef2 = useRef(viewMode);
+  useEffect(() => {
+    if (prevViewModeRef2.current !== "video" && viewMode === "video") {
+      setVideoKey((k) => k + 1);
+      ytPlayerInstance.current = null; // clear stale ref before new player mounts
+    }
+    prevViewModeRef2.current = viewMode;
+  }, [viewMode]);
   const storylineRef = useRef<HTMLDivElement>(null);
   const storylineIndexRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -155,14 +171,35 @@ export function DesktopExpandedPlayer({
       videoSyncIntervalRef.current = setInterval(() => {
         try {
           const p = ytPlayerInstance.current;
-          if (p?.getPlayerState?.() === 1) {
+          if (!p) return;
+          const state = p.getPlayerState?.();
+          if (state === 1) {
             const time = p.getCurrentTime();
             if (time > 0 && Number.isFinite(time)) setCurrentTimeSec(time);
+          }
+          // Resilience: if browser throttled/paused the player while we want it playing
+          if (state === 2 && isPlayingRef.current) {
+            try { p.playVideo(); } catch { /* ignore */ }
           }
         } catch { /* ignore */ }
       }, 500);
     }
     return () => { if (videoSyncIntervalRef.current) clearInterval(videoSyncIntervalRef.current); };
+  }, [viewMode]);
+
+  // Resume on tab/page becoming visible again (e.g. switching back from another app)
+  useEffect(() => {
+    if (viewMode !== "video") return;
+    const handleVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      const p = ytPlayerInstance.current;
+      if (!p) return;
+      try {
+        if (p.getPlayerState?.() === 2 && isPlayingRef.current) p.playVideo();
+      } catch { /* ignore */ }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [viewMode]);
 
   useEffect(() => {
@@ -181,7 +218,16 @@ export function DesktopExpandedPlayer({
   const youtubeOpts = {
     height: '100%',
     width: '100%',
-    playerVars: { autoplay: 0, controls: 0, modestbranding: 1, rel: 0, iv_load_policy: 3 },
+    playerVars: {
+      autoplay: 0,
+      controls: 0,
+      modestbranding: 1,
+      rel: 0,
+      iv_load_policy: 3,
+      playsinline: 1,
+      enablejsapi: 1,
+      origin: typeof window !== "undefined" ? window.location.origin : undefined,
+    },
   };
 
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
@@ -266,16 +312,18 @@ export function DesktopExpandedPlayer({
         </div>
       )}
 
-      <div className={`${isCompact ? "mt-0" : "mt-3"} space-y-2`}>
-        <div onClick={handleSeekClick} className="group relative h-1.5 w-full cursor-pointer rounded-full bg-white/20">
-          <div className="absolute inset-y-0 left-0 rounded-full bg-white/90" style={{ width: `${progress}%` }} />
-          <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg group-hover:scale-100" style={{ left: `${progress}%` }} />
+      {!currentSong.isLive && (
+        <div className={`${isCompact ? "mt-0" : "mt-3"} space-y-2`}>
+          <div onClick={handleSeekClick} className="group relative h-1.5 w-full cursor-pointer rounded-full bg-white/20">
+            <div className="absolute inset-y-0 left-0 rounded-full bg-white/90" style={{ width: `${progress}%` }} />
+            <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-white shadow-lg group-hover:scale-100" style={{ left: `${progress}%` }} />
+          </div>
+          <div className="flex justify-between text-[13px] font-semibold tracking-wide text-white/40">
+            <span>{formatSeconds(currentTimeSec)}</span>
+            <span>-{formatSeconds(safeDuration - currentTimeSec)}</span>
+          </div>
         </div>
-        <div className="flex justify-between text-[13px] font-semibold tracking-wide text-white/40">
-          <span>{formatSeconds(currentTimeSec)}</span>
-          <span>-{formatSeconds(safeDuration - currentTimeSec)}</span>
-        </div>
-      </div>
+      )}
 
       <div className={`${isCompact ? "mt-1" : "mt-3"} flex items-center justify-center gap-10`}>
         <button onClick={onPrev} className="text-white/80 active:scale-95 transition-transform"><SkipBack size={isCompact ? 32 : 42} fill="currentColor" /></button>
@@ -356,16 +404,38 @@ export function DesktopExpandedPlayer({
           <m.div layout className={`group relative w-full overflow-hidden rounded-[32px] border border-white/10 bg-black shadow-2xl flex items-center justify-center animate-gpu ${viewMode === "music" ? "aspect-square" : "aspect-video"}`}>
             {viewMode === "video" ? (
               <YouTube 
+                key={`desktop-yt-${videoKey}`}
                 videoId={currentSong.musicVideoId || currentSong.id} 
                 opts={youtubeOpts} 
                 onReady={e => { 
                   ytPlayerInstance.current = e.target; 
                   e.target.setVolume(volume); 
-                  // Apply video quality setting
                   const vq = settings.videoQuality === "auto" ? "default" : settings.videoQuality;
                   try { e.target.setPlaybackQuality(vq); } catch(err) {}
                   if(isPlaying) e.target.playVideo(); 
-                }} 
+                }}
+                onStateChange={e => {
+                  if (e.data === 0) {
+                    // Ended → advance queue
+                    onNext();
+                  } else if (e.data === 1) {
+                    // Playing
+                    setIsPlaying(true);
+                  } else if (e.data === 2) {
+                    // Paused — only treat as user intent if isPlaying was already false
+                    if (!isPlayingRef.current) {
+                      setIsPlaying(false);
+                    } else {
+                      // Browser throttled us — retry after short delay
+                      setTimeout(() => {
+                        try {
+                          if (ytPlayerInstance.current?.getPlayerState?.() === 2 && isPlayingRef.current)
+                            ytPlayerInstance.current.playVideo();
+                        } catch { /* ignore */ }
+                      }, 400);
+                    }
+                  }
+                }}
                 className="h-full w-full overflow-hidden" 
               />
             ) : (

@@ -163,10 +163,30 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
             />
           </m.div>
         )}
+      </AnimatePresence>
 
-        {isExpandedPlayerOpen && currentSong && (
+      {/*
+        ExpandedPlayer is kept mounted whenever viewMode === "video" so the react-youtube
+        iframe is never destroyed and background audio continues even when minimised.
+        In music mode it only mounts when actually open (background player handles audio).
+      */}
+      {currentSong && (isExpandedPlayerOpen || viewMode === "video") && (
+        <div
+          className="fixed z-50 transition-none"
+          style={
+            isExpandedPlayerOpen
+              ? { inset: 0 }
+              : {
+                  top: 0, left: 0,
+                  width: "1px", height: "1px",
+                  overflow: "hidden",
+                  opacity: 0.01,
+                  pointerEvents: "none",
+                  zIndex: -10,
+                }
+          }
+        >
           <ExpandedPlayer
-            key="expanded-player"
             onClose={() => setIsExpandedPlayerOpen(false)}
             currentSong={{
               ...currentSong,
@@ -212,8 +232,8 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
               router.push(`/artist/${encodeURIComponent(name)}`);
             }}
           />
-        )}
-      </AnimatePresence>
+        </div>
+      )}
 
       <RightSidebar
         isOpen={isRightSidebarOpen && !isExpandedPlayerOpen}

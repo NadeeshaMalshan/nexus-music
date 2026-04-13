@@ -6,6 +6,7 @@ import { type Song } from "./types";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 import { SongMenu } from "./SongMenu";
 import { useDashboard } from "@/context/DashboardContext";
+import { parseYouTubeWatchUrl, songFromYouTubeVideoId } from "@/lib/parseYouTubeUrl";
 
 interface SearchPageProps {
   onClose: () => void;
@@ -58,15 +59,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   // Category list
   const categories = ["Top", "Songs", "Videos", "Artists", "Albums", "Playlists", "Remixes"];
 
-  // Handle initial query from URL
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const q = urlParams.get("q");
-    if (q) {
-      setSearchQuery(q);
-      void runSearch(q);
-    }
-  }, []);
+  const searchAccentColor = "var(--art-accent, #FA243C)";
 
   const extractDominantColor = useCallback(async (src: string): Promise<string | null> => {
     return new Promise((resolve) => {
@@ -196,6 +189,25 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
     }
   };
 
+  const playFromWatchUrl = useCallback(
+    async (trimmed: string): Promise<boolean> => {
+      const parsed = parseYouTubeWatchUrl(trimmed);
+      if (!parsed) return false;
+      
+      const { videoId, isMusic, isLive } = parsed;
+      const shouldPreferVideo = !isMusic;
+
+      const song = await songFromYouTubeVideoId(videoId, searchAccentColor, shouldPreferVideo, isLive);
+      onSongSelect(song);
+      onClose();
+      setSearchResults([]);
+      setResultsByCategory({});
+      setSearchLoading(false);
+      return true;
+    },
+    [onSongSelect, onClose]
+  );
+
   const runSearch = useCallback(async (queryOverride?: string, categoryOverride?: string) => {
     const query = (queryOverride ?? searchQuery).trim();
     const cat = categoryOverride ?? activeCategory;
@@ -204,6 +216,11 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
       setResultsByCategory({});
       return;
     }
+
+    if (await playFromWatchUrl(query)) {
+      return;
+    }
+
     setSearchLoading(true);
     
     // Remixes as a local modification of songs search
@@ -259,7 +276,17 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
     } finally {
       setSearchLoading(false);
     }
-  }, [searchQuery, activeCategory]);
+  }, [searchQuery, activeCategory, playFromWatchUrl]);
+
+  // Handle initial query from URL (?q=) — watch URLs play via playFromWatchUrl inside runSearch
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const q = urlParams.get("q");
+    if (!q) return;
+    setSearchQuery(q);
+    void runSearch(q);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- apply ?q= once on mount only
+  }, []);
 
   useEffect(() => {
     if (searchTimeoutRef.current) {

@@ -18,54 +18,78 @@ function upgradeThumbnail(url?: string, videoId?: string): string {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("query")?.trim();
+  const directVideoId = searchParams.get("videoId")?.trim();
+  const isVideo = searchParams.get("isVideo") === "true";
+  const passedArtist = searchParams.get("artist")?.trim();
+  const passedTitle = searchParams.get("title")?.trim();
 
-  if (!query) {
+  if (!query && !directVideoId) {
     return NextResponse.json(
-      { error: "Missing required param: query" },
+      { error: "Missing required param: query or videoId" },
       { status: 400 }
     );
   }
 
   try {
-    const results = await searchSongsRobust(query);
+    let videoId: string | undefined = directVideoId;
+    let trackName = passedTitle || query || "YouTube Video";
+    let artist = passedArtist || "Unknown Artist";
+    let thumbnailUrl = directVideoId ? youtubeHqThumbnail(directVideoId) : "";
+    let musicVideoId = directVideoId;
 
-    if (!results || results.length === 0) {
+    if (isVideo && directVideoId) {
+       // For standard videos, we prioritize the passed metadata (from YouTube oembed)
+       // This ensures channel name -> artist and video title -> trackName
+    } else {
+      // Fetch refined metadata from YouTube Music based on the query
+      const searchResults = await searchSongsRobust(query || "");
+      
+      // Try to find an exact ID match, but fallback to the first result for metadata if needed
+      const exactMatch = directVideoId ? searchResults.find((r: any) => r.youtubeId === directVideoId) : null;
+      const metadataSource = exactMatch || searchResults[0];
+
+      if (metadataSource) {
+        if (!directVideoId) videoId = metadataSource.youtubeId?.trim();
+        
+        trackName = metadataSource.title?.trim() || trackName;
+        artist = metadataSource.artist || 
+                 metadataSource.artists?.map((a: any) => a.name).filter(Boolean).join(", ") || 
+                 "Unknown Artist";
+        thumbnailUrl = metadataSource.thumbnailUrl || metadataSource.thumbnail || thumbnailUrl;
+        
+        // Try to find the exact Music Video for this track if we don't have a direct ID
+        if (!directVideoId) {
+          const videoResults = await searchVideosRobust(`${artist} ${trackName} music video`);
+          musicVideoId = videoResults?.[0]?.youtubeId?.trim() || videoId;
+        }
+      }
+    }
+
+    // Fallback cleanup
+    if ((!artist || artist === "Unknown Artist" || (isVideo && artist === "YouTube")) && query?.includes(" - ")) {
+       const parts = query.split(" - ");
+       artist = parts[0].trim();
+       if (!trackName || trackName === "YouTube Video") trackName = parts[1].trim();
+    }
+
+    if (!videoId && !directVideoId) {
       return NextResponse.json(
-        { error: "No tracks found for query: " + query },
+        { error: "No track found and no direct ID provided" },
         { status: 404 }
       );
     }
 
-    const best = results[0];
-    const videoId = best.youtubeId?.trim();
-
-    if (!videoId) {
-      return NextResponse.json(
-        { error: "Track found but has no YouTube ID" },
-        { status: 404 }
-      );
-    }
-
-    const artist =
-      best.artists
-        ?.map((a: any) => a.name)
-        .filter(Boolean)
-        .join(", ") || "Unknown Artist";
-
-    // Try to find the exact Music Video for this track so the UI's video tab works
-    const videoResults = await searchVideosRobust(`${artist} ${best.title || query} music video`);
-    const musicVideoId = videoResults?.[0]?.youtubeId?.trim() || videoId;
-
-    const thumbnail = upgradeThumbnail(best.thumbnailUrl, videoId);
+    const finalVideoId = videoId || directVideoId!;
+    const thumbnail = upgradeThumbnail(thumbnailUrl, finalVideoId);
 
     const payload = {
-      audioUrl: `https://www.youtube.com/watch?v=${videoId}`,
-      trackName: best.title?.trim() || query,
-      artist,
+      audioUrl: `https://www.youtube.com/watch?v=${finalVideoId}`,
+      trackName,
+      artist: artist.replace(/\s*-\s*Topic\s*$/i, ""),
       coverArt: thumbnail,
-      videoId,
-      musicVideoId: musicVideoId,
-      source: "music.youtube.com",
+      videoId: finalVideoId,
+      musicVideoId: musicVideoId || finalVideoId,
+      source: directVideoId ? "youtube.com" : "music.youtube.com",
     };
 
     return NextResponse.json(payload);

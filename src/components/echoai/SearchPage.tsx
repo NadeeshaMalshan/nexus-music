@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles, UserRound } from "lucide-react";
+import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles, UserRound, Video } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { type Song } from "./types";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 import { SongMenu } from "./SongMenu";
 import { useDashboard } from "@/context/DashboardContext";
-import { titleSuggestsMusicVideo } from "@/lib/musicVideoTitle";
 
 interface SearchPageProps {
   onClose: () => void;
@@ -317,7 +316,6 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
         type: "ALBUM"
       };
     }
-    const mvFromTitle = titleSuggestsMusicVideo(item.title);
     return {
       id: item.videoId || `search-${idx}`,
       title: item.title,
@@ -325,10 +323,9 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
       artwork: item.thumbnail,
       duration: item.duration,
       color: songColors[item.videoId] || "var(--art-accent, #FA243C)",
-      type: activeCategory === "Videos" || item.fromVideosShelf ? "VIDEO" : "SONG",
+      type: activeCategory === "Videos" ? "VIDEO" : "SONG",
       views: item.views,
-      preferVideoPlayback:
-        activeCategory === "Videos" || (activeCategory === "Top" && !!item.fromVideosShelf) || mvFromTitle,
+      preferVideoPlayback: activeCategory === "Videos" || (activeCategory === "Top" && !!item.fromVideosShelf),
     };
   });
 
@@ -495,7 +492,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
             <div className="flex flex-col gap-1">
               {mappedSongs.map((song, index) => (
                 <SwipeableSongRow
-                  key={`${song.type ?? "row"}-${song.id}-${index}`}
+                  key={song.id}
                   disableDrag={openMenuId === song.id}
                   className={openMenuId === song.id ? "z-50" : "z-10"}
                   onSwipeLeft={() => {
@@ -545,16 +542,15 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                     }}
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div
-                        className={`relative shrink-0 overflow-hidden border border-white/10 shadow-lg ${
-                          song.type === "ARTIST"
-                            ? "h-[64px] w-[64px] rounded-full"
-                            : song.type === "VIDEO" || titleSuggestsMusicVideo(song.title)
-                              ? "h-16 aspect-video rounded-xl"
-                              : "h-[64px] w-[64px] rounded-xl"
-                        }`}
-                      >
+                      <div className={`relative h-[64px] w-[64px] shrink-0 overflow-hidden ${song.type === "ARTIST" ? "rounded-full" : "rounded-xl"} border border-white/10 shadow-lg`}>
                         <img src={song.artwork?.replace(/([=|-][swh])\d+/g, '$1600') || song.artwork} alt={song.title} className="h-full w-full object-cover" />
+                        {/* Music video badge on thumbnail */}
+                        {song.preferVideoPlayback && (
+                          <div className="absolute bottom-1 right-1 flex items-center gap-0.5 bg-black/70 backdrop-blur-sm rounded-md px-1 py-0.5 pointer-events-none">
+                            <Video size={9} className="text-white/90" />
+                            <span className="text-[8px] font-black text-white/90 uppercase tracking-wider leading-none">MV</span>
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                            <Play fill="white" className="text-white w-6 h-6 ml-1" />
                         </div>
@@ -562,6 +558,13 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                       <div className="flex flex-col flex-1 min-w-0 pr-4">
                         <p className="truncate text-[18px] font-bold text-white leading-tight mb-1">{song.title}</p>
                         <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                          {song.preferVideoPlayback && (
+                            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider leading-none px-1.5 py-0.5 rounded-md border"
+                              style={{ color: 'var(--art-accent,#FA243C)', borderColor: 'var(--art-accent,#FA243C)44', background: 'var(--art-accent,#FA243C)18' }}>
+                              <Video size={9} />MV
+                            </span>
+                          )}
                           <p 
                             onClick={(e) => {
                               e.stopPropagation();
@@ -571,7 +574,8 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                           >
                             {song.artist}
                           </p>
-                          {(!song.type || song.type === "SONG" || song.type === "VIDEO") && song.views && (
+                          </div>
+                          {(!song.type || song.type === "SONG") && song.views && (
                             <>
                               <span className="text-white/10 text-[10px]">•</span>
                               <span className="text-[12px] font-bold text-white/20 uppercase tracking-widest leading-none">

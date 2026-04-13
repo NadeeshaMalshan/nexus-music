@@ -24,7 +24,6 @@ import {
 import Image from "next/image";
 import { useDashboard } from "@/context/DashboardContext";
 import { type Song } from "./types";
-import { titleSuggestsMusicVideo } from "@/lib/musicVideoTitle";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -241,7 +240,6 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
     artwork: t.thumbnail || t.albumArt,
     duration: t.duration || fmtMs(t.durationMs),
     color: palette.accent,
-    preferVideoPlayback: titleSuggestsMusicVideo(t.name),
   });
 
   const formatCount = (count: number | string) => {
@@ -291,7 +289,6 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
           artwork: s.artwork,
           duration: s.duration,
           color: palette.accent,
-          preferVideoPlayback: titleSuggestsMusicVideo(s.title),
         }));
         onSongClick(songs[0]);
         // Add rest to queue
@@ -323,7 +320,6 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
             artwork: i.thumbnailUrl,
             duration: i.duration,
             color: palette.accent,
-            preferVideoPlayback: titleSuggestsMusicVideo(i.title),
           }));
           onSongClick(songs[0]);
           songs.slice(1).forEach((s: any) => onAddToQueue(s));
@@ -340,7 +336,6 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
            artwork: s.artwork,
            duration: s.duration,
            color: palette.accent,
-           preferVideoPlayback: titleSuggestsMusicVideo(s.title),
          }));
          onSongClick(songs[0]);
          songs.slice(1).forEach((s: any) => onAddToQueue(s));
@@ -602,7 +597,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                 <div className="flex flex-col gap-1">
                   {visibleTracks?.map((track, idx) => (
                     <SwipeableSongRow
-                      key={`artist-top-${idx}-${track.videoId || track.spotifyId || "t"}`}
+                      key={track.videoId || track.spotifyId || idx}
                       disableDrag={openMenuId === track.spotifyId}
                       onSwipeRight={() => track.videoId && onPlayNext(trackToSong(track))}
                       onSwipeLeft={() => track.videoId && onAddToQueue(trackToSong(track))}
@@ -673,13 +668,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                       </div>
 
                       {/* Album Art */}
-                      <div
-                        className={`relative shrink-0 rounded-xl overflow-hidden border border-white/10 shadow-lg ${
-                          titleSuggestsMusicVideo(track.name)
-                            ? "h-12 w-auto aspect-video"
-                            : "w-12 h-12"
-                        }`}
-                      >
+                      <div className="relative w-12 h-12 shrink-0 rounded-xl overflow-hidden border border-white/10 shadow-lg">
                         <Image
                           src={
                             track.thumbnail ||
@@ -841,12 +830,12 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
               {data.videos && data.videos.length > 0 && (
                 <section>
                   <h2 className="text-2xl font-black text-white tracking-tight mb-6 px-1 flex items-center gap-2">
-                    Videos
+                    <Video size={22} className="text-white/50" /> Videos
                   </h2>
                   <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 px-1">
                     {data.videos.map((v, i) => (
                       <m.div
-                        key={`artist-video-${v.id}-${i}`}
+                        key={v.id}
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 + i * 0.05, ...MOTION_CONFIG.transition }}
@@ -865,6 +854,11 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                       >
                         <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-white/5 shadow-2xl">
                           <Image src={v.image} alt={v.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
+                          {/* Music video badge */}
+                          <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-md rounded-lg px-2 py-1 pointer-events-none">
+                            <Video size={11} className="text-white/80" />
+                            <span className="text-[10px] font-black text-white/80 uppercase tracking-wider leading-none">MV</span>
+                          </div>
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                              <Play size={32} fill="white" />
                           </div>

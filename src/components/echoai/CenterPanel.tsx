@@ -15,7 +15,6 @@ import { PlaylistDetail } from "./PlaylistDetail";
 import { AlbumDetail } from "./AlbumDetail";
 import { Settings } from "./Settings";
 import { useRouter } from "next/navigation";
-import { titleSuggestsMusicVideo } from "@/lib/musicVideoTitle";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -42,8 +41,6 @@ type ForYouTrack = {
   id?: string;
   artwork?: string;
   duration?: string;
-  /** From title heuristic — music videos get 16:9 art; songs stay 1:1 */
-  isMusicVideo?: boolean;
 };
 
 // ─── Shelf Component ─────────────────────────────────────────────────────────
@@ -99,7 +96,7 @@ function Shelf(props: {
 
       <div 
         ref={scrollRef}
-        className="flex items-stretch gap-x-8 overflow-x-auto no-scrollbar scroll-smooth px-1 pb-4"
+        className="flex items-start gap-x-8 overflow-x-auto no-scrollbar scroll-smooth px-1 pb-4"
       >
         {children}
       </div>
@@ -107,18 +104,9 @@ function Shelf(props: {
   );
 }
 
-/**
- * Same row height for every card; width varies by aspect ratio.
- *  Audio (ATV) → square:  H × H
- *  Video (OMV/UGC/…) → widescreen: H × (H·16/9)
- */
-const FOR_YOU_THUMB_H = "h-[188px] sm:h-[200px]";
-const FOR_YOU_AUDIO_W = "w-[188px] sm:w-[200px]";
-const FOR_YOU_VIDEO_W = "w-[calc(188px*16/9)] sm:w-[calc(200px*16/9)]";
-
 // ─── ForYouCard Component ────────────────────────────────────────────────────
 function ForYouCard(props: {
-  track: ForYouTrack & { id?: string; artwork?: string; isMusicVideo?: boolean };
+  track: ForYouTrack & { id?: string; artwork?: string };
   index: number;
   onPlay: () => void;
   isPlaying: boolean;
@@ -128,18 +116,16 @@ function ForYouCard(props: {
   onNavigateArtist?: (name: string) => void;
 }) {
   const { track, index, onPlay, isPlaying, accentColor, onAddToQueue, onPlayNext, onNavigateArtist } = props;
-  const isMv = !!track.isMusicVideo;
 
   return (
     <m.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, ease: APPLE_EASE }}
-      className="group relative flex h-full w-fit max-w-[min(100%,420px)] min-w-0 flex-col cursor-pointer"
+      className="group relative flex flex-col w-full min-w-0 cursor-pointer"
       onClick={onPlay}
     >
-      {/* Same height for every card; width differs: video=16:9, audio=1:1 */}
-      <div className={`relative shrink-0 overflow-hidden rounded-[22px] bg-white/5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-500 group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.6)] ${FOR_YOU_THUMB_H} ${isMv ? FOR_YOU_VIDEO_W : FOR_YOU_AUDIO_W}`}>
+      <div className="relative w-full aspect-square rounded-[22px] overflow-hidden bg-white/5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-500 group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.6)]">
         {track.artwork ? (
           <Image
             src={track.artwork.replace(/([=|-][swh])\d+/g, '$1800')}
@@ -165,7 +151,6 @@ function ForYouCard(props: {
                    artwork: track.artwork || "",
                    duration: track.duration || "",
                    color: accentColor,
-                   preferVideoPlayback: !!track.isMusicVideo,
                  });
                }}
                className="p-3 rounded-full bg-white/10 hover:bg-white text-black transition-all hover:scale-110"
@@ -183,7 +168,6 @@ function ForYouCard(props: {
                    artwork: track.artwork || "",
                    duration: track.duration || "",
                    color: accentColor,
-                   preferVideoPlayback: !!track.isMusicVideo,
                  });
                }}
                className="p-3 rounded-full bg-white/10 hover:bg-white text-black transition-all hover:scale-110"
@@ -206,9 +190,7 @@ function ForYouCard(props: {
         </div>
       </div>
 
-      <div className="min-h-px flex-1" aria-hidden />
-
-      <div className="mt-4 w-full min-w-0 shrink-0 text-left">
+      <div className="mt-4 text-left px-1">
         <h3 className="font-bold text-white text-[17px] tracking-tight line-clamp-2 leading-tight mb-1 group-hover:text-white transition-colors h-[42px]">
           {track.title}
         </h3>
@@ -251,7 +233,7 @@ export function CenterPanel(props: CenterPanelProps) {
   const { data: session } = useSession();
   const [playlists, setPlaylists] = useState<YouTubePlaylist[]>([]);
   const [playlistsLoading, setPlaylistsLoading] = useState(false);
-  const [forYouTracks, setForYouTracks] = useState<(ForYouTrack & { id?: string; artwork?: string; isMusicVideo?: boolean })[]>([]);
+  const [forYouTracks, setForYouTracks] = useState<(ForYouTrack & { id?: string; artwork?: string })[]>([]);
   const [forYouLoading, setForYouLoading] = useState(false);
   const [forYouPlayingId, setForYouPlayingId] = useState<string | null>(null);
 
@@ -293,13 +275,6 @@ export function CenterPanel(props: CenterPanelProps) {
           ...track,
           id: track.youtubeId,
           artwork: track.thumbnail,
-          // Use the API-provided videoType first; fall back to title heuristic only if absent.
-          // MUSIC_VIDEO_TYPE_ATV = plain audio track → square thumbnail.
-          // Anything else (OMV, UGC…) = actual video → 16:9 thumbnail.
-          isMusicVideo:
-            track.videoType != null
-              ? track.videoType !== "MUSIC_VIDEO_TYPE_ATV"
-              : titleSuggestsMusicVideo(track.title),
         }));
         setForYouTracks(resolved);
       }
@@ -315,7 +290,7 @@ export function CenterPanel(props: CenterPanelProps) {
     if (session) fetchPlaylists();
   }, [fetchForYou, fetchPlaylists, session]);
 
-  const handlePlayForYou = async (track: ForYouTrack & { id?: string; artwork?: string; isMusicVideo?: boolean }) => {
+  const handlePlayForYou = async (track: ForYouTrack & { id?: string; artwork?: string }) => {
     if (!track.id || !onSongClick) return;
     setForYouPlayingId(track.id);
     onSongClick({
@@ -325,7 +300,6 @@ export function CenterPanel(props: CenterPanelProps) {
       artwork: track.artwork || "",
       duration: track.duration || "",
       color: accentColor,
-      preferVideoPlayback: !!track.isMusicVideo,
     });
     setForYouPlayingId(null);
   };
@@ -424,17 +398,11 @@ export function CenterPanel(props: CenterPanelProps) {
               <Shelf title="For You" onRefresh={fetchForYou} loading={forYouLoading}>
                 {forYouLoading ? (
                    Array.from({ length: 6 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="shrink-0 rounded-[24px] bg-white/5 animate-pulse h-[188px] w-[188px] sm:h-[200px] sm:w-[200px]"
-                      />
+                      <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-white/5 animate-pulse" />
                    ))
                 ) : (
                   forYouTracks.map((track, i) => (
-                    <div
-                      key={`foryou-${i}-${track.id ?? "track"}-${track.title ?? ""}`}
-                      className="flex h-full w-auto shrink-0 flex-col translate-y-0 transition-all duration-300 hover:-translate-y-1"
-                    >
+                    <div key={`${track.id || track.title}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0 hover:-translate-y-1 transition-all duration-300">
                       <ForYouCard
                         track={track}
                         index={i}
@@ -452,9 +420,9 @@ export function CenterPanel(props: CenterPanelProps) {
 
               {session && (
                 <Shelf title="Your Playlists" onRefresh={fetchPlaylists} loading={playlistsLoading}>
-                  {playlists.map((playlist, plIdx) => (
+                  {playlists.map((playlist) => (
                     <div
-                      key={`home-pl-${plIdx}-${playlist.id}`}
+                      key={playlist.id}
                       onClick={() => onPlaylistClick?.(playlist)}
                       className="w-[200px] shrink-0 cursor-pointer group flex flex-col"
                     >

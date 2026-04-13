@@ -59,8 +59,7 @@ async function fetchSuggestionsWithRetry(videoId: string): Promise<any[]> {
             duration: formattedDuration,      
             durationObj: { totalSeconds: durationSec, label: formattedDuration }, 
             thumbnail: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "",
-            thumbnailUrl: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "",
-            videoType: item.videoType ?? null,
+            thumbnailUrl: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "" 
           };
         });
       }

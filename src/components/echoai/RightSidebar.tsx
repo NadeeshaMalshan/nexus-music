@@ -173,7 +173,7 @@ export function RightSidebar({
                         const isActive = song.id === currentSongId;
                         return (
                           <Reorder.Item 
-                            key={`upnext-${index}-${song.id}`} 
+                            key={song.id} 
                             value={song}
                             className="group relative"
                           >

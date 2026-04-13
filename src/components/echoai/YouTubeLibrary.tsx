@@ -12,7 +12,6 @@ import { type Song } from "./types";
 import { CreatePlaylistModal, AiPlaylistModal, LibraryHistoryPane } from "./LibraryModals";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, SLIDE_UP_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
-import { titleSuggestsMusicVideo } from "@/lib/musicVideoTitle";
 
 interface YouTubeLibraryProps {
   onPlaylistClick?: (playlist: YouTubePlaylist) => void;
@@ -251,9 +250,9 @@ export function YouTubeLibrary({
                           <p className="text-xs md:text-sm text-white/30 font-bold uppercase tracking-wider">{likedSongs.length} Tracks</p>
                        </div>
 
-                       {filteredPlaylists.map((playlist, plIdx) => (
+                       {filteredPlaylists.map(playlist => (
                           <div 
-                             key={`lib-pl-${plIdx}-${playlist.id}`} 
+                             key={playlist.id} 
                              onClick={() => onPlaylistClick?.(playlist)}
                              className="group flex flex-col cursor-pointer"
                           >
@@ -304,21 +303,19 @@ export function YouTubeLibrary({
                        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 animate-gpu"
                     >
                        {filteredLiked.map((track, idx) => {
-                          const likedSongsList: Song[] = filteredLiked.map((t) => ({
-                            id: t.videoId,
-                            title: t.title,
-                            artist: t.artist,
-                            artwork: t.thumbnailUrl,
-                            duration: t.duration || "",
-                            color: accentColor,
-                            preferVideoPlayback: titleSuggestsMusicVideo(t.title),
+                          const likedSongsList: Song[] = filteredLiked.map(t => ({
+                             id: t.videoId,
+                             title: t.title,
+                             artist: t.artist,
+                             artwork: t.thumbnailUrl,
+                             duration: t.duration || "",
+                             color: accentColor,
                           }));
                           
                           const songObj = likedSongsList[idx];
-                          const isMvTile = titleSuggestsMusicVideo(track.title);
                           return (
                             <div 
-                               key={`liked-${idx}-${track.videoId}`}
+                               key={`liked-${idx}`}
                                onClick={() => {
                                  if (onPlayPlaylist) {
                                    onPlayPlaylist(likedSongsList, idx);
@@ -328,11 +325,7 @@ export function YouTubeLibrary({
                                }}
                                className="group flex flex-col cursor-pointer"
                             >
-                               <div
-                                 className={`relative mb-3 md:mb-4 w-full rounded-3xl md:rounded-[28px] overflow-hidden bg-zinc-900 border border-white/5 shadow-xl transition-all duration-500 hover:scale-[1.03] ${
-                                   isMvTile ? "aspect-video" : "aspect-square"
-                                 }`}
-                               >
+                               <div className="relative aspect-square mb-3 md:mb-4 rounded-3xl md:rounded-[28px] overflow-hidden bg-zinc-900 border border-white/5 shadow-xl transition-all duration-500 hover:scale-[1.03]">
                                   <img src={track.thumbnailUrl?.replace("s90", "s600")} alt="" className="h-full w-full object-cover" />
                                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-opacity duration-300">
                                      <button

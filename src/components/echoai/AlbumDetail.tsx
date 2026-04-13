@@ -9,7 +9,6 @@ import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { useDashboard } from "@/context/DashboardContext";
 import { SwipeableSongRow } from "./SwipeableSongRow";
-import { titleSuggestsMusicVideo } from "@/lib/musicVideoTitle";
 
 interface AlbumDetailProps {
   albumId: string;
@@ -76,7 +75,6 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
         artwork: t.artwork,
         duration: t.duration || "0:00",
         color: accentColor,
-        preferVideoPlayback: titleSuggestsMusicVideo(t.title),
       }));
       onPlayPlaylist(mappedSongs, index);
     } else {
@@ -86,8 +84,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
         artist: track.artist || artistName,
         artwork: track.artwork,
         duration: track.duration || "0:00",
-        color: accentColor,
-        preferVideoPlayback: titleSuggestsMusicVideo(track.title),
+        color: accentColor
       });
     }
   };
@@ -101,7 +98,6 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
       artwork: t.artwork,
       duration: t.duration || "0:00",
       color: accentColor,
-      preferVideoPlayback: titleSuggestsMusicVideo(t.title),
     }));
     if (onPlayPlaylist) {
       onPlayPlaylist(mappedSongs, 0);
@@ -121,7 +117,6 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
       artwork: t.artwork,
       duration: t.duration || "0:00",
       color: accentColor,
-      preferVideoPlayback: titleSuggestsMusicVideo(t.title),
     }));
     if (onPlayPlaylist) {
       onPlayPlaylist(mappedSongs, 0);
@@ -232,11 +227,10 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
               artwork: track.artwork,
               duration: track.duration || "0:00",
               color: accentColor,
-              preferVideoPlayback: titleSuggestsMusicVideo(track.title),
             };
             return (
               <SwipeableSongRow
-                key={`album-${i}-${track.videoId}`}
+                key={track.videoId + i}
                 onSwipeRight={() => onPlayNext?.(song)}
                 onSwipeLeft={() => onAddToQueue?.(song)}
               >
@@ -258,13 +252,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
                   </div>
 
                   <div className="flex-1 flex items-center gap-4 md:gap-5 min-w-0">
-                    <div
-                      className={`relative rounded-xl overflow-hidden shrink-0 bg-zinc-900 shadow-xl border border-white/10 ${
-                        titleSuggestsMusicVideo(track.title)
-                          ? "h-12 md:h-14 w-auto aspect-video"
-                          : "w-12 h-12 md:w-14 md:h-14"
-                      }`}
-                    >
+                    <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden shrink-0 bg-zinc-900 shadow-xl border border-white/10">
                       <Image src={track.artwork} alt={track.title} fill className="object-cover" />
                     </div>
                     <div className="flex flex-col min-w-0">

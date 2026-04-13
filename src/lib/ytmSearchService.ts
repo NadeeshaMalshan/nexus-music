@@ -88,9 +88,7 @@ function mapYTMToMusicVideo(item: any) {
     duration: formattedDuration,      // String for Song type
     durationObj: { totalSeconds: durationSec, label: formattedDuration }, // Object for legacy routes
     thumbnail: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "",
-    thumbnailUrl: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "", // Backward compat
-    // "MUSIC_VIDEO_TYPE_ATV" = audio track; anything else (OMV, UGC…) = actual video
-    videoType: item.videoType ?? null,
+    thumbnailUrl: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "" // Backward compat
   };
 }
 

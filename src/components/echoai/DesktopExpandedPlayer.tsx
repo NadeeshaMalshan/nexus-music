@@ -54,6 +54,32 @@ export function DesktopExpandedPlayer({
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">((viewMode === "video" || currentSong.isLive) ? "controls" : "lyrics");
   const [imageError, setImageError] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
+  const [liveMetadata, setLiveMetadata] = useState<{ artist: string; title: string; source?: string } | null>(null);
+
+  // Poll for dynamic metadata if it's a live stream
+  useEffect(() => {
+    if (!currentSong.isLive) {
+      setLiveMetadata(null);
+      return;
+    }
+
+    const fetchLiveMetadata = async () => {
+      try {
+        const videoTitle = ytPlayerInstance.current?.getVideoData?.()?.title || currentSong.title;
+        const res = await fetch(`/api/live-tracker?query=${encodeURIComponent(currentSong.artist + ' ' + currentSong.title)}&title=${encodeURIComponent(videoTitle)}`);
+        const data = await res.json();
+        if (data.artist && data.title) {
+          setLiveMetadata(data);
+        }
+      } catch (e) {
+        console.error("Live Tracker Polling Error:", e);
+      }
+    };
+
+    fetchLiveMetadata();
+    const interval = setInterval(fetchLiveMetadata, 30000); // Poll every 30s
+    return () => clearInterval(interval);
+  }, [currentSong.id, currentSong.isLive]);
 
   // Auto-switch tab if viewMode changes
   useEffect(() => {
@@ -308,12 +334,12 @@ export function DesktopExpandedPlayer({
       {!isCompact && (
         <div className="mt-3 flex items-start justify-between">
           <div className="flex-1 pr-6 min-w-0">
-            <h1 className="line-clamp-2 text-[26px] font-bold tracking-tight text-white leading-tight">{currentSong.title}</h1>
+            <h1 className="line-clamp-2 text-[26px] font-bold tracking-tight text-white leading-tight">{liveMetadata?.title || currentSong.title}</h1>
             <button
-              onClick={() => onArtistClick?.(currentSong.artist)}
+              onClick={() => onArtistClick?.(liveMetadata?.artist || currentSong.artist)}
               className="mt-1 text-lg font-medium text-white/70 hover:text-white transition-colors line-clamp-1 text-left hover:underline underline-offset-4"
             >
-              {currentSong.artist}
+              {liveMetadata?.artist || currentSong.artist}
             </button>
           </div>
           {isLoggedIn && (

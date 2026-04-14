@@ -74,6 +74,7 @@ export function MobileExpandedPlayer({
     }
   }, [jamWarning]);
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls" | "jam">("controls");
+  const [liveMetadata, setLiveMetadata] = useState<{ artist: string; title: string; source?: string } | null>(null);
   const [imageError, setImageError] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const dragControls = useDragControls();
@@ -110,6 +111,31 @@ export function MobileExpandedPlayer({
       setActiveTab("controls");
     }
   }, [viewMode, currentSong.isLive, activeTab]);
+
+  // Poll for dynamic metadata if it's a live stream
+  useEffect(() => {
+    if (!currentSong.isLive) {
+      setLiveMetadata(null);
+      return;
+    }
+
+    const fetchLiveMetadata = async () => {
+      try {
+        const videoTitle = ytPlayerInstance.current?.getVideoData?.()?.title || currentSong.title;
+        const res = await fetch(`/api/live-tracker?query=${encodeURIComponent(currentSong.artist + ' ' + currentSong.title)}&title=${encodeURIComponent(videoTitle)}`);
+        const data = await res.json();
+        if (data.artist && data.title) {
+          setLiveMetadata(data);
+        }
+      } catch (e) {
+        console.error("Live Tracker Polling Error:", e);
+      }
+    };
+
+    fetchLiveMetadata();
+    const interval = setInterval(fetchLiveMetadata, 30000); // Poll every 30s
+    return () => clearInterval(interval);
+  }, [currentSong.id, currentSong.isLive]);
 
   const ytPlayerInstance = useRef<any>(null);
   const isPlayingRef = useRef(isPlaying);
@@ -631,12 +657,12 @@ export function MobileExpandedPlayer({
               <div className="w-full flex flex-col px-10 mt-2 mb-4">
                   <div className="flex items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                          <h1 className="text-[26px] leading-[1.1] font-black text-white tracking-tight line-clamp-2">{currentSong.title}</h1>
+                          <h1 className="text-[26px] leading-[1.1] font-black text-white tracking-tight line-clamp-2">{liveMetadata?.title || currentSong.title}</h1>
                           <button 
-                            onClick={() => onArtistClick?.(currentSong.artist)}
+                            onClick={() => onArtistClick?.(liveMetadata?.artist || currentSong.artist)}
                             className="text-[19px] font-bold text-white/40 active:text-white/70 transition-colors mt-1.5 text-left"
                           >
-                            {currentSong.artist}
+                            {liveMetadata?.artist || currentSong.artist}
                           </button>
                       </div>
                       <div className="flex shrink-0 bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-2xl">

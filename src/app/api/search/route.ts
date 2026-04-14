@@ -131,9 +131,46 @@ export async function GET(request: Request) {
       return NextResponse.json({ items: albums, source: "music.youtube.com" as const });
     }
 
-    if (type === "videos" || type === "musicVideos") {
-      const videos = await searchYouTubeMusicVideos(q);
-      let finalItems: any[] = videos;
+    if (type === "videos" || type === "musicVideos" || type === "live") {
+      let finalItems: any[] = [];
+      const apiKey = process.env.YOUTUBE_API_KEY;
+
+      if (type === "live") {
+        // Use YouTube v3 API directly for live streams
+        try {
+          const { getServerSession } = await import("next-auth/next");
+          const { authOptions } = await import("@/lib/auth");
+          const session = await getServerSession(authOptions);
+
+          const headers: any = {};
+          if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
+
+          const url = new URL("https://www.googleapis.com/youtube/v3/search");
+          url.searchParams.set("part", "snippet");
+          url.searchParams.set("q", q + " live");
+          url.searchParams.set("type", "video");
+          url.searchParams.set("eventType", "live");
+          url.searchParams.set("maxResults", "12");
+          if (apiKey) url.searchParams.set("key", apiKey);
+
+          const liveRes = await fetch(url.toString(), { headers });
+          if (liveRes.ok) {
+            const liveData = await liveRes.json();
+            finalItems = (liveData.items || []).map((item: any) => ({
+              videoId: item.id.videoId,
+              title: item.snippet.title,
+              author: item.snippet.channelTitle,
+              duration: "LIVE",
+              thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+              isLive: true
+            }));
+          }
+        } catch (err) {
+          console.error("[Search API] Live fetch failed:", err);
+        }
+      } else {
+        finalItems = await searchYouTubeMusicVideos(q);
+      }
 
       // Batch fetch view counts for videos
       const ids = finalItems.map((i) => i.videoId).filter(Boolean);
@@ -143,13 +180,15 @@ export async function GET(request: Request) {
           const { authOptions } = await import("@/lib/auth");
           const session = await getServerSession(authOptions);
 
+          const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+          url.searchParams.set("part", "statistics");
+          url.searchParams.set("id", ids.join(","));
+          if (apiKey) url.searchParams.set("key", apiKey);
+
           const headers: any = {};
           if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
 
-          const vidRes = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${ids.join(",")}`,
-            { headers }
-          );
+          const vidRes = await fetch(url.toString(), { headers });
           if (vidRes.ok) {
             const vidData = await vidRes.json();
             const viewsMap: Record<string, string> = {};
@@ -173,6 +212,7 @@ export async function GET(request: Request) {
       searchArtistsRobust(q),
       searchYouTubeMusic(q)
     ]);
+    const apiKey = process.env.YOUTUBE_API_KEY;
 
     // Interleave
     const topArtist = artists[0] ? { ...artists[0], type: "ARTIST" } : null;
@@ -188,13 +228,15 @@ export async function GET(request: Request) {
           const { authOptions } = await import("@/lib/auth");
           const session = await getServerSession(authOptions);
           
+          const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+          url.searchParams.set("part", "statistics");
+          url.searchParams.set("id", videoIds.join(","));
+          if (apiKey) url.searchParams.set("key", apiKey);
+
           const headers: any = {};
           if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
 
-          const vidRes = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds.join(",")}`,
-            { headers }
-          );
+          const vidRes = await fetch(url.toString(), { headers });
           if (vidRes.ok) {
              const vidData = await vidRes.json();
              const viewsMap: Record<string, string> = {};

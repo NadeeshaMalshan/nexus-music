@@ -73,7 +73,7 @@ export function MobileExpandedPlayer({
       return () => clearTimeout(t);
     }
   }, [jamWarning]);
-  const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls" | "jam">(viewMode === "video" ? "controls" : "lyrics");
+  const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls" | "jam">("controls");
   const [imageError, setImageError] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const dragControls = useDragControls();
@@ -104,6 +104,12 @@ export function MobileExpandedPlayer({
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [activeTab]);
+
+  useEffect(() => {
+    if ((viewMode === "video" || currentSong.isLive) && activeTab === "lyrics") {
+      setActiveTab("controls");
+    }
+  }, [viewMode, currentSong.isLive, activeTab]);
 
   const ytPlayerInstance = useRef<any>(null);
   const isPlayingRef = useRef(isPlaying);
@@ -247,10 +253,13 @@ export function MobileExpandedPlayer({
 
   useEffect(() => {
     if ((viewMode === "video" || currentSong.isLive) && ytPlayerInstance.current) {
-      if (isPlaying) ytPlayerInstance.current.playVideo();
-      else ytPlayerInstance.current.pauseVideo();
+      if (isPlaying) {
+        ytPlayerInstance.current.playVideo();
+      } else {
+        ytPlayerInstance.current.pauseVideo();
+      }
     }
-  }, [isPlaying, viewMode, currentSong.isLive]);
+  }, [isPlaying, viewMode, currentSong.isLive, currentSong.id]);
 
   useEffect(() => {
     if ((viewMode === "video" || currentSong.isLive) && ytPlayerInstance.current) {
@@ -329,47 +338,59 @@ export function MobileExpandedPlayer({
   );
 
   const renderControls = () => (
-    <div className="flex w-full flex-col justify-center px-6">
+    <div className="flex w-full flex-col px-10">
       {/* Progress */}
       {!currentSong.isLive && (
-        <div className="space-y-4">
-          <div onClick={handleSeekClick} className="group relative h-1 w-full cursor-pointer rounded-full bg-white/10">
-            <div className="absolute inset-y-0 left-0 rounded-full bg-white/60" style={{ width: `${progress}%` }} />
-            <div className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 shadow-md" style={{ left: `${progress}%` }} />
+        <div className="space-y-4 mb-2">
+          <div onClick={handleSeekClick} className="group relative h-1.5 w-full cursor-pointer rounded-full bg-white/10 overflow-hidden">
+            <m.div 
+                className="absolute inset-y-0 left-0 bg-white/60" 
+                animate={{ width: `${progress}%` }}
+                transition={{ type: "tween", duration: 0.5 }}
+            />
           </div>
-          <div className="flex justify-between text-[11px] font-bold tracking-tight text-white/30">
+          <div className="flex justify-between text-[13px] font-black tracking-tight text-white/20">
             <span>{formatSeconds(currentTimeSec)}</span>
             <span>-{formatSeconds(safeDuration - currentTimeSec)}</span>
           </div>
         </div>
       )}
 
-      {/* Main Controls */}
-      <div className="mt-4 flex items-center justify-between px-8 py-4">
-        <button onClick={onPrev} className="text-white active:scale-90 transition-transform">
-          <SkipBack size={44} fill="currentColor" />
-        </button>
-        <button 
-          onClick={onTogglePlay}
-          className="flex h-20 w-20 items-center justify-center text-white active:scale-95 transition-transform"
+      {/* Main Controls - Apple Style Spacing */}
+      <div className="flex items-center justify-around py-4">
+        <m.button 
+          whileTap={{ scale: 0.8 }}
+          onClick={onPrev} 
+          className="text-white active:scale-90 transition-transform p-4"
         >
-          {isPlaying ? <Pause size={56} fill="white" /> : <Play size={56} fill="white" className="ml-1" />}
-        </button>
-        <button onClick={onNext} className="text-white active:scale-90 transition-transform">
-          <SkipForward size={44} fill="currentColor" />
-        </button>
+          <SkipBack size={48} fill="currentColor" />
+        </m.button>
+        <m.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={onTogglePlay}
+          className="flex h-24 w-24 items-center justify-center text-white active:scale-95 transition-transform"
+        >
+          {isPlaying ? <Pause size={72} fill="white" /> : <Play size={72} fill="white" className="ml-2" />}
+        </m.button>
+        <m.button 
+          whileTap={{ scale: 0.8 }}
+          onClick={onNext} 
+          className="text-white active:scale-90 transition-transform p-4"
+        >
+          <SkipForward size={48} fill="currentColor" />
+        </m.button>
       </div>
 
-      {/* Volume */}
-      <div className="mt-8 flex items-center gap-5 px-4">
+      {/* Volume - Apple Tactical Slider */}
+      <div className="mt-6 flex items-center gap-6">
         <m.div 
-          animate={{ scale: volume === 0 ? 0.8 : 1 }}
+          animate={{ scale: volume === 0 ? 0.7 : 1, opacity: volume === 0 ? 0.3 : 0.6 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
-          <Volume2 size={16} className="text-white/20" />
+          <Volume2 size={16} className="text-white" />
         </m.div>
         
-        <div className="relative h-7 flex-1 flex items-center group">
+        <div className="relative h-2 flex-1 flex items-center group">
           <input
             type="range"
             min="0"
@@ -379,30 +400,33 @@ export function MobileExpandedPlayer({
             onChange={(e) => onVolumeChange(parseInt(e.target.value))}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
           />
-          {/* Track Layout */}
-          <div className="relative h-1.5 w-full rounded-full bg-white/5 z-10 pointer-events-none overflow-hidden">
+          {/* Tactical Track */}
+          <div className="relative h-2.5 w-full rounded-full bg-white/10 z-10 pointer-events-none overflow-hidden backdrop-blur-md border border-white/5">
              <m.div 
-                className="absolute inset-y-0 left-0 bg-white/40"
+                className="absolute inset-y-0 left-0 bg-white/70"
                 animate={{ width: `${volume}%` }}
                 transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
              />
           </div>
-          {/* Knob */}
+          {/* Tactical Knob */}
           <m.div 
-            className="absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.5)] z-20 pointer-events-none border border-black/10"
-            animate={{ left: `${volume}%`, scale: volume > 0 ? 1 : 0.8 }}
+            className="absolute top-1/2 h-7 w-7 -translate-y-1/2 rounded-full bg-white shadow-[0_10px_30px_rgba(0,0,0,0.6)] z-20 pointer-events-none border border-black/5"
+            animate={{ left: `${volume}%`, scale: volume > 0 ? 1 : 0.85 }}
             transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
             style={{ x: "-50%" }}
           >
-             <div className="absolute inset-0 rounded-full bg-linear-to-b from-white to-white/90" />
+             <div className="absolute inset-0 rounded-full bg-linear-to-b from-white to-white/95" />
           </m.div>
         </div>
 
         <m.div 
-          animate={{ scale: volume > 80 ? 1.2 : 1 }}
+          animate={{ 
+            scale: volume > 80 ? 1.2 : 1,
+            opacity: volume > 80 ? 0.9 : 0.6 
+          }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
-          <Volume2 size={24} className="text-white/30" />
+          <Volume2 size={24} className="text-white" />
         </m.div>
       </div>
     </div>
@@ -514,22 +538,30 @@ export function MobileExpandedPlayer({
           {activeTab === "controls" ? (
             <m.div 
                 key="controls"
-                initial={{ opacity: 0, scale: 0.95 }} 
+                initial={{ opacity: 0, scale: 0.92 }} 
                 animate={{ opacity: 1, scale: 1 }} 
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.6, ease: EXPO_OUT }}
-                className="flex flex-1 flex-col items-center justify-between py-8 animate-gpu"
+                exit={{ opacity: 0, scale: 0.92 }}
+                transition={{ duration: 0.7, ease: EXPO_OUT }}
+                className="flex flex-1 flex-col items-center justify-between pb-12 animate-gpu"
             >
-              <div className="w-full flex flex-1 items-center justify-center px-10">
+              {/* Artwork Section */}
+              <div className={`w-full flex-[1.4] flex items-center justify-center transition-all duration-300 ${viewMode === 'video' ? 'px-0' : 'px-10'}`}>
                 <m.div 
-                    layoutId="compact-art"
-                    className={`w-full max-w-[340px] shadow-[0_30px_60px_rgba(0,0,0,0.5)] rounded-[20px] overflow-hidden animate-gpu ${viewMode === 'video' ? 'aspect-video' : 'aspect-square'}`}
+                    layoutId={viewMode === 'video' ? undefined : "compact-art"}
+                    className={`relative w-full shadow-[0_40px_100px_rgba(0,0,0,0.6)] animate-gpu transition-all duration-300 ${(viewMode === 'video' || currentSong.isLive) ? 'aspect-video max-w-full rounded-none! overflow-visible! border-none!' : 'aspect-square max-w-[340px] rounded-[20px] overflow-hidden border border-white/10'}`}
                 >
                     {(viewMode === "video" || currentSong.isLive) && (
                         <div 
                           ref={videoContainerRef}
-                          className={`group/vid relative overflow-hidden ${viewMode === "music" ? "absolute inset-0 opacity-0 pointer-events-none" : "h-full w-full bg-black flex items-center justify-center"}`}
+                          className={`group/vid absolute inset-0 ${(viewMode === "music" && !currentSong.isLive) ? "opacity-0 pointer-events-none z-0 overflow-hidden" : "h-full w-full bg-black flex items-center justify-center z-10 overflow-visible"}`}
                         >
+                            {currentSong.isLive && (
+                                <div className="absolute top-4 left-4 z-50 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-600/90 backdrop-blur-md shadow-lg pointer-events-none">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Live</span>
+                                </div>
+                            )}
+
                             <YouTube 
                                 key={`mobile-yt-${videoKey}`}
                                 videoId={currentSong.musicVideoId || currentSong.id} 
@@ -542,16 +574,16 @@ export function MobileExpandedPlayer({
                                     if(isPlaying) e.target.playVideo(); 
                                 }}
                                 onStateChange={e => {
-                                    if (e.data === 0) {
-                                        // Ended → advance queue
-                                        onNext();
-                                    } else if (e.data === 1) {
-                                        setIsPlaying(true);
-                                    } else if (e.data === 2) {
-                                        if (!isPlayingRef.current) {
-                                            setIsPlaying(false);
-                                        } else {
-                                            // Browser throttled — retry
+                                    if (e.data === 0) onNext();
+                                    else if (e.data === 1) {
+                                      setIsPlaying(true);
+                                      // Secondary quality check
+                                      const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
+                                      try { e.target.setPlaybackQuality(vq); } catch(err) {}
+                                    }
+                                    else if (e.data === 2) {
+                                        if (!isPlayingRef.current) setIsPlaying(false);
+                                        else {
                                             setTimeout(() => {
                                                 try {
                                                     if (ytPlayerInstance.current?.getPlayerState?.() === 2 && isPlayingRef.current)
@@ -561,7 +593,8 @@ export function MobileExpandedPlayer({
                                         }
                                     }
                                 }}
-                                className="h-full w-full scale-[1.15] translate-y-[2%] origin-center pointer-events-none" 
+                                className="h-full w-full origin-center pointer-events-none select-none transition-transform duration-700 rounded-none!" 
+                                iframeClassName="rounded-none! overflow-visible!"
                             />
 
                             {/* Interaction Blocker */}
@@ -576,13 +609,14 @@ export function MobileExpandedPlayer({
                             {/* Fullscreen Button */}
                             {viewMode === "video" && (
                               <button
-                                className="absolute bottom-6 right-6 z-50 p-2.5 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 text-white opacity-60 active:scale-90 transition-all shadow-2xl"
+                                className="absolute bottom-6 right-6 z-50 p-3 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 text-white opacity-60 active:scale-90 transition-all shadow-2xl"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   toggleFullscreen();
                                 }}
+                                title="Fullscreen"
                               >
-                                <Maximize size={18} />
+                                <Maximize size={20} />
                               </button>
                             )}
                         </div>
@@ -593,39 +627,43 @@ export function MobileExpandedPlayer({
                 </m.div>
               </div>
               
-              <div className="w-full flex items-center justify-between px-10 mb-6">
-                  <div className="flex-1 min-w-0 pr-4">
-                      <h1 className="text-2xl font-black text-white line-clamp-1">{currentSong.title}</h1>
-                      <button 
-                        onClick={() => onArtistClick?.(currentSong.artist)}
-                        className="text-lg font-bold text-white/40 active:text-white/70 transition-colors mt-0.5 text-left"
-                      >
-                        {currentSong.artist}
-                      </button>
+              {/* Info & Switches Section */}
+              <div className="w-full flex flex-col px-10 mt-2 mb-4">
+                  <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                          <h1 className="text-[26px] leading-[1.1] font-black text-white tracking-tight line-clamp-2">{currentSong.title}</h1>
+                          <button 
+                            onClick={() => onArtistClick?.(currentSong.artist)}
+                            className="text-[19px] font-bold text-white/40 active:text-white/70 transition-colors mt-1.5 text-left"
+                          >
+                            {currentSong.artist}
+                          </button>
+                      </div>
+                      <div className="flex shrink-0 bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-2xl">
+                          <button 
+                            onClick={() => setViewMode("music")} 
+                            className={`p-2 rounded-full transition-all ${viewMode === "music" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
+                          >
+                            <Music size={15} />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (jamState.roomId) {
+                                setJamWarning("Video mode disabled in Jam");
+                                return;
+                              }
+                              setViewMode("video");
+                            }} 
+                            className={`p-2 rounded-full transition-all ${viewMode === "video" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
+                          >
+                            <Video size={15} />
+                          </button>
+                      </div>
                   </div>
-              <div className="flex bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-xl">
-                  <button 
-                    onClick={() => setViewMode("music")} 
-                    className={`p-2 rounded-full transition-all ${viewMode === "music" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
-                  >
-                    <Music size={16} />
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if (jamState.roomId) {
-                        setJamWarning("Can't switch to video mode while jamming");
-                        return;
-                      }
-                      setViewMode("video");
-                    }} 
-                    className={`p-2 rounded-full transition-all ${viewMode === "video" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
-                  >
-                    <Video size={16} />
-                  </button>
-              </div>
               </div>
 
-              <div className="w-full mb-8">
+              {/* Controls Section */}
+              <div className="w-full">
                   {renderControls()}
               </div>
 

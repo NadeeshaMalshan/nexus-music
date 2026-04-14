@@ -378,15 +378,17 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
     const controller = new AbortController();
     async function loadAudioMeta() {
-      if (audioCacheRef.current[audioQuery]) {
-        const payload = audioCacheRef.current[audioQuery];
+      const cacheKey = currentSong?.isDirectLink ? (`${currentSong.id}_${audioQuery}`) : audioQuery;
+      if (audioCacheRef.current[cacheKey]) {
+        const payload = audioCacheRef.current[cacheKey];
         setAudioData(payload);
         return;
       }
       setAudioData(null);
       try {
+        const isVideo = currentSong?.preferVideoPlayback || currentSong?.isLive;
         const url = currentSong?.isDirectLink
-          ? `/api/audio?query=${encodeURIComponent(audioQuery)}&videoId=${currentSong.id}&artist=${encodeURIComponent(currentSong.artist)}&title=${encodeURIComponent(currentSong.title)}${currentSong.preferVideoPlayback ? '&isVideo=true' : ''}`
+          ? `/api/audio?query=${encodeURIComponent(audioQuery)}&videoId=${currentSong.id}&artist=${encodeURIComponent(currentSong.artist)}&title=${encodeURIComponent(currentSong.title)}${isVideo ? '&isVideo=true' : ''}${currentSong.isLive ? '&isLive=true' : ''}`
           : `/api/audio?query=${encodeURIComponent(audioQuery)}`;
         const response = await fetch(url, {
           signal: controller.signal,
@@ -398,7 +400,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         const payload = (await response.json()) as AudioPayload;
-        audioCacheRef.current[audioQuery] = payload;
+        audioCacheRef.current[cacheKey] = payload;
         setAudioData(payload);
 
         // If this was a direct link, sync refined metadata (clean artist/title) back to the song object
@@ -1029,7 +1031,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (shouldResetQueue) {
       setUpNextQueue([]);
     }
-    if (song.preferVideoPlayback) {
+    if (song.preferVideoPlayback || song.isLive) {
       setViewMode("video");
       setIsExpandedPlayerOpen(true);
     }

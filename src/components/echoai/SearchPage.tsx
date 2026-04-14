@@ -57,7 +57,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const audioChunksRef = useRef<Blob[]>([]);
 
   // Category list
-  const categories = ["Top", "Songs", "Videos", "Artists", "Albums", "Playlists", "Remixes"];
+  const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Playlists", "Remixes"];
 
   const searchAccentColor = "var(--art-accent, #FA243C)";
 
@@ -208,6 +208,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
     [onSongSelect, onClose]
   );
 
+
   const runSearch = useCallback(async (queryOverride?: string, categoryOverride?: string) => {
     const query = (queryOverride ?? searchQuery).trim();
     const cat = categoryOverride ?? activeCategory;
@@ -231,44 +232,60 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
       const runId = ++searchRunIdRef.current;
 
       const fetchType = async (type: string): Promise<SearchItem[]> => {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(finalQuery)}&type=${type}`, { cache: "no-store" });
-        if (!res.ok) return [];
-        const payload = (await res.json()) as { items: SearchItem[] };
-        return payload.items || [];
+        try {
+          const res = await fetch(`/api/search?q=${encodeURIComponent(finalQuery)}&type=${type}`, { cache: "no-store" });
+          if (!res.ok) return [];
+          const payload = (await res.json()) as { items: SearchItem[] };
+          return payload.items || [];
+        } catch (e) {
+          return [];
+        }
       };
 
-      const [songs, videos, artists, albums, playlists] = await Promise.all([
-        fetchType("songs"),
-        fetchType("videos"),
-        fetchType("artists"),
-        fetchType("albums"),
-        fetchType("playlists"),
-      ]);
-
-      if (runId !== searchRunIdRef.current) return; // ignore stale results
-
-      const byCat: Record<string, SearchItem[]> = {
-        Songs: songs,
-        Videos: videos,
-        Artists: artists,
-        Albums: albums,
-        Playlists: playlists,
-      };
-      setResultsByCategory(byCat);
-
-      // What we show depends on current tab
       if (cat === "Top") {
+        const [songs, videos, artists, albums, playlists, live] = await Promise.all([
+          fetchType("songs"),
+          fetchType("videos"),
+          fetchType("artists"),
+          fetchType("albums"),
+          fetchType("playlists"),
+          fetchType("live"),
+        ]);
+
+        if (runId !== searchRunIdRef.current) return;
+
+        const byCat: Record<string, SearchItem[]> = {
+          Songs: songs,
+          Videos: videos,
+          Live: live,
+          Artists: artists,
+          Albums: albums,
+          Playlists: playlists,
+        };
+        setResultsByCategory(byCat);
+
         setSearchResults([
           ...(artists || []).slice(0, 2),
           ...(songs || []).slice(0, 6),
+          ...(live || []).slice(0, 4).map((l) => ({ ...l, isLive: true })),
           ...(videos || []).slice(0, 4).map((v) => ({ ...v, fromVideosShelf: true })),
         ]);
-      } else if (cat === "Songs") setSearchResults(songs);
-      else if (cat === "Videos") setSearchResults(videos);
-      else if (cat === "Artists") setSearchResults(artists);
-      else if (cat === "Albums") setSearchResults(albums);
-      else if (cat === "Playlists") setSearchResults(playlists);
-      else setSearchResults(songs);
+      } else {
+        const typeMap: Record<string, string> = {
+          Songs: "songs",
+          Videos: "videos",
+          Live: "live",
+          Artists: "artists",
+          Albums: "albums",
+          Playlists: "playlists",
+          Remixes: "songs",
+        };
+        const results = await fetchType(typeMap[cat] || "songs");
+        if (runId !== searchRunIdRef.current) return;
+
+        setResultsByCategory(prev => ({ ...prev, [cat]: results }));
+        setSearchResults(results);
+      }
     } catch (error) {
       console.error("Search failed:", error);
       setSearchResults([]);
@@ -277,6 +294,13 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
       setSearchLoading(false);
     }
   }, [searchQuery, activeCategory, playFromWatchUrl]);
+
+  // Listen for category changes and trigger search immediately
+  useEffect(() => {
+    if (searchQuery.trim()) {
+        void runSearch();
+    }
+  }, [activeCategory, runSearch, searchQuery]);
 
   // Handle initial query from URL (?q=) — watch URLs play via playFromWatchUrl inside runSearch
   useEffect(() => {
@@ -350,9 +374,11 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
       artwork: item.thumbnail,
       duration: item.duration,
       color: songColors[item.videoId] || "var(--art-accent, #FA243C)",
-      type: activeCategory === "Videos" ? "VIDEO" : "SONG",
+      type: activeCategory === "Videos" ? "VIDEO" : (activeCategory === "Live" || item.isLive ? "VIDEO" : "SONG"),
       views: item.views,
-      preferVideoPlayback: activeCategory === "Videos" || (activeCategory === "Top" && !!item.fromVideosShelf),
+      isLive: item.isLive || activeCategory === "Live",
+      isDirectLink: true,
+      preferVideoPlayback: activeCategory === "Videos" || activeCategory === "Live" || (activeCategory === "Top" && !!item.fromVideosShelf) || item.isLive || (item.duration === "LIVE"),
     };
   });
 
@@ -586,7 +612,12 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                         <p className="truncate text-[18px] font-bold text-white leading-tight mb-1">{song.title}</p>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-2 min-w-0">
-                          {song.preferVideoPlayback && (
+                          {song.isLive || song.duration === "LIVE" ? (
+                            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider leading-none px-1.5 py-0.5 rounded-md border"
+                              style={{ color: '#ffffff', borderColor: '#ff000066', background: '#ff0000cc' }}>
+                              LIVE
+                            </span>
+                          ) : song.preferVideoPlayback && (
                             <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider leading-none px-1.5 py-0.5 rounded-md border"
                               style={{ color: 'var(--art-accent,#FA243C)', borderColor: 'var(--art-accent,#FA243C)44', background: 'var(--art-accent,#FA243C)18' }}>
                               <Video size={9} />MV

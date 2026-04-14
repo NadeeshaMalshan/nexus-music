@@ -51,16 +51,19 @@ export function DesktopExpandedPlayer({
 }: ExpandedPlayerProps) {
   const { palette, resolveLikedLibraryRateVideoId } = useDashboard();
   const { settings } = useSettings();
-  const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">(viewMode === "video" ? "controls" : "lyrics");
+  const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">((viewMode === "video" || currentSong.isLive) ? "controls" : "lyrics");
   const [imageError, setImageError] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
 
   // Auto-switch tab if viewMode changes
   useEffect(() => {
-    if (viewMode === "music" && activeTab === "controls") {
+    if (viewMode === "music" && activeTab === "controls" && !currentSong.isLive) {
       setActiveTab("lyrics");
     }
-  }, [viewMode, activeTab]);
+    if ((viewMode === "video" || currentSong.isLive) && activeTab === "lyrics") {
+      setActiveTab("controls");
+    }
+  }, [viewMode, currentSong.isLive, activeTab]);
   
   const ytPlayerInstance = useRef<any>(null);
   const videoSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -486,7 +489,7 @@ export function DesktopExpandedPlayer({
                       }
                     }
                   }}
-                  className="h-full w-full scale-[1.15] translate-y-[2%] origin-center pointer-events-none select-none" 
+                  className="h-full w-full origin-center pointer-events-none select-none" 
                 />
 
                 {/* Interaction Blocker - Prevents YT internal UI from showing while allowing custom play/pause */}

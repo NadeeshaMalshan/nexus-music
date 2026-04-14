@@ -9,11 +9,25 @@ function youtubeHqThumbnail(videoId: string): string {
 function upgradeThumbnail(url?: string, videoId?: string): string {
   if (!url && videoId) return youtubeHqThumbnail(videoId);
   if (!url) return "";
+  
+  // High quality fallback for YouTube video thumbnails
+  if (videoId && (url.includes("i.ytimg.com") || url.includes("img.youtube.com"))) {
+    return `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
+  }
+
+  // Handle YouTube Music resolution parameters
   if (url.includes("=w") && url.includes("-h")) {
     return url.replace(/=w\d+-h\d+(-.*?)?$/, "=w1024-h1024");
   }
+
+  // Handle older YouTube Music resolution parameters
+  if (url.includes("lh3.googleusercontent.com") && !url.includes("=w")) {
+    return `${url}=w1024-h1024-l90-rj`;
+  }
+
   return url;
 }
+
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

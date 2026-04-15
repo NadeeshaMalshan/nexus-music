@@ -1,5 +1,6 @@
 import { Play } from "lucide-react";
 import { aiPlaylists, weeklyStats } from "./data";
+import { MusicArtwork } from "./MusicArtwork";
 
 export type SearchResult = {
   videoId: string;
@@ -124,8 +125,16 @@ export function CenterBento({
               className="group relative cursor-pointer text-left"
             >
               <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] transition-all duration-500 hover:scale-[1.02] hover:border-white/[0.15] hover:shadow-[0_8px_32px_rgba(139,92,246,0.2)]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.thumbnail} alt={item.title} className="aspect-square w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <div className="relative aspect-square w-full overflow-hidden">
+                  <MusicArtwork
+                    src={item.thumbnail}
+                    alt={item.title}
+                    iconSize={48}
+                    variant="track"
+                    rounded="none"
+                    className="h-full w-full transition-transform duration-700 group-hover:scale-110"
+                  />
+                </div>
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/40" />
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                   <div className="flex h-14 w-14 items-center justify-center rounded-full border border-purple-300/45 bg-gradient-to-br from-purple-500/70 to-pink-500/60">
@@ -154,8 +163,9 @@ export function CenterBento({
               onClick={() => onSelectTrack(item)}
               className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-2 text-left transition hover:border-white/20"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.thumbnail} alt={item.title} className="h-10 w-14 rounded-md object-cover" />
+              <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded-md">
+                <MusicArtwork src={item.thumbnail} alt={item.title} iconSize={16} variant="track" rounded="md" className="h-full w-full" />
+              </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs text-zinc-100">{item.title}</p>
                 <p className="truncate text-[11px] text-zinc-500">{item.author}</p>

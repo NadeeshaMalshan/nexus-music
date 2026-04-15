@@ -7,6 +7,7 @@ import { SwipeableSongRow } from "./SwipeableSongRow";
 import { SongMenu } from "./SongMenu";
 import { useDashboard } from "@/context/DashboardContext";
 import { parseYouTubeWatchUrl, songFromYouTubeVideoId } from "@/lib/parseYouTubeUrl";
+import { MusicArtwork } from "./MusicArtwork";
 
 interface SearchPageProps {
   onClose: () => void;
@@ -596,7 +597,14 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <div className={`relative h-[64px] w-[64px] shrink-0 overflow-hidden ${song.type === "ARTIST" ? "rounded-full" : "rounded-xl"} border border-white/10 shadow-lg`}>
-                        <img src={song.artwork?.replace(/([=|-][swh])\d+/g, '$1600') || song.artwork} alt={song.title} className="h-full w-full object-cover" />
+                        <MusicArtwork
+                          src={song.artwork?.replace(/([=|-][swh])\d+/g, "$1600") || song.artwork}
+                          alt={song.title}
+                          iconSize={28}
+                          variant={song.type === "ARTIST" ? "artist" : "track"}
+                          rounded={song.type === "ARTIST" ? "full" : "xl"}
+                          className="h-full w-full"
+                        />
                         {/* Music video badge on thumbnail */}
                         {song.preferVideoPlayback && (
                           <div className="absolute bottom-1 right-1 flex items-center gap-0.5 bg-black/70 backdrop-blur-sm rounded-md px-1 py-0.5 pointer-events-none">

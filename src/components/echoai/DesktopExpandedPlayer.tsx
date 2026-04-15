@@ -14,6 +14,7 @@ import { useJam } from "@/context/JamContext";
 
 import { useDashboard } from "@/context/DashboardContext";
 import { FlowingBackground } from "./FlowingBackground";
+import { LiveLikeToast } from "./LiveLikeToast";
 
 export function DesktopExpandedPlayer({
   onClose,
@@ -49,37 +50,12 @@ export function DesktopExpandedPlayer({
   onReorderUpNext,
   onArtistClick,
 }: ExpandedPlayerProps) {
-  const { palette, resolveLikedLibraryRateVideoId } = useDashboard();
+  const { palette, resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">((viewMode === "video" || currentSong.isLive) ? "controls" : "lyrics");
   const [imageError, setImageError] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
-  const [liveMetadata, setLiveMetadata] = useState<{ artist: string; title: string; source?: string } | null>(null);
-
-  // Poll for dynamic metadata if it's a live stream
-  useEffect(() => {
-    if (!currentSong.isLive) {
-      setLiveMetadata(null);
-      return;
-    }
-
-    const fetchLiveMetadata = async () => {
-      try {
-        const videoTitle = ytPlayerInstance.current?.getVideoData?.()?.title || currentSong.title;
-        const res = await fetch(`/api/live-tracker?query=${encodeURIComponent(currentSong.artist + ' ' + currentSong.title)}&title=${encodeURIComponent(videoTitle)}`);
-        const data = await res.json();
-        if (data.artist && data.title) {
-          setLiveMetadata(data);
-        }
-      } catch (e) {
-        console.error("Live Tracker Polling Error:", e);
-      }
-    };
-
-    fetchLiveMetadata();
-    const interval = setInterval(fetchLiveMetadata, 30000); // Poll every 30s
-    return () => clearInterval(interval);
-  }, [currentSong.id, currentSong.isLive]);
+  const [liveLikeToast, setLiveLikeToast] = useState<{ title: string; artist: string; artwork?: string | null } | null>(null);
 
   // Auto-switch tab if viewMode changes
   useEffect(() => {
@@ -345,8 +321,26 @@ export function DesktopExpandedPlayer({
           {isLoggedIn && (
             <button
               onClick={() => {
-                if (isLiked) void onRateSong(resolveLikedLibraryRateVideoId(currentSong), "none");
-                else void onRateSong(currentSong.id, "like", { title: currentSong.title, artist: currentSong.artist });
+                if (isLiked) {
+                  void onRateSong(resolveLikedLibraryRateVideoId(currentSong), "none");
+                } else {
+                  const liveTitle = liveMetadata?.title;
+                  const liveArtist = liveMetadata?.artist;
+                  void onRateSong(
+                    currentSong.id,
+                    "like",
+                    liveTitle && liveArtist
+                      ? { title: liveTitle, artist: liveArtist }
+                      : { title: currentSong.title, artist: currentSong.artist }
+                  );
+                  if (currentSong.isLive && liveTitle && liveArtist) {
+                    setLiveLikeToast({
+                      title: liveTitle,
+                      artist: liveArtist,
+                      artwork: liveMetadata?.artwork ?? currentSong.artwork,
+                    });
+                  }
+                }
               }}
               className="mt-1 rounded-full bg-white/5 p-2 hover:bg-white/10"
             >
@@ -545,7 +539,7 @@ export function DesktopExpandedPlayer({
               </div>
             )}
             {viewMode === "music" && (
-              <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={48} />
+              <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={48} />
             )}
           </m.div>
           <div className="mt-6 flex w-full justify-center gap-1 rounded-full border border-white/5 bg-black/20 p-1 backdrop-blur-md max-w-[200px]">
@@ -769,6 +763,20 @@ export function DesktopExpandedPlayer({
           )}
         </div>
       </div>
+
+      {/* Live Like Toast */}
+      <AnimatePresence>
+        {liveLikeToast && (
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] pointer-events-none">
+            <LiveLikeToast
+              title={liveLikeToast.title}
+              artist={liveLikeToast.artist}
+              artwork={liveLikeToast.artwork}
+              onDismiss={() => setLiveLikeToast(null)}
+            />
+          </div>
+        )}
+      </AnimatePresence>
     </m.div>
   );
 }

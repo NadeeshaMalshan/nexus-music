@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
-import Image from "next/image";
+import { MusicArtwork } from "./MusicArtwork";
 import { 
   Play, Loader2, Music2, Heart, Plus, Sparkles, 
   Search, Filter, History, ListPlus, PlaySquare
@@ -257,13 +257,13 @@ export function YouTubeLibrary({
                              className="group flex flex-col cursor-pointer"
                           >
                              <div className="relative aspect-square mb-3 md:mb-4 rounded-3xl md:rounded-[28px] overflow-hidden bg-zinc-900 border border-white/5 shadow-xl transition-all duration-500 hover:scale-[1.03]">
-                                {playlist.thumbnailUrl ? (
-                                   <Image src={playlist.thumbnailUrl.replace("s90", "s600")} alt={playlist.title} fill className="object-cover" />
-                                ) : (
-                                   <div className="w-full h-full flex items-center justify-center bg-zinc-800">
-                                      <Music2 className="text-white/10 w-10 h-10 md:w-16 md:h-16" />
-                                   </div>
-                                )}
+                                <MusicArtwork
+                                  src={playlist.thumbnailUrl?.replace("s90", "s600")}
+                                  alt={playlist.title}
+                                  iconSize={40}
+                                  variant="track"
+                                  rounded="3xl"
+                                />
                              </div>
                              <h3 
                                className="text-sm md:text-[17px] font-bold text-white truncate transition-colors leading-tight mb-0.5 md:mb-1"
@@ -326,7 +326,13 @@ export function YouTubeLibrary({
                                className="group flex flex-col cursor-pointer"
                             >
                                <div className="relative aspect-square mb-3 md:mb-4 rounded-3xl md:rounded-[28px] overflow-hidden bg-zinc-900 border border-white/5 shadow-xl transition-all duration-500 hover:scale-[1.03]">
-                                  <img src={track.thumbnailUrl?.replace("s90", "s600")} alt="" className="h-full w-full object-cover" />
+                                  <MusicArtwork
+                                    src={track.thumbnailUrl?.replace("s90", "s600")}
+                                    alt={track.title}
+                                    iconSize={40}
+                                    variant="track"
+                                    rounded="3xl"
+                                  />
                                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-opacity duration-300">
                                      <button
                                        onClick={(e) => {

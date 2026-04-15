@@ -2,7 +2,7 @@
 
 import { useSession, signIn, signOut } from "next-auth/react";
 import { LogIn, LogOut } from "lucide-react";
-import Image from "next/image";
+import { MusicArtwork } from "./MusicArtwork";
 
 export function SidebarAuth() {
   const { data: session, status } = useSession();
@@ -22,19 +22,16 @@ export function SidebarAuth() {
     return (
       <div className="mt-auto pt-6 border-t border-white/5 group">
         <div className="flex items-center gap-3 p-1 transition-all rounded-xl hover:bg-white/5">
-          {session.user.image ? (
-            <Image
+          <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/10">
+            <MusicArtwork
               src={session.user.image}
               alt={session.user.name || "User Avatar"}
-              width={36}
-              height={36}
-              className="rounded-full object-cover shrink-0"
+              iconSize={20}
+              variant="artist"
+              rounded="full"
+              className="h-full w-full"
             />
-          ) : (
-            <div className="w-9 h-9 shrink-0 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold border border-blue-500/30">
-              {session.user.name?.[0]?.toUpperCase() || "U"}
-            </div>
-          )}
+          </div>
           <div className="flex-1 overflow-hidden min-w-0">
             <p className="text-sm font-medium text-white truncate">
               {session.user.name || "User"}

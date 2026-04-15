@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { X, Search, Plus, Minus, Music2, Sparkles, Loader2, ListPlus, Wand2, ChevronRight, PlaySquare, History } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, SLIDE_UP_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
-import Image from "next/image";
 import { type Song } from "./types";
+import { MusicArtwork } from "./MusicArtwork";
 
 interface CreateModalSong {
   id: string;
@@ -121,11 +121,14 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                {/* Metadata Section */}
                <div className="w-full md:w-72 space-y-6 md:space-y-8">
                   <div className="aspect-square w-48 md:w-full mx-auto md:mx-0 rounded-3xl md:rounded-[36px] bg-white/5 border border-white/10 flex items-center justify-center relative overflow-hidden group">
-                     {addedSongs.length > 0 ? (
-                        <Image src={addedSongs[0].artwork} alt="" fill className="object-cover opacity-60 grayscale-[0.5]" />
-                     ) : (
-                        <Music2 className="w-12 h-12 md:w-16 md:h-16 text-white/10" />
-                     )}
+                     <MusicArtwork
+                       src={addedSongs.length > 0 ? addedSongs[0].artwork : null}
+                       alt=""
+                       iconSize={48}
+                       variant="track"
+                       rounded="3xl"
+                       className={`absolute inset-0 h-full w-full ${addedSongs.length > 0 ? "opacity-60 grayscale-[0.5]" : ""}`}
+                     />
                   </div>
                   <div className="space-y-4">
                      <label className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] text-white/20 px-1">Identity</label>
@@ -164,7 +167,9 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                           >
                              {searchResults.slice(0, 5).map(song => (
                                 <div key={song.id} onClick={() => addSong(song)} className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer transition-all border-b border-white/5 last:border-0 group">
-                                   <img src={song.artwork} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl">
+                                     <MusicArtwork src={song.artwork} alt="" iconSize={20} variant="track" rounded="xl" className="h-full w-full" />
+                                   </div>
                                    <div className="flex-1 min-w-0">
                                       <p className="text-white font-bold truncate">{song.title}</p>
                                       <p className="text-white/30 text-xs truncate">{song.artist}</p>
@@ -188,7 +193,9 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                                className="flex items-center gap-4 p-3 rounded-2xl bg-white/3 border border-white/5 hover:border-white/10 transition-all group animate-gpu"
                             >
                               <div className="text-[11px] font-black text-white/20 w-4 text-center">{idx + 1}</div>
-                              <img src={song.artwork} alt="" className="w-12 h-12 rounded-xl shadow-md" />
+                              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl shadow-md">
+                                <MusicArtwork src={song.artwork} alt="" iconSize={20} variant="track" rounded="xl" className="h-full w-full" />
+                              </div>
                               <div className="flex-1 min-w-0">
                                  <p className="text-white font-bold truncate">{song.title}</p>
                                  <p className="text-white/30 text-xs font-bold leading-none">{song.artist}</p>
@@ -371,8 +378,19 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                   >
                     <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-10 text-center md:text-left">
                        <div className="w-40 h-40 md:w-56 md:h-56 rounded-3xl md:rounded-[40px] bg-linear-to-tr from-white/10 to-white/5 flex items-center justify-center border border-white/10 shadow-2xl relative overflow-hidden shrink-0">
-                          {generatedResult.songs.length > 0 && <Image src={generatedResult.songs[0].artwork} alt="" fill className="object-cover opacity-20" />}
-                          <Sparkles className="w-16 h-16 md:w-20 md:h-20 text-white relative" style={{ color: accentColor }} />
+                          {generatedResult.songs.length > 0 ? (
+                            <div className="absolute inset-0 z-0">
+                              <MusicArtwork
+                                src={generatedResult.songs[0].artwork}
+                                alt=""
+                                iconSize={40}
+                                variant="track"
+                                rounded="3xl"
+                                className="h-full w-full opacity-20"
+                              />
+                            </div>
+                          ) : null}
+                          <Sparkles className="relative z-10 w-16 h-16 md:w-20 md:h-20 text-white" style={{ color: accentColor }} />
                        </div>
                        <div className="flex-1 space-y-4 w-full">
                           <div className="flex items-center justify-center md:justify-start gap-2 opacity-40">
@@ -400,7 +418,9 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
                        {generatedResult.songs.map((song) => (
                           <div key={song.id} className="flex items-center gap-4 p-3 md:p-4 rounded-2xl md:rounded-3xl bg-white/3 border border-white/5 hover:bg-white/5 transition-all group">
-                             <img src={song.artwork} alt="" className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl object-cover shadow-xl grayscale-[0.2] group-hover:grayscale-0 transition-all" />
+                             <div className="relative h-12 w-12 md:h-16 md:w-16 shrink-0 overflow-hidden rounded-xl md:rounded-2xl shadow-xl grayscale-[0.2] group-hover:grayscale-0 transition-all">
+                               <MusicArtwork src={song.artwork} alt="" iconSize={28} variant="track" rounded="2xl" className="h-full w-full" />
+                             </div>
                              <div className="flex-1 min-w-0 pr-2">
                                 <p className="text-sm md:text-[17px] font-black text-white truncate leading-tight mb-0.5 md:mb-1">{song.title}</p>
                                 <p className="text-white/30 text-[10px] md:text-xs font-bold truncate uppercase tracking-wider">{song.artist}</p>
@@ -477,13 +497,14 @@ export function LibraryHistoryPane({
               className="group flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-white/3 border border-white/5 hover:bg-white/8 transition-all cursor-pointer relative overflow-hidden"
             >
               <div className="h-12 w-12 md:h-16 md:h-16 shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shadow-lg relative">
-                {track.artwork ? (
-                  <Image src={track.artwork} alt="" fill className="object-cover" />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center">
-                    <Music2 className="text-white/10 w-5 h-5 md:w-6 md:h-6" />
-                  </div>
-                )}
+                <MusicArtwork
+                  src={track.artwork}
+                  alt={track.title}
+                  iconSize={24}
+                  variant="track"
+                  rounded="xl"
+                  className="h-full w-full"
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="truncate font-bold text-white text-sm md:text-[16px] mb-0.5">{track.title}</p>

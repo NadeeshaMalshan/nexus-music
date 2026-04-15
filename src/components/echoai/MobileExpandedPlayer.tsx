@@ -15,6 +15,7 @@ import { useJam } from "@/context/JamContext";
 
 import { useDashboard } from "@/context/DashboardContext";
 import { FlowingBackground } from "./FlowingBackground";
+import { LiveLikeToast } from "./LiveLikeToast";
 
 export function MobileExpandedPlayer({
   onClose,
@@ -50,10 +51,11 @@ export function MobileExpandedPlayer({
   onReorderUpNext,
   onArtistClick,
 }: ExpandedPlayerProps) {
-  const { palette, resolveLikedLibraryRateVideoId } = useDashboard();
+  const { palette, resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const { settings } = useSettings();
   const { jamState } = useJam();
   const [jamWarning, setJamWarning] = useState<string | null>(null);
+  const [liveLikeToast, setLiveLikeToast] = useState<{ title: string; artist: string; artwork?: string | null } | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
 
   const toggleFullscreen = () => {
@@ -74,7 +76,6 @@ export function MobileExpandedPlayer({
     }
   }, [jamWarning]);
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls" | "jam">("controls");
-  const [liveMetadata, setLiveMetadata] = useState<{ artist: string; title: string; source?: string } | null>(null);
   const [imageError, setImageError] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const dragControls = useDragControls();
@@ -112,30 +113,6 @@ export function MobileExpandedPlayer({
     }
   }, [viewMode, currentSong.isLive, activeTab]);
 
-  // Poll for dynamic metadata if it's a live stream
-  useEffect(() => {
-    if (!currentSong.isLive) {
-      setLiveMetadata(null);
-      return;
-    }
-
-    const fetchLiveMetadata = async () => {
-      try {
-        const videoTitle = ytPlayerInstance.current?.getVideoData?.()?.title || currentSong.title;
-        const res = await fetch(`/api/live-tracker?query=${encodeURIComponent(currentSong.artist + ' ' + currentSong.title)}&title=${encodeURIComponent(videoTitle)}`);
-        const data = await res.json();
-        if (data.artist && data.title) {
-          setLiveMetadata(data);
-        }
-      } catch (e) {
-        console.error("Live Tracker Polling Error:", e);
-      }
-    };
-
-    fetchLiveMetadata();
-    const interval = setInterval(fetchLiveMetadata, 30000); // Poll every 30s
-    return () => clearInterval(interval);
-  }, [currentSong.id, currentSong.isLive]);
 
   const ytPlayerInstance = useRef<any>(null);
   const isPlayingRef = useRef(isPlaying);
@@ -523,8 +500,26 @@ export function MobileExpandedPlayer({
                     {isLoggedIn && (
                         <button
                             onClick={() => {
-                              if (isLiked) void onRateSong(resolveLikedLibraryRateVideoId(currentSong), "none");
-                              else void onRateSong(currentSong.id, "like", { title: currentSong.title, artist: currentSong.artist });
+                              if (isLiked) {
+                                void onRateSong(resolveLikedLibraryRateVideoId(currentSong), "none");
+                              } else {
+                                const liveTitle = liveMetadata?.title;
+                                const liveArtist = liveMetadata?.artist;
+                                void onRateSong(
+                                  currentSong.id,
+                                  "like",
+                                  liveTitle && liveArtist
+                                    ? { title: liveTitle, artist: liveArtist }
+                                    : { title: currentSong.title, artist: currentSong.artist }
+                                );
+                                if (currentSong.isLive && liveTitle && liveArtist) {
+                                  setLiveLikeToast({
+                                    title: liveTitle,
+                                    artist: liveArtist,
+                                    artwork: liveMetadata?.artwork ?? currentSong.artwork,
+                                  });
+                                }
+                              }
                             }}
                             className="p-2 rounded-full bg-white/5 backdrop-blur-md"
                         >
@@ -541,15 +536,15 @@ export function MobileExpandedPlayer({
                         <ChevronDown size={24} className="text-white/70" />
                     </button>
                     <m.div layoutId="compact-art" className="h-10 w-10 shrink-0 rounded-lg overflow-hidden shadow-lg animate-gpu">
-                       <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={16} />
+                       <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={16} />
                     </m.div>
                     <div className="flex-1 min-w-0">
-                        <h2 className="truncate text-base font-black text-white">{currentSong.title}</h2>
+                        <h2 className="truncate text-base font-black text-white">{liveMetadata?.title || currentSong.title}</h2>
                         <button 
-                          onClick={() => onArtistClick?.(currentSong.artist)}
+                          onClick={() => onArtistClick?.(liveMetadata?.artist || currentSong.artist)}
                           className="truncate text-xs font-bold text-white/50 active:text-white transition-colors text-left"
                         >
-                          {currentSong.artist}
+                          {liveMetadata?.artist || currentSong.artist}
                         </button>
                     </div>
                 </div>
@@ -648,7 +643,7 @@ export function MobileExpandedPlayer({
                         </div>
                     )}
                     {viewMode === "music" && (
-                        <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={64} />
+                        <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={64} />
                     )}
                 </m.div>
               </div>
@@ -921,6 +916,20 @@ export function MobileExpandedPlayer({
                 {renderTabSelector()}
              </div>
           </m.div>
+        )}
+      </AnimatePresence>
+
+      {/* Live Like Toast */}
+      <AnimatePresence>
+        {liveLikeToast && (
+          <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[200] pointer-events-none px-4 w-full flex justify-center">
+            <LiveLikeToast
+              title={liveLikeToast.title}
+              artist={liveLikeToast.artist}
+              artwork={liveLikeToast.artwork}
+              onDismiss={() => setLiveLikeToast(null)}
+            />
+          </div>
         )}
       </AnimatePresence>
     </m.div>

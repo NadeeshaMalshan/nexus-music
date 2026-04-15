@@ -2,6 +2,7 @@
 
 import { BrainCircuit } from "lucide-react";
 import { parseLrcContent } from "@/lib/lrc";
+import { MusicArtwork } from "./MusicArtwork";
 
 type RightContextPanelProps = {
   lyricsContent: string | null;
@@ -92,10 +93,16 @@ export function RightContextPanel({
         </div>
         {geniusFound ? (
           <div className="space-y-3">
-            {geniusThumbnail ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={geniusThumbnail} alt="Genius song thumbnail" className="h-20 w-20 rounded-xl object-cover" />
-            ) : null}
+            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-white/[0.08]">
+              <MusicArtwork
+                src={geniusThumbnail}
+                alt="Genius song thumbnail"
+                iconSize={28}
+                variant="track"
+                rounded="xl"
+                className="h-full w-full"
+              />
+            </div>
             <p className="text-sm leading-relaxed text-white/80">
               Genius metadata found. This track is ready for annotation-enrichment with Llama 3.
             </p>

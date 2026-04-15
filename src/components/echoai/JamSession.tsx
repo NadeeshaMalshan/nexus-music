@@ -5,27 +5,11 @@ import { Users, LogOut, Plus, Link, Check, Radio, Lock as Padlock, Share2, MoreH
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "motion/react";
+import { MusicArtwork } from "./MusicArtwork";
 
-const Avatar = ({ src, name }: { src: string | null, name: string }) => {
-  const [error, setError] = useState(false);
-  
-  if (!src || error) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-white/10 to-white/5 text-[14px] font-black text-white/40 uppercase">
-        {name.charAt(0)}
-      </div>
-    );
-  }
-
-  return (
-    <img 
-      src={src} 
-      alt={name} 
-      className="h-full w-full object-cover" 
-      onError={() => setError(true)}
-    />
-  );
-};
+const Avatar = ({ src, name }: { src: string | null; name: string }) => (
+  <MusicArtwork src={src} alt={name} iconSize={22} variant="artist" rounded="full" className="h-full w-full" />
+);
 
 export function JamSession() {
   const { data: session } = useSession();

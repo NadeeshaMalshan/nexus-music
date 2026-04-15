@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { type Song } from "./types";
 import { Play, Shuffle, Loader2, Disc, Music2, Clock, Calendar, User, ChevronLeft } from "lucide-react";
-import Image from "next/image";
 import { AudioVisualizer } from "./AudioVisualizer";
+import { MusicArtwork } from "./MusicArtwork";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { useDashboard } from "@/context/DashboardContext";
@@ -145,12 +145,13 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
             transition={{ duration: 0.8, ease: APPLE_EASE }}
             className="relative w-64 h-64 md:w-56 md:h-56 lg:w-72 lg:h-72 shrink-0 shadow-[0_40px_100px_rgba(0,0,0,0.7)] rounded-[2.5rem] overflow-hidden group border border-white/10 animate-gpu bg-zinc-900/40"
           >
-            <Image 
-              src={albumData.thumbnails?.[albumData.thumbnails.length - 1]?.url || ""} 
-              alt={albumData.name} 
-              fill 
-              className="object-cover transition-transform duration-1000 group-hover:scale-110" 
-              priority
+            <MusicArtwork
+              src={albumData.thumbnails?.[albumData.thumbnails.length - 1]?.url}
+              alt={albumData.name}
+              iconSize={56}
+              variant="track"
+              rounded="none"
+              className="transition-transform duration-1000 group-hover:scale-110"
             />
           </m.div>
 
@@ -253,7 +254,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
 
                   <div className="flex-1 flex items-center gap-4 md:gap-5 min-w-0">
                     <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden shrink-0 bg-zinc-900 shadow-xl border border-white/10">
-                      <Image src={track.artwork} alt={track.title} fill className="object-cover" />
+                      <MusicArtwork src={track.artwork} alt={track.title} iconSize={22} variant="track" rounded="xl" />
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className={`text-[16px] md:text-[17px] font-bold truncate transition-colors leading-tight ${isActive ? "text-red-500" : "text-white"}`}>

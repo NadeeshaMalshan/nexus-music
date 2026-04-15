@@ -8,7 +8,6 @@ import {
   Play,
   Pause,
   Shuffle,
-  UserCheck,
   Music,
   Disc3,
   ListPlus,
@@ -21,8 +20,8 @@ import {
   UserPlus,
   Share2
 } from "lucide-react";
-import Image from "next/image";
 import { useDashboard } from "@/context/DashboardContext";
+import { MusicArtwork } from "./MusicArtwork";
 import { type Song } from "./types";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 
@@ -421,16 +420,16 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
           <>
             {/* ── Hero Section ─────────────────────────────────────────────── */}
             <div className="relative h-[380px] md:h-[480px] w-full overflow-hidden">
-              {/* Background Image */}
-              {data.image && (
-                <Image
+              <div className="absolute inset-0 z-0">
+                <MusicArtwork
                   src={data.image}
                   alt={data.name}
-                  fill
-                  className="object-cover object-top"
-                  priority
+                  variant="artist"
+                  iconSize={96}
+                  rounded="none"
+                  className="h-full w-full object-cover object-top"
                 />
-              )}
+              </div>
               {/* Gradient overlays */}
               <div
                 className="absolute inset-0"
@@ -669,15 +668,17 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
 
                       {/* Album Art */}
                       <div className="relative w-12 h-12 shrink-0 rounded-xl overflow-hidden border border-white/10 shadow-lg">
-                        <Image
+                        <MusicArtwork
                           src={
                             track.thumbnail ||
                             track.albumArt ||
-                            `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`
+                            (track.videoId ? `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg` : null)
                           }
                           alt={track.name}
-                          fill
-                          className="object-cover"
+                          iconSize={22}
+                          variant="track"
+                          rounded="xl"
+                          className="h-full w-full"
                         />
                       </div>
 
@@ -797,7 +798,14 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                         onClick={() => onNavigateAlbum?.(item.id)}
                       >
                         <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white/5 shadow-2xl transition-transform duration-500 group-hover:scale-105">
-                          <Image src={item.image} alt={item.name} fill className="object-cover" />
+                          <MusicArtwork
+                            src={item.image}
+                            alt={item.name}
+                            iconSize={40}
+                            variant="track"
+                            rounded="2xl"
+                            className="h-full w-full"
+                          />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                              <button
                                 onClick={(e) => {
@@ -853,7 +861,14 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                         }}
                       >
                         <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-white/5 shadow-2xl">
-                          <Image src={v.image} alt={v.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
+                          <MusicArtwork
+                            src={v.image}
+                            alt={v.name}
+                            iconSize={44}
+                            variant="track"
+                            rounded="2xl"
+                            className="h-full w-full transition-transform duration-700 group-hover:scale-110"
+                          />
                           {/* Music video badge */}
                           <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-md rounded-lg px-2 py-1 pointer-events-none">
                             <Video size={11} className="text-white/80" />
@@ -887,7 +902,14 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                         onClick={() => onNavigatePlaylist?.(p.id)}
                       >
                         <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white/5 shadow-2xl">
-                          <Image src={p.image} alt={p.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
+                          <MusicArtwork
+                            src={p.image}
+                            alt={p.name}
+                            iconSize={40}
+                            variant="track"
+                            rounded="2xl"
+                            className="h-full w-full transition-transform duration-500 group-hover:scale-110"
+                          />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                              <button
                                 onClick={(e) => {
@@ -934,18 +956,14 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                         onClick={() => onNavigateArtist?.(artist.name)}
                       >
                         <div className="relative w-full aspect-square rounded-full overflow-hidden bg-white/5 border-2 border-white/0 group-hover:border-(--art-accent,#FA243C) transition-all duration-300 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-                          {artist.image ? (
-                            <Image
-                              src={artist.image}
-                              alt={artist.name}
-                              fill
-                              className="object-cover transition-transform duration-500 group-hover:scale-110"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-zinc-900">
-                              <UserCheck size={32} className="text-white/20" />
-                            </div>
-                          )}
+                          <MusicArtwork
+                            src={artist.image}
+                            alt={artist.name}
+                            iconSize={48}
+                            variant="artist"
+                            rounded="full"
+                            className="h-full w-full transition-transform duration-500 group-hover:scale-110"
+                          />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                             <ChevronRight size={28} className="text-white" />
                           </div>

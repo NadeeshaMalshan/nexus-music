@@ -4,6 +4,7 @@ import React, { useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ListPlus, PlaySquare, Heart, Share2, MoreHorizontal } from "lucide-react";
 import { type Song } from "./types";
+import { MusicArtwork } from "./MusicArtwork";
 
 interface SongMenuProps {
   song: Song;
@@ -62,7 +63,7 @@ export function SongMenu({
         >
            <div className="flex items-center gap-3 border-b border-white/5 p-3 mb-1">
               <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
-                 <img src={song.artwork} alt="" className="h-full w-full object-cover" />
+                 <MusicArtwork src={song.artwork} alt={song.title} iconSize={18} variant="track" rounded="md" className="h-full w-full" />
               </div>
               <div className="min-w-0">
                  <p className="truncate text-xs font-black text-white">{song.title}</p>

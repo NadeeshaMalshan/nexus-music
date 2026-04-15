@@ -49,15 +49,16 @@ export function FloatingPlayer({
   onVolumeChange,
   onArtistClick,
 }: FloatingPlayerProps) {
-  const { resolveLikedLibraryRateVideoId } = useDashboard();
+  const { resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const isIdle = !currentSong;
-  const displaySong = currentSong || {
-    id: "idle",
-    title: "Nexus Music",
-    artist: "Ready to stream",
-    artwork: null,
-    duration: "0:00",
-    color: "#FA243C",
+  
+  const displaySong = {
+    id: currentSong?.id || "idle",
+    title: liveMetadata?.title || currentSong?.title || "Nexus Music",
+    artist: liveMetadata?.artist || currentSong?.artist || "Ready to stream",
+    artwork: liveMetadata?.artwork || currentSong?.artwork || null,
+    duration: currentSong?.duration || "0:00",
+    color: currentSong?.color || "#FA243C",
   };
 
   const fallbackDuration = youtubeTimestampToSeconds(displaySong.duration) ?? 0;

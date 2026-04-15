@@ -11,10 +11,6 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
-  turbopack: {
-    // Explicitly set root to prevent watching parent Documents folder
-    root: "./",
-  }, 
   images: {
     unoptimized: true,
     remotePatterns: [

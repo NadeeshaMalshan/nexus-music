@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Settings as SettingsIcon,
   ShieldCheck,
-  User,
   Music,
   Monitor,
   LogOut,
@@ -23,7 +22,7 @@ import {
 import { useSettings } from "@/context/SettingsContext";
 import { VideoQuality, AudioQuality, DefaultPlayMode } from "@/types/settings";
 import { useSession, signIn, signOut } from "next-auth/react";
-import Image from "next/image";
+import { MusicArtwork } from "./MusicArtwork";
 
 interface SettingsRowProps {
   icon: React.ReactNode;
@@ -132,13 +131,14 @@ export function Settings() {
             <div className="bg-white/2 backdrop-blur-xl border border-white/5 rounded-[28px] p-6 flex items-center justify-between group hover:bg-white/5 transition-all duration-500">
               <div className="flex items-center gap-5">
                 <div className="relative w-16 h-16 rounded-2xl overflow-hidden ring-4 ring-white/5 shadow-2xl">
-                  {session.user?.image ? (
-                    <Image src={session.user.image} alt="" fill className="object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-white/10 flex items-center justify-center">
-                      <User size={32} className="text-white/20" />
-                    </div>
-                  )}
+                  <MusicArtwork
+                    src={session.user?.image}
+                    alt={session.user?.name || "Account"}
+                    iconSize={32}
+                    variant="artist"
+                    rounded="2xl"
+                    className="h-full w-full"
+                  />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-white tracking-tight">{session.user?.name}</h2>

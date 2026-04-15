@@ -1,55 +1,88 @@
 "use client";
 
-import { Music } from "lucide-react";
-import { motion } from "motion/react";
+import { Music, UserRound } from "lucide-react";
 import { useState, useEffect } from "react";
+
+export type MusicArtworkVariant = "track" | "artist";
 
 interface MusicArtworkProps {
   src?: string | null;
   alt?: string;
   className?: string;
   iconSize?: number;
+  /** track: note only; artist: user silhouette + note (for avatars) */
+  variant?: MusicArtworkVariant;
+  /** Applied to both the loaded image and the placeholder panel */
+  rounded?: "none" | "md" | "xl" | "2xl" | "3xl" | "full";
 }
 
-export function MusicArtwork({ src, alt = "", className = "", iconSize = 24 }: MusicArtworkProps) {
-  const [hasError, setHasError] = useState(false);
+const ROUNDED: Record<NonNullable<MusicArtworkProps["rounded"]>, string> = {
+  none: "",
+  md: "rounded-md",
+  xl: "rounded-xl",
+  "2xl": "rounded-2xl",
+  "3xl": "rounded-3xl",
+  full: "rounded-full",
+};
 
-  // Reset error state if src changes
+function normalizeSrc(src?: string | null): string | null {
+  if (src == null) return null;
+  const t = String(src).trim();
+  return t.length ? t : null;
+}
+
+export function MusicArtwork({
+  src,
+  alt = "",
+  className = "",
+  iconSize = 24,
+  variant = "track",
+  rounded = "none",
+}: MusicArtworkProps) {
+  const [hasError, setHasError] = useState(false);
+  const r = ROUNDED[rounded];
+
   useEffect(() => {
     setHasError(false);
   }, [src]);
 
-  if (src && !hasError) {
+  const effectiveSrc = normalizeSrc(src);
+
+  if (effectiveSrc && !hasError) {
     return (
       <img
-        src={src}
+        src={effectiveSrc}
         alt={alt}
         loading="lazy"
         decoding="async"
         onError={() => setHasError(true)}
-        className={`h-full w-full object-cover transition-transform duration-500 animate-gpu ${className}`}
+        className={`h-full w-full object-cover transition-transform duration-500 animate-gpu ${r} ${className}`.trim()}
       />
     );
   }
 
   return (
-    <div className={`relative flex h-full w-full items-center justify-center overflow-hidden bg-linear-to-br from-[#1E1335] via-[#2A1B4D] to-[#452773] ${className}`}>
-
-      {/* Glossy Overlay */}
-      <div className="absolute inset-0 z-10 bg-linear-to-tr from-white/5 to-white/10 opacity-30" />
-
-      {/* Music Icon with subtle shadow */}
-      <div className="relative z-20 flex items-center justify-center drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
-        <Music 
-          size={iconSize} 
-          className="text-white opacity-20" 
-          strokeWidth={2.5} 
-        />
-      </div>
-
-      {/* Subtle border to catch light */}
-      <div className="absolute inset-x-0 top-0 h-px bg-white/10 z-20" />
-      <div className="absolute inset-y-0 left-0 w-px bg-white/5 z-20" />
+    <div
+      className={`relative flex h-full w-full items-center justify-center overflow-hidden bg-linear-to-br from-[#3D2918] via-[#1E1335] to-[#2A1B4D] ${r} ring-1 ring-white/10 ${className}`.trim()}
+      role="img"
+      aria-label={alt ? `${alt} (placeholder)` : "Music artwork placeholder"}
+    >
+      <div className="pointer-events-none absolute inset-0 z-10 bg-linear-to-tr from-white/10 to-transparent opacity-35" />
+      {variant === "artist" ? (
+        <div className="relative z-20 flex flex-col items-center justify-center">
+          <UserRound size={Math.max(22, Math.round(iconSize * 1.12))} className="text-white/40" strokeWidth={1.75} />
+          <Music
+            size={Math.max(14, Math.round(iconSize * 0.4))}
+            className="-mt-0.5 text-white/32"
+            strokeWidth={2.25}
+          />
+        </div>
+      ) : (
+        <div className="relative z-20 flex items-center justify-center drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+          <Music size={iconSize} className="text-white/38" strokeWidth={2.5} />
+        </div>
+      )}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-px bg-white/15" />
     </div>
   );
 }

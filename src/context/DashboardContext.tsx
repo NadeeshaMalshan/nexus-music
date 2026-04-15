@@ -7,6 +7,7 @@ import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { useSession } from "next-auth/react";
 import { useArtworkColors } from "@/lib/useArtworkColors";
 import { useSettings } from "./SettingsContext";
+import { type LiveMetadata } from "@/lib/live-tracker";
 
 type AudioPayload = {
   audioUrl: string;
@@ -78,6 +79,7 @@ type DashboardContextType = {
   aiLoading: boolean;
   overrideArtwork: string | null;
   setOverrideArtwork: (url: string | null) => void;
+  liveMetadata: LiveMetadata | null;
 
   // View State (Shared but UI-specific)
   isRightSidebarOpen: boolean;
@@ -183,6 +185,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [knowLoading, setKnowLoading] = useState(false);
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
   const [likedLibraryTracks, setLikedLibraryTracks] = useState<LikedLibraryTrackRow[]>([]);
+  const [liveMetadata, setLiveMetadata] = useState<LiveMetadata | null>(null);
   const likedLibraryRollbackRef = useRef<LikedLibraryTrackRow | null>(null);
   const [viewMode, setViewMode] = useState<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const viewModeRef = useRef<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
@@ -321,7 +324,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, [playedHistory]);
 
   // Palette handling
-  const effectiveArtwork = useMemo(() => overrideArtwork || audioData?.coverArt || currentSong?.artwork || null, [overrideArtwork, audioData, currentSong]);
+  const effectiveArtwork = useMemo(() => overrideArtwork || liveMetadata?.artwork || audioData?.coverArt || currentSong?.artwork || null, [overrideArtwork, liveMetadata, audioData, currentSong]);
   const palette = useArtworkColors(effectiveArtwork);
 
   useEffect(() => {
@@ -337,11 +340,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (typeof document === "undefined") return;
     if (currentSong) {
       const prefix = isPlaying ? "▶ " : "";
-      document.title = `${prefix}${currentSong.title} — ${currentSong.artist}`;
+      const displayTitle = liveMetadata?.title || currentSong.title;
+      const displayArtist = liveMetadata?.artist || currentSong.artist;
+      document.title = `${prefix}${displayTitle} — ${displayArtist}`;
     } else {
       document.title = "Nexus | Premium AI Ecosystem";
     }
-  }, [currentSong, isPlaying]);
+  }, [currentSong, isPlaying, liveMetadata]);
 
   // Fetch liked songs
   useEffect(() => {
@@ -618,6 +623,38 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
     void loadKnowFacts();
     return () => controller.abort();
+  }, [currentSong]);
+
+  // Global Live Metadata Polling
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    const fetchLive = async () => {
+      if (!currentSong?.isLive) {
+        setLiveMetadata(null);
+        return;
+      }
+      try {
+        const query = `${currentSong.artist} ${currentSong.title}`;
+        const videoId = currentSong.id;
+        const url  = `/api/live-tracker?query=${encodeURIComponent(query)}&title=${encodeURIComponent(currentSong.title)}&videoId=${encodeURIComponent(videoId)}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.artist && data?.title) setLiveMetadata(data);
+        }
+      } catch (err) {
+        console.warn("Global Live Tracking Failed:", err);
+      }
+    };
+    
+    if (currentSong?.isLive) {
+      void fetchLive();
+      interval = setInterval(fetchLive, 30000); // 30s poll
+    } else {
+      setLiveMetadata(null);
+    }
+    
+    return () => clearInterval(interval);
   }, [currentSong]);
 
 
@@ -1129,13 +1166,27 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const onRateSong = useCallback(async (songId: string, rating: "like" | "none", meta?: { title: string; artist: string }) => {
     if (!session?.user) return;
-    const targetId = (songId === currentSong?.id && audioData?.videoId) ? audioData.videoId : songId;
+    
+    let targetId = (songId === currentSong?.id && audioData?.videoId) ? audioData.videoId : songId;
+    let finalMeta = meta ?? (rating === "like" && songId === currentSong?.id && currentSong ? { title: currentSong.title, artist: currentSong.artist } : undefined);
 
-    const libraryMeta =
-      meta ??
-      (rating === "like" && songId === currentSong?.id && currentSong
-        ? { title: currentSong.title, artist: currentSong.artist }
-        : undefined);
+    // LIVE STREAM HANDLING: If liking during a live stream with metadata, find the actual song ID
+    if (rating === "like" && currentSong?.isLive && liveMetadata) {
+      try {
+        const query = `${liveMetadata.artist} - ${liveMetadata.title}`;
+        const searchRes = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          const bestMatch = searchData.items?.find((item: any) => item.type === "SONG") || searchData.items?.[0];
+          if (bestMatch?.videoId) {
+            targetId = bestMatch.videoId;
+            finalMeta = { title: liveMetadata.title, artist: liveMetadata.artist };
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to resolve live song ID for liking:", err);
+      }
+    }
 
     const idsToTouch = new Set<string>([targetId, songId]);
     if (songId === currentSong?.id && currentSong) {
@@ -1150,10 +1201,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         likedLibraryRollbackRef.current = removed ?? null;
         return prev.filter((t) => t.videoId !== targetId);
       });
-    } else if (rating === "like" && libraryMeta) {
+    } else if (rating === "like" && finalMeta) {
       setLikedLibraryTracks((prev) => [
         ...prev.filter((t) => t.videoId !== targetId),
-        { videoId: targetId, title: libraryMeta.title, artist: libraryMeta.artist },
+        { videoId: targetId, title: finalMeta.title, artist: finalMeta.artist },
       ]);
     }
 
@@ -1166,6 +1217,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
       return next;
     });
+
     try {
       const res = await fetch("/api/youtube/rate", {
         method: "POST",
@@ -1190,11 +1242,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           setLikedLibraryTracks((prev) => (prev.some((t) => t.videoId === r.videoId) ? prev : [...prev, r]));
         }
       }
-      if (rating === "like" && libraryMeta) {
+      if (rating === "like" && finalMeta) {
         setLikedLibraryTracks((prev) => prev.filter((t) => t.videoId !== targetId));
       }
     }
-  }, [session?.user, currentSong?.id, currentSong?.title, currentSong?.artist, currentSong?.musicVideoId, audioData?.videoId, audioData?.musicVideoId]);
+  }, [session?.user, currentSong, audioData, liveMetadata]);
 
   const sessionHandlersRef = useRef({ onTogglePlay, onNext, onPrev, onSeek });
   useEffect(() => {
@@ -1248,17 +1300,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined" || !("mediaSession" in navigator) || !currentSong) return;
 
+    const displayTitle = liveMetadata?.title || currentSong.title;
+    const displayArtist = liveMetadata?.artist || currentSong.artist || "Unknown Artist";
+    const displayArtwork = liveMetadata?.artwork || currentSong.artwork || "/placeholder.jpg";
+
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: currentSong.title,
-      artist: currentSong.artist || "Unknown Artist",
+      title: displayTitle,
+      artist: displayArtist,
       album: "Nexus Music",
       artwork: [
-        { src: currentSong.artwork || "/placeholder.jpg", sizes: "96x96", type: "image/jpeg" },
-        { src: currentSong.artwork || "/placeholder.jpg", sizes: "128x128", type: "image/jpeg" },
-        { src: currentSong.artwork || "/placeholder.jpg", sizes: "192x192", type: "image/jpeg" },
-        { src: currentSong.artwork || "/placeholder.jpg", sizes: "256x256", type: "image/jpeg" },
-        { src: currentSong.artwork || "/placeholder.jpg", sizes: "384x384", type: "image/jpeg" },
-        { src: currentSong.artwork || "/placeholder.jpg", sizes: "512x512", type: "image/jpeg" },
+        { src: displayArtwork, sizes: "96x96", type: "image/jpeg" },
+        { src: displayArtwork, sizes: "128x128", type: "image/jpeg" },
+        { src: displayArtwork, sizes: "192x192", type: "image/jpeg" },
+        { src: displayArtwork, sizes: "256x256", type: "image/jpeg" },
+        { src: displayArtwork, sizes: "384x384", type: "image/jpeg" },
+        { src: displayArtwork, sizes: "512x512", type: "image/jpeg" },
       ],
     });
 
@@ -1266,7 +1322,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if ("mediaSession" in navigator) {
        navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
     }
-  }, [currentSong, isPlaying]);
+  }, [currentSong, isPlaying, liveMetadata]);
 
   // Native Media Session API: Position State (Update on time change)
   useEffect(() => {
@@ -1315,6 +1371,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     isExpandedPlayerOpen,
     selectedPlaylist,
     palette,
+    liveMetadata,
     setIsPlaying,
     setCurrentTimeSec,
     setCurrentSong,
@@ -1361,7 +1418,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     knowLoading, likedSongs, likedLibraryTracks, songIsInLikedLibrary, resolveLikedLibraryRateVideoId, upNextQueue, playedHistory, aiLoading, 
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
-    setIsPlaying, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork
+    setIsPlaying, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata
   ]);
 
   return (

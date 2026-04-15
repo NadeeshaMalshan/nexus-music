@@ -7,8 +7,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
 import Link from "next/link";
 import { useDashboard } from "@/context/DashboardContext";
-import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
+import { MusicArtwork } from "./MusicArtwork";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { CreatePlaylistModal, AiPlaylistModal } from "./LibraryModals";
@@ -223,7 +223,14 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                     >
                       <div className="flex items-center gap-3.5 px-3 py-2.5 rounded-2xl hover:bg-white/5 transition-all cursor-pointer group">
                         <div className={`relative w-11 h-11 ${item.type === "ARTIST" ? "rounded-full" : "rounded-lg"} overflow-hidden shrink-0 shadow-lg`}>
-                          <Image unoptimized src={item.thumbnail} alt="" fill className="object-cover" />
+                          <MusicArtwork
+                            src={item.thumbnail}
+                            alt={item.title || item.name || "Result"}
+                            iconSize={20}
+                            variant={item.type === "ARTIST" ? "artist" : "track"}
+                            rounded={item.type === "ARTIST" ? "full" : "md"}
+                            className="h-full w-full"
+                          />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                             <Play size={16} fill="white" className="text-white ml-0.5" />
                           </div>
@@ -366,11 +373,14 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                     className={`flex items-center gap-4 rounded-2xl px-4 py-2.5 transition-all hover:bg-white/5 group ${pathname.includes(pl.id) ? "text-white" : "text-white/40"}`}
                   >
                     <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity shadow-sm">
-                      {pl.thumbnailUrl ? (
-                         <Image unoptimized src={pl.thumbnailUrl} alt="" fill className="object-cover" />
-                      ) : (
-                         <div className="absolute inset-0 bg-white/5 flex items-center justify-center"><Music2 size={12} /></div>
-                      )}
+                      <MusicArtwork
+                        src={pl.thumbnailUrl}
+                        alt={pl.title}
+                        iconSize={14}
+                        variant="track"
+                        rounded="md"
+                        className="h-full w-full"
+                      />
                     </div>
                     <span className="truncate text-[16px] font-bold tracking-tight">{pl.title}</span>
                   </Link>

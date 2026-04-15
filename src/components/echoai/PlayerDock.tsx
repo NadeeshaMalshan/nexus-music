@@ -1,4 +1,5 @@
 import { Pause, Play, SkipBack, SkipForward, Search, Volume2, Maximize2 } from "lucide-react";
+import { MusicArtwork } from "./MusicArtwork";
 
 type PlayerDockProps = {
   trackName: string;
@@ -38,14 +39,14 @@ export function PlayerDock({
             type="button"
             className="relative h-14 w-14 overflow-hidden rounded-full transition-transform hover:scale-105"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {coverArt && coverArt.length > 0 ? (
-              <img src={coverArt} alt={`${trackName} cover`} className="h-full w-full object-cover" />
-            ) : (
-              <div className="h-full w-full bg-white/10 flex items-center justify-center">
-                <Maximize2 size={24} className="text-white/20" />
-              </div>
-            )}
+            <MusicArtwork
+              src={coverArt}
+              alt={trackName}
+              iconSize={26}
+              variant="track"
+              rounded="full"
+              className="h-full w-full"
+            />
             <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity hover:opacity-100">
               <Maximize2 size={18} className="text-white" />
             </div>

@@ -201,13 +201,20 @@ export function MobileExpandedPlayer({
       <m.div 
         ref={el => { elementsRef.current[index] = el; }}
         onClick={() => hasSynced && onSeek(syncedLine?.at)}
+        layout
         animate={{
-          opacity: hasSynced ? (isActive ? 1 : 0.2) : 0.9,
-          scale: hasSynced ? (isActive ? 1.05 : 0.95) : 1,
-          x: hasSynced ? (isActive ? 6 : 0) : 0,
+          opacity: hasSynced ? (isActive ? 1 : 0.4) : 0.8,
+          scale: hasSynced ? (isActive ? 1.05 : 1) : 1,
+          x: hasSynced ? (isActive ? 10 : 0) : 0,
+          filter: hasSynced 
+            ? (isActive ? "blur(0px) brightness(1.2)" : "blur(4px) brightness(0.6)") 
+            : "blur(0px) brightness(1.0)"
         }}
         initial={false}
-        transition={APPLE_LYRICS_TRANSITION}
+        transition={{
+          ...APPLE_LYRICS_TRANSITION,
+          filter: { duration: 0.8, ease: "easeOut" }
+        }}
         className={`group flex items-center origin-left transform ${hasSynced ? "cursor-pointer" : "cursor-default"} ${
           isInstrumental 
               ? (isActive ? "h-20" : "h-0 overflow-hidden") 
@@ -221,9 +228,7 @@ export function MobileExpandedPlayer({
             <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
           </div>
         ) : (
-          <p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] text-[40px] leading-[1.05] transition-colors duration-500 ${
-              hasSynced ? (isActive ? "text-white" : "text-white/50") : "text-white/90"
-            }`}>
+          <p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] text-[40px] leading-[1.05] text-white`}>
             {line}
           </p>
         )}
@@ -237,7 +242,7 @@ export function MobileExpandedPlayer({
   });
   LyricLine.displayName = "LyricLine";
 
-  const safeDuration = currentSong.durationObj?.totalSeconds || 0;
+  const safeDuration = durationSec || currentSong.durationObj?.totalSeconds || 0;
   const targetTitle = (liveMetadata?.title || currentSong.title || "").toLowerCase();
   const isReallyLive = 
     currentSong.isLive || 
@@ -253,7 +258,7 @@ export function MobileExpandedPlayer({
     targetTitle.includes("edc") ||
     targetTitle.includes(" 24/7") ||
     (targetTitle.includes("live") && (targetTitle.includes("stream") || targetTitle.includes("festival") || targetTitle.includes("radio"))) ||
-    (Math.abs(safeDuration) < 1 && isPlaying);
+    (Math.abs(safeDuration) < 1 && isPlaying && (targetTitle.includes("fest") || targetTitle.includes("radio") || targetTitle.includes("live") || !!liveMetadata));
 
   const displayHasSynced = hasSynced && !isReallyLive;
   const lines = displayHasSynced ? syncedLines.map(l => l.text) : plainLines;
@@ -265,7 +270,7 @@ export function MobileExpandedPlayer({
     const activeEl = elementsRef.current[activeIndex];
     if (activeEl && scrollRef.current) {
         const containerHeight = scrollRef.current.clientHeight;
-        const targetScroll = activeEl.offsetTop - (containerHeight * 0.25);
+        const targetScroll = activeEl.offsetTop - (containerHeight / 2) + (activeEl.clientHeight / 2);
         
         scrollRef.current.scrollTo({
             top: Math.max(0, targetScroll),
@@ -849,7 +854,7 @@ export function MobileExpandedPlayer({
                             key={index}
                             line={line}
                             index={index}
-                            isActive={!isReallyLive && index === activeIndex}
+                            isActive={index === activeIndex}
                             isInstrumental={displayHasSynced && syncedLines[index]?.isInstrumental}
                             syncedLine={displayHasSynced ? syncedLines[index] : null}
                             currentTimeSec={currentTimeSec}

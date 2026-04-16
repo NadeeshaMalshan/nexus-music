@@ -24,8 +24,8 @@ export const SPRING_STIFF = {
 
 export const APPLE_LYRICS_TRANSITION = {
   type: "spring" as const,
-  stiffness: 120,
-  damping: 24,
+  stiffness: 100,
+  damping: 20,
   mass: 1,
 };
 

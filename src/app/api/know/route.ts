@@ -63,9 +63,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    // 1. CACHE CHECK
+    // 1. CACHE CHECK - Incorporating Artist/Track for unique live stream identification
+    const cacheKey = `song_facts:${videoId}:${artist.toLowerCase().replace(/[^a-z0-t]/g, '')}:${track.toLowerCase().replace(/[^a-z0-t]/g, '')}`;
     if (redis) {
-      const cached = await redis.get(`song_facts:${videoId}`);
+      const cached = await redis.get(cacheKey);
       if (cached) {
         const parsed = typeof cached === 'string' ? JSON.parse(cached) : cached;
         // If the cached version is the OLD static fallback, ignore it and re-generate
@@ -125,7 +126,7 @@ RULES:
 
     if (facts) {
       if (redis) {
-        await redis.set(`song_facts:${videoId}`, JSON.stringify(facts), { ex: 604800 });
+        await redis.set(cacheKey, JSON.stringify(facts), { ex: 604800 });
       }
       return NextResponse.json(facts);
     }
@@ -141,7 +142,7 @@ RULES:
       
       if (storySnippets.length > 0) {
         if (redis) {
-          await redis.set(`song_facts:${videoId}`, JSON.stringify(storySnippets), { ex: 604800 });
+          await redis.set(cacheKey, JSON.stringify(storySnippets), { ex: 604800 });
         }
         return NextResponse.json(storySnippets);
       }

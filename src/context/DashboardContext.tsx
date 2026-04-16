@@ -475,14 +475,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // Lyrics loading logic
   useEffect(() => {
+    // Reset lyrics immediately when song OR live metadata changes to prevent stale display
+    setLyricsData(null);
+
     if (!currentSong) {
-      setLyricsData(null);
       return;
     }
     const track = (liveMetadata?.title || currentSong.title)?.trim();
     const artist = (liveMetadata?.artist || currentSong.artist)?.trim();
     if (!track || !artist) {
-      setLyricsData(null);
       return;
     }
     const duration = youtubeTimestampToSeconds(currentSong.duration);
@@ -599,8 +600,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // Facts logic
   useEffect(() => {
+    // Reset facts immediately to prevent stale display during transition
+    setKnowFacts([]);
+
     if (!currentSong) {
-      setKnowFacts([]);
       return;
     }
     const track = (liveMetadata?.title || currentSong.title)?.trim();
@@ -651,7 +654,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       targetTitle.includes("edc") ||
       targetTitle.includes(" 24/7") ||
       (targetTitle.includes("live") && (targetTitle.includes("stream") || targetTitle.includes("festival") || targetTitle.includes("radio"))) ||
-      (isPlaying && (safeDuration < 1 || currentSong?.duration === "0:00"));
+      (isPlaying && (safeDuration < 1 || currentSong?.duration === "0:00") && 
+       (targetTitle.includes("fest") || targetTitle.includes("radio") || targetTitle.includes("live") || !!liveMetadata));
 
     const fetchLive = async () => {
       if (!isReallyLive || !currentSong) {
@@ -692,12 +696,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // YouTube player: container is created imperatively on document.body so React never strips the iframe on re-renders.
   useEffect(() => {
-    const mount = document.createElement("div");
-    mount.id = playerElementId;
-    mount.className =
-      "fixed top-0 left-0 h-[1px] w-[1px] overflow-hidden opacity-[0.01] pointer-events-none z-[-1]";
-    mount.setAttribute("aria-hidden", "true");
-    document.body.appendChild(mount);
+    let mount = document.getElementById(playerElementId);
+    if (!mount) {
+      mount = document.createElement("div");
+      mount.id = playerElementId;
+      mount.className = "fixed top-0 left-0 h-[1px] w-[1px] overflow-hidden opacity-[0.01] pointer-events-none z-[-1]";
+      mount.setAttribute("aria-hidden", "true");
+      document.body.appendChild(mount);
+    }
 
     const w = window as any;
     const initPlayer = () => {
@@ -769,8 +775,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 } catch (e) {}
 
                 // RESILIENCE: If user intent is playing but player is paused background, try to resume
-                // We SKIP this for live streams because the expanded player owns them.
-                if (userIntentRef.current === "playing" && document.visibilityState === 'hidden' && !currentSongRef.current?.isLive) {
+                // We SKIP this for live streams and video mode because the expanded player owns them.
+                if (
+                  userIntentRef.current === "playing" && 
+                  document.visibilityState === 'hidden' && 
+                  !currentSongRef.current?.isLive && 
+                  viewModeRef.current !== "video" &&
+                  !isUsingNativeAudio
+                ) {
                     const state = player.getPlayerState();
                     if (state === 2 || state === 5) {
                         player.playVideo();
@@ -865,7 +877,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       } catch { /* ignore */ }
       ytPlayerRef.current = null;
       playerReadyRef.current = false;
-      mount.remove();
+      const m = document.getElementById(playerElementId);
+      if (m) document.body.removeChild(m);
     };
   }, []); // Run only once
 

@@ -54,19 +54,9 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Neon Glow Effect */
-@keyframes neon-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
-  }
-}
-
+/* Neon Glow Effect (Static) */
 .neon-pulse {
-  animation: neon-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
 }
 
 /* Skeleton shimmer for For You glass cards */

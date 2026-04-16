@@ -253,7 +253,7 @@ Format ONLY as a JSON array of strings. No extra text, no code blocks.`;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) throw new Error("GEMINI_API_KEY is not defined");
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: "v1" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
       const result = await model.generateContent(systemPrompt);
       const rawContent = result.response.text().trim();
 

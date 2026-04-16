@@ -53,7 +53,7 @@ export function JamSession() {
         className="w-full space-y-6"
       >
         {/* Main Control Card */}
-        <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/3 p-6 shadow-2xl backdrop-blur-2xl transition-all hover:bg-white/5">
+        <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/3 p-6 shadow-2xl transition-all hover:bg-white/5">
           {/* Subtle Ambient Background */}
           <div 
             className="absolute -right-8 -top-8 h-32 w-32 rounded-full blur-[60px] opacity-20"

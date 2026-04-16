@@ -57,5 +57,5 @@ export const SCALE_VARIANTS: Variants = {
  * and re-definition overhead.
  */
 export const MOTION_CONFIG = {
-  transition: { ease: APPLE_EASE, duration: 0.4 },
+  transition: { duration: 0 },
 };

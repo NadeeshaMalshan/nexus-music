@@ -16,6 +16,8 @@ import { useJam } from "@/context/JamContext";
 import { useDashboard } from "@/context/DashboardContext";
 import { FlowingBackground } from "./FlowingBackground";
 import { LiveLikeToast } from "./LiveLikeToast";
+import { MarqueeText } from "./MarqueeText";
+import React from "react";
 
 export function MobileExpandedPlayer({
   onClose,
@@ -108,10 +110,10 @@ export function MobileExpandedPlayer({
   }, [activeTab]);
 
   useEffect(() => {
-    if ((viewMode === "video" || currentSong.isLive) && activeTab === "lyrics") {
+    if (viewMode === "video" && activeTab === "lyrics") {
       setActiveTab("controls");
     }
-  }, [viewMode, currentSong.isLive, activeTab]);
+  }, [viewMode, activeTab]);
 
 
   const ytPlayerInstance = useRef<any>(null);
@@ -180,9 +182,75 @@ export function MobileExpandedPlayer({
     return currentTimeSec >= line.at && (!next || currentTimeSec < next.at);
   }) : -1;
 
-  const lines = hasSynced ? syncedLines.map(l => l.text) : plainLines;
-  const fallbackDuration = youtubeTimestampToSeconds(currentSong.duration) ?? 0;
-  const safeDuration = durationSec > 0 ? durationSec : fallbackDuration;
+  // Memoize lyrics components to prevent total re-render on activeIndex change
+  const LyricLine = React.memo(({ line, index, isActive, isInstrumental, syncedLine, currentTimeSec, onSeek }: any) => {
+    let instProgress = 0;
+    if (isInstrumental && isActive) {
+      const start = syncedLine.at;
+      const next = syncedLines[index + 1];
+      const end = next ? next.at : start + 5;
+      const dur = end > start ? end - start : 5;
+      instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
+    }
+
+    const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
+    const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
+    const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
+
+    return (
+      <m.div 
+        ref={el => { elementsRef.current[index] = el; }}
+        onClick={() => hasSynced && onSeek(syncedLine?.at)}
+        animate={{
+          opacity: hasSynced ? (isActive ? 1 : 0.2) : 0.9,
+          scale: hasSynced ? (isActive ? 1.05 : 0.95) : 1,
+          x: hasSynced ? (isActive ? 6 : 0) : 0,
+        }}
+        initial={false}
+        transition={APPLE_LYRICS_TRANSITION}
+        className={`group flex items-center origin-left transform ${hasSynced ? "cursor-pointer" : "cursor-default"} ${
+          isInstrumental 
+              ? (isActive ? "h-20" : "h-0 overflow-hidden") 
+              : "py-6"
+        }`}
+      >
+        {isInstrumental ? (
+          <div className={`flex gap-3 items-center h-full transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
+            <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.1 }} />
+            <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.1 }} />
+            <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
+          </div>
+        ) : (
+          <p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] text-[40px] leading-[1.05] transition-colors duration-500 ${
+              hasSynced ? (isActive ? "text-white" : "text-white/50") : "text-white/90"
+            }`}>
+            {line}
+          </p>
+        )}
+      </m.div>
+    );
+  }, (prev, next) => {
+    // Only re-render if its active status changed, or if it is the currently active instrumental line
+    if (prev.isActive !== next.isActive) return false;
+    if (next.isActive && next.isInstrumental) return prev.currentTimeSec === next.currentTimeSec;
+    return true;
+  });
+  LyricLine.displayName = "LyricLine";
+
+  const safeDuration = currentSong.durationObj?.totalSeconds || 0;
+  const targetTitle = (liveMetadata?.title || currentSong.title || "").toLowerCase();
+  const isReallyLive = 
+    currentSong.isLive || 
+    currentSong.duration === "LIVE" || 
+    safeDuration > 43200 || 
+    targetTitle.includes("one world radio") ||
+    targetTitle.includes("owr") ||
+    targetTitle.includes(" 24/7") ||
+    (targetTitle.includes("live") && (targetTitle.includes("stream") || targetTitle.includes("festival") || targetTitle.includes("radio"))) ||
+    (Math.abs(safeDuration) < 1 && isPlaying);
+
+  const displayHasSynced = hasSynced && !isReallyLive;
+  const lines = displayHasSynced ? syncedLines.map(l => l.text) : plainLines;
 
   useEffect(() => {
     if (!hasSynced || activeIndex < 0 || !scrollRef.current) return;
@@ -200,23 +268,56 @@ export function MobileExpandedPlayer({
     }
   }, [activeIndex, hasSynced, activeTab]);
 
-  useEffect(() => {
-    if (activeTab !== "ai" || knowLoading || !isPlaying) return;
-    const interval = setInterval(() => {
-      const el = storylineRef.current;
-      if (!el) return;
+  const [storyActiveIndex, setStoryActiveIndex] = useState(0);
+  const [storyProgress, setStoryProgress] = useState(0);
+
+  const handleStoryJump = (index: number) => {
+    setStoryActiveIndex(index);
+    setStoryProgress(0);
+    const el = storylineRef.current;
+    if (el) {
       const items = el.querySelectorAll(".story-fact");
-      if (items.length === 0) return;
-      storylineIndexRef.current = (storylineIndexRef.current + 1) % (items.length + 1);
-      if (storylineIndexRef.current === 0) {
-        el.scrollTo({ top: 0, behavior: "smooth" });
-      } else {
-        const nextItem = items[storylineIndexRef.current - 1] as HTMLElement;
-        el.scrollTo({ top: nextItem.offsetTop - 150, behavior: "smooth" });
+      const targetItem = items[index] as HTMLElement;
+      if (targetItem) {
+        const containerHeight = el.clientHeight;
+        const targetScroll = targetItem.offsetTop - (containerHeight / 2) + (targetItem.clientHeight / 2);
+        el.scrollTo({ top: targetScroll, behavior: "smooth" });
       }
-    }, 10000);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== "ai" || knowLoading || !isPlaying) {
+      // Don't reset everything, just stop the progress
+      return;
+    }
+    
+    const tick = 100; // ms
+    const totalDuration = 10000; // 10s per fact
+    
+    const interval = setInterval(() => {
+      setStoryProgress(prev => {
+        if (prev >= 100) {
+          const el = storylineRef.current;
+          if (el) {
+            const items = el.querySelectorAll(".story-fact");
+            if (items.length > 0) {
+               const nextIndex = (storyActiveIndex + 1) % items.length;
+               setStoryActiveIndex(nextIndex);
+               const nextItem = items[nextIndex] as HTMLElement;
+               const containerHeight = el.clientHeight;
+               const targetScroll = nextItem.offsetTop - (containerHeight / 2) + (nextItem.clientHeight / 2);
+               el.scrollTo({ top: targetScroll, behavior: "smooth" });
+            }
+          }
+          return 0;
+        }
+        return prev + (tick / totalDuration) * 100;
+      });
+    }, tick);
+    
     return () => clearInterval(interval);
-  }, [activeTab, knowLoading, isPlaying]);
+  }, [activeTab, knowLoading, isPlaying, storyActiveIndex, knowFacts.length]);
 
   useEffect(() => {
     if (viewMode === "video") {
@@ -255,11 +356,13 @@ export function MobileExpandedPlayer({
   }, [viewMode]);
 
   useEffect(() => {
-    if ((viewMode === "video" || currentSong.isLive) && ytPlayerInstance.current) {
+    const p = ytPlayerInstance.current;
+    if ((viewMode === "video" || currentSong.isLive) && p) {
+      const state = p.getPlayerState?.();
       if (isPlaying) {
-        ytPlayerInstance.current.playVideo();
+        if (state !== 1 && state !== 3) p.playVideo();
       } else {
-        ytPlayerInstance.current.pauseVideo();
+        if (state !== 2 && state !== 5) p.pauseVideo();
       }
     }
   }, [isPlaying, viewMode, currentSong.isLive, currentSong.id]);
@@ -307,15 +410,13 @@ export function MobileExpandedPlayer({
 
   const renderTabSelector = () => (
     <div className="flex w-full items-center justify-around px-4">
-      {!currentSong.isLive && (
-        <button
-          type="button"
-          onClick={() => setActiveTab(activeTab === "lyrics" ? "controls" : "lyrics")}
-          className={`p-3 rounded-xl transition-all ${activeTab === "lyrics" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}
-        >
-          <Mic2 size={24} />
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => setActiveTab(activeTab === "lyrics" ? "controls" : "lyrics")}
+        className={`p-3 rounded-xl transition-all ${activeTab === "lyrics" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}
+      >
+        <Mic2 size={24} />
+      </button>
       <button
         type="button"
         onClick={() => setActiveTab(activeTab === "queue" ? "controls" : "queue")}
@@ -343,7 +444,7 @@ export function MobileExpandedPlayer({
   const renderControls = () => (
     <div className="flex w-full flex-col px-10">
       {/* Progress */}
-      {!currentSong.isLive && (
+      {!isReallyLive && (
         <div className="space-y-4 mb-2">
           <div onClick={handleSeekClick} className="group relative h-1.5 w-full cursor-pointer rounded-full bg-white/10 overflow-hidden">
             <m.div 
@@ -373,7 +474,7 @@ export function MobileExpandedPlayer({
           onClick={onTogglePlay}
           className="flex h-24 w-24 items-center justify-center text-white active:scale-95 transition-transform"
         >
-          {isPlaying ? <Pause size={72} fill="white" /> : <Play size={72} fill="white" className="ml-2" />}
+          {isPlaying ? <Pause size={72} fill="white" strokeWidth={0} /> : <Play size={72} fill="white" strokeWidth={0} className="ml-2" />}
         </m.button>
         <m.button 
           whileTap={{ scale: 0.8 }}
@@ -468,7 +569,7 @@ export function MobileExpandedPlayer({
       </AnimatePresence>
 
       {/* Background */}
-      <FlowingBackground palette={palette} />
+      <FlowingBackground palette={palette} artwork={liveMetadata?.artwork || currentSong.artwork} />
 
       {/* Top Grabber */}
       <div 
@@ -555,6 +656,88 @@ export function MobileExpandedPlayer({
 
       {/* Content Area */}
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
+        {/* 
+           PERSISTENT PLAYER CONTAINER (Mobile)
+           We keep the YouTube component mounted here so audio doesn't stop when switching tabs.
+           When activeTab === 'controls', this container is positioned/sized based on viewMode.
+           When activeTab !== 'controls', we hide it but keep it playing (z-index 0, opacity 0).
+        */}
+        {(viewMode === "video" || isReallyLive) && (
+          <div 
+            className={`absolute transition-all duration-700 pointer-events-none ${
+              activeTab === "controls" 
+                ? (viewMode === "video" 
+                    ? "inset-0 z-20 opacity-100 scale-100" 
+                    : "top-[15dvh] left-1/2 -translate-x-1/2 w-[70vw] aspect-square rounded-[20px] overflow-hidden opacity-0 z-0 scale-50")
+                : "inset-0 opacity-0 z-0 pointer-events-none scale-0"
+            }`}
+          >
+            <div ref={videoContainerRef} className="h-full w-full bg-black relative flex items-center justify-center">
+              {currentSong.isLive && activeTab === "controls" && viewMode === "video" && (
+                <div className="absolute top-4 left-4 z-50 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-600/90 backdrop-blur-md shadow-lg pointer-events-none">
+                  <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                  <span className="text-[10px] font-black text-white uppercase tracking-widest">Live</span>
+                </div>
+              )}
+              <YouTube 
+                key={`mobile-yt-${videoKey}`}
+                videoId={currentSong.musicVideoId || currentSong.id} 
+                opts={youtubeOpts} 
+                onReady={e => { 
+                  ytPlayerInstance.current = e.target; 
+                  e.target.setVolume(volume); 
+                  const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
+                  try { e.target.setPlaybackQuality(vq); } catch(err) {}
+                  if(isPlaying) e.target.playVideo(); 
+                }}
+                onStateChange={e => {
+                  if (e.data === 0) onNext();
+                  else if (e.data === 1) {
+                    setIsPlaying(true);
+                    const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
+                    try { e.target.setPlaybackQuality(vq); } catch(err) {}
+                  }
+                  else if (e.data === 2) {
+                    if (!isPlayingRef.current) setIsPlaying(false);
+                    else {
+                      setTimeout(() => {
+                        try {
+                          if (ytPlayerInstance.current?.getPlayerState?.() === 2 && isPlayingRef.current)
+                            ytPlayerInstance.current.playVideo();
+                        } catch { /* ignore */ }
+                      }, 400);
+                    }
+                  }
+                }}
+                className="h-full w-full pointer-events-none select-none transition-transform duration-700" 
+                iframeClassName="h-full w-full"
+              />
+              {/* Interaction Blocker & Controls (Only active in controls + video mode) */}
+              {activeTab === "controls" && viewMode === "video" && (
+                <>
+                  <div 
+                    className="absolute inset-0 z-30 pointer-events-auto"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTogglePlay();
+                    }}
+                  />
+                  <button
+                    className="absolute bottom-6 right-6 z-50 p-3 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 text-white opacity-60 active:scale-90 transition-all shadow-2xl pointer-events-auto"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFullscreen();
+                    }}
+                    title="Fullscreen"
+                  >
+                    <Maximize size={20} />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           {activeTab === "controls" ? (
             <m.div 
@@ -568,80 +751,8 @@ export function MobileExpandedPlayer({
               {/* Artwork Section */}
               <div className={`w-full flex-[1.4] flex items-center justify-center transition-all duration-300 ${viewMode === 'video' ? 'px-0' : 'px-10'}`}>
                 <m.div 
-                    layoutId={viewMode === 'video' ? undefined : "compact-art"}
-                    className={`relative w-full shadow-[0_40px_100px_rgba(0,0,0,0.6)] animate-gpu transition-all duration-300 ${(viewMode === 'video' || currentSong.isLive) ? 'aspect-video max-w-full rounded-none! overflow-visible! border-none!' : 'aspect-square max-w-[340px] rounded-[20px] overflow-hidden border border-white/10'}`}
+                    className={`relative w-full shadow-[0_40px_100px_rgba(0,0,0,0.6)] animate-gpu transform-gpu transition-all duration-300 ${viewMode === 'video' ? 'aspect-video max-w-full rounded-none! overflow-visible! border-none!' : 'aspect-square max-w-[340px] rounded-[20px] overflow-hidden border border-white/10'}`}
                 >
-                    {(viewMode === "video" || currentSong.isLive) && (
-                        <div 
-                          ref={videoContainerRef}
-                          className={`group/vid absolute inset-0 ${(viewMode === "music" && !currentSong.isLive) ? "opacity-0 pointer-events-none z-0 overflow-hidden" : "h-full w-full bg-black flex items-center justify-center z-10 overflow-visible"}`}
-                        >
-                            {currentSong.isLive && (
-                                <div className="absolute top-4 left-4 z-50 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-600/90 backdrop-blur-md shadow-lg pointer-events-none">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Live</span>
-                                </div>
-                            )}
-
-                            <YouTube 
-                                key={`mobile-yt-${videoKey}`}
-                                videoId={currentSong.musicVideoId || currentSong.id} 
-                                opts={youtubeOpts} 
-                                onReady={e => { 
-                                    ytPlayerInstance.current = e.target; 
-                                    e.target.setVolume(volume); 
-                                    const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
-                                    try { e.target.setPlaybackQuality(vq); } catch(err) {}
-                                    if(isPlaying) e.target.playVideo(); 
-                                }}
-                                onStateChange={e => {
-                                    if (e.data === 0) onNext();
-                                    else if (e.data === 1) {
-                                      setIsPlaying(true);
-                                      // Secondary quality check
-                                      const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
-                                      try { e.target.setPlaybackQuality(vq); } catch(err) {}
-                                    }
-                                    else if (e.data === 2) {
-                                        if (!isPlayingRef.current) setIsPlaying(false);
-                                        else {
-                                            setTimeout(() => {
-                                                try {
-                                                    if (ytPlayerInstance.current?.getPlayerState?.() === 2 && isPlayingRef.current)
-                                                        ytPlayerInstance.current.playVideo();
-                                                } catch { /* ignore */ }
-                                            }, 400);
-                                        }
-                                    }
-                                }}
-                                className="h-full w-full origin-center pointer-events-none select-none transition-transform duration-700 rounded-none!" 
-                                iframeClassName="rounded-none! overflow-visible!"
-                            />
-
-                            {/* Interaction Blocker */}
-                            <div 
-                              className="absolute inset-0 z-10"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onTogglePlay();
-                              }}
-                            />
-                            
-                            {/* Fullscreen Button */}
-                            {viewMode === "video" && (
-                              <button
-                                className="absolute bottom-6 right-6 z-50 p-3 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 text-white opacity-60 active:scale-90 transition-all shadow-2xl"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleFullscreen();
-                                }}
-                                title="Fullscreen"
-                              >
-                                <Maximize size={20} />
-                              </button>
-                            )}
-                        </div>
-                    )}
                     {viewMode === "music" && (
                         <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={64} />
                     )}
@@ -652,12 +763,31 @@ export function MobileExpandedPlayer({
               <div className="w-full flex flex-col px-10 mt-2 mb-4">
                   <div className="flex items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                          <h1 className="text-[26px] leading-[1.1] font-black text-white tracking-tight line-clamp-2">{liveMetadata?.title || currentSong.title}</h1>
+                          {liveMetadata && (
+                             <m.div 
+                               initial={{ opacity: 0, scale: 0.9 }}
+                               animate={{ opacity: 1, scale: 1 }}
+                               className="mb-2 flex items-center gap-1.5"
+                             >
+                                <span className="px-2 py-0.5 rounded-[4px] bg-red-600 text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-red-500/20">
+                                   <div className="h-1 w-1 rounded-full bg-white animate-pulse" />
+                                   Live Radio
+                                </span>
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] line-clamp-1">{liveMetadata.source}</span>
+                             </m.div>
+                          )}
+                          <MarqueeText 
+                            text={liveMetadata?.title || currentSong.title} 
+                            className="text-[28px] leading-none font-black text-white tracking-tight mb-1"
+                          />
                           <button 
                             onClick={() => onArtistClick?.(liveMetadata?.artist || currentSong.artist)}
-                            className="text-[19px] font-bold text-white/40 active:text-white/70 transition-colors mt-1.5 text-left"
+                            className="w-full text-left mt-1.5"
                           >
-                            {liveMetadata?.artist || currentSong.artist}
+                            <MarqueeText 
+                              text={liveMetadata?.artist || currentSong.artist} 
+                              className="text-[19px] font-bold text-white/40 active:text-white/70 transition-colors"
+                            />
                           </button>
                       </div>
                       <div className="flex shrink-0 bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-2xl">
@@ -708,57 +838,38 @@ export function MobileExpandedPlayer({
                   >
                     <div ref={scrollRef} className="h-full overflow-y-auto px-10 pt-10 pb-[40dvh] custom-scrollbar no-scrollbar swipe-up">
                       <div className="max-w-2xl mx-auto">
-                        {lines.map((line, index) => {
-                          const isInstrumental = hasSynced && syncedLines[index]?.isInstrumental;
-                          const isActive = index === activeIndex;
+                        {lines.map((line, index) => (
+                          <LyricLine 
+                            key={index}
+                            line={line}
+                            index={index}
+                            isActive={!isReallyLive && index === activeIndex}
+                            isInstrumental={displayHasSynced && syncedLines[index]?.isInstrumental}
+                            syncedLine={displayHasSynced ? syncedLines[index] : null}
+                            currentTimeSec={currentTimeSec}
+                            onSeek={onSeek}
+                          />
+                        ))}
 
-                          let instProgress = 0;
-                          if (isInstrumental && isActive) {
-                            const start = syncedLines[index].at;
-                            const next = syncedLines[index + 1];
-                            const end = next ? next.at : start + 5;
-                            const dur = end > start ? end - start : 5;
-                            instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
-                          }
-
-                          const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
-                          const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
-                          const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
-
-                          return (
-                            <m.div 
-                              key={index} 
-                              ref={el => { elementsRef.current[index] = el; }}
-                              onClick={() => hasSynced && onSeek(syncedLines[index].at)}
-                              animate={{
-                                opacity: isActive ? 1 : 0.25,
-                                scale: isActive ? 1.05 : 0.9,
-                                filter: isActive ? "blur(0px)" : "blur(4px)",
-                                x: isActive ? 10 : 0,
-                              }}
-                              transition={APPLE_LYRICS_TRANSITION}
-                              className={`group flex items-center origin-left cursor-pointer transform ${
-                                isInstrumental 
-                                    ? (isActive ? "h-20" : "h-0 overflow-hidden") 
-                                    : "py-6"
-                              }`}
-                            >
-                              {isInstrumental ? (
-                                <div className={`flex gap-3 items-center h-full transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
-                                  <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.1 }} />
-                                  <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.1 }} />
-                                  <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
-                                </div>
-                              ) : (
-                                <m.p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] text-[40px] leading-[1.05] ${
-                                    isActive ? "text-white" : "text-white/50"
-                                  }`}>
-                                  {line}
-                                </m.p>
-                              )}
-                            </m.div>
-                          );
-                        })}
+                        {/* Mobile Lyrics Credits */}
+                        {(geniusData?.writers || lyricsSource) && (
+                          <div className="mt-20 border-t border-white/10 pt-12 pb-24 space-y-6 px-1">
+                            {geniusData?.writers && (
+                              <div className="space-y-1.5">
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Written By</p>
+                                <p className="text-lg font-bold text-white/60 leading-tight">
+                                  {geniusData.writers.join(", ")}
+                                </p>
+                              </div>
+                            )}
+                            {lyricsSource && (
+                              <div className="flex items-center gap-2.5 pt-1">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-white/20">Lyrics via</p>
+                                <span className="px-1.5 py-0.5 rounded-[2px] bg-white/5 text-[8px] font-black text-white/40 uppercase">{lyricsSource}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </m.div>
@@ -854,19 +965,84 @@ export function MobileExpandedPlayer({
                     transition={MOTION_CONFIG.transition}
                     className="flex-1 overflow-hidden"
                   >
-                    <div ref={storylineRef} className="h-full overflow-y-auto px-10 pt-10 pb-[40dvh] custom-scrollbar no-scrollbar">
-                        {knowLoading ? (
-                            <div className="flex flex-col items-center justify-center h-full gap-4">
-                                <div className="w-12 h-12 border-4 border-white/10 border-t-white/40 rounded-full animate-spin" />
-                                <p className="text-white/40 uppercase tracking-[0.2em] text-xs font-black">Decrypting Story</p>
+                    <div className="flex flex-col h-full bg-linear-to-b from-black/20 to-transparent">
+                        <div className="px-10 pt-8 pb-4 flex items-center justify-between border-b border-white/5">
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-white/40">Behind the Music</h3>
                             </div>
-                        ) : (
-                             <div className="space-y-40">
-                                 {knowFacts.map((fact, i) => (
-                                     <div key={i} className="story-fact text-[32px] font-black text-white/90 leading-[1.3] tracking-tight drop-shadow-2xl transition-all duration-700">{fact}</div>
-                                 ))}
-                             </div>
-                        )}
+                            <div className="flex flex-1 gap-1.5 ml-6">
+                                {knowFacts.map((_, i) => (
+                                    <div 
+                                        key={i} 
+                                        onClick={() => handleStoryJump(i)}
+                                        className="relative h-2 flex-1 rounded-full bg-white/10 overflow-hidden cursor-pointer group/bar"
+                                    >
+                                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/bar:opacity-100 transition-opacity" />
+                                        <div 
+                                            className="absolute inset-y-0 left-0 bg-white/60 transition-all duration-[100ms] linear pointer-events-none"
+                                            style={{ 
+                                                width: i < storyActiveIndex ? "100%" : i === storyActiveIndex ? `${storyProgress}%` : "0%" 
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div ref={storylineRef} className="flex-1 overflow-hidden overflow-x-hidden overscroll-none px-10 pt-12 pb-[40dvh] no-scrollbar relative">
+                            {knowLoading ? (
+                                <div className="flex flex-col items-center justify-center h-full gap-6">
+                                    <div className="relative">
+                                        <div className="w-16 h-16 border-[3px] border-white/5 rounded-full" />
+                                        <div className="absolute top-0 left-0 w-16 h-16 border-[3px] border-t-white/40 rounded-full animate-spin" />
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <Sparkles size={20} className="text-white/20 animate-pulse" />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <p className="text-white/60 text-xs font-black uppercase tracking-[0.3em]">Echo AI</p>
+                                        <p className="text-white/30 text-[10px] font-bold">Unlocking track secrets...</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                 <div className="space-y-48">
+                                     {knowFacts.length > 0 ? (
+                                         knowFacts.map((fact, i) => (
+                                             <m.div 
+                                                key={i} 
+                                                id={`story-fact-${i}`}
+                                                animate={{ 
+                                                    opacity: i === storyActiveIndex ? 1 : 0.2,
+                                                    scale: i === storyActiveIndex ? 1 : 0.95,
+                                                    y: i === storyActiveIndex ? 0 : 20,
+                                                    filter: i === storyActiveIndex ? "blur(0px)" : "blur(2px)"
+                                                }}
+                                                transition={{ duration: 1.2, ease: [0.19, 1, 0.22, 1] }}
+                                                className="story-fact group"
+                                             >
+                                                <div className="flex items-start gap-4">
+                                                 <div className={`font-black text-white leading-[1.1] tracking-tighter drop-shadow-[0_15px_30px_rgba(0,0,0,0.5)] transition-all duration-500 ${fact.length > 110 ? 'text-[28px]' : 'text-[36px]'}`}>
+                                                        {fact}
+                                                    </div>
+                                                </div>
+                                             </m.div>
+                                         ))
+                                     ) : (
+                                         <div className="flex flex-col items-center justify-center h-full opacity-20 text-center px-10">
+                                             <BookOpen size={48} className="mb-6 opacity-30" />
+                                             <p className="text-lg font-bold italic leading-relaxed">The story of this track is still being written by the universe...</p>
+                                         </div>
+                                     )}
+                                     
+                                     {knowFacts.length > 0 && (
+                                         <div className="pt-20 pb-40 text-center">
+                                             <div className="h-px w-10 bg-white/10 mx-auto mb-8" />
+                                             <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">End of Story</p>
+                                         </div>
+                                     )}
+                                 </div>
+                            )}
+                        </div>
                     </div>
                   </m.div>
                 )}

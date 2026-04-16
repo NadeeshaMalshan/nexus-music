@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useDashboard } from "@/context/DashboardContext";
 import { LeftSidebar } from "./LeftSidebar";
 import { RightSidebar } from "./RightSidebar";
@@ -54,18 +54,35 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     setViewMode,
     rightSidebarMode,
     setRightSidebarMode,
+    liveMetadata,
   } = useDashboard();
 
   const themeColor = palette.accent;
 
-  const mergedCurrentForLiked =
-    currentSong &&
-    ({
+  const mergedCurrentSong = useMemo(() => {
+    if (!currentSong) return null;
+    return {
       ...currentSong,
-      title: audioData?.trackName || currentSong.title,
-      artist: audioData?.artist || currentSong.artist,
-      musicVideoId: audioData?.musicVideoId ?? currentSong.musicVideoId,
-    });
+      title: liveMetadata?.title || audioData?.trackName || currentSong.title,
+      artist: liveMetadata?.artist || audioData?.artist || currentSong.artist,
+      artwork: liveMetadata?.artwork || audioData?.coverArt || currentSong.artwork,
+      musicVideoId: audioData?.musicVideoId || currentSong.musicVideoId,
+    };
+  }, [
+    currentSong, 
+    liveMetadata?.title, 
+    liveMetadata?.artist, 
+    liveMetadata?.artwork,
+    audioData?.trackName,
+    audioData?.artist, 
+    audioData?.coverArt,
+    audioData?.musicVideoId
+  ]);
+
+  const isLiked = useMemo(() => {
+    if (!mergedCurrentSong) return false;
+    return songIsInLikedLibrary(mergedCurrentSong, audioData);
+  }, [mergedCurrentSong, audioData, songIsInLikedLibrary]);
 
   // Sync PWA status bar/theme color with artwork accent
   useEffect(() => {
@@ -115,7 +132,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
       </div>
       <div className="pointer-events-none absolute inset-0 bg-black/10" />
       <main
-        className={`relative z-10 flex h-full min-h-0 w-full min-w-0 transition-all duration-300 ${isRightSidebarOpen && !isExpandedPlayerOpen ? "lg:pr-[380px]" : ""}`}
+        className={`relative z-10 flex h-full min-h-0 w-full min-w-0 ${isRightSidebarOpen && !isExpandedPlayerOpen ? "lg:pr-[380px]" : ""}`}
       >
         <LeftSidebar
           activeView={activeView}
@@ -130,20 +147,13 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         {!isExpandedPlayerOpen && (
           <m.div
             key="floating-player"
-            initial={{ y: 100, opacity: 0 }}
+            initial={false}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20 }}
             className="fixed inset-x-0 bottom-0 z-60 pointer-events-none flex items-center justify-center px-4 pb-safe"
           >
             <FloatingPlayer
               onExpand={() => setIsExpandedPlayerOpen(true)}
-              currentSong={currentSong ? {
-                ...currentSong,
-                title: audioData?.trackName || currentSong.title,
-                artist: audioData?.artist || currentSong.artist,
-                artwork: audioData?.coverArt || currentSong.artwork,
-              } : null}
+              currentSong={mergedCurrentSong!}
               isPlaying={isPlaying}
               onTogglePlay={onTogglePlay}
               onNext={onNext}
@@ -151,7 +161,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
               currentTimeSec={currentTimeSec}
               durationSec={durationSec}
               onRateSong={onRateSong}
-              isLiked={mergedCurrentForLiked ? songIsInLikedLibrary(mergedCurrentForLiked, audioData) : false}
+              isLiked={isLiked}
               isLoggedIn={status === "authenticated"}
               onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
               isRightSidebarOpen={isRightSidebarOpen}
@@ -170,7 +180,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         iframe is never destroyed and background audio continues even when minimised.
         In music mode it only mounts when actually open (background player handles audio).
       */}
-      {currentSong && (isExpandedPlayerOpen || viewMode === "video" || currentSong.isLive) && (
+      {mergedCurrentSong && (isExpandedPlayerOpen || viewMode === "video" || mergedCurrentSong.isLive) && (
         <div
           className="fixed z-50 transition-none"
           style={
@@ -188,13 +198,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         >
           <ExpandedPlayer
             onClose={() => setIsExpandedPlayerOpen(false)}
-            currentSong={{
-              ...currentSong,
-              title: audioData?.trackName || currentSong.title,
-              artist: audioData?.artist || currentSong.artist,
-              artwork: audioData?.coverArt || currentSong.artwork,
-              musicVideoId: audioData?.musicVideoId,
-            }}
+            currentSong={mergedCurrentSong}
             onSongClick={onSongClick}
             isPlaying={isPlaying}
             onTogglePlay={onTogglePlay}
@@ -218,7 +222,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
             knowFacts={knowFacts}
             knowLoading={knowLoading}
             onRateSong={onRateSong}
-            isLiked={mergedCurrentForLiked ? songIsInLikedLibrary(mergedCurrentForLiked, audioData) : false}
+            isLiked={isLiked}
             isLoggedIn={status === "authenticated"}
             playVideo={playVideo}
             pauseVideo={pauseVideo}

@@ -100,16 +100,16 @@ function Shelf(props: {
                <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
             </button>
           )}
-          <div className="hidden items-center gap-2 lg:flex opacity-0 group-hover/shelf:opacity-100 transition-opacity">
+          <div className="hidden items-center gap-2 lg:flex opacity-0 group-hover/shelf:opacity-100">
             <button 
               onClick={() => scroll("left")}
-              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-white transition-all backdrop-blur-md"
+              className="p-2 rounded-full bg-[#1c1c1e] hover:bg-[#2c2c2e] text-white"
             >
               <ChevronLeft size={20} />
             </button>
             <button 
               onClick={() => scroll("right")}
-              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-white transition-all backdrop-blur-md"
+              className="p-2 rounded-full bg-[#1c1c1e] hover:bg-[#2c2c2e] text-white"
             >
               <ChevronRight size={20} />
             </button>
@@ -142,13 +142,12 @@ function ForYouCard(props: {
 
   return (
     <m.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, ease: APPLE_EASE }}
       className="group relative flex flex-col w-full min-w-0 cursor-pointer"
       onClick={onPlay}
     >
-      <div className="relative w-full aspect-square rounded-[22px] overflow-hidden bg-white/5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-500 group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.6)]">
+      <div className="relative w-full aspect-square rounded-[22px] overflow-hidden bg-[#161618] shadow-[0_20px_40px_rgba(0,0,0,0.4)] group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.6)]">
         <MusicArtwork
           src={track.artwork?.replace(/([=|-][swh])\d+/g, "$1800")}
           alt={track.title}
@@ -158,7 +157,7 @@ function ForYouCard(props: {
           className="transition-transform duration-700 group-hover:scale-110"
         />
         
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-4 transition-all duration-300">
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-4">
            <div className="flex items-center gap-4">
              <button
                onClick={(e) => {
@@ -172,8 +171,8 @@ function ForYouCard(props: {
                    color: accentColor,
                  });
                }}
-               className="p-3 rounded-full bg-white/10 hover:bg-white text-black transition-all hover:scale-110"
-               style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: 'white' }}
+               className="p-3 rounded-full bg-[#1c1c1e] hover:bg-white text-black transition-all hover:scale-110"
+               style={{ color: 'white' }}
              >
                <PlaySquare size={20} />
              </button>
@@ -189,8 +188,8 @@ function ForYouCard(props: {
                    color: accentColor,
                  });
                }}
-               className="p-3 rounded-full bg-white/10 hover:bg-white text-black transition-all hover:scale-110"
-               style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: 'white' }}
+               className="p-3 rounded-full bg-[#1c1c1e] hover:bg-white text-black transition-all hover:scale-110"
+               style={{ color: 'white' }}
              >
                <ListPlus size={20} />
              </button>
@@ -210,7 +209,7 @@ function ForYouCard(props: {
       </div>
 
       <div className="mt-4 text-left px-1">
-        <h3 className="font-bold text-white text-[17px] tracking-tight line-clamp-2 leading-tight mb-1 group-hover:text-white transition-colors h-[42px]">
+        <h3 className="font-bold text-white text-[17px] tracking-tight line-clamp-2 leading-tight mb-1 h-[42px]">
           {track.title}
         </h3>
         <p 
@@ -218,7 +217,7 @@ function ForYouCard(props: {
             e.stopPropagation();
             onNavigateArtist?.(track.artist);
           }}
-          className="text-[14px] text-white/40 font-medium truncate hover:text-white transition-colors cursor-pointer"
+          className="text-[14px] text-white/40 font-medium truncate hover:text-white cursor-pointer"
         >
           {track.artist}
         </p>
@@ -244,14 +243,13 @@ function SearchCard(props: {
 
   return (
     <m.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04, ease: APPLE_EASE }}
       className="group relative flex flex-col w-full min-w-0 cursor-pointer"
       onClick={onPlay}
     >
       <div
-        className={`relative w-full ${mediaAspect === "video" ? "aspect-video" : "aspect-square"} rounded-[22px] overflow-hidden bg-white/5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-500 group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.6)]`}
+        className={`relative w-full ${mediaAspect === "video" ? "aspect-video" : "aspect-square"} rounded-[22px] overflow-hidden bg-[#161618] shadow-[0_20px_40px_rgba(0,0,0,0.4)] group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.6)]`}
       >
         <MusicArtwork
           src={item.thumbnail}
@@ -259,16 +257,16 @@ function SearchCard(props: {
           iconSize={36}
           variant="track"
           rounded="3xl"
-          className="h-full w-full transition-transform duration-700 group-hover:scale-110"
+          className="h-full w-full group-hover:scale-110"
         />
 
         {badge && (
           <div className="absolute top-4 left-4">
             <span
-              className={`px-3 py-1 rounded-full text-[11px] font-black tracking-wider border backdrop-blur-md ${
+              className={`px-3 py-1 rounded-full text-[11px] font-black tracking-wider border ${
                 badge === "LIVE"
                   ? "bg-red-500/15 border-red-400/30 text-red-200"
-                  : "bg-white/10 border-white/15 text-white/70"
+                  : "bg-[#1c1c1e] border-white/15 text-white/70"
               }`}
             >
               {badge}
@@ -276,8 +274,8 @@ function SearchCard(props: {
           </div>
         )}
 
-        <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300">
-          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-black shadow-2xl hover:scale-105 transition-transform">
+        <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-black shadow-2xl hover:scale-105">
             <Play size={32} fill="currentColor" className="ml-1" />
           </div>
         </div>
@@ -307,20 +305,19 @@ function ArtistRecCard(props: {
   return (
     <m.button
       type="button"
-      initial={{ opacity: 0, y: 12 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04, ease: APPLE_EASE }}
       onClick={onOpen}
       className="group flex w-[160px] sm:w-[180px] shrink-0 flex-col items-center text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30 rounded-3xl"
     >
-      <div className="relative h-[160px] w-[160px] sm:h-[180px] sm:w-[180px] overflow-hidden rounded-full bg-white/5 shadow-[0_20px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 transition-all duration-500 group-hover:ring-white/25 group-hover:shadow-[0_28px_60px_rgba(0,0,0,0.5)]">
+      <div className="relative h-[160px] w-[160px] sm:h-[180px] sm:w-[180px] overflow-hidden rounded-full bg-[#161618] shadow-[0_20px_40px_rgba(0,0,0,0.35)] ring-1 ring-white/10 group-hover:ring-white/25 group-hover:shadow-[0_28px_60px_rgba(0,0,0,0.5)]">
         <MusicArtwork
           src={artist.thumbnail}
           alt={artist.name}
           iconSize={52}
           variant="artist"
           rounded="full"
-          className="transition-transform duration-700 group-hover:scale-105"
+          className="group-hover:scale-105"
         />
       </div>
       <h3 className="mt-4 line-clamp-2 min-h-[44px] max-w-full px-1 text-[15px] font-bold leading-tight tracking-tight text-white">
@@ -625,6 +622,7 @@ export function CenterPanel(props: CenterPanelProps) {
       artwork: track.artwork || "",
       duration: track.duration || "",
       color: accentColor,
+      isDirectLink: true,
     });
     setForYouPlayingId(null);
   };
@@ -642,6 +640,7 @@ export function CenterPanel(props: CenterPanelProps) {
       color: accentColor,
       isLive,
       preferVideoPlayback: preferVideo,
+      isDirectLink: true,
     });
   }, [accentColor, onSongClick]);
 
@@ -726,10 +725,8 @@ export function CenterPanel(props: CenterPanelProps) {
             <m.div 
                key="library" 
                className="flex-1 h-full min-h-0 flex flex-col overflow-y-auto custom-scrollbar"
-               initial={{ opacity: 0, y: 20 }}
+               initial={false}
                animate={{ opacity: 1, y: 0 }}
-               exit={{ opacity: 0, y: 20 }}
-               transition={MOTION_CONFIG.transition}
             >
               <YouTubeLibrary
                 onPlaylistClick={onPlaylistClick}
@@ -772,11 +769,11 @@ export function CenterPanel(props: CenterPanelProps) {
               <Shelf title="Recommended Songs" subtitle="AI picks based on your recent plays" onRefresh={fetchForYou} loading={forYouLoading}>
                 {forYouLoading ? (
                    Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-white/5 animate-pulse" />
+                      <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
                    ))
                 ) : (
                   forYouTracks.map((track, i) => (
-                    <div key={`${track.id || track.title}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0 hover:-translate-y-1 transition-all duration-300">
+                    <div key={`${track.id || track.title}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0">
                       <ForYouCard
                         track={track}
                         index={i}
@@ -795,7 +792,7 @@ export function CenterPanel(props: CenterPanelProps) {
               {recentPlaysItems.length > 0 && (
                 <Shelf title="Recent plays" subtitle="Picks from your session in Nexus">
                   {recentPlaysItems.map((item, i) => (
-                    <div key={`recent-${item.videoId}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0 hover:-translate-y-1 transition-all duration-300">
+                    <div key={`recent-${item.videoId}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0">
                       <SearchCard item={item} index={i} accentColor={accentColor} onPlay={() => playSearchItem(item, { preferVideo: false })} />
                     </div>
                   ))}
@@ -805,7 +802,7 @@ export function CenterPanel(props: CenterPanelProps) {
               <Shelf title="Music videos" subtitle="Watch the official visuals" onRefresh={fetchVideoPicks} loading={videoPicksLoading}>
                 {videoPicksLoading ? (
                   Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-white/5 animate-pulse" />
+                    <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
                   ))
                 ) : videoPicks.length === 0 ? (
                   <div className="text-white/40 font-medium px-1">No videos surfaced yet. Play something to tune this row.</div>
@@ -827,7 +824,7 @@ export function CenterPanel(props: CenterPanelProps) {
               <Shelf title="Audio Picks" subtitle="Clean audio-first versions for focus listening" onRefresh={fetchAudioPicks} loading={audioPicksLoading}>
                 {audioPicksLoading ? (
                   Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-white/5 animate-pulse" />
+                    <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
                   ))
                 ) : audioPicks.length === 0 ? (
                   <div className="text-white/40 font-medium px-1">No audio picks yet. Play a song to personalize.</div>
@@ -849,7 +846,7 @@ export function CenterPanel(props: CenterPanelProps) {
               <Shelf title="Live Now" subtitle="Streams and sets happening right now" onRefresh={fetchLiveNow} loading={liveNowLoading}>
                 {liveNowLoading ? (
                   Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-white/5 animate-pulse" />
+                    <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
                   ))
                 ) : liveNow.length === 0 ? (
                   <div className="text-white/40 font-medium px-1">No live matches right now. Try again in a bit.</div>
@@ -875,7 +872,7 @@ export function CenterPanel(props: CenterPanelProps) {
               >
                 {playlistRecsLoading ? (
                   Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-white/5 animate-pulse" />
+                    <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
                   ))
                 ) : playlistRecs.length === 0 ? (
                   <div className="text-white/40 font-medium px-1">No playlist suggestions right now.</div>
@@ -892,7 +889,7 @@ export function CenterPanel(props: CenterPanelProps) {
                         transition={{ delay: i * 0.04, ease: APPLE_EASE }}
                         className="group flex flex-col"
                       >
-                        <div className="relative aspect-square overflow-hidden rounded-[22px] bg-white/5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] ring-1 ring-white/5 transition-all duration-500 group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.55)]">
+                        <div className="relative aspect-square overflow-hidden rounded-[22px] bg-[#161618] shadow-[0_20px_40px_rgba(0,0,0,0.4)] ring-1 ring-white/5 transition-all duration-500 group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.55)]">
                           <MusicArtwork
                             src={p.thumbnail}
                             alt={p.title}
@@ -916,7 +913,7 @@ export function CenterPanel(props: CenterPanelProps) {
               <Shelf title="Artists for you" subtitle="Based on what you’ve been playing" onRefresh={fetchArtistRecs} loading={artistRecsLoading}>
                 {artistRecsLoading ? (
                   Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="h-[220px] w-[180px] shrink-0 rounded-3xl bg-white/5 animate-pulse" />
+                    <div key={i} className="h-[220px] w-[180px] shrink-0 rounded-3xl bg-[#161618] animate-pulse" />
                   ))
                 ) : artistRecs.length === 0 ? (
                   <div className="text-white/40 font-medium px-1">No artist matches yet.</div>
@@ -935,7 +932,7 @@ export function CenterPanel(props: CenterPanelProps) {
                       onClick={() => onPlaylistClick?.(playlist)}
                       className="w-[200px] shrink-0 cursor-pointer group flex flex-col"
                     >
-                      <div className="relative aspect-square rounded-[20px] overflow-hidden bg-white/5 shadow-2xl transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]">
+                      <div className="relative aspect-square rounded-[20px] overflow-hidden bg-[#161618] shadow-2xl transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]">
                         <MusicArtwork
                           src={playlist.thumbnailUrl?.replace(/([=|-][swh])\d+/g, "$1800") || playlist.thumbnailUrl}
                           alt={playlist.title}

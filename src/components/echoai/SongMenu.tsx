@@ -58,7 +58,7 @@ export function SongMenu({
            initial={{ opacity: 0, scale: 0.95, y: -10 }}
            animate={{ opacity: 1, scale: 1, y: 0 }}
            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-           className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#1c1c1e]/95 p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-3xl"
+           className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#1c1c1e] p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
            onClick={(e) => e.stopPropagation()}
         >
            <div className="flex items-center gap-3 border-b border-white/5 p-3 mb-1">

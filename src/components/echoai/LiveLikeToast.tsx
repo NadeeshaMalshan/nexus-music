@@ -24,7 +24,7 @@ export function LiveLikeToast({ title, artist, artwork, onDismiss }: LiveLikeToa
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 16, scale: 0.96 }}
       transition={{ type: "spring", damping: 22, stiffness: 300 }}
-      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1c1c1e]/90 px-4 py-3 shadow-[0_16px_48px_rgba(0,0,0,0.5)] backdrop-blur-2xl max-w-[320px]"
+      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1c1c1e] px-4 py-3 shadow-[0_16px_48px_rgba(0,0,0,0.5)] max-w-[320px]"
     >
       {/* Artwork */}
       <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-white/10">

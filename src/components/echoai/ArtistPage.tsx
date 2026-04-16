@@ -351,25 +351,23 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
 
   return (
     <m.div
-      initial={{ opacity: 0, x: 40 }}
+      initial={false}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -40 }}
-      transition={MOTION_CONFIG.transition}
       className="flex flex-col h-full w-full relative overflow-hidden animate-gpu"
     >
       {/* ── Floating Header (appears on scroll) ─── */}
       <AnimatePresence>
         {headerScrolled && (
           <m.div
-            initial={{ opacity: 0, y: -20 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={MOTION_CONFIG.transition}
-            className="absolute top-0 left-0 right-0 z-40 flex items-center gap-4 px-6 py-4 bg-black/60 backdrop-blur-3xl border-b border-white/5 animate-gpu"
+            className="absolute top-0 left-0 right-0 z-40 flex items-center gap-4 px-6 py-4 bg-black/60 border-b border-white/5 animate-gpu"
           >
             <button
               onClick={onBack}
-              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all text-white"
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
             >
               <ArrowLeft size={18} />
             </button>
@@ -406,9 +404,9 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
               <h3 className="text-2xl font-black text-white mb-2">Artist Not Found</h3>
               <p className="text-white/40 font-medium max-w-md">{error}</p>
             </div>
-            <button
+             <button
               onClick={onBack}
-              className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold transition-all"
+              className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold"
             >
               Go Back
             </button>
@@ -438,9 +436,9 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
               <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/90" />
 
               {/* Back Button */}
-              <button
+               <button
                 onClick={onBack}
-                className="absolute top-6 left-6 z-20 p-2.5 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white hover:bg-black/60 transition-all"
+                className="absolute top-6 left-6 z-20 p-2.5 rounded-full bg-black/40 border border-white/10 text-white hover:bg-black/60"
               >
                 <ArrowLeft size={20} />
               </button>
@@ -486,10 +484,10 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                 </div>
 
                 <div className="mt-8 flex items-center gap-4">
-                  <button
+                   <button
                     onClick={handleSubscribe}
                     disabled={isSubscribing || isSubscribed}
-                    className={`flex items-center gap-2.5 px-6 py-2.5 rounded-full font-black transition-all hover:scale-105 active:scale-95 border ${
+                    className={`flex items-center gap-2.5 px-6 py-2.5 rounded-full font-black border ${
                       isSubscribed 
                         ? "bg-white/10 text-white/40 cursor-default border-transparent" 
                         : "bg-white text-black hover:bg-zinc-200 border-white/10"
@@ -504,9 +502,9 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                   </button>
 
                   <div className="relative">
-                    <button
+                     <button
                       onClick={() => setShowHeaderMenu(!showHeaderMenu)}
-                      className={`p-3 rounded-full backdrop-blur-xl border border-white/10 transition-all ${
+                      className={`p-3 rounded-full border border-white/10 ${
                         showHeaderMenu 
                           ? "bg-white text-black border-white" 
                           : "bg-black/40 text-white/60 hover:text-white hover:bg-black/60"
@@ -518,12 +516,11 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
 
                     <AnimatePresence>
                       {showHeaderMenu && (
-                        <m.div
-                          initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                         <m.div
+                          initial={false}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                          transition={MOTION_CONFIG.transition}
-                          className="absolute bottom-full mb-3 right-0 z-50 min-w-[200px] rounded-2xl bg-[#1C1C1E]/95 backdrop-blur-3xl border border-white/10 shadow-2xl overflow-hidden animate-gpu"
+                          className="absolute bottom-full mb-3 right-0 z-50 min-w-[200px] rounded-2xl bg-[#1C1C1E] border border-white/10 shadow-2xl overflow-hidden animate-gpu"
                         >
                           <button
                             onClick={(e) => {
@@ -555,17 +552,17 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
 
             {/* ── Action Bar ───────────────────────────────────────────────── */}
             <div className="flex flex-wrap items-center gap-4 px-6 md:px-10 py-6 border-b border-white/5">
-              <button
+               <button
                 onClick={handlePlayAll}
-                className="flex items-center gap-2.5 px-7 py-3.5 rounded-full font-black text-black transition-all hover:scale-105 active:scale-95 shadow-lg"
+                className="flex items-center gap-2.5 px-7 py-3.5 rounded-full font-black text-black shadow-lg"
                 style={{ backgroundColor: "var(--art-accent, #FA243C)" }}
               >
                 <Play size={18} fill="currentColor" />
                 Play
               </button>
-              <button
+               <button
                 onClick={handleShuffle}
-                className="flex items-center gap-2.5 px-7 py-3.5 rounded-full font-black text-white bg-white/10 hover:bg-white/20 transition-all hover:scale-105 active:scale-95 border border-white/5"
+                className="flex items-center gap-2.5 px-7 py-3.5 rounded-full font-black text-white bg-white/10 hover:bg-white/20 border border-white/5"
               >
                 <Shuffle size={18} />
                 Shuffle
@@ -602,10 +599,9 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                       onSwipeLeft={() => track.videoId && onAddToQueue(trackToSong(track))}
                     >
                     <m.div
-                      initial={{ opacity: 0, x: -12 }}
+                      initial={false}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.04, ...MOTION_CONFIG.transition }}
-                      className={`group relative flex items-center gap-4 rounded-2xl px-4 py-3 transition-all cursor-pointer animate-gpu ${
+                      className={`group relative flex items-center gap-4 rounded-2xl px-4 py-3 cursor-pointer animate-gpu ${
                         currentSong?.id === track.videoId
                           ? "bg-white/8"
                           : "hover:bg-white/5"
@@ -645,23 +641,22 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                               ))}
                             </m.div>
                           ) : (
-                            <m.span
-                              key="num"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={MOTION_CONFIG.transition}
-                              className="text-sm font-bold text-white/30 group-hover:opacity-0 transition-opacity animate-gpu"
-                            >
-                              {idx + 1}
-                            </m.span>
+                              <m.span
+                                key="num"
+                                initial={false}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="text-sm font-bold text-white/30 group-hover:opacity-0 animate-gpu"
+                              >
+                                {idx + 1}
+                              </m.span>
                           )}
                         </AnimatePresence>
                         {!isCurrentlyPlaying(track) && (
                           <Play
                             size={16}
                             fill="white"
-                            className="text-white absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="text-white absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100"
                           />
                         )}
                       </div>
@@ -719,7 +714,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                             e.stopPropagation();
                             setOpenMenuId(openMenuId === track.spotifyId ? null : track.spotifyId);
                           }}
-                          className={`p-2 rounded-full transition-all text-white/20 hover:text-white hover:bg-white/10 ${
+                          className={`p-2 rounded-full text-white/20 hover:text-white hover:bg-white/10 ${
                             openMenuId === track.spotifyId
                               ? "bg-white/10 text-white"
                               : "opacity-0 group-hover:opacity-100"
@@ -731,11 +726,10 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                         <AnimatePresence>
                           {openMenuId === track.spotifyId && (
                             <m.div
-                              initial={{ opacity: 0, scale: 0.9, y: -8 }}
+                              initial={false}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.9, y: -8 }}
-                              transition={MOTION_CONFIG.transition}
-                              className="absolute right-0 top-10 z-50 min-w-[200px] rounded-2xl bg-[#1C1C1E]/95 backdrop-blur-3xl border border-white/10 shadow-2xl overflow-hidden animate-gpu"
+                              className="absolute right-0 top-10 z-50 min-w-[200px] rounded-2xl bg-[#1C1C1E] border border-white/10 shadow-2xl overflow-hidden animate-gpu"
                             >
                               {track.videoId && (
                                 <>
@@ -773,7 +767,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                   {data.topTracks.length > 5 && (
                     <button
                       onClick={() => setShowAllTracks(!showAllTracks)}
-                      className="mt-4 mx-auto px-6 py-2 rounded-full border border-white/10 text-xs font-black text-white/50 hover:text-white hover:bg-white/5 transition-all"
+                       className="mt-4 mx-auto px-6 py-2 rounded-full border border-white/10 text-xs font-black text-white/50 hover:text-white hover:bg-white/5"
                     >
                       {showAllTracks ? "Show Less" : `Show All (${data.topTracks.length})`}
                     </button>
@@ -791,13 +785,12 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                     {[...(data.albums || []), ...(data.singles || [])].map((item, i) => (
                       <m.div
                         key={item.id + i}
-                        initial={{ opacity: 0, y: 12 }}
+                        initial={false}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 + i * 0.05, ...MOTION_CONFIG.transition }}
                         className="group flex flex-col gap-3 shrink-0 w-[160px] md:w-[180px] cursor-pointer animate-gpu"
                         onClick={() => onNavigateAlbum?.(item.id)}
                       >
-                        <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white/5 shadow-2xl transition-transform duration-500 group-hover:scale-105">
+                        <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white/5 shadow-2xl group-hover:scale-105">
                           <MusicArtwork
                             src={item.image}
                             alt={item.name}
@@ -870,7 +863,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                             className="h-full w-full transition-transform duration-700 group-hover:scale-110"
                           />
                           {/* Music video badge */}
-                          <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-md rounded-lg px-2 py-1 pointer-events-none">
+                          <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 rounded-lg px-2 py-1 pointer-events-none">
                             <Video size={11} className="text-white/80" />
                             <span className="text-[10px] font-black text-white/80 uppercase tracking-wider leading-none">MV</span>
                           </div>
@@ -916,7 +909,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                                    e.stopPropagation();
                                    playPlaylistContent(p.id);
                                 }}
-                                className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-xl flex items-center justify-center border border-white/20 hover:scale-110 transition-transform"
+                                className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center border border-white/20 hover:scale-110 transition-transform"
                              >
                                 {shelfLoading === p.id ? (
                                     <Loader2 size={24} className="animate-spin text-white" />

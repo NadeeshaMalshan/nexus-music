@@ -428,9 +428,8 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
         </div>
 
         <m.div 
-          initial={{ y: -10, opacity: 0 }} 
+          initial={false}
           animate={{ y: 0, opacity: 1 }} 
-          transition={{ delay: 0.1, ...MOTION_CONFIG.transition }} 
           className="mb-8 w-full max-w-4xl animate-gpu"
         >
           <form
@@ -438,7 +437,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
               e.preventDefault();
               void runSearch();
             }}
-            className="relative flex items-center w-full rounded-2xl md:rounded-[24px] bg-white/4 border border-white/5 px-4 md:px-6 py-4 md:py-5 transition-all focus-within:bg-white/8 focus-within:ring-2 shadow-2xl"
+            className="relative flex items-center w-full rounded-2xl md:rounded-[24px] bg-white/4 border border-white/5 px-4 md:px-6 py-4 md:py-5 focus-within:bg-white/8 focus-within:ring-2 shadow-2xl"
             style={{ ringColor: 'var(--art-accent, #FA243C)33' } as any}
           >
             <Search className="w-5 h-5 md:w-6 md:h-6 text-white/40 mr-3 md:mr-4" />
@@ -451,14 +450,14 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
               autoFocus
             />
             {searchQuery && (
-               <button type="button" onClick={() => setSearchQuery("")} className="text-white/20 hover:text-white transition p-1 mr-2">
+               <button type="button" onClick={() => setSearchQuery("")} className="text-white/20 hover:text-white p-1 mr-2">
                  <X className="w-5 h-5 md:w-6 md:h-6" />
                </button>
             )}
             <button 
               type="button" 
               onClick={handleMusicIdentifier}
-              className={`p-2.5 rounded-full transition-all ${isListening ? "text-white animate-pulse" : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"}`}
+              className={`p-2.5 rounded-full ${isListening ? "text-white animate-pulse" : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"}`}
               style={{ backgroundColor: isListening ? 'var(--art-accent, #FA243C)' : undefined }}
             >
               <Mic className="w-5 h-5 md:w-6 md:h-6" />
@@ -492,7 +491,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
 
                   void runSearch(q, cat);
                 }}
-                className={`px-6 py-2.5 rounded-full text-[13px] md:text-sm font-black tracking-wide transition-all uppercase whitespace-nowrap border ${
+                className={`px-5 py-2.5 rounded-full border text-[13px] font-bold capitalize ${
                   activeCategory === cat 
                   ? "bg-white text-black border-white" 
                   : "bg-white/3 text-white/30 border-white/5 hover:bg-white/10 hover:text-white"
@@ -506,9 +505,8 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
 
         {!searchQuery && !identifiedSong && (
           <m.div 
-            initial={{ y: -10, opacity: 0 }} 
+            initial={false}
             animate={{ y: 0, opacity: 1 }} 
-            transition={{ delay: 0.2, ...MOTION_CONFIG.transition }} 
             className="w-full max-w-3xl py-12 md:py-20 space-y-6 md:space-y-8 animate-gpu"
           >
              <div className="w-16 h-16 md:w-20 md:h-20 bg-linear-to-tr from-white/10 to-transparent rounded-2xl md:rounded-3xl flex items-center justify-center opacity-40">
@@ -522,7 +520,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
         )}
 
         {identifiedSong && !searchQuery && (
-           <div className="mb-10 p-6 rounded-3xl bg-white/5 border border-white/5 backdrop-blur-3xl animate-in fade-in slide-in-from-top-4">
+           <div className="mb-10 p-6 rounded-3xl bg-white/5 border border-white/5 animate-in fade-in slide-in-from-top-4">
               <div className="flex items-center gap-4">
                  <div 
                   className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${isListening ? "animate-pulse" : "text-white"}`}
@@ -565,10 +563,9 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                   }}
                 >
                   <m.div
-                    initial={{ opacity: 0, x: -10 }}
+                    initial={false}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.03, ...MOTION_CONFIG.transition }}
-                    className="group flex cursor-pointer items-center justify-between rounded-2xl p-3 px-4 transition-all hover:bg-white/[0.04] animate-gpu"
+                    className="group flex cursor-pointer items-center justify-between rounded-2xl p-3 px-4 hover:bg-white/[0.04] animate-gpu"
                     onClick={() => {
                       // For Artist category → navigate to artist page
                       if (song.type === "ARTIST") {
@@ -607,12 +604,12 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                         />
                         {/* Music video badge on thumbnail */}
                         {song.preferVideoPlayback && (
-                          <div className="absolute bottom-1 right-1 flex items-center gap-0.5 bg-black/70 backdrop-blur-sm rounded-md px-1 py-0.5 pointer-events-none">
+                          <div className="absolute bottom-1 right-1 flex items-center gap-0.5 bg-black/70 rounded-md px-1 py-0.5 pointer-events-none">
                             <Video size={9} className="text-white/90" />
                             <span className="text-[8px] font-black text-white/90 uppercase tracking-wider leading-none">MV</span>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center">
                            <Play fill="white" className="text-white w-6 h-6 ml-1" />
                         </div>
                       </div>
@@ -636,7 +633,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                               e.stopPropagation();
                               onNavigateArtist?.(song.artist);
                             }}
-                            className="truncate text-[15px] font-medium text-white/40 hover:text-white/80 transition-colors cursor-pointer"
+                            className="truncate text-[15px] font-medium text-white/40 hover:text-white/80 cursor-pointer"
                           >
                             {song.artist}
                           </p>
@@ -653,7 +650,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                       </div>
                     </div>
                     <div className="flex items-center gap-4 relative">
-                      <div className="hidden items-center gap-2 lg:flex opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="hidden items-center gap-2 lg:flex opacity-0 group-hover:opacity-100">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -663,7 +660,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                               onPlayNext?.({ ...song, artwork: highResArtwork, color: dynamicColor });
                             })();
                           }}
-                          className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all outline-hidden"
+                          className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white outline-hidden"
                           title="Play Next"
                         >
                           <PlaySquare size={20} />
@@ -677,7 +674,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                               onAddToQueue?.({ ...song, artwork: highResArtwork, color: dynamicColor });
                             })();
                           }}
-                          className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all outline-hidden"
+                          className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white outline-hidden"
                           title="Add to Queue"
                         >
                           <ListPlus size={20} />
@@ -689,7 +686,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                           e.stopPropagation(); 
                           setOpenMenuId(song.id === openMenuId ? null : song.id); 
                         }} 
-                        className={`text-white/20 hover:text-white transition-all p-2 rounded-full ${openMenuId === song.id ? "bg-white/10 text-white" : "hover:bg-white/10"}`}
+                        className={`text-white/20 hover:text-white p-2 rounded-full ${openMenuId === song.id ? "bg-white/10 text-white" : "hover:bg-white/10"}`}
                       >
                          <MoreHorizontal size={20} />
                       </button>

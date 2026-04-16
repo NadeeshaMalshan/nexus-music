@@ -7,6 +7,7 @@ import { m, AnimatePresence } from "motion/react";
 import { MusicArtwork } from "./MusicArtwork";
 import { APPLE_EASE, SLIDE_UP_VARIANTS } from "@/lib/animations";
 import { useDashboard } from "@/context/DashboardContext";
+import { MarqueeText } from "./MarqueeText";
 
 interface FloatingPlayerProps {
   onExpand: () => void;
@@ -63,22 +64,22 @@ export function FloatingPlayer({
 
   const fallbackDuration = youtubeTimestampToSeconds(displaySong.duration) ?? 0;
   const safeDuration = durationSec > 0 ? durationSec : fallbackDuration;
+  const isReallyLive = currentSong?.isLive || displaySong.duration === "LIVE" || !!liveMetadata || safeDuration > 43200 || (!isIdle && isPlaying && safeDuration === 0);
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
 
   return (
     <m.div 
-      className="group relative flex w-auto max-w-[calc(100vw-2rem)] items-center gap-3 md:gap-6 rounded-full bg-[#1c1c1e]/60 p-1.5 pl-4 md:pl-6 pr-5 md:pr-8 backdrop-blur-[32px] backdrop-saturate-[180%] border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.4)] pointer-events-auto transition-all duration-500 hover:bg-[#1c1c1e]/80 mx-auto mb-24 md:mb-10 lg:mb-12"
-      style={{
-        boxShadow: `0 20px 40px -15px rgba(0,0,0,0.5), 0 0 20px -5px var(--art-accent, rgba(255,255,255,0.1))`
-      }}
+      className="group relative flex h-20 w-full max-w-[780px] items-center gap-4 border border-white/10 px-4 shadow-[0_32px_80px_rgba(0,0,0,0.6)] rounded-[24px] overflow-hidden transition-colors duration-1000 mx-auto mb-24 md:mb-10 lg:mb-12 pointer-events-auto"
+      style={{ backgroundColor: 'color-mix(in srgb, var(--art-accent, #1c1c1e) 15%, #080808)' }}
     >
+      <div className="absolute inset-0 bg-[#080808] -z-10" />
         
         {/* Left Section: Playback Controls */}
         <div className={`flex items-center gap-3 md:gap-5 shrink-0 ${isIdle ? 'opacity-40 grayscale' : ''}`}>
           <button 
             onClick={onPrev} 
             disabled={isIdle}
-            className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-90 disabled:cursor-not-allowed"
+            className="text-white/40 hover:text-white disabled:cursor-not-allowed"
           >
             <SkipBack className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" strokeWidth={0} />
           </button>
@@ -86,7 +87,7 @@ export function FloatingPlayer({
           <button
             onClick={onTogglePlay}
             disabled={isIdle}
-            className="text-white transition-all transform hover:scale-110 active:scale-95 rounded-full p-1 md:p-1.5 hover:bg-white/10 disabled:cursor-not-allowed"
+            className="text-white rounded-full p-1 md:p-1.5 hover:bg-white/10 disabled:cursor-not-allowed"
             style={{ color: isIdle ? 'white' : 'var(--art-accent, white)' }}
           >
             {isPlaying ? (
@@ -99,7 +100,7 @@ export function FloatingPlayer({
           <button 
             onClick={onNext} 
             disabled={isIdle}
-            className="text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-90 disabled:cursor-not-allowed"
+            className="text-white/40 hover:text-white disabled:cursor-not-allowed"
           >
             <SkipForward className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" strokeWidth={0} />
           </button>
@@ -112,14 +113,14 @@ export function FloatingPlayer({
         >
           <div 
             onClick={!isIdle ? onExpand : undefined}
-            className={`relative flex items-center gap-2 md:gap-3 bg-black/30 rounded-[20px] p-1.5 md:p-2 pr-3 md:pr-4 transition-all border border-white/5 overflow-hidden ${
+            className={`relative flex items-center gap-2 md:gap-3 bg-black/30 rounded-[20px] p-1.5 md:p-2 pr-3 md:pr-4 border border-white/5 overflow-hidden ${
               !isIdle 
                 ? "cursor-pointer group/card hover:bg-black/40" 
                 : "cursor-default opacity-80"
             }`}
           >
             {/* Artwork Wrapper */}
-            <div className={`relative h-9 w-9 md:h-11 md:w-11 shrink-0 overflow-hidden rounded-xl shadow-lg border border-white/10 transition-transform duration-500 ${!isIdle ? 'group-hover/card:scale-105' : ''}`}>
+            <div className={`relative h-9 w-9 md:h-11 md:w-11 shrink-0 overflow-hidden rounded-xl shadow-lg border border-white/10 ${!isIdle ? 'group-hover/card:scale-105' : ''}`}>
                <MusicArtwork src={displaySong.artwork} alt={displaySong.title} iconSize={20} />
                {!isIdle && (
                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover/card:opacity-100 transition-opacity">
@@ -138,7 +139,10 @@ export function FloatingPlayer({
             {/* Scrolling Song Info */}
             <div className="min-w-0 flex-1 overflow-hidden">
                <div className="flex flex-col">
-                  <span className="truncate text-xs md:text-sm font-black text-white tracking-tight leading-tight">{displaySong.title}</span>
+                  <MarqueeText 
+                    text={displaySong.title} 
+                    className="text-xs md:text-sm font-black text-white tracking-tight leading-tight" 
+                  />
                   <button
                     onClick={(e) => {
                       if (!isIdle && onArtistClick) {
@@ -146,26 +150,29 @@ export function FloatingPlayer({
                         onArtistClick(displaySong.artist);
                       }
                     }}
-                    className={`truncate text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-left transition-colors ${
+                    className={`w-full text-left mt-0.5 ${
                       !isIdle && onArtistClick
-                        ? "text-white/30 hover:text-white/70 cursor-pointer"
-                        : "text-white/30 cursor-default"
+                        ? "cursor-pointer"
+                        : "cursor-default"
                     }`}
                   >
-                    {displaySong.artist}
+                    <MarqueeText 
+                      text={displaySong.artist} 
+                      className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-white/30 hover:text-white/70 transition-colors"
+                    />
                   </button>
                </div>
             </div>
 
             {/* Linear Progress Indicator */}
-            {!currentSong?.isLive && (
+            {!isReallyLive && (
               <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/5">
                 <div
-                  className="h-full transition-[width] duration-500 animate-gpu shadow-[0_0_8px_var(--art-accent,rgba(255,255,255,0.4))]"
+                  className="h-full shadow-[0_0_8px_var(--art-accent,rgba(255,255,255,0.4))]"
                   style={{ 
                     width: `${progress}%`, 
                     backgroundColor: `var(--art-accent, white)`,
-                    transitionTimingFunction: 'var(--ease-apple)'
+                    transition: 'none'
                   }}
                 />
               </div>
@@ -181,7 +188,7 @@ export function FloatingPlayer({
                 if (isLiked) void onRateSong(resolveLikedLibraryRateVideoId(displaySong as Song), "none");
                 else void onRateSong(displaySong.id, "like", { title: displaySong.title, artist: displaySong.artist });
               }}
-              className="transition-all transform hover:scale-110 active:scale-95"
+              className=""
             >
               <Heart
                 size={20}
@@ -193,7 +200,7 @@ export function FloatingPlayer({
           )}
           {/* Functional Volume Slider */}
           <div className="hidden items-center gap-2 lg:flex group/vol relative">
-            <div className="w-0 overflow-hidden group-hover/vol:w-24 group-hover/vol:mr-3 transition-all duration-500">
+            <div className="w-0 overflow-hidden group-hover/vol:w-24 group-hover/vol:mr-3">
                <input 
                  type="range"
                  min="0"
@@ -205,7 +212,7 @@ export function FloatingPlayer({
                  style={{ accentColor: 'var(--art-accent, white)' }}
                />
             </div>
-            <Volume2 size={20} className="text-white/30 group-hover/vol:text-white transition-colors" />
+            <Volume2 size={20} className="text-white/30 group-hover/vol:text-white" />
 
             
           </div>

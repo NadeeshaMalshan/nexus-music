@@ -8,9 +8,10 @@ export type Song = {
   musicVideoId?: string;
   isManual?: boolean;
   isDirectLink?: boolean;
-  isLive?: boolean;
   /** When true, open expanded player and play as YouTube video (not audio-only). */
   preferVideoPlayback?: boolean;
+  isLive?: boolean;
+  durationObj?: { totalSeconds: number; label: string };
 };
 export type NavItem = {
   label: string;
@@ -61,6 +62,7 @@ export interface ExpandedPlayerProps {
     url: string | null;
     thumbnail: string | null;
     description?: string | null;
+    writers?: string[] | null;
   };
   knowFacts?: string[];
   knowLoading?: boolean;

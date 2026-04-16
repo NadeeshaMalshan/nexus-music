@@ -127,7 +127,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
       <Link
         key={item.id}
         href={item.href}
-        className={`flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 transition-all duration-300 group ${
+        className={`flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 group ${
           isActive
             ? "bg-white/10 text-white shadow-[0_8px_32px_rgba(255,255,255,0.05)]"
             : "text-white/40 hover:bg-white/5 hover:text-white"
@@ -135,7 +135,6 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
       >
         <Icon 
           size={22} 
-          className="transition-colors" 
           style={{ color: isActive ? accentColor : undefined }}
         />
         <span className={`text-[19px] font-black tracking-tight ${isActive ? "text-white" : "text-white/40 group-hover:text-white"}`}>
@@ -147,10 +146,19 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
 
   return (
     <>
-      <div className="hidden h-full w-[360px] shrink-0 flex-col bg-transparent px-6 py-10 overflow-hidden lg:flex relative border-r border-white/5 backdrop-blur-3xl">
+      <m.div 
+        key={accentColor}
+        className="hidden h-full w-[360px] shrink-0 flex-col px-6 py-10 overflow-hidden lg:flex relative border-r border-white/5"
+        animate={{ 
+          backgroundColor: accentColor 
+            ? `color-mix(in srgb, ${accentColor} 12%, #000000)` 
+            : "#000000" 
+        }}
+        transition={{ duration: 1 }}
+      >
         {/* Search Bar */}
         <div className="mb-12 relative z-50">
-          <div className={`relative flex items-center overflow-hidden rounded-2xl transition-all duration-300 ${isSearchFocused ? "bg-white/15 ring-2 shadow-2xl" : "bg-white/5"}`} style={isSearchFocused ? { boxShadow: `0 0 0 2px ${accentColor}33`, borderColor: accentColor } : {}}>
+          <div className={`relative flex items-center overflow-hidden rounded-2xl ${isSearchFocused ? "bg-white/15 ring-2 shadow-2xl" : "bg-white/5"}`} style={isSearchFocused ? { boxShadow: `0 0 0 2px ${accentColor}33`, borderColor: accentColor } : {}}>
             <div className="pl-4 pr-2 text-white/20">
               <Search size={20} />
             </div>
@@ -177,7 +185,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={MOTION_CONFIG.transition}
-                className="absolute top-full left-0 right-0 mt-3 bg-[#1C1C1E]/95 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] border border-white/10 z-60 py-4 animate-gpu"
+                className="absolute top-full left-0 right-0 mt-3 bg-[#1C1C1E] rounded-3xl overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] border border-white/10 z-60 py-4 animate-gpu"
               >
                 <div className="max-h-[70vh] overflow-y-auto no-scrollbar">
                   {searchQuery && (
@@ -311,8 +319,8 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
           {/* Main Navigation - "Nexus" */}
           <div className="space-y-4">
             <div className="flex items-center justify-between px-4 mb-6">
-              <h2 className="text-[38px] font-black text-white tracking-tighter leading-none hover:text-[var(--art-accent,#FA243C)] transition-colors cursor-default">Nexus</h2>
-              <button className="p-2.5 rounded-full bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all">
+              <h2 className="text-[38px] font-black text-white tracking-tighter leading-none hover:text-[var(--art-accent,#FA243C)] cursor-default">Nexus</h2>
+              <button className="p-2.5 rounded-full bg-white/5 text-white/40 hover:bg-white/10 hover:text-white">
                 <MoreHorizontal size={22} />
               </button>
             </div>
@@ -370,7 +378,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                     key={`sidebar-pl-${plIdx}-${pl.id}`}
                     href={`/playlists/${pl.id}`}
                     onClick={() => setSelectedPlaylist(pl)}
-                    className={`flex items-center gap-4 rounded-2xl px-4 py-2.5 transition-all hover:bg-white/5 group ${pathname.includes(pl.id) ? "text-white" : "text-white/40"}`}
+                    className={`flex items-center gap-4 rounded-2xl px-4 py-2.5 hover:bg-white/5 group ${pathname.includes(pl.id) ? "text-white" : "text-white/40"}`}
                   >
                     <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity shadow-sm">
                       <MusicArtwork
@@ -392,13 +400,21 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
         <div className="mt-auto pt-6 border-t border-white/5">
           <SidebarAuth />
         </div>
-      </div>
+      </m.div>
 
       <CreatePlaylistModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
       <AiPlaylistModal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} />
 
       {/* Mobile Optimized Nav */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-white/5 bg-black/20 backdrop-blur-3xl lg:hidden pb-safe pb-2 pt-2 px-2">
+      <m.div 
+        className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-white/5 lg:hidden pb-safe pb-2 pt-2 px-2"
+        animate={{ 
+          backgroundColor: accentColor 
+            ? `color-mix(in srgb, ${accentColor} 12%, #000000)` 
+            : "#000000" 
+        }}
+        transition={{ duration: 1 }}
+      >
         {[
           { id: "home", icon: Home, label: "Home", href: "/" },
           { id: "search", icon: Search, label: "Search", href: "/search" },
@@ -412,7 +428,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
             <Link
               key={item.id}
               href={item.href}
-              className={`flex flex-1 flex-col items-center gap-1 py-2 transition-all ${
+              className={`flex flex-1 flex-col items-center gap-1 py-2 ${
                 isActive ? "" : "text-zinc-500 hover:text-zinc-100"
               }`}
               style={{ color: isActive ? accentColor : undefined }}
@@ -424,7 +440,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
             </Link>
           );
         })}
-      </div>
+      </m.div>
     </>
   );
 }

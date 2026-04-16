@@ -62,7 +62,7 @@ export function SidebarAuth() {
     <div className="mt-auto pt-4">
       <button
         onClick={() => signIn("google")}
-        className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-white/5 bg-white/[0.03] backdrop-blur-sm hover:bg-blue-500/10 hover:border-blue-500/30 hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] text-white/80 hover:text-blue-400 group"
+        className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-white/5 bg-white/[0.03] hover:bg-blue-500/10 hover:border-blue-500/30 hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] text-white/80 hover:text-blue-400 group"
       >
         <LogIn size={20} className="group-hover:text-blue-400 transition-colors" />
         <span className="text-sm font-medium">Sign in with Google</span>

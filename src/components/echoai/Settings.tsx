@@ -128,7 +128,7 @@ export function Settings() {
               {/* ── Account Section ────────────────────────────────────────────────── */}
         <m.div variants={itemVariants} className="mb-12">
           {status === "authenticated" ? (
-            <div className="bg-white/2 backdrop-blur-xl border border-white/5 rounded-[28px] p-6 flex items-center justify-between group hover:bg-white/5 transition-all duration-500">
+            <div className="bg-white/2 border border-white/5 rounded-[28px] p-6 flex items-center justify-between group hover:bg-white/5 transition-all duration-500">
               <div className="flex items-center gap-5">
                 <div className="relative w-16 h-16 rounded-2xl overflow-hidden ring-4 ring-white/5 shadow-2xl">
                   <MusicArtwork
@@ -178,7 +178,7 @@ export function Settings() {
             <span>Playback Experience</span>
           </div>
           
-          <div className="bg-white/2 backdrop-blur-xl border border-white/5 rounded-[28px] px-8 py-2 overflow-hidden">
+          <div className="bg-white/2 border border-white/5 rounded-[28px] px-8 py-2 overflow-hidden">
             <SettingsRow 
               icon={<Repeat size={20} />} 
               label="Gapless Playback" 
@@ -226,7 +226,7 @@ export function Settings() {
             <span>Audio & Video Quality</span>
           </div>
           
-          <div className="bg-white/2 backdrop-blur-xl border border-white/5 rounded-[28px] px-8 py-2 overflow-hidden">
+          <div className="bg-white/2 border border-white/5 rounded-[28px] px-8 py-2 overflow-hidden">
             <SettingsRow 
               icon={<AudioLines size={20} />} 
               label="Audio Quality" 
@@ -285,7 +285,7 @@ export function Settings() {
             <span>Accessibility & Interface</span>
           </div>
           
-          <div className="bg-white/2 backdrop-blur-xl border border-white/5 rounded-[28px] px-8 py-2 overflow-hidden">
+          <div className="bg-white/2 border border-white/5 rounded-[28px] px-8 py-2 overflow-hidden">
             <SettingsRow 
               icon={<Zap size={20} />} 
               label="Reduce Animations" 

@@ -55,3 +55,6 @@ yarn-error.log*
   public/worker-*.js.map
   public/fallback-*.js
   public/fallback-*.js.map
+
+# generated player artifacts
+*-player-script*.js

@@ -82,7 +82,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <m.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-xl"
+            className="absolute inset-0 bg-black/60"
             onClick={onClose}
           />
           <m.div 
@@ -90,7 +90,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 30 }} 
             transition={MOTION_CONFIG.transition}
-            className="w-full h-full md:h-[85vh] md:max-h-[85vh] overflow-hidden md:rounded-[40px] bg-white/5 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl flex flex-col relative z-10 animate-gpu"
+            className="w-full h-full md:h-[85vh] md:max-h-[85vh] overflow-hidden md:rounded-[40px] bg-[#161618] border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex flex-col relative z-10 animate-gpu"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header Area */}
@@ -163,7 +163,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                             animate={{ opacity: 1, y: 0 }} 
                             exit={{ opacity: 0, y: 10 }}
                             transition={MOTION_CONFIG.transition}
-                            className="absolute top-16 left-0 right-0 z-20 bg-[#161618]/95 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.4)] overflow-hidden animate-gpu"
+                            className="absolute top-16 left-0 right-0 z-20 bg-[#161618] rounded-3xl border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.4)] overflow-hidden animate-gpu"
                           >
                              {searchResults.slice(0, 5).map(song => (
                                 <div key={song.id} onClick={() => addSong(song)} className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer transition-all border-b border-white/5 last:border-0 group">
@@ -277,7 +277,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <m.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/80 backdrop-blur-2xl"
+            className="absolute inset-0 bg-black/80"
             onClick={onClose}
           />
           <m.div 
@@ -285,7 +285,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 30 }} 
             transition={MOTION_CONFIG.transition}
-            className="w-full h-full md:h-[90vh] md:max-h-[90vh] overflow-hidden md:rounded-[48px] bg-white/[0.03] border border-white/10 shadow-[0_50px_150px_rgba(0,0,0,0.9)] backdrop-blur-3xl flex flex-col relative z-10 animate-gpu"
+            className="w-full h-full md:h-[90vh] md:max-h-[90vh] overflow-hidden md:rounded-[48px] bg-[#0d0d0f] border border-white/10 shadow-[0_50px_150px_rgba(0,0,0,0.9)] flex flex-col relative z-10 animate-gpu"
             onClick={(e) => e.stopPropagation()}
           >
             {/* AI Top Bar */}

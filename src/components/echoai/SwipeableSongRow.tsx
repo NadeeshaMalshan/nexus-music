@@ -81,7 +81,7 @@ export function SwipeableSongRow({ children, onSwipeLeft, onSwipeRight, classNam
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.1 }}
             transition={{ duration: 0.3, ease: APPLE_EASE }}
-            className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm pointer-events-none rounded-2xl animate-gpu"
+            className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 pointer-events-none rounded-2xl animate-gpu"
           >
             <div className="flex flex-col items-center gap-2">
               <CheckCircle2 size={32} className={triggered === "right" ? "text-blue-400" : "text-(--art-accent,#FA243C)"} />

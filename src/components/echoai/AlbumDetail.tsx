@@ -132,7 +132,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
       <div className="relative px-6 py-8 lg:px-12">
         <button 
           onClick={onBack}
-          className="mb-8 p-3 rounded-full bg-white/5 hover:bg-white/10 text-white transition-all flex items-center gap-2 pr-5 border border-white/5 backdrop-blur-md active:scale-95"
+          className="mb-8 p-3 rounded-full bg-white/5 hover:bg-white/10 text-white flex items-center gap-2 pr-5 border border-white/5"
         >
           <ChevronLeft size={20} />
           <span className="text-xs font-black uppercase tracking-widest">Back</span>
@@ -140,9 +140,8 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
 
         <header className="flex flex-col md:flex-row items-center md:items-end gap-8 md:gap-12 text-center md:text-left">
           <m.div 
-            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            initial={false}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.8, ease: APPLE_EASE }}
             className="relative w-64 h-64 md:w-56 md:h-56 lg:w-72 lg:h-72 shrink-0 shadow-[0_40px_100px_rgba(0,0,0,0.7)] rounded-[2.5rem] overflow-hidden group border border-white/10 animate-gpu bg-zinc-900/40"
           >
             <MusicArtwork
@@ -151,13 +150,13 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
               iconSize={56}
               variant="track"
               rounded="none"
-              className="transition-transform duration-1000 group-hover:scale-110"
+              className="group-hover:scale-110"
             />
           </m.div>
 
           <div className="flex-1 space-y-4 md:space-y-6 w-full max-w-xl">
             <div className="flex items-center justify-center md:justify-start gap-2">
-              <span className="px-3 py-1 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/50 border border-white/5 backdrop-blur-sm">
+              <span className="px-3 py-1 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/50 border border-white/5">
                 {albumData.year ? "Full Album" : "EP / Single"}
               </span>
             </div>
@@ -171,10 +170,10 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
                 className="flex items-center gap-3 group cursor-pointer"
                 onClick={() => onNavigateArtist?.(artistName)}
               >
-                <div className="p-2.5 rounded-full bg-white/5 text-white/40 group-hover:text-white group-hover:bg-white/10 transition-all border border-white/5">
+                <div className="p-2.5 rounded-full bg-white/5 text-white/40 group-hover:text-white group-hover:bg-white/10 border border-white/5">
                   <User size={18} />
                 </div>
-                <span className="text-xl md:text-2xl font-bold text-white/90 group-hover:text-white group-hover:underline underline-offset-8 decoration-2 decoration-red-500/50 transition-all">
+                <span className="text-xl md:text-2xl font-bold text-white/90 group-hover:text-white group-hover:underline underline-offset-8 decoration-2 decoration-red-500/50">
                   {artistName}
                 </span>
               </div>
@@ -193,14 +192,14 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-8 md:pt-4">
               <button 
                 onClick={handlePlayAll}
-                className="flex-1 sm:flex-initial px-10 py-5 bg-white text-black font-black rounded-2xl flex items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-2xl"
+                className="flex-1 sm:flex-initial px-10 py-5 bg-white text-black font-black rounded-2xl flex items-center justify-center gap-3 shadow-2xl"
               >
                 <Play size={22} fill="black" />
                 <span>Play All</span>
               </button>
               <button 
                 onClick={handleShuffle}
-                className="flex-1 sm:flex-initial px-10 py-5 bg-white/10 text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:bg-white/20 transition-all active:scale-95 border border-white/10 backdrop-blur-2xl hover:scale-105"
+                className="flex-1 sm:flex-initial px-10 py-5 bg-white/10 text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:bg-white/20 border border-white/10"
               >
                 <Shuffle size={20} />
                 <span>Shuffle</span>
@@ -236,12 +235,11 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
                 onSwipeLeft={() => onAddToQueue?.(song)}
               >
                 <m.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={false}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03, ease: APPLE_EASE }}
                   onClick={() => handleTrackClick(track, i)}
-                  className={`group flex items-center gap-4 p-3 md:p-4 rounded-2xl transition-all cursor-pointer border ${
-                    isActive ? "bg-white/10 border-white/10 shadow-2xl backdrop-blur-md" : "hover:bg-white/5 border-transparent hover:border-white/10"
+                  className={`group flex items-center gap-4 p-3 md:p-4 rounded-2xl cursor-pointer border ${
+                    isActive ? "bg-white/10 border-white/10 shadow-2xl" : "hover:bg-white/5 border-transparent hover:border-white/10"
                   }`}
                 >
                   <div className={`w-8 md:w-12 text-center font-black text-sm ${isActive ? "text-red-500" : "text-white/20 group-hover:text-white/60"}`}>
@@ -257,7 +255,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
                       <MusicArtwork src={track.artwork} alt={track.title} iconSize={22} variant="track" rounded="xl" />
                     </div>
                     <div className="flex flex-col min-w-0">
-                      <span className={`text-[16px] md:text-[17px] font-bold truncate transition-colors leading-tight ${isActive ? "text-red-500" : "text-white"}`}>
+                      <span className={`text-[16px] md:text-[17px] font-bold truncate leading-tight ${isActive ? "text-red-500" : "text-white"}`}>
                         {track.title}
                       </span>
                       <span 
@@ -265,7 +263,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
                            e.stopPropagation();
                            onNavigateArtist?.(track.artist || artistName);
                         }}
-                        className="text-[12px] md:text-[13px] text-white/30 font-bold tracking-tight hover:text-white transition-colors cursor-pointer mt-0.5"
+                        className="text-[12px] md:text-[13px] text-white/30 font-bold tracking-tight hover:text-white cursor-pointer mt-0.5"
                       >
                         {track.artist || artistName}
                       </span>

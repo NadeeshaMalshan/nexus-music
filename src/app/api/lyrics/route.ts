@@ -5,7 +5,7 @@ import { parseLrcContent } from "@/lib/lrc";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30; // Max serverless duration on Vercel
 
-type LyricsSource = "LRCLIB" | "Lyrics.ovh";
+type LyricsSource = "LRCLIB" | "Lyrics.ovh" | "Genius";
 
 interface LrcLibRecord {
   id: number;
@@ -54,6 +54,7 @@ interface UnifiedLyricsPayload {
     url: string | null;
     thumbnail: string | null;
     description: string | null;
+    writers: string[] | null;
   };
 }
 
@@ -187,7 +188,7 @@ async function fetchGenius(track: string, artist: string): Promise<GeniusSearchH
   return data.response?.hits?.[0]?.result ?? null;
 }
 
-async function fetchGeniusDetails(id: number): Promise<string | null> {
+async function fetchGeniusDetails(id: number): Promise<{ description: string | null; writers: string[] | null } | null> {
   const token = process.env.GENIUS_ACCESS_TOKEN;
   if (!token) return null;
 
@@ -199,7 +200,59 @@ async function fetchGeniusDetails(id: number): Promise<string | null> {
 
   if (!res.ok) return null;
   const data = (await res.json()) as any;
-  return data.response?.song?.description?.plain || null;
+  const song = data.response?.song;
+  
+  const writers = (song?.writer_artists || []).map((w: any) => w.name as string);
+  
+  return {
+    description: song?.description?.plain || null,
+    writers: writers.length > 0 ? writers : null
+  };
+}
+
+/**
+ * Scrapes plain text lyrics from a Genius URL.
+ */
+async function scrapeGeniusLyrics(url: string): Promise<string | null> {
+  try {
+    const res = await fetchWithTimeout(url);
+    if (!res.ok) return null;
+    const html = await res.text();
+    
+    // Modern Genius lyrics container
+    let lyrics = "";
+    const containerRegex = /<div class="Lyrics__Container[^>]*>([\s\S]*?)<\/div>/g;
+    let match;
+    while ((match = containerRegex.exec(html)) !== null) {
+      lyrics += match[1] + "\n";
+    }
+
+    if (lyrics) {
+      return lyrics
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, "")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&#39;/g, "'")
+        .trim();
+    }
+
+    // Older Genius lyrics container fallback
+    const oldContainerMatch = html.match(/<div class="lyrics">([\s\S]*?)<\/div>/);
+    if (oldContainerMatch) {
+      return oldContainerMatch[1]
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, "")
+        .trim();
+    }
+
+    return null;
+  } catch (err) {
+    console.error("Genius scraping failed:", err);
+    return null;
+  }
 }
 
 export async function GET(request: Request) {
@@ -272,8 +325,12 @@ export async function GET(request: Request) {
     const geniusResult = geniusSettled.status === "fulfilled" ? geniusSettled.value : null;
 
     let geniusDescription: string | null = null;
+    let geniusWriters: string[] | null = null;
     if (geniusResult?.id) {
-      geniusDescription = await fetchGeniusDetails(geniusResult.id);
+      const details = await fetchGeniusDetails(geniusResult.id);
+      geniusDescription = details?.description || null;
+      geniusWriters = details?.writers || null;
+
       // Clean up the description if it's just a placeholder like "No description available."
       if (geniusDescription?.toLowerCase().includes("no description available") || geniusDescription?.length && geniusDescription.length < 5) {
         geniusDescription = null;
@@ -281,9 +338,20 @@ export async function GET(request: Request) {
     }
 
     const plainFromOvh = lyricsOvhData?.lyrics?.trim() || null;
+    let plainFromGenius: string | null = null;
 
-    const lyricsContent = synced || plainFromLrcLib || plainFromOvh;
-    const lyricsSource: LyricsSource | null = synced || plainFromLrcLib ? "LRCLIB" : plainFromOvh ? "Lyrics.ovh" : null;
+    if (!synced && !plainFromLrcLib && geniusResult?.url) {
+      plainFromGenius = await scrapeGeniusLyrics(geniusResult.url);
+    }
+
+    const lyricsContent = synced || plainFromLrcLib || plainFromGenius || plainFromOvh;
+    const lyricsSource: LyricsSource | null = synced || plainFromLrcLib 
+      ? "LRCLIB" 
+      : plainFromGenius 
+        ? "Genius" 
+        : plainFromOvh 
+          ? "Lyrics.ovh" 
+          : null;
 
     const lrcTimedLines = parseLrcContent(lyricsContent || "");
     const isSynced = lrcTimedLines.length > 0;
@@ -301,6 +369,7 @@ export async function GET(request: Request) {
         url: geniusResult?.url ?? null,
         thumbnail: geniusResult?.song_art_image_thumbnail_url ?? null,
         description: geniusDescription,
+        writers: geniusWriters,
       },
     };
 
@@ -320,6 +389,7 @@ export async function GET(request: Request) {
         url: null,
         thumbnail: null,
         description: null,
+        writers: null,
       },
     };
 

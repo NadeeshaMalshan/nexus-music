@@ -12,18 +12,37 @@ const ACR_SECRET = process.env.ACR_ACCESS_SECRET ?? "";
 
 // ─── iTunes Artwork ─────────────────────────────────────────────────────────
 async function getArtwork(artist: string, title: string): Promise<string | undefined> {
+  // 1. Clean terms
+  const clean = (s: string) => s.replace(/\(.*\)|\[.*\]/g, "").replace(/feat\..*/gi, "").trim();
+  const cArtist = clean(artist);
+  const cTitle = clean(title);
+  
   try {
-    const searchTerm = encodeURIComponent(`${artist} ${title}`);
+    const searchTerm = encodeURIComponent(`${cArtist} ${cTitle}`);
     const res = await fetch(`https://itunes.apple.com/search?term=${searchTerm}&limit=1&entity=song`, {
       cache: "no-store",
+      headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(4000)
     });
     if (res.ok) {
       const data = await res.json();
       if (data.results?.length > 0) {
-        return data.results[0].artworkUrl100.replace("100x100bb.jpg", "600x600bb.jpg");
+        return data.results[0].artworkUrl100.replace("100x100bb.jpg", "800x800bb.jpg");
       }
     }
   } catch {}
+
+  // 2. Fallback to YTM search for thumb
+  try {
+     const { getYTMusic } = await import("./ytmClient");
+     const yt = await getYTMusic();
+     const results = await yt.searchSongs(`${cArtist} ${cTitle}`);
+     if (results && results.length > 0) {
+        const best: any = results[0];
+        return best.thumbnails?.[best.thumbnails.length - 1]?.url || best.thumbnail?.url || undefined;
+     }
+  } catch {}
+
   return undefined;
 }
 
@@ -108,34 +127,78 @@ async function getYoutubeAudioStreamUrl(videoId: string): Promise<string | null>
 }
 
 // ─── Tomorrowland (Triton Digital) ───────────────────────────────────────────
-async function getTomorrowlandMetadata(mountName = "OWR_INTERNATIONAL_ADP"): Promise<LiveMetadata | null> {
+async function getTomorrowlandMetadata(mountName = "OWR_INTERNATIONAL_ADP", videoId?: string): Promise<LiveMetadata | null> {
   // 1. Triton Digital
   try {
     const res = await fetch(
       `https://np.tritondigital.com/public/nowplaying?mountName=${mountName}&numberToFetch=1`,
-      { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0" } }
+      { 
+        cache: "no-store", 
+        headers: { 
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Referer": "https://www.tomorrowland.com/"
+        },
+        signal: AbortSignal.timeout(5000)
+      }
     );
     if (res.ok) {
       const xml = await res.text();
       const artist =
-        xml.match(/<property name="track_artist_name"><!\[CDATA\[(.*?)\]\]><\/property>/)?.[1] ||
+        xml.match(/<property name="track_artist_name">[\s\S]*?<!\[CDATA\[(.*?)\]\]>[\s\S]*?<\/property>/)?.[1] ||
         xml.match(/<property name="now_playing_artist">(.*?)<\/property>/)?.[1];
       const title =
-        xml.match(/<property name="cue_title"><!\[CDATA\[(.*?)\]\]><\/property>/)?.[1] ||
+        xml.match(/<property name="cue_title">[\s\S]*?<!\[CDATA\[(.*?)\]\]>[\s\S]*?<\/property>/)?.[1] ||
         xml.match(/<property name="now_playing_title">(.*?)<\/property>/)?.[1];
 
       if (artist && title) {
+        const a = artist.trim();
+        const t = title.trim();
+
+        // If the API returns generic branding, try ACRCloud as a better fallback
+        if ((a.toLowerCase() === "tomorrowland" || a.toLowerCase().includes("world radio")) && videoId) {
+           const streamUrl = await getYoutubeAudioStreamUrl(videoId);
+           if (streamUrl) {
+             const acr = await identifyViaACRCloud(streamUrl);
+             if (acr) return { ...acr, source: "One World Radio (Audio Fingerprint)" };
+           }
+        }
+
         const sourceName = mountName.includes("DAYBREAK")
           ? "Daybreak Sessions"
           : mountName.includes("ANTHEMS")
           ? "TML Anthems"
           : "One World Radio";
-        const artwork = await getArtwork(artist.trim(), title.trim());
-        return { artist: artist.trim(), title: title.trim(), source: sourceName, artwork };
+        const artwork = await getArtwork(a, t);
+        return { artist: a, title: t, source: sourceName, artwork };
       }
     }
-  } catch {
-    console.warn(`[Triton] Fetch failed for ${mountName}`);
+  } catch (err) {
+    console.warn(`[Triton] Fetch failed for ${mountName}`, err);
+  }
+
+  // 1.1 Try OWR_INTERNATIONAL (sometimes different mount is active)
+  if (mountName === "OWR_INTERNATIONAL_ADP") {
+     try {
+       const res = await fetch(
+         `https://np.tritondigital.com/public/nowplaying?mountName=OWR_INTERNATIONAL&numberToFetch=1`,
+         { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(5000) }
+       );
+       if (res.ok) {
+         const xml = await res.text();
+         const artist = xml.match(/<property name="track_artist_name">[\s\S]*?<!\[CDATA\[(.*?)\]\]>[\s\S]*?<\/property>/)?.[1] ||
+                        xml.match(/<property name="now_playing_artist">(.*?)<\/property>/)?.[1];
+         const title = xml.match(/<property name="cue_title">[\s\S]*?<!\[CDATA\[(.*?)\]\]>[\s\S]*?<\/property>/)?.[1] ||
+                       xml.match(/<property name="now_playing_title">(.*?)<\/property>/)?.[1];
+         if (artist && title) {
+           const a = artist.trim();
+           const t = title.trim();
+           if (a.toLowerCase() !== "tomorrowland") {
+             const artwork = await getArtwork(a, t);
+             return { artist: a, title: t, source: "One World Radio", artwork };
+           }
+         }
+       }
+     } catch {}
   }
 
   // 2. TuneIn fallback (OWR only)
@@ -244,15 +307,21 @@ export async function getLiveMetadata(
   const q = (query || "").toLowerCase();
   const t = (currentTitle || "").toLowerCase();
 
-  // 1. Tomorrowland channels
-  if (q.includes("tomorrowland") || t.includes("tomorrowland")) {
+  // 1. Tomorrowland / One World Radio
+  const isTML = q.includes("tomorrowland") || t.includes("tomorrowland") || q.includes("one world") || t.includes("one world") || q.includes("owr") || t.includes("owr");
+  
+  if (isTML) {
     if (q.includes("daybreak") || t.includes("daybreak"))
-      return getTomorrowlandMetadata("OWR_DAYBREAK");
+      return getTomorrowlandMetadata("OWR_DAYBREAK", videoId);
     if (q.includes("anthem") || t.includes("anthem"))
-      return getTomorrowlandMetadata("OWR_ANTHEMS");
-    if (q.includes("radio") || t.includes("radio") || q.includes("owr") || t.includes("one world"))
-      return getTomorrowlandMetadata("OWR_INTERNATIONAL_ADP");
-    return getTomorrowlandMetadata("OWR_INTERNATIONAL_ADP");
+      return getTomorrowlandMetadata("OWR_ANTHEMS", videoId);
+      
+    // Default OWR
+    const data = await getTomorrowlandMetadata("OWR_INTERNATIONAL_ADP", videoId);
+    if (data && data.artist.toLowerCase() !== "tomorrowland") return data;
+    
+    // Fallback search
+    return getTomorrowlandMetadata("OWR_INTERNATIONAL", videoId);
   }
 
   // 2. Coachella

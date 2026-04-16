@@ -53,6 +53,7 @@ type LyricsPayload = {
     songId: number | null;
     url: string | null;
     thumbnail: string | null;
+    writers: string[] | null;
   };
 };
 
@@ -124,8 +125,8 @@ type DashboardContextType = {
   ytPlayerRef: React.RefObject<{
     playVideo: () => void;
     pauseVideo: () => void;
-    loadVideoById: (videoId: string) => void;
-    cueVideoById: (videoId: string, startSeconds?: number) => void;
+    loadVideoById: (args: any) => void;
+    cueVideoById: (args: any) => void;
     getCurrentTime: () => number;
     getDuration: () => number;
     seekTo: (seconds: number, allowSeekAhead?: boolean) => void;
@@ -144,8 +145,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const ytPlayerRef = useRef<{
     playVideo: () => void;
     pauseVideo: () => void;
-    loadVideoById: (videoId: string) => void;
-    cueVideoById: (videoId: string, startSeconds?: number) => void;
+    loadVideoById: (args: any) => void;
+    cueVideoById: (args: any) => void;
     getCurrentTime: () => number;
     getDuration: () => number;
     seekTo: (seconds: number, allowSeekAhead?: boolean) => void;
@@ -248,25 +249,23 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     player: NonNullable<(typeof ytPlayerRef)["current"]>,
     videoId: string
   ) {
-    // If we're in video mode, if we haven't explicitly intended to play yet, OR if it's a LIVE stream
-    // we use cueVideoById to load the video metadata without starting playback automatically.
-    if (viewModeRef.current === "video" || userIntentRef.current === "paused" || currentSongRef.current?.isLive) {
-      player.cueVideoById(videoId);
-      
-      // Additional steps for video/live mode sync
-      if (viewModeRef.current === "video" || currentSongRef.current?.isLive) {
-        queueMicrotask(() => {
-          try {
-            player.pauseVideo();
-            player.setVolume(0);
-          } catch {
-            /* ignore */
-          }
-        });
-      }
-    } else {
-      player.loadVideoById(videoId);
+    // If we're in video mode or it's a LIVE stream, we do NOT want the hidden player
+    // to touch this video at all. The visible ExpandedPlayer will own the playback.
+    if (viewModeRef.current === "video" || currentSongRef.current?.isLive) {
+      // Just ensure it is silent and paused if it was doing something else
+      try {
+        player.pauseVideo();
+        player.setVolume(0);
+      } catch {}
+      return;
     }
+
+    if (userIntentRef.current === "paused") {
+      player.cueVideoById({ videoId, startSeconds: 0 });
+      return;
+    }
+
+    player.loadVideoById({ videoId, startSeconds: 0 });
   }
 
   // Persistence: Load from localStorage on mount
@@ -377,13 +376,18 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // Audio loading logic
   useEffect(() => {
+    // Explicitly nullify audio data when track changes
+    setAudioData(null);
+
     if (!audioQuery) {
-      setAudioData(null);
       return;
     }
     const controller = new AbortController();
     async function loadAudioMeta() {
-      const cacheKey = currentSong?.isDirectLink ? (`${currentSong.id}_${audioQuery}`) : audioQuery;
+      const hasId = !!currentSong?.id;
+      const isVideo = currentSong?.preferVideoPlayback || currentSong?.isLive;
+      const cacheKey = hasId ? (`${currentSong.id}_${audioQuery}_${isVideo ? 'v' : 'a'}`) : audioQuery;
+      
       if (audioCacheRef.current[cacheKey]) {
         const payload = audioCacheRef.current[cacheKey];
         setAudioData(payload);
@@ -391,8 +395,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
       setAudioData(null);
       try {
-        const isVideo = currentSong?.preferVideoPlayback || currentSong?.isLive;
-        const url = currentSong?.isDirectLink
+        const url = hasId
           ? `/api/audio?query=${encodeURIComponent(audioQuery)}&videoId=${currentSong.id}&artist=${encodeURIComponent(currentSong.artist)}&title=${encodeURIComponent(currentSong.title)}${isVideo ? '&isVideo=true' : ''}${currentSong.isLive ? '&isLive=true' : ''}`
           : `/api/audio?query=${encodeURIComponent(audioQuery)}`;
         const response = await fetch(url, {
@@ -436,8 +439,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // Direct URL Extraction for Music Mode
   useEffect(() => {
+    // Explicitly nullify direct audio URL when track changes to prevent old track from persisting
+    setDirectAudioUrl(null);
+
     if (!currentSong || viewMode !== "music") {
-      setDirectAudioUrl(null);
       return;
     }
 
@@ -474,8 +479,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setLyricsData(null);
       return;
     }
-    const track = currentSong.title?.trim();
-    const artist = currentSong.artist?.trim();
+    const track = (liveMetadata?.title || currentSong.title)?.trim();
+    const artist = (liveMetadata?.artist || currentSong.artist)?.trim();
     if (!track || !artist) {
       setLyricsData(null);
       return;
@@ -505,7 +510,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
     void loadLyrics();
     return () => controller.abort();
-  }, [currentSong]);
+  }, [currentSong, liveMetadata?.title, liveMetadata?.artist]);
 
   // Track session played history
   useEffect(() => {
@@ -598,8 +603,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setKnowFacts([]);
       return;
     }
-    const track = currentSong.title?.trim();
-    const artist = currentSong.artist?.trim();
+    const track = (liveMetadata?.title || currentSong.title)?.trim();
+    const artist = (liveMetadata?.artist || currentSong.artist)?.trim();
     const videoId = currentSong.id;
     if (!track || !artist || !videoId) return;
 
@@ -623,13 +628,27 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
     void loadKnowFacts();
     return () => controller.abort();
-  }, [currentSong]);
+  }, [currentSong, liveMetadata?.title, liveMetadata?.artist]);
 
   // Global Live Metadata Polling
   useEffect(() => {
     let interval: NodeJS.Timeout;
+    
+    // Heuristic for live streams (often search results or history don't have isLive=true)
+    const safeDuration = currentSong?.durationObj?.totalSeconds || 0;
+    const targetTitle = (liveMetadata?.title || currentSong?.title || "").toLowerCase();
+    const isReallyLive = 
+      currentSong?.isLive || 
+      currentSong?.duration === "LIVE" || 
+      safeDuration > 43200 || 
+      targetTitle.includes("one world radio") ||
+      targetTitle.includes("owr") ||
+      targetTitle.includes(" 24/7") ||
+      (targetTitle.includes("live") && (targetTitle.includes("stream") || targetTitle.includes("festival") || targetTitle.includes("radio"))) ||
+      (isPlaying && (safeDuration < 1 || currentSong?.duration === "0:00"));
+
     const fetchLive = async () => {
-      if (!currentSong?.isLive) {
+      if (!isReallyLive || !currentSong) {
         setLiveMetadata(null);
         return;
       }
@@ -640,22 +659,29 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
-          if (data?.artist && data?.title) setLiveMetadata(data);
+          if (data?.artist && data?.title) {
+            setLiveMetadata(prev => {
+              if (prev?.title === data.title && prev?.artist === data.artist) return prev;
+              return data;
+            });
+          } else {
+            setLiveMetadata(null);
+          }
         }
       } catch (err) {
         console.warn("Global Live Tracking Failed:", err);
       }
     };
     
-    if (currentSong?.isLive) {
+    if (isReallyLive) {
       void fetchLive();
-      interval = setInterval(fetchLive, 30000); // 30s poll
+      interval = setInterval(fetchLive, 10000); 
     } else {
       setLiveMetadata(null);
     }
     
     return () => clearInterval(interval);
-  }, [currentSong]);
+  }, [currentSong, isPlaying]);
 
 
   // YouTube player: container is created imperatively on document.body so React never strips the iframe on re-renders.
@@ -737,8 +763,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 } catch (e) {}
 
                 // RESILIENCE: If user intent is playing but player is paused background, try to resume
-                if (userIntentRef.current === "playing" && document.visibilityState === 'hidden') {
-                    // State 2 is PAUSED. State 3 is BUFFERING. State 5 is CUED.
+                // We SKIP this for live streams because the expanded player owns them.
+                if (userIntentRef.current === "playing" && document.visibilityState === 'hidden' && !currentSongRef.current?.isLive) {
                     const state = player.getPlayerState();
                     if (state === 2 || state === 5) {
                         player.playVideo();
@@ -876,7 +902,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     
     // If we're using currentSong.id (optimistic start) and then audioData comes back later,
     // we don't want to re-load the exact same video if it's already playing.
-  }, [audioData?.videoId, currentSong?.id, isPlayerReady]);
+  }, [audioData?.videoId, currentSong?.id, isPlayerReady, isUsingNativeAudio, directAudioUrl]);
 
   // Keep hidden player silent whenever expanded video mode is active (covers toggle without track change).
   useEffect(() => {
@@ -887,16 +913,16 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     
     if (!p || !playerReadyRef.current) return;
     try {
-      if (viewMode === "video" || isUsingNativeAudio) {
+      if (viewMode === "video" || currentSong?.isLive || isUsingNativeAudio) {
         p.setVolume(0);
-        if (isUsingNativeAudio) p.pauseVideo();
+        p.pauseVideo();
       } else {
         p.setVolume(volume);
       }
     } catch {
       /* ignore */
     }
-  }, [viewMode, volume, isUsingNativeAudio]);
+  }, [viewMode, volume, isUsingNativeAudio, currentSong?.isLive]);
 
   // Handlers
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -1028,6 +1054,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const playVideo = useCallback(() => {
     userIntentRef.current = "playing";
     
+    // In video/live modes, the ExpandedPlayer component owns the YouTube instance and 
+    // will react to the isPlaying state changing. We don't want to play the hidden player here.
+    if (viewModeRef.current === "video" || currentSongRef.current?.isLive) {
+        setIsPlaying(true);
+        return;
+    }
+
     if (isUsingNativeAudio && nativeAudioRef.current) {
         nativeAudioRef.current.play().catch(() => {});
         setIsPlaying(true);
@@ -1043,6 +1076,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const pauseVideo = useCallback(() => {
     userIntentRef.current = "paused";
+    
+    // For video/live mode, ExpandedPlayer will pause itself when isPlaying === false.
+    if (viewModeRef.current === "video" || currentSongRef.current?.isLive) {
+        setIsPlaying(false);
+        return;
+    }
+
     if (isUsingNativeAudio && nativeAudioRef.current) {
         nativeAudioRef.current.pause();
         setIsPlaying(false);
@@ -1068,14 +1108,16 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (shouldResetQueue) {
       setUpNextQueue([]);
     }
-    if (song.preferVideoPlayback || song.isLive) {
+    const isLive = song.isLive || song.duration === "LIVE";
+    if (song.preferVideoPlayback || isLive) {
       setViewMode("video");
       setIsExpandedPlayerOpen(true);
     }
     userIntentRef.current = "playing";
     try { audioCtxRef.current?.resume(); } catch {}
-    setCurrentSong(song);
+    setCurrentSong({ ...song, isLive });
     setCurrentTimeSec(0);
+    lastTimeBucketRef.current = -1;
     setIsPlaying(true);
     
     // Update local history
@@ -1119,6 +1161,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const onSeek = useCallback((nextTimeSec: number) => {
     if (!Number.isFinite(nextTimeSec)) return;
     
+    // In video/live modes, seeking should be handled by the ExpandedPlayer or ignored for live.
+    if (viewModeRef.current === "video" || currentSongRef.current?.isLive) {
+        setCurrentTimeSec(nextTimeSec);
+        return; 
+    }
+
     if (isUsingNativeAudio && nativeAudioRef.current) {
         nativeAudioRef.current.currentTime = nextTimeSec;
         setCurrentTimeSec(nextTimeSec);

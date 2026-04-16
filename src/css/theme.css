@@ -45,9 +45,9 @@
   --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --spring-soft: spring(100, 20, 15);
-  --transition-fast: 200ms var(--ease-apple);
-  --transition-medium: 400ms var(--ease-apple);
-  --transition-slow: 600ms var(--ease-apple);
+  --transition-fast: 0ms;
+  --transition-medium: 0ms;
+  --transition-slow: 0ms;
 }
 
 .dark {
@@ -195,8 +195,8 @@
     will-change: transform, opacity;
   }
 
-  /* Optimized Background Animation */
+  /* Disabled Background Animation */
   .bg-gradient-animate {
-    transition: background-image 2000ms var(--ease-apple), background-color 2000ms var(--ease-apple);
+    transition: none !important;
   }
 }

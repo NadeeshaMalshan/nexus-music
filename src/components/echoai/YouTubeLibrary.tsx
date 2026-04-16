@@ -133,7 +133,7 @@ export function YouTubeLibrary({
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#050505]">
         <div 
-          className="w-20 h-20 md:w-24 md:h-24 rounded-[32px] flex items-center justify-center mb-10 shadow-2xl transition-colors duration-1000"
+          className="w-20 h-20 md:w-24 md:h-24 rounded-[32px] flex items-center justify-center mb-10 shadow-2xl"
           style={{ backgroundImage: `linear-gradient(to top right, ${accentColor}, #FF5E3A)` }}
         >
           <Music2 className="w-10 h-10 md:w-12 md:h-12 text-white" />
@@ -142,7 +142,7 @@ export function YouTubeLibrary({
         <p className="text-white/40 mb-10 max-w-sm text-sm">Connect your Google account to access your playlists and history.</p>
         <button 
           onClick={() => window.location.href = "/api/auth/signin"}
-          className="px-10 py-4 bg-white text-black font-bold rounded-full hover:bg-zinc-200 transition-all shadow-xl"
+          className="px-10 py-4 bg-white text-black font-bold rounded-full hover:bg-zinc-200 shadow-xl"
         >
           Sign in with Google
         </button>
@@ -152,7 +152,7 @@ export function YouTubeLibrary({
 
   return (
     <div className="flex-1 h-full flex flex-col bg-transparent">
-      <header className="px-6 pt-8 pb-4 md:px-8 md:pt-10 md:pb-6 lg:px-12 border-b border-white/3 backdrop-blur-xl sticky top-0 z-20">
+      <header className="px-6 pt-8 pb-4 md:px-8 md:pt-10 md:pb-6 lg:px-12 border-b border-white/3 sticky top-0 z-20 bg-[#0d0d0f]">
         <div className="max-w-[1600px] mx-auto space-y-6 md:space-y-8">
            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
               <div>
@@ -266,7 +266,7 @@ export function YouTubeLibrary({
                                 />
                              </div>
                              <h3 
-                               className="text-sm md:text-[17px] font-bold text-white truncate transition-colors leading-tight mb-0.5 md:mb-1"
+                               className="text-sm md:text-[17px] font-bold text-white truncate leading-tight mb-0.5 md:mb-1"
                                style={{ ['--hover-color' as any]: accentColor }}
                              >
                                {playlist.title}
@@ -333,7 +333,7 @@ export function YouTubeLibrary({
                                     variant="track"
                                     rounded="3xl"
                                   />
-                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-opacity duration-300">
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3">
                                      <button
                                        onClick={(e) => {
                                          e.stopPropagation();

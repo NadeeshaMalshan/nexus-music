@@ -265,37 +265,31 @@ async function parseLiveTitle(rawTitle: string, festival: string): Promise<LiveM
   return null;
 }
 
-// ─── Coachella: ACRCloud + title fallback ────────────────────────────────────
-async function getCoachellaMetadata(videoId?: string, rawTitle?: string): Promise<LiveMetadata | null> {
-  // 1. ACRCloud audio fingerprint (most accurate)
+async function getGenericFestivalMetadata(festival: string, videoId?: string, rawTitle?: string): Promise<LiveMetadata | null> {
   if (videoId && ACR_KEY && ACR_SECRET) {
     const streamUrl = await getYoutubeAudioStreamUrl(videoId);
     if (streamUrl) {
       const acr = await identifyViaACRCloud(streamUrl);
-      if (acr) return { ...acr, source: "Coachella (ACRCloud)" };
+      if (acr) return { ...acr, source: `${festival} (ACRCloud)` };
     }
   }
-
-  // 2. YouTube title parse (fallback)
-  if (rawTitle) {
-    const parsed = await parseLiveTitle(rawTitle, "Coachella");
-    if (parsed) return parsed;
-  }
-
+  if (rawTitle) return parseLiveTitle(rawTitle, festival);
   return null;
+}
+
+// ─── Coachella ───────────────────────────────────────────────────────────────
+async function getCoachellaMetadata(videoId?: string, rawTitle?: string): Promise<LiveMetadata | null> {
+  return getGenericFestivalMetadata("Coachella", videoId, rawTitle);
 }
 
 // ─── Ultra / UMF ─────────────────────────────────────────────────────────────
 async function getUltraMetadata(videoId?: string, rawTitle?: string): Promise<LiveMetadata | null> {
-  if (videoId && ACR_KEY && ACR_SECRET) {
-    const streamUrl = await getYoutubeAudioStreamUrl(videoId);
-    if (streamUrl) {
-      const acr = await identifyViaACRCloud(streamUrl);
-      if (acr) return { ...acr, source: "Ultra Music Festival (ACRCloud)" };
-    }
-  }
-  if (rawTitle) return parseLiveTitle(rawTitle, "Ultra Music Festival");
-  return null;
+  return getGenericFestivalMetadata("Ultra Music Festival", videoId, rawTitle);
+}
+
+// ─── EDC ─────────────────────────────────────────────────────────────────────
+async function getEDCMetadata(videoId?: string, rawTitle?: string): Promise<LiveMetadata | null> {
+  return getGenericFestivalMetadata("EDC", videoId, rawTitle);
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
@@ -332,6 +326,11 @@ export async function getLiveMetadata(
   // 3. Ultra / UMF
   if (q.includes("ultra") || q.includes("umf") || t.includes("ultra") || t.includes("umf")) {
     return getUltraMetadata(videoId, currentTitle);
+  }
+
+  // 4. EDC
+  if (q.includes("edc") || t.includes("edc") || q.includes("electric daisy") || t.includes("electric daisy")) {
+    return getEDCMetadata(videoId, currentTitle);
   }
 
   return null;

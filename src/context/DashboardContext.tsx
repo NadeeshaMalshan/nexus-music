@@ -212,6 +212,94 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const currentSongRef = useRef(currentSong);
   useEffect(() => { currentSongRef.current = currentSong; }, [currentSong]);
 
+  const isExpandedPlayerOpenRef = useRef(isExpandedPlayerOpen);
+  useEffect(() => {
+    isExpandedPlayerOpenRef.current = isExpandedPlayerOpen;
+  }, [isExpandedPlayerOpen]);
+
+  /**
+   * Matches ExpandedPlayer "live / radio" detection. Many streams never set `song.isLive`;
+   * once live-tracker returns `liveMetadata`, ExpandedPlayer mounts its own YouTube — the hidden
+   * player must not keep playing the same broadcast or audio overlaps when metadata updates.
+   */
+  const isReallyLivePlayback = useMemo(() => {
+    if (!currentSong) return false;
+    if (liveMetadata) return true;
+
+    const safeDuration = currentSong.durationObj?.totalSeconds || 0;
+    const targetTitle = (currentSong.title || "").toLowerCase();
+
+    return (
+      !!currentSong.isLive ||
+      currentSong.duration === "LIVE" ||
+      safeDuration > 43200 ||
+      targetTitle.includes("one world radio") ||
+      targetTitle.includes("owr") ||
+      targetTitle.includes("daybreak") ||
+      targetTitle.includes("anthem") ||
+      targetTitle.includes("coachella") ||
+      targetTitle.includes("ultra") ||
+      targetTitle.includes("umf") ||
+      targetTitle.includes("edc") ||
+      targetTitle.includes(" 24/7") ||
+      (targetTitle.includes("live") &&
+        (targetTitle.includes("stream") ||
+          targetTitle.includes("festival") ||
+          targetTitle.includes("radio"))) ||
+      (isPlaying &&
+        (safeDuration < 1 || currentSong.duration === "0:00") &&
+        (targetTitle.includes("fest") ||
+          targetTitle.includes("radio") ||
+          targetTitle.includes("live")))
+    );
+  }, [currentSong, liveMetadata, isPlaying]);
+
+  /** Hidden iframe must not output audio when ExpandedPlayer owns the same YouTube stream. */
+  const hiddenYoutubeMustStaySilentRef = useRef(false);
+  useEffect(() => {
+    hiddenYoutubeMustStaySilentRef.current =
+      viewMode === "video" ||
+      isUsingNativeAudio ||
+      !!currentSong?.isLive ||
+      (isReallyLivePlayback && isExpandedPlayerOpen);
+  }, [
+    viewMode,
+    isUsingNativeAudio,
+    currentSong?.isLive,
+    isReallyLivePlayback,
+    isExpandedPlayerOpen,
+  ]);
+
+  /**
+   * HARD GUARANTEE: ensure only one playback source is audible at a time.
+   * - ExpandedPlayer owns playback in video mode.
+   * - For live/radio, ExpandedPlayer typically owns playback while open (even if `song.isLive` is false).
+   * - Native <audio> owns playback only when `isUsingNativeAudio` is true.
+   */
+  useEffect(() => {
+    // 1) If native audio should NOT be active, force-pause it.
+    if (!isUsingNativeAudio && nativeAudioRef.current) {
+      try { nativeAudioRef.current.pause(); } catch { /* ignore */ }
+    }
+
+    const p = ytPlayerRef.current;
+    if (!p || !playerReadyRef.current) return;
+
+    // 2) If the hidden YouTube iframe must stay silent, enforce pause+mute.
+    if (hiddenYoutubeMustStaySilentRef.current) {
+      try {
+        p.pauseVideo();
+        p.setVolume(0);
+      } catch { /* ignore */ }
+      return;
+    }
+
+    // 3) Otherwise, in normal music mode (non-native-audio), keep hidden player volume aligned.
+    try {
+      p.setVolume(volumeRef.current);
+    } catch { /* ignore */ }
+  }, [isUsingNativeAudio, isExpandedPlayerOpen, isReallyLivePlayback, viewMode]);
+
   useEffect(() => {
     viewModeRef.current = viewMode;
   }, [viewMode]);
@@ -251,7 +339,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   ) {
     // If we're in video mode or it's a LIVE stream, we do NOT want the hidden player
     // to touch this video at all. The visible ExpandedPlayer will own the playback.
-    if (viewModeRef.current === "video" || currentSongRef.current?.isLive) {
+    if (
+      viewModeRef.current === "video" ||
+      currentSongRef.current?.isLive ||
+      hiddenYoutubeMustStaySilentRef.current
+    ) {
       // Just ensure it is silent and paused if it was doing something else
       try {
         player.pauseVideo();
@@ -740,6 +832,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
               if (!player || !playerReadyRef.current) return;
               // Expanded react-youtube owns time + audio in video mode
               if (viewModeRef.current === "video") return;
+              if (hiddenYoutubeMustStaySilentRef.current) return;
 
               const current = player.getCurrentTime();
               const duration = player.getDuration();
@@ -789,9 +882,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 if (
                   userIntentRef.current === "playing" && 
                   document.visibilityState === 'hidden' && 
-                  !currentSongRef.current?.isLive && 
                   viewModeRef.current === "music" &&
-                  !isUsingNativeAudio
+                  !isUsingNativeAudio &&
+                  !hiddenYoutubeMustStaySilentRef.current
                 ) {
                     const state = player.getPlayerState();
                     if (state === 2 || state === 5) {
@@ -942,7 +1035,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     
     if (!p || !playerReadyRef.current) return;
     try {
-      if (viewMode === "video" || currentSong?.isLive || isUsingNativeAudio) {
+      const silenceHidden =
+        viewMode === "video" ||
+        isUsingNativeAudio ||
+        !!currentSong?.isLive ||
+        (isReallyLivePlayback && isExpandedPlayerOpen);
+
+      if (silenceHidden) {
         p.setVolume(0);
         p.pauseVideo();
       } else {
@@ -951,7 +1050,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* ignore */
     }
-  }, [viewMode, volume, isUsingNativeAudio, currentSong?.isLive]);
+  }, [
+    viewMode,
+    volume,
+    isUsingNativeAudio,
+    currentSong?.isLive,
+    isReallyLivePlayback,
+    isExpandedPlayerOpen,
+  ]);
 
   // Handlers
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);

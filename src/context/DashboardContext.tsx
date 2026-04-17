@@ -780,7 +780,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                   userIntentRef.current === "playing" && 
                   document.visibilityState === 'hidden' && 
                   !currentSongRef.current?.isLive && 
-                  viewModeRef.current !== "video" &&
+                  viewModeRef.current === "music" &&
                   !isUsingNativeAudio
                 ) {
                     const state = player.getPlayerState();

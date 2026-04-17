@@ -152,7 +152,14 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
             className="fixed inset-x-0 bottom-0 z-60 pointer-events-none flex items-center justify-center px-4 pb-safe"
           >
             <FloatingPlayer
-              onExpand={() => setIsExpandedPlayerOpen(true)}
+              onExpand={() => {
+                // In video/live scenarios, ExpandedPlayer owns playback.
+                // Pause the hidden/background player to prevent double audio overlap.
+                if (viewMode === "video" || mergedCurrentSong?.isLive) {
+                  pauseBackgroundPlayer();
+                }
+                setIsExpandedPlayerOpen(true);
+              }}
               currentSong={mergedCurrentSong!}
               isPlaying={isPlaying}
               onTogglePlay={onTogglePlay}

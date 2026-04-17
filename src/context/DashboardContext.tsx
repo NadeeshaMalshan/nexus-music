@@ -441,8 +441,18 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Explicitly nullify direct audio URL when track changes to prevent old track from persisting
     setDirectAudioUrl(null);
+    
+    // If we are switching away from native-audio playback (e.g. to LIVE or video mode),
+    // ensure the <audio> element is actually paused. Otherwise the previous track can
+    // keep playing underneath a live/video YouTube player, causing overlap.
+    if (nativeAudioRef.current) {
+      try { nativeAudioRef.current.pause(); } catch { /* ignore */ }
+    }
 
     if (!currentSong || viewMode !== "music") {
+      return;
+    }
+    if (currentSong.isLive) {
       return;
     }
 

@@ -229,26 +229,38 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
 export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: ModalProps) {
   const [step, setStep] = useState<'input' | 'loading' | 'results'>('input');
   const [prompt, setPrompt] = useState("");
+  const [favoriteArtists, setFavoriteArtists] = useState("");
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [generatedResult, setGeneratedResult] = useState<{ name: string, songs: CreateModalSong[] }>({ name: "", songs: [] });
   const [isSaving, setIsSaving] = useState(false);
   
+  const GENRE_CHIPS = ['Lofi', 'Pop', 'Classical', 'Retrowave', 'Electronic', 'Jazz', 'Acoustic', 'Hip Hop', 'Rock'];
+
   const firstArtwork = generatedResult.songs.length > 0 ? generatedResult.songs[0].artwork : null;
   const palette = useArtworkColors(firstArtwork);
 
+  const toggleGenre = (genre: string) => {
+    setSelectedGenres(prev => prev.includes(genre) ? prev.filter(g => g !== genre) : [...prev, genre]);
+  };
+
   const handleGenerate = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() && !favoriteArtists.trim() && selectedGenres.length === 0) return;
     setStep('loading');
     try {
       const res = await fetch("/api/recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ 
+          prompt: prompt || "Personalized Mix", 
+          favoriteArtists: favoriteArtists.split(',').map(s => s.trim()).filter(Boolean),
+          genres: selectedGenres
+        }),
       });
       if (!res.ok) throw new Error(`API error ${res.status}`);
       const data = await res.json();
-      const recs = (data.recommendations || []).slice(0, 15);
+      const recs = (data.recommendations || []).slice(0, 20);
       setGeneratedResult({
-        name: `${prompt.charAt(0).toUpperCase() + prompt.slice(1).split(' ')[0]} Exploration`,
+        name: prompt ? `${prompt.charAt(0).toUpperCase() + prompt.slice(1).split(' ')[0]} Evolution` : "Neural DNA Mix",
         songs: recs.map((rec: any) => ({
           id: rec.youtubeId,
           title: rec.title,
@@ -324,57 +336,81 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                     initial={{ opacity: 0, y: 20 }} 
                     animate={{ opacity: 1, y: 0 }} 
                     transition={MOTION_CONFIG.transition}
-                    className="flex flex-col items-center justify-center min-h-[50vh] py-8 md:py-12 space-y-8 md:space-y-16 animate-gpu"
+                    className="flex flex-col min-h-[50vh] py-8 md:py-12 space-y-12 md:space-y-16 animate-gpu"
                   >
                    <div className="text-center space-y-4 md:space-y-6">
                       <m.h3 
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 1, ease: EXPO_OUT }}
-                        className="text-5xl md:text-7xl lg:text-[96px] font-black text-white leading-[0.85] tracking-tighter"
+                        className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-[0.85] tracking-tighter"
                       >
-                        What's the <br/>
-                        <span className="text-transparent bg-clip-text bg-linear-to-r from-white via-white to-white/20">vibe?</span>
+                        Design your <br/>
+                        <span className="text-transparent bg-clip-text bg-linear-to-r from-white via-white to-white/20">Sound Profile</span>
                       </m.h3>
-                      <p className="text-white/30 text-base md:text-2xl font-bold max-w-lg mx-auto leading-tight">Describe a mood, a memory, or an activity you're planning.</p>
                     </div>
                     
-                    <div className="w-full max-w-3xl space-y-8 md:space-y-12">
-                      <div className="relative group/input">
-                         <div className="absolute -inset-0.5 bg-linear-to-r from-white/20 to-transparent rounded-[32px] blur-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-1000" />
-                         <textarea 
-                           placeholder="e.g. 80s inspired synthwave for night driving..." 
-                           className="relative w-full h-32 md:h-52 bg-white/[0.03] rounded-3xl md:rounded-[40px] p-8 md:p-10 text-xl md:text-3xl font-black text-white placeholder:text-white/5 border border-white/5 focus:border-white/20 transition-all resize-none focus:outline-none shadow-2xl backdrop-blur-xl"
-                           value={prompt}
-                           onChange={(e) => setPrompt(e.target.value)}
-                           autoFocus
-                         />
-                         <m.button 
-                           whileHover={{ scale: 1.02 }}
-                           whileTap={{ scale: 0.98 }}
-                           onClick={handleGenerate}
-                           disabled={!prompt.trim()}
-                           className="absolute bottom-6 right-6 md:bottom-10 md:right-10 flex items-center gap-3 px-8 md:px-12 py-4 md:py-5 font-black rounded-full shadow-[0_20px_40px_rgba(0,0,0,0.5)] transition-all disabled:opacity-30 disabled:grayscale"
-                           style={{ backgroundColor: accentColor || '#FFF', color: '#000' }}
-                         >
-                            <span className="text-sm md:text-lg">Generate</span>
-                            <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
-                         </m.button>
+                    <div className="w-full max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16">
+                      {/* Left: Preferences */}
+                      <div className="space-y-10">
+                        <div className="space-y-4">
+                           <label className="text-[11px] font-black uppercase tracking-[0.3em] text-white/20 px-1">Favorite Artists</label>
+                           <input 
+                             type="text" 
+                             placeholder="e.g. Gunadasa Kapuge, The Weeknd..." 
+                             className="w-full bg-white/5 border border-white/5 rounded-2xl p-5 text-lg font-black text-white focus:border-white/20 transition-all outline-none"
+                             value={favoriteArtists}
+                             onChange={(e) => setFavoriteArtists(e.target.value)}
+                           />
+                        </div>
+
+                        <div className="space-y-4">
+                           <label className="text-[11px] font-black uppercase tracking-[0.3em] text-white/20 px-1">Target Genres</label>
+                           <div className="flex flex-wrap gap-2.5">
+                             {GENRE_CHIPS.map(genre => (
+                               <m.button 
+                                 key={genre}
+                                 whileHover={{ scale: 1.05 }}
+                                 whileTap={{ scale: 0.95 }}
+                                 onClick={() => toggleGenre(genre)}
+                                 className={`px-5 py-2.5 rounded-full border text-xs font-black transition-all ${
+                                   selectedGenres.includes(genre) 
+                                     ? 'bg-white text-black border-white' 
+                                     : 'bg-white/5 text-white/40 border-white/5 hover:border-white/10'
+                                 }`}
+                               >
+                                 {genre}
+                               </m.button>
+                             ))}
+                           </div>
+                        </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4">
-                         {['Late night coding', 'Rainy afternoon', 'Deep focus', 'High energy', 'Road trip', 'Sunset terrace'].map((v, i) => (
-                           <m.button 
-                             key={v} 
-                             initial={{ opacity: 0, y: 10 }}
-                             animate={{ opacity: 1, y: 0 }}
-                             transition={{ delay: 0.5 + (i * 0.05) }}
-                             onClick={() => setPrompt(v)}
-                             className="px-5 md:px-7 py-2.5 md:py-3 rounded-full bg-white/5 border border-white/5 text-xs md:text-sm font-black text-white/40 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all capitalize shadow-lg"
-                           >
-                             {v}
-                           </m.button>
-                         ))}
+                      {/* Right: Vibe Prompt */}
+                      <div className="space-y-10">
+                        <div className="space-y-4">
+                           <label className="text-[11px] font-black uppercase tracking-[0.3em] text-white/20 px-1">Final Vibe / Prompt</label>
+                           <div className="relative group/input">
+                              <div className="absolute -inset-0.5 bg-linear-to-r from-white/20 to-transparent rounded-[32px] blur-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-1000" />
+                              <textarea 
+                                placeholder="Describe the vibe... e.g. Night drive with heavy bass" 
+                                className="relative w-full h-40 md:h-52 bg-white/[0.03] rounded-3xl p-8 text-xl md:text-2xl font-black text-white placeholder:text-white/5 border border-white/5 focus:border-white/20 transition-all resize-none focus:outline-none shadow-2xl backdrop-blur-xl"
+                                value={prompt}
+                                onChange={(e) => setPrompt(e.target.value)}
+                              />
+                              <m.button 
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={handleGenerate}
+                                disabled={!prompt.trim() && !favoriteArtists.trim() && selectedGenres.length === 0}
+                                className="absolute bottom-6 right-6 flex items-center gap-3 px-8 md:px-12 py-4 md:py-5 font-black rounded-full shadow-[0_20px_40px_rgba(0,0,0,0.5)] transition-all disabled:opacity-30 disabled:grayscale"
+                                style={{ backgroundColor: accentColor || '#FFF', color: '#000' }}
+                              >
+                                 <span className="text-sm md:text-lg">Generate</span>
+                                 <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+                              </m.button>
+                           </div>
+                        </div>
                       </div>
                     </div>
                   </m.div>
@@ -405,9 +441,9 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                           transition={{ duration: 2, repeat: Infinity }}
                           className="text-3xl md:text-5xl font-black text-white tracking-tighter"
                         >
-                          Synthesizing Audio...
+                          Synthesizing DNA...
                         </m.p>
-                        <p className="text-white/20 font-bold uppercase tracking-[0.3em] text-[10px] md:text-sm max-w-sm mx-auto leading-relaxed">Echo AI is scouting the neural grid for the perfect setlist</p>
+                        <p className="text-white/20 font-bold uppercase tracking-[0.3em] text-[10px] md:text-sm max-w-sm mx-auto leading-relaxed">Analyzing your Taste Profile and scouting the grid</p>
                      </div>
                   </div>
                 )}

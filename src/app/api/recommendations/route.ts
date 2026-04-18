@@ -6,7 +6,8 @@ import { getRelatedTracksRobust } from "@/lib/youtubeMusicRelated";
 import { searchSongsRobust } from "@/lib/ytmSearchService";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { fetchRecentMusicActivities, fetchLikedSongs } from "@/lib/youtubeData";
+import { fetchRecentMusicActivities, fetchLikedSongs, type YouTubeTrack } from "@/lib/youtubeData";
+import { fetchYTMusicBrowseHistory } from "@/lib/ytmHistoryBrowse";
 
 // Gemini API Key initialization
 const googleApiKey = process.env.GEMINI_API_KEY;
@@ -28,8 +29,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const { recentTrackId, userHistory = [], prompt } = body;
-    console.log("[Recommendations] Request received. Prompt:", prompt, "RecentID:", recentTrackId);
+    const { recentTrackId, userHistory = [], prompt, favoriteArtists = [], genres = [] } = body;
+    console.log("[Recommendations] Request received. Prompt:", prompt, "Artists:", favoriteArtists, "Genres:", genres);
 
     if (!recentTrackId && userHistory.length === 0 && !prompt) {
       return NextResponse.json(
@@ -46,13 +47,29 @@ export async function POST(request: Request) {
     if (session?.accessToken) {
       console.log("[Recommendations] Fetching authenticated user context...");
       try {
-        // Fetch real history/recommendations from YouTube Data API
-        const [activities, liked] = await Promise.all([
-          fetchRecentMusicActivities(session.accessToken as string, 15),
-          fetchLikedSongs(session.accessToken as string).catch(() => [])
+        // Fetch from multiple sources for the ultimate Taste Profile
+        // 1. Native YTM History (requires YTM_COOKIE)
+        // 2. YouTube Data API Activities (Recent)
+        // 3. YouTube Data API Liked Songs
+        const [nativeHistory, activities, liked] = await Promise.all([
+          fetchYTMusicBrowseHistory().catch(() => [] as YouTubeTrack[]),
+          fetchRecentMusicActivities(session.accessToken as string, 15).catch(() => [] as YouTubeTrack[]),
+          fetchLikedSongs(session.accessToken as string).catch(() => [] as YouTubeTrack[])
         ]);
 
-        const allContext = [...activities, ...liked].slice(0, 30);
+        // Deduplicate based on videoId, prioritizing Native History
+        const seenIds = new Set<string>();
+        const mergedTracks: YouTubeTrack[] = [];
+        
+        // Order matters for priority: Native > Activities > Liked
+        [...nativeHistory, ...activities, ...liked].forEach(track => {
+          if (track.videoId && !seenIds.has(track.videoId)) {
+            seenIds.add(track.videoId);
+            mergedTracks.push(track);
+          }
+        });
+
+        const allContext = mergedTracks.slice(0, 40);
         authenticatedTracks = allContext.map(t => ({
           youtubeId: t.videoId,
           title: t.title,
@@ -61,8 +78,21 @@ export async function POST(request: Request) {
         }));
 
         userTasteSummary = allContext.map(t => `${t.title} by ${t.artist}`).join(", ");
+        
+        // Enhance with explicit user preferences if provided
+        if (favoriteArtists.length > 0) {
+          userTasteSummary = `Favorite Artists: [${favoriteArtists.join(", ")}]. ${userTasteSummary}`;
+        }
+        if (genres.length > 0) {
+          userTasteSummary = `Preferred Genres: [${genres.join(", ")}]. ${userTasteSummary}`;
+        }
       } catch (authErr) {
         console.warn("[Recommendations] Auth context fetch failed:", authErr);
+      }
+    } else {
+      // Non-authenticated but provided seeds
+      if (favoriteArtists.length > 0 || genres.length > 0) {
+        userTasteSummary = `Artists: [${favoriteArtists.join(", ")}]. Genres: [${genres.join(", ")}]`;
       }
     }
 
@@ -89,7 +119,7 @@ STRATEGY:
 - CORE CONSTRAINT: If the user specified a language (e.g. Sinhala, Hindi, French) or a genre (e.g. Techno, Jazz), 100% of the songs MUST be in that language/genre. Do NOT mix in songs from the Taste DNA if they don't match the request's language/genre.
 - STYLE MAPPING: Use the Taste DNA to determine the *vibe* (e.g. if they like acoustic/melancholic songs in history, suggest melancholic songs in the requested genre).
 - NO LOW QUALITY: Strictly ignore "Live" versions, "Concerts", "Festivals", "Remixes" (unless asked), "Covers", "Karaoke", or "Parodies".
-- QUANTITY: Suggest EXACTLY 15 songs.
+- QUANTITY: Suggest EXACTLY 20 songs.
 
 Format ONLY as a JSON array of objects with "title" and "artist" keys. No extra text.`;
 
@@ -106,9 +136,12 @@ Format ONLY as a JSON array of objects with "title" and "artist" keys. No extra 
       }
 
       if (suggestedTracks.length > 0) {
+        // Limit to 20 just in case
+        const finalizedList = suggestedTracks.slice(0, 20);
+        
         // Phase 2: Search for these songs
         const searchResults = await Promise.all(
-          suggestedTracks.map(async (t) => {
+          finalizedList.map(async (t) => {
             try {
               // Append "Official Audio" to prioritize studio versions and avoid live/festivals
               const query = `${t.title} ${t.artist} Official Audio`;
@@ -132,7 +165,8 @@ Format ONLY as a JSON array of objects with "title" and "artist" keys. No extra 
 
         // Phase 3: Reasons
         const tracksString = validTracks.map((t, i) => `${i + 1}. "${t.title}" by ${t.artist}`).join("\n");
-        const voicePrompt = `Explain why these 15 songs were picked for this prompt: "${prompt}".
+        const voicePrompt = `Explain why these songs were picked for this prompt: "${prompt}".
+Use the user's taste summary for context: [${userTasteSummary}].
 For each song, write a short, charming 1-sentence reason. 
 Format ONLY as a JSON array of strings.`;
         

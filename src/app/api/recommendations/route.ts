@@ -2,18 +2,27 @@ import { NextResponse } from "next/server";
 import { searchSongsRobust } from "@/lib/ytmSearchService";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { fetchRecentMusicActivities, fetchLikedSongs, type YouTubeTrack } from "@/lib/youtubeData";
+import { fetchRecentMusicActivities, fetchLikedSongs, fetchSubscribedChannels, type YouTubeTrack } from "@/lib/youtubeData";
 import { fetchYTMusicBrowseHistory } from "@/lib/ytmHistoryBrowse";
 
 export const dynamic = "force-dynamic";
 
-// Gemini API Key initialization
+// Gemma 4 26B (A4B) model ID
+const GEMMA_MODEL = "gemma-4-26b-a4b-it";
 const googleApiKey = process.env.GEMINI_API_KEY;
+
+function extractJSON(text: string): string {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) return text;
+  return text.slice(start, end + 1);
+}
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
  * POST /api/recommendations
- * Fully AI-Driven Recommendation Engine (Gemini 1.5 Flash)
+ * Deep AI Recommendation Pipeline: Profiler -> Brain -> Engine
+ * Powered by Gemma 4 26B (A4B)
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export async function POST(request: Request) {
@@ -21,117 +30,165 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const { prompt, favoriteArtists = [], genres = [] } = body;
 
-    // 1. GATHER CONTEXT (Taste DNA)
-    const session = await getServerSession(authOptions);
-    let userTasteSummary = "Varied global hits";
-    
-    if (session?.accessToken) {
-      try {
-        const [nativeHistory, activities, liked] = await Promise.all([
-          fetchYTMusicBrowseHistory().catch(() => []),
-          fetchRecentMusicActivities(session.accessToken as string, 15).catch(() => []),
-          fetchLikedSongs(session.accessToken as string).catch(() => [])
-        ]);
-
-        const seenIds = new Set<string>();
-        const merged: YouTubeTrack[] = [];
-        [...nativeHistory, ...activities, ...liked].forEach(t => {
-          if (t.videoId && !seenIds.has(t.videoId)) {
-            seenIds.add(t.videoId);
-            merged.push(t);
-          }
-        });
-
-        if (merged.length > 0) {
-          userTasteSummary = merged.slice(0, 40).map(t => `${t.title} by ${t.artist}`).join(", ");
-        }
-      } catch (e) {
-        console.warn("[Recommendations] History fetch failed, using fallback summary.");
-      }
-    }
-
-    // Enhance with explicit user seeds
-    const seeds = [];
-    if (favoriteArtists.length > 0) seeds.push(`Favorite Artists: [${favoriteArtists.join(", ")}]`);
-    if (genres.length > 0) seeds.push(`Preferred Genres: [${genres.join(", ")}]`);
-    if (seeds.length > 0) userTasteSummary = `${seeds.join(". ")}. ${userTasteSummary}`;
-
-    // 2. AI CURATION PHASE
     if (!googleApiKey) return NextResponse.json({ error: "API key missing" }, { status: 500 });
 
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
     const genAI = new GoogleGenerativeAI(googleApiKey);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      generationConfig: { temperature: 1.0, topP: 0.95, topK: 40 }
+      model: GEMMA_MODEL,
+      generationConfig: { 
+        temperature: 0.7, 
+        topP: 0.95, 
+        topK: 40,
+        maxOutputTokens: 4096,
+        responseMimeType: "application/json"
+      }
     });
 
-    const activePrompt = prompt || "Create a personalized discovery mix based on my taste. Surprise me with fresh high-quality tracks.";
+    const session = await getServerSession(authOptions);
+
+    // ── PHASE 1: THE PROFILER ──────────────────────────────────────────
+    // Gather deep context to build a User Music Persona
+    let userPersona = "A general music lover who enjoys global hits.";
+    let rawHistoryString = "";
+
+    if (session?.accessToken) {
+      console.log("[Recommendations] Phase 1: Profiling user taste...");
+      try {
+        const [nativeHistory, likedSongs, channels] = await Promise.all([
+          fetchYTMusicBrowseHistory().catch(() => []),
+          fetchLikedSongs(session.accessToken as string).catch(() => []),
+          fetchSubscribedChannels(session.accessToken as string, 10).catch(() => [])
+        ]);
+
+        const merged = [...nativeHistory, ...likedSongs].slice(0, 40);
+        rawHistoryString = merged.map(t => `${t.title} by ${t.artist}`).join(", ");
+        const channelString = channels.join(", ");
+
+        // Generate Persona using Gemma - Sentence Completion Mode
+        const profilePrompt = `Based on this music history and channel list, finish this specific sentence:
+"The user is a [DESCRIPTIVE TRAITS] music enthusiast who balances [STYLE A] with [STYLE B]."
+
+History: [${rawHistoryString}]
+Channels: [${channelString}]
+
+STRICT: OUTPUT ONLY THE COMPLETED SENTENCE. NO BULLETS.
+Sentence: "The user is a`;
+        
+        // We use temperature 0.3 for maximum focus in profiling
+        const textModel = genAI.getGenerativeModel({ model: GEMMA_MODEL, generationConfig: { temperature: 0.3 } });
+        const profileResult = await textModel.generateContent(profilePrompt);
+        userPersona = "The user is a " + profileResult.response.text().trim().replace(/^"|"$|[.*]$/g, "");
+        console.log("[Recommendations] Persona Generated:", userPersona);
+      } catch (e) {
+        console.warn("[Recommendations] Profiler failed, using default persona.");
+      }
+    }
+
+    // ── PHASE 2: THE BRAIN ──────────────────────────────────────────────
+    // Generate the playlist based on Persona + Current Prompt
+    console.log("[Recommendations] Phase 2: Curation via Gemma 4...");
+    const activePrompt = prompt || "Create a personalized discovery mix.";
     
-    const curatorPrompt = `You are a world-class music curator for Nexus Music.
-MISSION: Create a 20-song setlist matching the request while respecting the user's "Taste DNA".
+    const curatorPrompt = `You are a robotic recommendation engine.
+CONTEXT: ${userPersona}
+REQUEST: ${activePrompt}
 
-USER CONTEXT:
-- Request/Vibe: "${activePrompt}"
-- Taste DNA (History): [${userTasteSummary}]
-- Seed: ${Date.now()}_${Math.random().toString(36).substring(7)}
+TASK: Generate exactly 20 songs.
+RULES: 
+1. If the request implies a specific language, use it for 100% of songs.
+2. DO NOT use ellipses (...) or truncate.
+3. DO NOT use markdown code blocks.
+4. Output ONLY the raw JSON object.
 
-STRATEGY:
-- CORE CONSTRAINT: If a language or specific genre is mentioned in the Request, 100% of the songs MUST fit that.
-- DISCOVERY: Do NOT suggest any songs actually listed in the Taste DNA list. Suggest fresh alternatives.
-- QUALITY: No Live, No Concerts, No Remixes (unless requested), No Covers, No Parodies.
-- QUANTITY: EXACTLY 20 songs.
+JSON SCHEMA: {
+ "primaryLanguage": "string (e.g. Sinhala)",
+ "tracks": [{"title": "string", "artist": "string"}]
+}`;
 
-Format ONLY as a JSON array of objects with "title" and "artist" keys.`;
+    const curateResult = await model.generateContent(curatorPrompt);
+    let rawCuration = curateResult.response.text().trim();
+    
+    // Defensive cleaning
+    rawCuration = extractJSON(rawCuration).replace(/\.{2,}/g, "").replace(/…/g, "");
+    
+    let curationObj: any;
+    try {
+      curationObj = JSON.parse(rawCuration);
+    } catch (e) {
+      console.error("[Recommendations] Final JSON Parse Failed:", rawCuration);
+      throw new Error("Gemma output was malformed even after surgical extraction");
+    }
+    
+    const suggestedTracks = curationObj.tracks || [];
+    const targetContext = curationObj.primaryLanguage || "Music";
 
-    const result = await model.generateContent(curatorPrompt);
-    const rawContent = result.response.text().trim();
-    const jsonMatch = rawContent.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) throw new Error("AI failed to return a list");
-    const suggested = JSON.parse(jsonMatch[0]).slice(0, 20);
-
-    // 3. RESEARCH PHASE (Search for IDs)
-    const validTracks = (await Promise.all(
-      suggested.map(async (t: any) => {
+    // ── PHASE 3: THE ENGINE ────────────────────────────────────────────
+    // Verification Loop: Smart Search & Filter
+    console.log(`[Recommendations] Phase 3: Verification for ${targetContext}...`);
+    
+    const verifiedTracks = (await Promise.all(
+      suggestedTracks.map(async (t: any) => {
         try {
-          const res = await searchSongsRobust(`${t.title} ${t.artist} Official Audio`);
-          if (res && res.length > 0) {
-            const m = res[0];
-            return {
-              youtubeId: m.youtubeId || "",
-              title: m.title || "Unknown",
-              artist: m.artist || "Unknown",
-              thumbnail: m.thumbnailUrl || "",
-              duration: m.duration || "0:00",
-            };
+          // Smart Search Query
+          const query = `${t.title} ${t.artist} ${targetContext} Song Official Audio`;
+          const results = await searchSongsRobust(query);
+          if (!results || results.length === 0) return null;
+
+          const topResult = results[0];
+          const titleLower = topResult.title.toLowerCase();
+          const targetLower = targetContext.toLowerCase();
+
+          // Filter Logic: Check if the title contains the target language/vibe or script
+          // For Sinhala, we also check for Sinhala characters (\u0D80-\u0DFF)
+          const isSinhala = targetLower.includes("sinhala");
+          const hasSinhalaScript = /[\u0D80-\u0DFF]/.test(topResult.title);
+          const hasKeyword = titleLower.includes(targetLower);
+
+          if (isSinhala && !hasSinhalaScript && !hasKeyword) {
+            console.log(`[Engine] Skipping non-Sinhala result: ${topResult.title}`);
+            return null;
           }
-          return null;
+
+          if (!isSinhala && targetLower !== "music" && !hasKeyword) {
+            console.log(`[Engine] Verification failed for ${targetLower}: ${topResult.title}`);
+            return null;
+          }
+
+          return {
+            youtubeId: topResult.youtubeId,
+            title: topResult.title,
+            artist: topResult.artist,
+            thumbnail: topResult.thumbnailUrl,
+            duration: topResult.duration || "0:00",
+          };
         } catch { return null; }
       })
     )).filter(Boolean);
 
-    // 4. EXPLAINER PHASE (Why these tracks?)
-    const tracksString = validTracks.map((t, i) => `${i + 1}. "${t.title}" by ${t.artist}`).join("\n");
+    // ── FINALIZATION ────────────────────────────────────────────────────
+    // Explanation Phase
+    const tracksString = verifiedTracks.map((t: any, i) => `${i + 1}. "${t.title}" by ${t.artist}`).join("\n");
     const voicePrompt = `Explain why these songs were picked for this prompt: "${activePrompt}".
-For each song, write a short, charming 1-sentence reason. 
+For each song, write a short 1-sentence reason. 
 Format ONLY as a JSON array of strings.`;
     
     let reasons: string[] = [];
     try {
-      const resResult = await model.generateContent(voicePrompt + "\n" + tracksString);
-      const jsonMatchVoice = resResult.response.text().trim().match(/\[[\s\S]*\]/);
+      const explainResult = await model.generateContent(voicePrompt + "\n" + tracksString);
+      const jsonMatchVoice = explainResult.response.text().trim().match(/\[[\s\S]*\]/);
       if (jsonMatchVoice) reasons = JSON.parse(jsonMatchVoice[0]);
     } catch {}
 
-    const recommendations = validTracks.map((t, i) => ({
+    const recommendations = verifiedTracks.map((t: any, i) => ({
       ...t,
-      reason: reasons[i] || "Matches your musical DNA and requested vibe"
+      reason: reasons[i] || "Matches your musical persona and requested vibe."
     }));
 
     return NextResponse.json({ recommendations });
   } catch (error: any) {
     console.error("[Recommendations] Fatal Error:", error);
-    return NextResponse.json({ error: "Generation failed", detail: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Gemma Pipeline failed", detail: error.message }, { status: 500 });
   }
 }
 

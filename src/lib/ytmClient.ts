@@ -9,27 +9,33 @@ let ytmusicInstance: YTMusic | null = null;
 export async function getYTMusic() {
   if (!ytmusicInstance) {
     ytmusicInstance = new YTMusic();
-    
-    // Support for authenticated requests via cookie
     const cookie = process.env.YTM_COOKIE;
     
-    // Unofficial APIs often need a specific User-Agent and Client headers for InnerTube
-    try {
-      if (cookie) {
-        console.log("[ytmClient] Initializing with cookie-based authentication");
-        await (ytmusicInstance as any).initialize({ 
-          cookies: cookie,
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "X-Youtube-Client-Name": "67",
-            "X-Youtube-Client-Version": "1.20240101.01.00"
-          }
-        });
-      } else {
-        await ytmusicInstance.initialize();
+    const init = async () => {
+      try {
+        if (cookie) {
+          await (ytmusicInstance as any).initialize({ 
+            cookies: cookie,
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+              "X-Youtube-Client-Name": "67",
+              "X-Youtube-Client-Version": "1.20240416.01.00"
+            }
+          });
+        } else {
+          await ytmusicInstance.initialize();
+        }
+      } catch (e) {
+        console.error("[ytmClient] Initial init failed", e);
       }
-    } catch (err) {
-      console.error("[ytmClient] Initialization failed:", err);
+    };
+
+    await init();
+
+    // Verification: Check if the instance actually got a key
+    const internalKey = (ytmusicInstance as any).yt?.apiKey;
+    if (!internalKey) {
+      console.warn("[ytmClient] Initialized instance has no API key, retrying...");
       ytmusicInstance = new YTMusic();
       await ytmusicInstance.initialize();
     }

@@ -397,3 +397,22 @@ export async function searchOfficialChannel(accessToken: string, query: string) 
     statistics: best.statistics
   };
 }
+
+export async function fetchSubscribedChannels(accessToken: string, maxResults = 10): Promise<string[]> {
+  const response = await fetch(
+    `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=${maxResults}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    console.error("fetchSubscribedChannels failed", await response.text());
+    return [];
+  }
+
+  const data = await response.json();
+  return (data.items || []).map((item: any) => item.snippet.title);
+}

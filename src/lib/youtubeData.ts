@@ -16,30 +16,53 @@ export interface YouTubeTrack {
 }
 
 export async function fetchUserPlaylists(accessToken: string): Promise<YouTubePlaylist[]> {
-  const response = await fetch(
-    "https://www.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&mine=true&maxResults=50",
-    {
+  const out: YouTubePlaylist[] = [];
+  let pageToken: string | undefined;
+
+  for (let page = 0; page < 10; page++) {
+    const url = new URL("https://www.googleapis.com/youtube/v3/playlists");
+    url.searchParams.set("part", "snippet,contentDetails");
+    url.searchParams.set("mine", "true");
+    url.searchParams.set("maxResults", "50");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+    const response = await fetch(url.toString(), {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
-    }
-  );
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    console.error("YouTube API error:", errorData);
-    throw new Error("Failed to fetch YouTube playlists");
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("YouTube API error:", errorData);
+      throw new Error("Failed to fetch YouTube playlists");
+    }
+
+    const data = await response.json();
+    const items = data.items || [];
+
+    for (const item of items) {
+      const sn = item.snippet;
+      if (!item.id || !sn) continue;
+      out.push({
+        id: item.id,
+        title: sn.title || "Untitled playlist",
+        description: sn.description || "",
+        thumbnailUrl:
+          sn.thumbnails?.maxres?.url ||
+          sn.thumbnails?.standard?.url ||
+          sn.thumbnails?.high?.url ||
+          sn.thumbnails?.default?.url ||
+          "",
+        itemCount: item.contentDetails?.itemCount ?? 0,
+      });
+    }
+
+    pageToken = data.nextPageToken;
+    if (!pageToken) break;
   }
 
-  const data = await response.json();
-  
-  return data.items.map((item: any) => ({
-    id: item.id,
-    title: item.snippet.title,
-    description: item.snippet.description,
-    thumbnailUrl: item.snippet.thumbnails?.maxres?.url || item.snippet.thumbnails?.standard?.url || item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
-    itemCount: item.contentDetails.itemCount,
-  }));
+  return out;
 }
 
 export async function fetchPlaylistItems(accessToken: string, playlistId: string, musicOnly = false): Promise<YouTubeTrack[]> {
@@ -59,7 +82,11 @@ export async function fetchPlaylistItems(accessToken: string, playlistId: string
   }
 
   const data = await response.json();
-  const videoIds = data.items.map((item: any) => item.contentDetails.videoId).join(",");
+  const items = data.items || [];
+  if (items.length === 0) return [];
+
+  const videoIds = items.map((item: any) => item.contentDetails.videoId).filter(Boolean).join(",");
+  if (!videoIds) return [];
 
   // Fetch extra details (durations, etc) using the videos endpoint
   const videosResponse = await fetch(
@@ -80,7 +107,7 @@ export async function fetchPlaylistItems(accessToken: string, playlistId: string
     metadataMap[video.id] = video.snippet;
   });
 
-  return data.items.map((item: any) => {
+  return items.map((item: any) => {
     const vId = item.contentDetails.videoId;
     const moreInfo = metadataMap[vId];
     const thumb = item.snippet.thumbnails?.maxres?.url || moreInfo?.thumbnails?.maxres?.url || 
@@ -178,9 +205,11 @@ export async function fetchRecentMusicActivities(accessToken: string, max = 40):
 }
 
 export async function fetchLikedSongs(accessToken: string): Promise<YouTubeTrack[]> {
-  // YT Music "Liked Music" is essentially the "LL" (Liked) playlist
-  // We filter for musicOnly=true to exclude non-music YouTube likes
-  return fetchPlaylistItems(accessToken, "LL", true);
+  // "LL" = Liked videos playlist. Prefer category 10 (Music), but many official MVs / live sets
+  // use other categories (e.g. Entertainment), which made the list look empty while logged in.
+  const musicOnly = await fetchPlaylistItems(accessToken, "LL", true);
+  if (musicOnly.length > 0) return musicOnly;
+  return fetchPlaylistItems(accessToken, "LL", false);
 }
 
 export async function rateVideo(accessToken: string, videoId: string, rating: "like" | "none"): Promise<void> {

@@ -58,12 +58,17 @@ export function YouTubeLibrary({
       setLoading(true);
       try {
         const [pRes, lRes, hRes] = await Promise.all([
-          fetch("/api/youtube/playlists"),
-          fetch("/api/youtube/liked"),
-          fetch("/api/youtube/history")
+          fetch("/api/youtube/playlists", { credentials: "same-origin" }),
+          fetch("/api/youtube/liked", { credentials: "same-origin" }),
+          fetch("/api/youtube/history", { credentials: "same-origin" }),
         ]);
-        
-        if (pRes.ok) setPlaylists(await pRes.json());
+
+        if (pRes.ok) {
+          const list = await pRes.json();
+          setPlaylists(Array.isArray(list) ? list : []);
+        } else {
+          setPlaylists([]);
+        }
         if (lRes.ok) setLikedSongs(await lRes.json());
         if (hRes.ok) {
            const hData = await hRes.json();
@@ -82,8 +87,8 @@ export function YouTubeLibrary({
         setLoading(false);
       }
     }
-    if (session) loadLibrary();
-  }, [session]);
+    if (session?.accessToken) loadLibrary();
+  }, [session?.accessToken]);
 
   const filteredPlaylists = useMemo(() => 
     playlists.filter(p => (p.title || "").toLowerCase().includes(searchQuery.toLowerCase())),

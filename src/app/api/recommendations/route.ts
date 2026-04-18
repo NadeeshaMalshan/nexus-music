@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       }
 
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
-      const genAI = new GoogleGenerativeAI(googleApiKey);
+      const genAI = new GoogleGenerativeAI(googleApiKey as string);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const curatorPrompt = `You are an expert music curator. 
@@ -275,6 +275,7 @@ Format ONLY as a JSON array of strings.`;
 
     let reasons: string[] = [];
     try {
+      if (!googleApiKey) throw new Error("GEMINI_API_KEY is not defined");
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(googleApiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });

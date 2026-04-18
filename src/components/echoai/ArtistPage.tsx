@@ -21,6 +21,8 @@ import {
   Share2
 } from "lucide-react";
 import { useDashboard } from "@/context/DashboardContext";
+import { useSession } from "next-auth/react";
+import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
 import { MusicArtwork } from "./MusicArtwork";
 import { type Song } from "./types";
 import { SwipeableSongRow } from "./SwipeableSongRow";
@@ -90,6 +92,7 @@ function fmtMs(ms: number) {
 
 // ─── ArtistPage ───────────────────────────────────────────────────────────────
 export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePlaylist, onNavigateAlbum }: ArtistPageProps) {
+  const { data: session } = useSession();
   const { onSongClick, onAddToQueue, onPlayNext, currentSong, isPlaying, palette, setOverrideArtwork } = useDashboard();
 
   const [data, setData] = useState<ArtistData | null>(null);
@@ -158,7 +161,10 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
       setEffectiveChannelId(tid);
       
       // Still check if we are subscribed!
-      fetch(`/api/youtube/subscribe/status?channelId=${tid}`)
+      fetch(
+        `/api/youtube/subscribe/status?channelId=${tid}`,
+        youtubeApiFetchInit(session?.accessToken)
+      )
         .then(res => res.json())
         .then(data => setIsSubscribed(data.subscribed))
         .catch(() => {});
@@ -170,9 +176,10 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
         const targetChannelId = currentData.youtube?.id || currentData.id;
         
         // Parallel fetch for stats and subscription status
+        const ytInit = youtubeApiFetchInit(session?.accessToken);
         const [statsRes, statusRes] = await Promise.all([
-          fetch(`/api/youtube/channel-stats?channelId=${currentData.id}`),
-          fetch(`/api/youtube/subscribe/status?channelId=${targetChannelId}`)
+          fetch(`/api/youtube/channel-stats?channelId=${currentData.id}`, ytInit),
+          fetch(`/api/youtube/subscribe/status?channelId=${targetChannelId}`, ytInit),
         ]);
 
         if (statsRes.ok) {
@@ -182,7 +189,10 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
              setEffectiveChannelId(stats.id);
              // Re-verify status with the official ID if it was upgraded
              if (stats.id !== targetChannelId) {
-                const refreshedStatusRes = await fetch(`/api/youtube/subscribe/status?channelId=${stats.id}`);
+                const refreshedStatusRes = await fetch(
+                  `/api/youtube/subscribe/status?channelId=${stats.id}`,
+                  youtubeApiFetchInit(session?.accessToken)
+                );
                 if (refreshedStatusRes.ok) {
                     const statusData = await refreshedStatusRes.json();
                     setIsSubscribed(statusData.subscribed);
@@ -200,18 +210,21 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
       }
     }
     loadStats();
-  }, [data?.id, data?.youtube]);
+  }, [data?.id, data?.youtube, session?.accessToken]);
 
   const handleSubscribe = async () => {
     const targetId = effectiveChannelId || data?.id;
     if (!targetId || isSubscribing || isSubscribed) return;
     setIsSubscribing(true);
     try {
-      const res = await fetch("/api/youtube/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channelId: targetId }),
-      });
+      const res = await fetch(
+        "/api/youtube/subscribe",
+        youtubeApiFetchInit(session?.accessToken, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ channelId: targetId }),
+        })
+      );
       if (res.ok) {
         setIsSubscribed(true);
       }
@@ -308,7 +321,10 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
       const res = await fetch(`/api/yt-playlist?id=${playlistId}`);
       if (!res.ok) {
         // Fallback to regular youtube playlist items
-        const res2 = await fetch(`/api/youtube/playlist-items?playlistId=${playlistId}`);
+        const res2 = await fetch(
+          `/api/youtube/playlist-items?playlistId=${playlistId}`,
+          youtubeApiFetchInit(session?.accessToken)
+        );
         if (!res2.ok) throw new Error("Failed to fetch playlist items");
         const items = await res2.json();
         if (items?.length) {

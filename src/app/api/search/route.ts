@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchSongsRobust } from "@/lib/ytmSearchService";
+import { fetchYoutubeDataApiWithKeyRotation } from "@/lib/youtubeDataApiFetch";
 
 type SearchItem = {
   videoId: string;
@@ -133,7 +134,6 @@ export async function GET(request: Request) {
 
     if (type === "videos" || type === "musicVideos" || type === "live") {
       let finalItems: any[] = [];
-      const apiKey = process.env.YOUTUBE_API_KEY;
 
       if (type === "live") {
         // YouTube Music catalog only (node-youtube-music / music.youtube.com).
@@ -151,15 +151,19 @@ export async function GET(request: Request) {
           const { authOptions } = await import("@/lib/auth");
           const session = await getServerSession(authOptions);
 
-          const url = new URL("https://www.googleapis.com/youtube/v3/videos");
-          url.searchParams.set("part", "statistics");
-          url.searchParams.set("id", ids.join(","));
-          if (apiKey) url.searchParams.set("key", apiKey);
-
-          const headers: any = {};
+          const headers: Record<string, string> = {};
           if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
 
-          const vidRes = await fetch(url.toString(), { headers });
+          const vidRes = await fetchYoutubeDataApiWithKeyRotation(
+            (apiKey) => {
+              const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+              url.searchParams.set("part", "statistics");
+              url.searchParams.set("id", ids.join(","));
+              if (apiKey) url.searchParams.set("key", apiKey);
+              return url.toString();
+            },
+            { headers }
+          );
           if (vidRes.ok) {
             const vidData = await vidRes.json();
             const viewsMap: Record<string, string> = {};
@@ -183,7 +187,6 @@ export async function GET(request: Request) {
       searchArtistsRobust(q),
       searchYouTubeMusic(q)
     ]);
-    const apiKey = process.env.YOUTUBE_API_KEY;
 
     // Interleave
     const topArtist = artists[0] ? { ...artists[0], type: "ARTIST" } : null;
@@ -199,15 +202,19 @@ export async function GET(request: Request) {
           const { authOptions } = await import("@/lib/auth");
           const session = await getServerSession(authOptions);
           
-          const url = new URL("https://www.googleapis.com/youtube/v3/videos");
-          url.searchParams.set("part", "statistics");
-          url.searchParams.set("id", videoIds.join(","));
-          if (apiKey) url.searchParams.set("key", apiKey);
-
-          const headers: any = {};
+          const headers: Record<string, string> = {};
           if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
 
-          const vidRes = await fetch(url.toString(), { headers });
+          const vidRes = await fetchYoutubeDataApiWithKeyRotation(
+            (apiKey) => {
+              const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+              url.searchParams.set("part", "statistics");
+              url.searchParams.set("id", videoIds.join(","));
+              if (apiKey) url.searchParams.set("key", apiKey);
+              return url.toString();
+            },
+            { headers }
+          );
           if (vidRes.ok) {
              const vidData = await vidRes.json();
              const viewsMap: Record<string, string> = {};

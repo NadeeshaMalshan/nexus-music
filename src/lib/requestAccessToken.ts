@@ -29,17 +29,13 @@ export async function getRequestAccessToken(req: Request): Promise<string | null
 
   try {
     const cookieStore = await cookies();
-    const cookieObj: Record<string, string> = {};
-    for (const c of cookieStore.getAll()) {
-      cookieObj[c.name] = c.value;
-    }
     const headersList = await headers();
-    const headersObj = Object.fromEntries(headersList.entries());
-
+    // Pass the real RequestCookies object so next-auth SessionStore can use getAll()
+    // (chunked `__Secure-next-auth.session-token.N` cookies stay in sync).
     const jwt = await getToken({
       req: {
-        headers: headersObj,
-        cookies: cookieObj,
+        headers: Object.fromEntries(headersList.entries()),
+        cookies: cookieStore,
       } as any,
       secret,
     });

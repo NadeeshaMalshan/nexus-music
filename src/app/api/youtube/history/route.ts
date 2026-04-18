@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchRecentMusicActivities } from "@/lib/youtubeData";
 import { fetchYTMusicBrowseHistory } from "@/lib/ytmHistoryBrowse";
 import { getRequestAccessToken } from "@/lib/requestAccessToken";
+import { YouTubeQuotaError } from "@/lib/youtubeApiErrors";
 
 /**
  * History for the library tab:
@@ -59,6 +60,16 @@ export async function GET(req: Request) {
             : "From your YouTube channel activity (music). For the full YT Music history list, configure YTM_COOKIE (and optionally YTM_MERGE_BROWSE_HISTORY=1).",
     });
   } catch (error) {
+    if (error instanceof YouTubeQuotaError) {
+      return NextResponse.json(
+        {
+          error: "quotaExceeded",
+          message:
+            "YouTube Data API daily quota is used up. It resets at midnight Pacific Time, or raise quota in Google Cloud Console.",
+        },
+        { status: 503 }
+      );
+    }
     console.error("API /youtube/history:", error);
     return NextResponse.json({ error: "Failed to load history feed" }, { status: 500 });
   }

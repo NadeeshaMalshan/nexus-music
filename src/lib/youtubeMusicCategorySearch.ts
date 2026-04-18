@@ -1,4 +1,8 @@
 import { parseISO8601Duration } from "@/lib/youtubeData";
+import {
+  fetchYoutubeDataApiWithKeyRotation,
+  getYoutubeDataApiKeys,
+} from "@/lib/youtubeDataApiFetch";
 
 export type YouTubeMusicSearchItem = {
   videoId: string;
@@ -31,23 +35,22 @@ export async function searchYouTubeMusicCategory(
   const q = query?.trim();
   if (!q) return [];
 
-  const apiKey = process.env.YOUTUBE_DATA_API_KEY?.trim();
-  if (!apiKey) {
-    // No key configured; keep caller behavior deterministic.
+  if (getYoutubeDataApiKeys().length === 0) {
     return [];
   }
 
   const capped = Math.max(1, Math.min(25, Math.floor(maxResults)));
 
-  const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
-  searchUrl.searchParams.set("part", "snippet");
-  searchUrl.searchParams.set("type", "video");
-  searchUrl.searchParams.set("videoCategoryId", "10"); // Music
-  searchUrl.searchParams.set("q", q);
-  searchUrl.searchParams.set("maxResults", String(capped));
-  searchUrl.searchParams.set("key", apiKey);
-
-  const searchRes = await fetch(searchUrl.toString(), { cache: "no-store" });
+  const searchRes = await fetchYoutubeDataApiWithKeyRotation((apiKey) => {
+    const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
+    searchUrl.searchParams.set("part", "snippet");
+    searchUrl.searchParams.set("type", "video");
+    searchUrl.searchParams.set("videoCategoryId", "10"); // Music
+    searchUrl.searchParams.set("q", q);
+    searchUrl.searchParams.set("maxResults", String(capped));
+    if (apiKey) searchUrl.searchParams.set("key", apiKey);
+    return searchUrl.toString();
+  }, { cache: "no-store" });
   if (!searchRes.ok) return [];
   const searchData = await searchRes.json();
 
@@ -58,12 +61,13 @@ export async function searchYouTubeMusicCategory(
   if (ids.length === 0) return [];
 
   // Hydrate durations + better thumbnails via videos.list
-  const videosUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
-  videosUrl.searchParams.set("part", "contentDetails,snippet");
-  videosUrl.searchParams.set("id", ids.join(","));
-  videosUrl.searchParams.set("key", apiKey);
-
-  const videosRes = await fetch(videosUrl.toString(), { cache: "no-store" });
+  const videosRes = await fetchYoutubeDataApiWithKeyRotation((apiKey) => {
+    const videosUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
+    videosUrl.searchParams.set("part", "contentDetails,snippet");
+    videosUrl.searchParams.set("id", ids.join(","));
+    if (apiKey) videosUrl.searchParams.set("key", apiKey);
+    return videosUrl.toString();
+  }, { cache: "no-store" });
   if (!videosRes.ok) return [];
   const videosData = await videosRes.json();
 

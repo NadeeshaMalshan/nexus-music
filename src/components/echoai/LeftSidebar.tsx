@@ -5,6 +5,7 @@ import { SidebarAuth } from "./SidebarAuth";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
+import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
 import Link from "next/link";
 import { useDashboard } from "@/context/DashboardContext";
 import { useRouter, usePathname } from "next/navigation";
@@ -54,7 +55,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
       if (!session?.accessToken) return;
       setLoading(true);
       try {
-        const response = await fetch("/api/youtube/playlists");
+        const response = await fetch("/api/youtube/playlists", youtubeApiFetchInit(session.accessToken));
         if (response.ok) {
           const data = await response.json();
           setPlaylists(data);
@@ -65,8 +66,8 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
         setLoading(false);
       }
     }
-    if (session) loadPlaylists();
-  }, [session]);
+    if (session?.accessToken) loadPlaylists();
+  }, [session?.accessToken]);
 
   const performSearch = useCallback(async (q: string) => {
     const trimmed = q.trim();

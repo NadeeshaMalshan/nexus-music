@@ -1,3 +1,5 @@
+import { assertNotYouTubeQuotaError } from "@/lib/youtubeApiErrors";
+
 export interface YouTubePlaylist {
   id: string;
   title: string;
@@ -34,6 +36,7 @@ export async function fetchUserPlaylists(accessToken: string): Promise<YouTubePl
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      assertNotYouTubeQuotaError(response, errorData);
       console.error("YouTube API error:", errorData);
       throw new Error("Failed to fetch YouTube playlists");
     }
@@ -74,7 +77,15 @@ export async function getLikesPlaylistId(accessToken: string): Promise<string> {
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   if (!res.ok) {
-    console.warn("[youtube] channels.list mine failed", await res.text());
+    const text = await res.text();
+    let body: unknown = {};
+    try {
+      body = JSON.parse(text);
+    } catch {
+      /* non-JSON error body */
+    }
+    assertNotYouTubeQuotaError(res, body);
+    console.warn("[youtube] channels.list mine failed", text);
     return "LL";
   }
   const data = await res.json();
@@ -99,6 +110,7 @@ export async function fetchPlaylistItems(accessToken: string, playlistId: string
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      assertNotYouTubeQuotaError(response, errorData);
       console.error("YouTube API Items error:", errorData);
       throw new Error("Failed to fetch YouTube playlist items");
     }
@@ -124,7 +136,11 @@ export async function fetchPlaylistItems(accessToken: string, playlistId: string
       `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${chunk}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
-    if (!videosResponse.ok) continue;
+    if (!videosResponse.ok) {
+      const errorData = await videosResponse.json().catch(() => ({}));
+      assertNotYouTubeQuotaError(videosResponse, errorData);
+      continue;
+    }
     const videosData = await videosResponse.json();
     videosData.items?.forEach((video: any) => {
       durationMap[video.id] = parseISO8601Duration(video.contentDetails?.duration);
@@ -164,8 +180,9 @@ export async function fetchPlaylistItems(accessToken: string, playlistId: string
   if (!musicOnly) return withVideoId;
 
   return withVideoId.filter((item) => {
-    const catId = metadataMap[item.videoId]?.categoryId;
-    return catId === "10";
+    const snippet = metadataMap[item.videoId];
+    if (!snippet) return true;
+    return snippet.categoryId === "10";
   });
 }
 
@@ -179,7 +196,15 @@ export async function fetchRecentMusicActivities(accessToken: string, max = 40):
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   if (!actRes.ok) {
-    console.error("activities.list failed", await actRes.text());
+    const text = await actRes.text();
+    let body: unknown = {};
+    try {
+      body = JSON.parse(text);
+    } catch {
+      /* ignore */
+    }
+    assertNotYouTubeQuotaError(actRes, body);
+    console.error("activities.list failed", text);
     return [];
   }
   const actData = await actRes.json();
@@ -203,7 +228,17 @@ export async function fetchRecentMusicActivities(accessToken: string, max = 40):
     `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${ids.join(",")}`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
-  if (!vidRes.ok) return [];
+  if (!vidRes.ok) {
+    const text = await vidRes.text();
+    let body: unknown = {};
+    try {
+      body = JSON.parse(text);
+    } catch {
+      /* ignore */
+    }
+    assertNotYouTubeQuotaError(vidRes, body);
+    return [];
+  }
   const vidData = await vidRes.json();
   const items = vidData.items || [];
 

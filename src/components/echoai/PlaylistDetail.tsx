@@ -10,6 +10,8 @@ import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE } from "@/lib/animations";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 import { useDashboard } from "@/context/DashboardContext";
+import { useSession } from "next-auth/react";
+import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
 
 interface PlaylistDetailProps {
   playlist: YouTubePlaylist;
@@ -25,6 +27,7 @@ interface PlaylistDetailProps {
 }
 
 export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentColor, currentSongId, onAddToQueue, onPlayNext, onPlayPlaylist, onNavigateArtist, onBack }: PlaylistDetailProps) {
+  const { data: session } = useSession();
   const { setOverrideArtwork } = useDashboard();
   const [currentPlaylist, setCurrentPlaylist] = useState<YouTubePlaylist>(playlist);
   const [tracks, setTracks] = useState<YouTubeTrack[]>([]);
@@ -68,7 +71,7 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
 
         // 2. Fallback to user library check for metadata
         if (!meta.title || meta.title === "Loading...") {
-          const plRes = await fetch(`/api/youtube/playlists`);
+          const plRes = await fetch(`/api/youtube/playlists`, youtubeApiFetchInit(session?.accessToken));
           if (plRes.ok) {
             const allPls: YouTubePlaylist[] = await plRes.json();
             const found = allPls.find(p => p.id === playlist.id);
@@ -78,7 +81,10 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
         setCurrentPlaylist(meta as YouTubePlaylist);
 
         // 3. Load tracks (Fallback if yt-playlist didn't fulfill it)
-        const res = await fetch(`/api/youtube/playlist-items?playlistId=${playlist.id}`);
+        const res = await fetch(
+          `/api/youtube/playlist-items?playlistId=${playlist.id}`,
+          youtubeApiFetchInit(session?.accessToken)
+        );
         if (res.ok) {
           const data = await res.json();
           setTracks(data);
@@ -95,7 +101,7 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
     return () => {
       setOverrideArtwork(null);
     };
-  }, [playlist.id, playlist.title, setOverrideArtwork]);
+  }, [playlist.id, playlist.title, setOverrideArtwork, session?.accessToken]);
 
   // Update override artwork whenever currentPlaylist changes (e.g. after metadata loads)
   useEffect(() => {

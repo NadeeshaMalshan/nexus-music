@@ -8,6 +8,8 @@ import {
   Search, Filter, History, ListPlus, PlaySquare
 } from "lucide-react";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
+import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
+import { readLibraryCache, writeLibraryCache } from "@/lib/youtubeLibraryCache";
 import { type Song } from "./types";
 import { CreatePlaylistModal, AiPlaylistModal, LibraryHistoryPane } from "./LibraryModals";
 import { m, AnimatePresence } from "motion/react";
@@ -56,32 +58,102 @@ export function YouTubeLibrary({
     async function loadLibrary() {
       if (!session?.accessToken) return;
       setLoading(true);
+      setError(null);
       try {
+        const init = youtubeApiFetchInit(session.accessToken);
         const [pRes, lRes, hRes] = await Promise.all([
-          fetch("/api/youtube/playlists", { credentials: "same-origin" }),
-          fetch("/api/youtube/liked", { credentials: "same-origin" }),
-          fetch("/api/youtube/history", { credentials: "same-origin" }),
+          fetch("/api/youtube/playlists", init),
+          fetch("/api/youtube/liked", init),
+          fetch("/api/youtube/history", init),
         ]);
+
+        let quotaHit = false;
+        let showedCache = false;
 
         if (pRes.ok) {
           const list = await pRes.json();
-          setPlaylists(Array.isArray(list) ? list : []);
+          const arr = Array.isArray(list) ? list : [];
+          setPlaylists(arr);
+          writeLibraryCache("playlists", arr);
         } else {
-          setPlaylists([]);
+          const errBody = await pRes.json().catch(() => ({}));
+          if (pRes.status === 503 && errBody?.error === "quotaExceeded") {
+            quotaHit = true;
+            const cached = readLibraryCache<YouTubePlaylist[]>("playlists");
+            if (cached?.length) {
+              setPlaylists(cached);
+              showedCache = true;
+            } else {
+              setPlaylists([]);
+            }
+          } else {
+            setPlaylists([]);
+          }
         }
-        if (lRes.ok) setLikedSongs(await lRes.json());
+
+        if (lRes.ok) {
+          const tracks = await lRes.json();
+          const arr = Array.isArray(tracks) ? tracks : [];
+          setLikedSongs(arr);
+          writeLibraryCache("liked", arr);
+        } else {
+          const errBody = await lRes.json().catch(() => ({}));
+          if (lRes.status === 503 && errBody?.error === "quotaExceeded") {
+            quotaHit = true;
+            const cached = readLibraryCache<unknown[]>("liked");
+            if (cached?.length) {
+              setLikedSongs(cached);
+              showedCache = true;
+            } else {
+              setLikedSongs([]);
+            }
+          } else {
+            setLikedSongs([]);
+          }
+        }
+
         if (hRes.ok) {
-           const hData = await hRes.json();
-           setYtHistory(Array.isArray(hData.tracks) ? hData.tracks : []);
-           setHistoryFeedMeta({
-             source: typeof hData.source === "string" ? hData.source : "youtube.activities",
-             ytmBrowseAvailable: !!hData.ytmBrowseAvailable,
-           });
+          const hData = await hRes.json();
+          setYtHistory(Array.isArray(hData.tracks) ? hData.tracks : []);
+          setHistoryFeedMeta({
+            source: typeof hData.source === "string" ? hData.source : "youtube.activities",
+            ytmBrowseAvailable: !!hData.ytmBrowseAvailable,
+          });
+          writeLibraryCache("history", hData);
         } else {
-          setYtHistory([]);
-          setHistoryFeedMeta(null);
+          const errBody = await hRes.json().catch(() => ({}));
+          if (hRes.status === 503 && errBody?.error === "quotaExceeded") {
+            quotaHit = true;
+            const cached = readLibraryCache<{
+              tracks?: unknown[];
+              source?: string;
+              ytmBrowseAvailable?: boolean;
+            }>("history");
+            if (cached?.tracks && Array.isArray(cached.tracks) && cached.tracks.length) {
+              setYtHistory(cached.tracks as any[]);
+              setHistoryFeedMeta({
+                source: typeof cached.source === "string" ? cached.source : "youtube.activities",
+                ytmBrowseAvailable: !!cached.ytmBrowseAvailable,
+              });
+              showedCache = true;
+            } else {
+              setYtHistory([]);
+              setHistoryFeedMeta(null);
+            }
+          } else {
+            setYtHistory([]);
+            setHistoryFeedMeta(null);
+          }
         }
-      } catch (err) {
+
+        if (quotaHit) {
+          setError(
+            showedCache
+              ? "YouTube Data API quota exceeded for today. Showing the last synced library from this browser until the quota resets."
+              : "YouTube Data API quota exceeded for today. Playlists and likes can’t load until the quota resets (usually midnight Pacific Time), or increase quota in Google Cloud Console."
+          );
+        }
+      } catch {
         setError("Failed to sync library data.");
       } finally {
         setLoading(false);
@@ -225,6 +297,14 @@ export function YouTubeLibrary({
 
       <main className="min-h-0 px-6 py-8 md:px-8 md:py-10 lg:px-12 pb-32 md:pb-40 text-left">
         <div className="max-w-[1600px] mx-auto">
+           {error && (
+              <div
+                className="mb-6 md:mb-8 rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 md:px-5 md:py-4 text-left text-sm text-amber-50/95 leading-relaxed"
+                role="status"
+              >
+                {error}
+              </div>
+           )}
            {loading ? (
               <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-4">
                  <Loader2 className="w-8 h-8 md:w-10 md:h-10 animate-spin text-[#FA233B]" />

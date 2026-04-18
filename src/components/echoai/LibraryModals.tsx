@@ -11,6 +11,8 @@ import { FlowingBackground } from "./FlowingBackground";
 import { MarqueeText } from "./MarqueeText";
 import { useArtworkColors } from "@/lib/useArtworkColors";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
 
 interface CreateModalSong {
   id: string;
@@ -32,6 +34,7 @@ function useMounted() {
 }
 
 export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: ModalProps) {
+  const { data: session } = useSession();
   const mounted = useMounted();
   const [playlistName, setPlaylistName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -67,11 +70,14 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
     if (!playlistName || isSaving) return;
     setIsSaving(true);
     try {
-      const res = await fetch("/api/youtube/playlists/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: playlistName, videoIds: addedSongs.map(s => s.id) })
-      });
+      const res = await fetch(
+        "/api/youtube/playlists/create",
+        youtubeApiFetchInit(session?.accessToken, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: playlistName, videoIds: addedSongs.map(s => s.id) }),
+        })
+      );
       if (res.ok) {
         onClose();
         window.location.reload();
@@ -241,6 +247,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
 type LibrarySyncStatus = "idle" | "saving" | "synced" | "error";
 
 export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: ModalProps) {
+  const { data: session } = useSession();
   const mounted = useMounted();
   const router = useRouter();
   const [step, setStep] = useState<'input' | 'loading' | 'results'>('input');
@@ -304,11 +311,14 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
 
     setLibrarySyncStatus("saving");
     try {
-      const res = await fetch("/api/youtube/playlists/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, videoIds: ids }),
-      });
+      const res = await fetch(
+        "/api/youtube/playlists/create",
+        youtubeApiFetchInit(session?.accessToken, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, videoIds: ids }),
+        })
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(typeof data.error === "string" ? data.error : "Failed to save playlist");

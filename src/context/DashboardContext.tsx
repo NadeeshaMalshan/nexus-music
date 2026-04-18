@@ -5,6 +5,7 @@ import { type Song } from "@/components/echoai/types";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { useSession } from "next-auth/react";
+import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
 import { useArtworkColors } from "@/lib/useArtworkColors";
 import { useSettings } from "./SettingsContext";
 import { type LiveMetadata } from "@/lib/live-tracker";
@@ -441,25 +442,24 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // Fetch liked songs
   useEffect(() => {
-    if (status === "authenticated") {
-      fetch("/api/youtube/liked")
-        .then((res) => res.json())
-        .then((tracks) => {
-          if (Array.isArray(tracks)) {
-            const rows: LikedLibraryTrackRow[] = tracks
-              .map((t: any) => ({
-                videoId: String(t.videoId || "").trim(),
-                title: String(t.title ?? ""),
-                artist: String(t.artist ?? ""),
-              }))
-              .filter((r) => r.videoId);
-            setLikedSongs(new Set(rows.map((r) => r.videoId)));
-            setLikedLibraryTracks(rows);
-          }
-        })
-        .catch((err) => console.error("Error fetching liked songs:", err));
-    }
-  }, [status]);
+    if (status !== "authenticated") return;
+    fetch("/api/youtube/liked", youtubeApiFetchInit(session?.accessToken))
+      .then((res) => res.json())
+      .then((tracks) => {
+        if (Array.isArray(tracks)) {
+          const rows: LikedLibraryTrackRow[] = tracks
+            .map((t: any) => ({
+              videoId: String(t.videoId || "").trim(),
+              title: String(t.title ?? ""),
+              artist: String(t.artist ?? ""),
+            }))
+            .filter((r) => r.videoId);
+          setLikedSongs(new Set(rows.map((r) => r.videoId)));
+          setLikedLibraryTracks(rows);
+        }
+      })
+      .catch((err) => console.error("Error fetching liked songs:", err));
+  }, [status, session?.accessToken]);
 
   const audioQuery = useMemo(() => {
     if (!currentSong) return "";
@@ -1402,11 +1402,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     });
 
     try {
-      const res = await fetch("/api/youtube/rate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoId: targetId, rating }),
-      });
+      const res = await fetch(
+        "/api/youtube/rate",
+        youtubeApiFetchInit(session?.accessToken, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ videoId: targetId, rating }),
+        })
+      );
       if (!res.ok) throw new Error("Failed to rate song");
     } catch (err) {
       setLikedSongs((prev) => {
@@ -1429,7 +1432,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         setLikedLibraryTracks((prev) => prev.filter((t) => t.videoId !== targetId));
       }
     }
-  }, [session?.user, currentSong, audioData, liveMetadata]);
+  }, [session?.user, session?.accessToken, currentSong, audioData, liveMetadata]);
 
   const sessionHandlersRef = useRef({ onTogglePlay, onNext, onPrev, onSeek });
   useEffect(() => {

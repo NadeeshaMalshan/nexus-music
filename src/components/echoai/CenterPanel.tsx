@@ -6,6 +6,7 @@ import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, FADE_IN_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
 import { type Song } from "./types";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
+import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { MusicArtwork } from "./MusicArtwork";
@@ -373,7 +374,7 @@ export function CenterPanel(props: CenterPanelProps) {
     if (!session?.accessToken) return;
     setPlaylistsLoading(true);
     try {
-      const response = await fetch("/api/youtube/playlists");
+      const response = await fetch("/api/youtube/playlists", youtubeApiFetchInit(session.accessToken));
       if (response.ok) {
         const data = await response.json();
         setPlaylists(data.slice(0, 12));
@@ -567,7 +568,10 @@ export function CenterPanel(props: CenterPanelProps) {
     if (!session?.accessToken) return;
     setLikedTracksLoading(true);
     try {
-      const res = await fetch("/api/youtube/liked", { cache: "no-store" });
+      const res = await fetch(
+        "/api/youtube/liked",
+        youtubeApiFetchInit(session.accessToken, { cache: "no-store" })
+      );
       if (!res.ok) return;
       const data = (await res.json()) as { videoId?: string; title?: string; artist?: string; thumbnailUrl?: string; duration?: string }[];
       const rows: SearchItem[] = (data || [])

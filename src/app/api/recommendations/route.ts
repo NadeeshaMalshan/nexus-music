@@ -28,12 +28,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const { recentTrackId, userHistory = [] } = body;
-    console.log("[Recommendations] Request received for ID:", recentTrackId);
+    const { recentTrackId, userHistory = [], prompt } = body;
+    console.log("[Recommendations] Request received. Prompt:", prompt, "RecentID:", recentTrackId);
 
-    if (!recentTrackId && userHistory.length === 0) {
+    if (!recentTrackId && userHistory.length === 0 && !prompt) {
       return NextResponse.json(
-        { error: "recentTrackId or userHistory is required" },
+        { error: "recentTrackId, userHistory, or prompt is required" },
         { status: 400 }
       );
     }
@@ -41,23 +41,111 @@ export async function POST(request: Request) {
     // ── AUTHENTICATED CONTEXT ──────────────────────────────────────────
     const session = await getServerSession(authOptions);
     let authenticatedTracks: any[] = [];
+    let userTasteSummary = "";
 
     if (session?.accessToken) {
       console.log("[Recommendations] Fetching authenticated user context...");
       try {
         // Fetch real history/recommendations from YouTube Data API
-        const activities = await fetchRecentMusicActivities(session.accessToken as string, 10);
-        authenticatedTracks = activities.map(t => ({
+        const [activities, liked] = await Promise.all([
+          fetchRecentMusicActivities(session.accessToken as string, 15),
+          fetchLikedSongs(session.accessToken as string).catch(() => [])
+        ]);
+
+        const allContext = [...activities, ...liked].slice(0, 30);
+        authenticatedTracks = allContext.map(t => ({
           youtubeId: t.videoId,
           title: t.title,
           artists: [{ name: t.artist }],
           thumbnailUrl: t.thumbnailUrl,
         }));
+
+        userTasteSummary = allContext.map(t => `${t.title} by ${t.artist}`).join(", ");
       } catch (authErr) {
         console.warn("[Recommendations] Auth context fetch failed:", authErr);
       }
     }
-    // ──────────────────────────────────────────────────────────────────
+
+    // ── CASE A: AI PROMPT GENERATION ────────────────────────────────────
+    if (prompt) {
+      console.log("[Recommendations] Starting AI Prompt Generation for:", prompt);
+      
+      if (!googleApiKey) {
+         return NextResponse.json({ error: "Gemini API key missing" }, { status: 500 });
+      }
+
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(googleApiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const curatorPrompt = `You are an expert music curator. 
+User's Music Taste/History: [${userTasteSummary || "Varied global hits"}]
+User's Vibe Request: "${prompt}"
+
+Based on their taste and the request, suggest EXACTLY 15 songs that would create the perfect playlist. 
+The songs should be a mix of their existing taste and new discoveries that fit the request.
+Format ONLY as a JSON array of objects with "title" and "artist" keys. 
+No extra text, no markdown blocks.`;
+
+      let suggestedTracks: { title: string, artist: string }[] = [];
+      try {
+        const result = await model.generateContent(curatorPrompt);
+        const rawContent = result.response.text().trim();
+        const jsonMatch = rawContent.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          suggestedTracks = JSON.parse(jsonMatch[0]);
+        }
+      } catch (err) {
+        console.error("[Recommendations] Gemini Curator failed:", err);
+      }
+
+      if (suggestedTracks.length > 0) {
+        // Phase 2: Search for these songs
+        const searchResults = await Promise.all(
+          suggestedTracks.map(async (t) => {
+            try {
+              const res = await searchSongsRobust(`${t.title} ${t.artist}`);
+              return res && res.length > 0 ? res[0] : null;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        const validTracks = searchResults
+          .filter(t => t !== null)
+          .map(m => ({
+            youtubeId: m.youtubeId || "",
+            title: m.title || "Unknown Title",
+            artist: m.artists ? m.artists.map((a: any) => a.name).join(", ") : "Unknown Artist",
+            thumbnail: m.thumbnailUrl || "",
+            duration: m.duration || "0:00",
+          }));
+
+        // Phase 3: Reasons
+        const tracksString = validTracks.map((t, i) => `${i + 1}. "${t.title}" by ${t.artist}`).join("\n");
+        const voicePrompt = `Explain why these 15 songs were picked for this prompt: "${prompt}".
+For each song, write a short, charming 1-sentence reason. 
+Format ONLY as a JSON array of strings.`;
+        
+        let reasons: string[] = [];
+        try {
+          const resResult = await model.generateContent(voicePrompt + "\n" + tracksString);
+          const rawVoice = resResult.response.text().trim();
+          const jsonMatch = rawVoice.match(/\[[\s\S]*\]/);
+          if (jsonMatch) reasons = JSON.parse(jsonMatch[0]);
+        } catch {}
+
+        const finalRecs = validTracks.map((t, i) => ({
+          ...t,
+          reason: reasons[i] || "Perfect match for your requested vibe"
+        }));
+
+        return NextResponse.json({ recommendations: finalRecs });
+      }
+    }
+
+    // ── CASE B: LEGACY RECOMMENDATIONS (DASHBOARD) ──────────────────────
     let suggestedMusics: any[] = [];
     const searchQueries: string[] = [];
 
@@ -103,10 +191,9 @@ export async function POST(request: Request) {
       searchQueries.push(`${seed1} radio`);
       searchQueries.push(`${seed2} similar`);
     } else if (suggestedMusics.length === 0) {
-      // Localized fallbacks for Sri Lankan users ONLY IF we have nothing yet
-      searchQueries.push("top sri lankan sinhala songs 2024 hits");
+      // Localized fallbacks
       searchQueries.push("global pop chart hits international");
-      searchQueries.push("trending songs sri lanka");
+      searchQueries.push("trending songs global");
     }
 
     // Execute searches in parallel to supplement related tracks
@@ -133,11 +220,8 @@ export async function POST(request: Request) {
       suggestedMusics = [...authenticatedTracks.slice(0, 5), ...suggestedMusics];
     }
 
-    // Shuffle the combined pool ONLY IF we have too many tracks, or just a bit to keep it fresh
-    // But keep the 'related' ones near the top if we want high relevance for queue.
-    // Let's do a weighted shuffle or just a partial shuffle.
+    // Shuffle the combined pool ONLY IF we have too many tracks
     if (recentTrackId && suggestedMusics.length > 15) {
-      // Keep first few related ones but shuffle the rest
       const top = suggestedMusics.slice(0, 5);
       const rest = suggestedMusics.slice(5).sort(() => 0.5 - Math.random());
       suggestedMusics = [...top, ...rest];
@@ -146,72 +230,29 @@ export async function POST(request: Request) {
     }
 
 
-    // 🚀 THE MAGIC: STRICT DIVERSITY FILTER FOR RECOMMENDATIONS
+    // 🚀 THE MAGIC: STRICT DIVERSITY FILTER
     const uniqueTracks: any[] = [];
     const artistCount: Record<string, number> = {};
     const titleSet = new Set<string>();
-    const historyString = userHistory.length > 0 ? userHistory.join(", ") : "varied hits";
+    const historyString = userTasteSummary || (userHistory.length > 0 ? userHistory.join(", ") : "varied hits");
 
     for (const track of suggestedMusics || []) {
       const title = (track.title || "Unknown Title").trim();
       const artist = (track.artists ? track.artists.map((a: any) => a.name).join(", ") : "Unknown Artist").trim();
-
-      // Strict Cleaning and Duplication check
       const cleanTitle = title.replace(/\(.*?\)|\[.*?\]/g, '').trim().toLowerCase();
 
-      // Skip covers, live versions, etc.
-      if (cleanTitle.includes('cover') || cleanTitle.includes('live') || cleanTitle.includes('remix') || cleanTitle.includes('version')) {
-        continue;
-      }
+      if (cleanTitle.includes('cover') || cleanTitle.includes('live')) continue;
+      if (titleSet.has(cleanTitle)) continue;
 
-      // ── Genre/Regional Cleaning ───────────────────────────────────────────
-      // We explicitly exclude Hindi/Punjabi/Bollywood spam UNLESS the user history shows interest.
-      // We preserve "Sinhala" and "Sri Lankan" content.
-      const lowHistory = historyString.length < 20;
-      const isRegionalQuery = historyString.toLowerCase().includes("hindi") ||
-        historyString.toLowerCase().includes("punjabi") ||
-        historyString.toLowerCase().includes("bollywood");
-
-      if (!isRegionalQuery) {
-        const unwantedKeywords = [
-          // Common Languages/Categories
-          "hindi", "punjabi", "bollywood", "tollywood", "kollywood", "bhojpuri", "telugu", "tamil", "malayalam", "kannada",
-          "indian", "pakistani", "punjab", "haryana", "panjabi", "deshi", "sidhu", "moose wala", "haryanvi",
-          // Major regional artists that often leak into general trends
-          "arijit singh", "pritam", "badshah", "anirudh", "sid sriram", "anirudh ravichander", "vijay antony", "ar rahman",
-          "honey singh", "diljit dosanjh", "tony kakkar", "nehak kakkar", "armadaan malik", "vishal-shekhar"
-        ];
-        const textToSearch = (title + " " + artist).toLowerCase();
-
-        // Block these if they're not explicitly "Sinhala" or "Lankan"
-        if (unwantedKeywords.some(kw => textToSearch.includes(kw)) &&
-          !textToSearch.includes("sinhala") &&
-          !textToSearch.includes("lankan")) {
-          continue;
-        }
-      }
-      // ──────────────────────────────────────────────────────────────────────
-      // ──────────────────────────────────────────────────────────────────────
-
-      if (titleSet.has(cleanTitle)) {
-        continue;
-      }
-
-      // Limit per artist based on history size
       const limitPerArtist = userHistory.length > 5 ? 2 : 1;
       artistCount[artist] = (artistCount[artist] || 0) + 1;
-      if (artistCount[artist] > limitPerArtist) {
-        continue;
-      }
+      if (artistCount[artist] > limitPerArtist) continue;
 
       titleSet.add(cleanTitle);
       uniqueTracks.push(track);
-
-      // Stop once we have 16 diverse tracks for the carousel/shelf
       if (uniqueTracks.length === 16) break;
     }
 
-    // Use uniqueTracks instead of blindly slicing suggestedMusics
     const tracks = uniqueTracks.map((m) => ({
       youtubeId: m.youtubeId || "",
       title: m.title || "Unknown Title",
@@ -220,55 +261,28 @@ export async function POST(request: Request) {
       duration: m.duration || "0:00",
     }));
 
-    console.log(`[Recommendations] Processing ${tracks.length} diverse tracks.`);
-
     if (tracks.length === 0) {
-      return NextResponse.json(
-        { recommendations: [], message: "Could not find any recommendations." }
-      );
+      return NextResponse.json({ recommendations: [], message: "Could not find any recommendations." });
     }
 
-    // PART 2: GOOGLE GEMINI INTEGRATION (The Voice)
-    console.log("[Recommendations] Gemini Voice generation started.");
-
-    if (!googleApiKey) {
-      console.warn("[Recommendations] GOOGLE_API_KEY missing. Using default reasons.");
-      const finalRecs = tracks.map(t => ({ ...t, reason: "Recommended based on your recent activity" }));
-      return NextResponse.json({ recommendations: finalRecs, source: "fallback-no-gemini" });
-    }
-
-    const resultsString = tracks
-      .map((t, i) => `${i + 1}. "${t.title}" by ${t.artist}`)
-      .join("\n");
-
-    const systemPrompt = `You are an expert music curator. I have selected these songs for a user based on their history: [${historyString}]. 
+    // PART 2: GEMINI REASONS
+    const resultsString = tracks.map((t, i) => `${i + 1}. "${t.title}" by ${t.artist}`).join("\n");
+    const systemPrompt = `You are an expert music curator. Users history: [${historyString}]. 
 Recommended songs:
 [${resultsString}]
-For each song, write a short, engaging 1-sentence reason WHY they will like it. 
-Format ONLY as a JSON array of strings. No extra text, no code blocks.`;
+For each song, write a short 1-sentence reason WHY they will like it. 
+Format ONLY as a JSON array of strings.`;
 
     let reasons: string[] = [];
     try {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error("GEMINI_API_KEY is not defined");
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+      const genAI = new GoogleGenerativeAI(googleApiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const result = await model.generateContent(systemPrompt);
       const rawContent = result.response.text().trim();
-
-      // Robustly extract JSON array even if model wraps it in markdown backticks
       const jsonMatch = rawContent.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        try {
-          reasons = JSON.parse(jsonMatch[0]);
-        } catch {
-          console.warn("[Recommendations] Gemini JSON parsing failed.");
-        }
-      }
-    } catch (geminiError) {
-      console.error("[Recommendations] Gemini Error:", geminiError);
-    }
+      if (jsonMatch) reasons = JSON.parse(jsonMatch[0]);
+    } catch {}
 
     const finalRecommendations = tracks.map((track, index) => ({
       ...track,

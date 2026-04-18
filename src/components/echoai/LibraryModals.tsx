@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { X, Search, Plus, Minus, Music2, Sparkles, Loader2, ListPlus, Wand2, ChevronRight, PlaySquare, History } from "lucide-react";
+import { X, Search, Plus, Minus, Music2, Sparkles, Loader2, ListPlus, Wand2, ChevronRight, PlaySquare, History, Play } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
-import { APPLE_EASE, SLIDE_UP_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
+import { APPLE_EASE, SLIDE_UP_VARIANTS, MOTION_CONFIG, EXPO_OUT, FADE_IN_VARIANTS } from "@/lib/animations";
 import { type Song } from "./types";
 import { MusicArtwork } from "./MusicArtwork";
+import { FlowingBackground } from "./FlowingBackground";
+import { MarqueeText } from "./MarqueeText";
+import { useArtworkColors } from "@/lib/useArtworkColors";
 
 interface CreateModalSong {
   id: string;
@@ -197,7 +200,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                                 <MusicArtwork src={song.artwork} alt="" iconSize={20} variant="track" rounded="xl" className="h-full w-full" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                 <p className="text-white font-bold truncate">{song.title}</p>
+                                 <MarqueeText text={song.title} className="text-white font-bold" />
                                  <p className="text-white/30 text-xs font-bold leading-none">{song.artist}</p>
                               </div>
                               <button onClick={() => setAddedSongs(addedSongs.filter(s => s.id !== song.id))} className="p-2 text-white/10 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
@@ -228,6 +231,9 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
   const [prompt, setPrompt] = useState("");
   const [generatedResult, setGeneratedResult] = useState<{ name: string, songs: CreateModalSong[] }>({ name: "", songs: [] });
   const [isSaving, setIsSaving] = useState(false);
+  
+  const firstArtwork = generatedResult.songs.length > 0 ? generatedResult.songs[0].artwork : null;
+  const palette = useArtworkColors(firstArtwork);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -236,11 +242,11 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
       const res = await fetch("/api/recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recentTrackId: "K4TOrB7at0Y", userHistory: [prompt] }),
+        body: JSON.stringify({ prompt }),
       });
       if (!res.ok) throw new Error(`API error ${res.status}`);
       const data = await res.json();
-      const recs = (data.recommendations || []).slice(0, 12);
+      const recs = (data.recommendations || []).slice(0, 15);
       setGeneratedResult({
         name: `${prompt.charAt(0).toUpperCase() + prompt.slice(1).split(' ')[0]} Exploration`,
         songs: recs.map((rec: any) => ({
@@ -274,161 +280,243 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 lg:p-12">
           <m.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/80"
+            className="absolute inset-0 bg-black/60 backdrop-blur-3xl"
             onClick={onClose}
           />
           <m.div 
             initial={{ opacity: 0, scale: 0.95, y: 30 }} 
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 30 }} 
-            transition={MOTION_CONFIG.transition}
-            className="w-full h-full md:h-[90vh] md:max-h-[90vh] overflow-hidden md:rounded-[48px] bg-[#0d0d0f] border border-white/10 shadow-[0_50px_150px_rgba(0,0,0,0.9)] flex flex-col relative z-10 animate-gpu"
+            transition={{ type: "spring", damping: 30, stiffness: 300, mass: 1 }}
+            className="w-full h-full md:max-w-5xl md:h-[90vh] md:max-h-[90vh] overflow-hidden md:rounded-[48px] bg-[#0d0d0f] border border-white/10 shadow-[0_50px_150px_rgba(0,0,0,0.9)] flex flex-col relative z-10 animate-gpu"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Immersive Background */}
+            <div className="absolute inset-0 z-0">
+               <FlowingBackground palette={palette} artwork={firstArtwork} opacity={step === 'results' ? 0.35 : 0.15} />
+            </div>
+
             {/* AI Top Bar */}
-            <div className="flex items-center justify-between px-6 py-6 md:px-12 md:py-8 border-b border-white/5">
+            <div className="relative z-20 flex items-center justify-between px-6 py-6 md:px-12 md:py-8 border-b border-white/5 bg-black/20 backdrop-blur-md">
               <div className="flex items-center gap-3 md:gap-4">
-                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-linear-to-tr from-white/10 to-white/5 flex items-center justify-center">
+                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 shadow-lg">
                     <Wand2 className="w-5 h-5 md:w-6 md:h-6 text-white/60" />
                  </div>
                  <div>
                     <h2 className="text-white text-xl md:text-3xl font-black tracking-tighter">Echo AI</h2>
-                    <p className="hidden sm:block text-white/20 text-[10px] md:text-xs font-bold uppercase tracking-widest text-[9px] md:text-[10px]">Neural Vibe Engine</p>
+                    <p className="hidden sm:block text-white/20 text-[10px] md:text-xs font-bold uppercase tracking-widest leading-none mt-1">Direct from your imagination</p>
                  </div>
               </div>
               <button 
                 onClick={onClose}
-                className="p-2 md:p-3 rounded-full bg-white/5 text-white/40 hover:text-white transition-colors"
+                className="p-2 md:p-3 rounded-full bg-white/5 text-white/40 hover:text-white transition-all hover:bg-white/10"
               >
                  <X className="w-5 h-5 md:w-6 md:h-6" />
               </button>
             </div>
 
-             <div className="flex-1 min-h-0 overflow-y-auto p-6 md:p-12 custom-scrollbar">
+             <div className="relative z-10 flex-1 min-h-0 overflow-y-auto p-6 md:p-12 custom-scrollbar">
                 {step === 'input' && (
                   <m.div 
                     initial={{ opacity: 0, y: 20 }} 
                     animate={{ opacity: 1, y: 0 }} 
                     transition={MOTION_CONFIG.transition}
-                    className="flex flex-col items-center justify-center py-8 md:py-12 space-y-8 md:space-y-12 animate-gpu"
+                    className="flex flex-col items-center justify-center min-h-[50vh] py-8 md:py-12 space-y-8 md:space-y-16 animate-gpu"
                   >
- 
-                  <div className="text-center space-y-3 md:space-y-4">
-                     <h3 className="text-4xl md:text-5xl lg:text-[64px] font-black text-white leading-none tracking-tighter">What's the <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/40">vibe?</span></h3>
-                     <p className="text-white/20 text-base md:text-xl font-bold max-w-md mx-auto">Describe a mood, a memory, or an activity you're planning.</p>
-                   </div>
-                   
-                   <div className="w-full max-w-3xl space-y-8 md:space-y-10">
-                     <div className="relative">
-                        <textarea 
-                          placeholder="e.g. 80s inspired synthwave..." 
-                          className="w-full h-32 md:h-40 bg-white/5 rounded-2xl md:rounded-3xl p-6 md:p-8 text-lg md:text-2xl font-black text-white placeholder:text-white/5 border border-white/10 focus:border-white/20 transition-all resize-none focus:outline-none shadow-inner"
-                          value={prompt}
-                          onChange={(e) => setPrompt(e.target.value)}
-                          autoFocus
-                        />
-                        <button 
-                          onClick={handleGenerate}
-                          disabled={!prompt.trim()}
-                          className="absolute bottom-4 right-4 md:bottom-6 md:right-6 flex items-center gap-2 px-6 md:px-10 py-3 md:py-4 font-black rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-30"
-                          style={{ backgroundColor: accentColor || '#FFF', color: '#000' }}
-                        >
-                           <span className="text-sm md:text-base">Generate</span>
-                           <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
-                        </button>
-                     </div>
+                   <div className="text-center space-y-4 md:space-y-6">
+                      <m.h3 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 1, ease: EXPO_OUT }}
+                        className="text-5xl md:text-7xl lg:text-[96px] font-black text-white leading-[0.85] tracking-tighter"
+                      >
+                        What's the <br/>
+                        <span className="text-transparent bg-clip-text bg-linear-to-r from-white via-white to-white/20">vibe?</span>
+                      </m.h3>
+                      <p className="text-white/30 text-base md:text-2xl font-bold max-w-lg mx-auto leading-tight">Describe a mood, a memory, or an activity you're planning.</p>
+                    </div>
+                    
+                    <div className="w-full max-w-3xl space-y-8 md:space-y-12">
+                      <div className="relative group/input">
+                         <div className="absolute -inset-0.5 bg-linear-to-r from-white/20 to-transparent rounded-[32px] blur-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-1000" />
+                         <textarea 
+                           placeholder="e.g. 80s inspired synthwave for night driving..." 
+                           className="relative w-full h-32 md:h-52 bg-white/[0.03] rounded-3xl md:rounded-[40px] p-8 md:p-10 text-xl md:text-3xl font-black text-white placeholder:text-white/5 border border-white/5 focus:border-white/20 transition-all resize-none focus:outline-none shadow-2xl backdrop-blur-xl"
+                           value={prompt}
+                           onChange={(e) => setPrompt(e.target.value)}
+                           autoFocus
+                         />
+                         <m.button 
+                           whileHover={{ scale: 1.02 }}
+                           whileTap={{ scale: 0.98 }}
+                           onClick={handleGenerate}
+                           disabled={!prompt.trim()}
+                           className="absolute bottom-6 right-6 md:bottom-10 md:right-10 flex items-center gap-3 px-8 md:px-12 py-4 md:py-5 font-black rounded-full shadow-[0_20px_40px_rgba(0,0,0,0.5)] transition-all disabled:opacity-30 disabled:grayscale"
+                           style={{ backgroundColor: accentColor || '#FFF', color: '#000' }}
+                         >
+                            <span className="text-sm md:text-lg">Generate</span>
+                            <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+                         </m.button>
+                      </div>
 
-                     <div className="flex flex-wrap items-center justify-center gap-2">
-                        {['Late night coding', 'Rainy afternoon', 'Deep focus', 'High energy', 'Road trip'].map(v => (
-                           <button 
+                      <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4">
+                         {['Late night coding', 'Rainy afternoon', 'Deep focus', 'High energy', 'Road trip', 'Sunset terrace'].map((v, i) => (
+                           <m.button 
                              key={v} 
+                             initial={{ opacity: 0, y: 10 }}
+                             animate={{ opacity: 1, y: 0 }}
+                             transition={{ delay: 0.5 + (i * 0.05) }}
                              onClick={() => setPrompt(v)}
-                             className="px-4 py-2 rounded-full bg-white/3 border border-white/5 text-xs md:text-sm font-black text-white/40 hover:bg-white/10 hover:text-white transition-all capitalize"
+                             className="px-5 md:px-7 py-2.5 md:py-3 rounded-full bg-white/5 border border-white/5 text-xs md:text-sm font-black text-white/40 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all capitalize shadow-lg"
                            >
                              {v}
-                           </button>
-                        ))}
-                     </div>
-                   </div>
-                 </m.div>
-               )}
+                           </m.button>
+                         ))}
+                      </div>
+                    </div>
+                  </m.div>
+                )}
 
-               {step === 'loading' && (
-                 <div className="flex flex-col items-center justify-center py-24 md:py-40 space-y-8 md:space-y-10">
-                    <div className="relative">
-                       <div className="absolute inset-0 blur-3xl opacity-30 animate-pulse" style={{ backgroundColor: accentColor }} />
-                       <Loader2 className="w-16 h-16 md:w-20 md:h-20 animate-spin relative" style={{ color: accentColor }} />
-                    </div>
-                    <div className="text-center space-y-2 px-6">
-                       <p className="text-2xl md:text-3xl font-black text-white tracking-tight">Synthesizing Audio...</p>
-                       <p className="text-white/20 font-bold uppercase tracking-widest text-[9px] md:text-xs">Echo AI is scouting YouTube for the perfect setlist</p>
-                    </div>
-                 </div>
-               )}
+                {step === 'loading' && (
+                  <div className="flex flex-col items-center justify-center min-h-[60vh] py-24 md:py-40 space-y-10 md:space-y-14">
+                     <div className="relative">
+                        <div className="absolute inset-x-[-80%] inset-y-[-80%] blur-[120px] opacity-20 animate-pulse" style={{ backgroundColor: accentColor }} />
+                        <div className="relative w-32 h-32 md:w-48 md:h-48 rounded-full border-4 border-white/5 flex items-center justify-center overflow-hidden bg-black/40 backdrop-blur-3xl shadow-2xl">
+                           <m.div
+                             animate={{ 
+                               rotate: 360,
+                               scale: [1, 1.1, 1],
+                             }}
+                             transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                             className="absolute inset-0 opacity-40"
+                             style={{ 
+                                background: `conic-gradient(from 0deg, transparent, ${accentColor}, transparent)`
+                             }}
+                           />
+                           <Wand2 className="w-12 h-12 md:w-16 md:h-16 text-white animate-bounce" style={{ color: accentColor }} />
+                        </div>
+                     </div>
+                     <div className="text-center space-y-4 px-6">
+                        <m.p 
+                          animate={{ opacity: [0.4, 1, 0.4] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="text-3xl md:text-5xl font-black text-white tracking-tighter"
+                        >
+                          Synthesizing Audio...
+                        </m.p>
+                        <p className="text-white/20 font-bold uppercase tracking-[0.3em] text-[10px] md:text-sm max-w-sm mx-auto leading-relaxed">Echo AI is scouting the neural grid for the perfect setlist</p>
+                     </div>
+                  </div>
+                )}
 
                 {step === 'results' && (
                   <m.div 
-                    initial={{ opacity: 0 }} 
-                    animate={{ opacity: 1 }} 
-                    transition={MOTION_CONFIG.transition}
-                    className="space-y-10 md:space-y-12 pb-20 animate-gpu"
+                    initial="initial" 
+                    animate="animate" 
+                    variants={FADE_IN_VARIANTS}
+                    className="space-y-12 md:space-y-20 pb-40 animate-gpu"
                   >
-                    <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-10 text-center md:text-left">
-                       <div className="w-40 h-40 md:w-56 md:h-56 rounded-3xl md:rounded-[40px] bg-linear-to-tr from-white/10 to-white/5 flex items-center justify-center border border-white/10 shadow-2xl relative overflow-hidden shrink-0">
+                    {/* Results Portfolio Header */}
+                    <div className="flex flex-col lg:flex-row items-center lg:items-end gap-8 md:gap-14 text-center lg:text-left">
+                       <m.div 
+                         initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
+                         animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                         transition={{ duration: 0.8, ease: EXPO_OUT }}
+                         className="relative w-56 h-56 md:w-80 md:h-80 rounded-[40px] md:rounded-[64px] bg-linear-to-tr from-white/10 to-white/5 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden shrink-0 group/cover"
+                       >
                           {generatedResult.songs.length > 0 ? (
-                            <div className="absolute inset-0 z-0">
-                              <MusicArtwork
-                                src={generatedResult.songs[0].artwork}
-                                alt=""
-                                iconSize={40}
-                                variant="track"
-                                rounded="3xl"
-                                className="h-full w-full opacity-20"
-                              />
-                            </div>
+                            <MusicArtwork
+                              src={generatedResult.songs[0].artwork.replace(/([=|-][swh])\d+/g, "$1800")}
+                              alt=""
+                              iconSize={80}
+                              variant="track"
+                              rounded="none"
+                              className="h-full w-full transform transition-transform duration-1000 group-hover/cover:scale-110"
+                            />
                           ) : null}
-                          <Sparkles className="relative z-10 w-16 h-16 md:w-20 md:h-20 text-white" style={{ color: accentColor }} />
-                       </div>
-                       <div className="flex-1 space-y-4 w-full">
-                          <div className="flex items-center justify-center md:justify-start gap-2 opacity-40">
-                             <Sparkles className="w-3 h-3 md:w-4 md:h-4" style={{ color: accentColor }} />
-                             <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em]">AI Generated Evolution</span>
+                          <div className="absolute inset-0 bg-black/20" />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cover:opacity-100 transition-opacity duration-500">
+                             <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-2xl flex items-center justify-center text-white scale-0 group-hover/cover:scale-100 transition-transform duration-500 delay-100">
+                                <Play size={32} fill="white" />
+                             </div>
                           </div>
-                          <input 
-                              type="text" 
-                              value={generatedResult.name}
-                              onChange={(e) => setGeneratedResult(prev => ({ ...prev, name: e.target.value }))}
-                              className="w-full bg-transparent text-4xl md:text-6xl font-black text-white focus:outline-none tracking-tighter leading-none border-b-2 border-white/5 pb-2 focus:border-white/20 transition-all uppercase text-center md:text-left"
-                          />
-                          <button 
-                            onClick={handleSaveToYt}
-                            disabled={isSaving}
-                            className="w-full md:w-auto flex items-center justify-center gap-3 px-10 py-4 font-black rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-30"
-                            style={{ backgroundColor: accentColor || '#FFF', color: '#000' }}
-                          >
-                             <span className="text-sm md:text-base">{isSaving ? "Syncing..." : "Sync to Library"}</span>
-                             <Plus size={20} />
-                          </button>
+                          {/* AI Floating Badge */}
+                          <div className="absolute top-6 left-6 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 shadow-2xl">
+                             <Sparkles size={12} style={{ color: accentColor }} />
+                             <span className="text-[10px] font-black text-white uppercase tracking-widest">Neural Vibe</span>
+                          </div>
+                       </m.div>
+
+                       <div className="flex-1 space-y-6 md:space-y-10 w-full max-w-2xl">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-center lg:justify-start gap-3 opacity-40">
+                               <Wand2 className="w-4 h-4" style={{ color: accentColor }} />
+                               <span className="text-[11px] md:text-sm font-black uppercase tracking-[0.4em]">Generated Setlist</span>
+                            </div>
+                            <input 
+                                type="text" 
+                                value={generatedResult.name}
+                                onChange={(e) => setGeneratedResult(prev => ({ ...prev, name: e.target.value }))}
+                                className="w-full bg-transparent text-5xl md:text-7xl lg:text-8xl font-black text-white focus:outline-none tracking-tighter leading-[0.9] border-b-2 border-white/5 pb-4 focus:border-white/20 transition-all text-center lg:text-left selection:bg-white/20"
+                            />
+                            <p className="text-white/30 text-lg md:text-2xl font-bold italic line-clamp-2 leading-tight">" {prompt} "</p>
+                          </div>
+
+                          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
+                            <m.button 
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={handleSaveToYt}
+                              disabled={isSaving}
+                              className="flex items-center justify-center gap-3 px-10 md:px-14 py-4 md:py-5 font-black rounded-full shadow-[0_20px_60px_rgba(0,0,0,0.6)] transition-all active:shadow-none disabled:opacity-30"
+                              style={{ backgroundColor: accentColor || '#FFF', color: '#000' }}
+                            >
+                               <span className="text-base md:text-xl">{isSaving ? "Syncing..." : "Sync to Library"}</span>
+                               <Plus size={24} />
+                            </m.button>
+                            <button 
+                              onClick={() => setStep('input')}
+                              className="px-10 py-4 md:py-5 rounded-full bg-white/5 border border-white/10 text-white font-black hover:bg-white/10 transition-all text-base md:text-xl"
+                            >
+                              New Prompt
+                            </button>
+                          </div>
                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
-                       {generatedResult.songs.map((song) => (
-                          <div key={song.id} className="flex items-center gap-4 p-3 md:p-4 rounded-2xl md:rounded-3xl bg-white/3 border border-white/5 hover:bg-white/5 transition-all group">
-                             <div className="relative h-12 w-12 md:h-16 md:w-16 shrink-0 overflow-hidden rounded-xl md:rounded-2xl shadow-xl grayscale-[0.2] group-hover:grayscale-0 transition-all">
-                               <MusicArtwork src={song.artwork} alt="" iconSize={28} variant="track" rounded="2xl" className="h-full w-full" />
+                    {/* Track List */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
+                       {generatedResult.songs.map((song, i) => (
+                          <m.div 
+                            key={song.id} 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 + (i * 0.05), duration: 0.5, ease: EXPO_OUT }}
+                            className="group relative flex items-center gap-5 p-4 md:p-6 rounded-[32px] bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] hover:border-white/20 transition-all animate-gpu shadow-xl hover:shadow-2xl"
+                          >
+                             <div className="relative h-16 w-16 md:h-24 md:w-24 shrink-0 overflow-hidden rounded-2xl md:rounded-[28px] shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:rotate-2">
+                               <MusicArtwork src={song.artwork} alt="" iconSize={32} variant="track" rounded="none" className="h-full w-full" />
+                               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <Play size={24} fill="white" className="text-white" />
+                               </div>
                              </div>
-                             <div className="flex-1 min-w-0 pr-2">
-                                <p className="text-sm md:text-[17px] font-black text-white truncate leading-tight mb-0.5 md:mb-1">{song.title}</p>
-                                <p className="text-white/30 text-[10px] md:text-xs font-bold truncate uppercase tracking-wider">{song.artist}</p>
+                             <div className="flex-1 min-w-0 pr-4">
+                                <MarqueeText 
+                                  text={song.title} 
+                                  className="text-lg md:text-2xl font-black text-white leading-tight mb-1" 
+                                />
+                                <p className="text-white/40 text-xs md:text-base font-bold truncate uppercase tracking-widest">{song.artist}</p>
                              </div>
-                             <button onClick={() => setGeneratedResult(prev => ({ ...prev, songs: prev.songs.filter(s => s.id !== song.id) }))} className="p-2 text-white/5 hover:text-red-500 transition-colors">
-                                <Minus className="w-4 h-4 md:w-5 md:h-5" />
+                             <button 
+                               onClick={() => setGeneratedResult(prev => ({ ...prev, songs: prev.songs.filter(s => s.id !== song.id) }))} 
+                               className="absolute -top-2 -right-2 p-2 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full text-white/40 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100"
+                             >
+                                <Minus size={18} />
                              </button>
-                          </div>
+                          </m.div>
                        ))}
                     </div>
                   </m.div>

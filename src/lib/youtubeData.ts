@@ -132,38 +132,41 @@ export async function fetchPlaylistItems(accessToken: string, playlistId: string
     });
   }
 
-  return allPlaylistRows
-    .map((item: any) => {
-      const vId = item.contentDetails?.videoId;
-      if (!vId) return null;
-      const moreInfo = metadataMap[vId];
-      const thumb =
-        item.snippet?.thumbnails?.maxres?.url ||
-        moreInfo?.thumbnails?.maxres?.url ||
-        item.snippet?.thumbnails?.standard?.url ||
-        moreInfo?.thumbnails?.standard?.url ||
-        item.snippet?.thumbnails?.high?.url ||
-        moreInfo?.thumbnails?.high?.url ||
-        item.snippet?.thumbnails?.default?.url;
+  const mapped = allPlaylistRows.map((item: any): YouTubeTrack | null => {
+    const vId = item.contentDetails?.videoId;
+    if (!vId) return null;
+    const moreInfo = metadataMap[vId];
+    const thumb =
+      item.snippet?.thumbnails?.maxres?.url ||
+      moreInfo?.thumbnails?.maxres?.url ||
+      item.snippet?.thumbnails?.standard?.url ||
+      moreInfo?.thumbnails?.standard?.url ||
+      item.snippet?.thumbnails?.high?.url ||
+      moreInfo?.thumbnails?.high?.url ||
+      item.snippet?.thumbnails?.default?.url ||
+      "";
 
-      let artist = item.snippet?.videoOwnerChannelTitle || moreInfo?.channelTitle || "Unknown Artist";
-      artist = artist.replace(/\s*-\s*Topic$/, "");
+    let artist = item.snippet?.videoOwnerChannelTitle || moreInfo?.channelTitle || "Unknown Artist";
+    artist = artist.replace(/\s*-\s*Topic$/, "");
 
-      return {
-        id: item.id,
-        title: item.snippet?.title || "Unknown",
-        artist,
-        thumbnailUrl: thumb,
-        videoId: vId,
-        duration: durationMap[vId] || "0:00",
-      };
-    })
-    .filter((row: YouTubeTrack | null): row is YouTubeTrack => row !== null)
-    .filter((item: YouTubeTrack) => {
-      if (!musicOnly) return true;
-      const catId = metadataMap[item.videoId]?.categoryId;
-      return catId === "10";
-    });
+    return {
+      id: String(item.id ?? ""),
+      title: item.snippet?.title || "Unknown",
+      artist,
+      thumbnailUrl: thumb,
+      videoId: vId,
+      duration: durationMap[vId] || "0:00",
+    };
+  });
+
+  const withVideoId = mapped.filter((row): row is YouTubeTrack => row !== null);
+
+  if (!musicOnly) return withVideoId;
+
+  return withVideoId.filter((item) => {
+    const catId = metadataMap[item.videoId]?.categoryId;
+    return catId === "10";
+  });
 }
 
 /**

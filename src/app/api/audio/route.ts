@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { searchSongsRobust, searchVideosRobust } from "@/lib/ytmSearchService";
+import { searchSongsRobust } from "@/lib/ytmSearchService";
 import ytdl from "@distube/ytdl-core";
 
 function youtubeHqThumbnail(videoId: string): string {
@@ -70,11 +70,10 @@ export async function GET(request: Request) {
                  metadataSource.artists?.map((a: any) => a.name).filter(Boolean).join(", ") || 
                  "Unknown Artist";
         thumbnailUrl = metadataSource.thumbnailUrl || metadataSource.thumbnail || thumbnailUrl;
-        
-        // Try to find the exact Music Video for this track if we don't have a direct ID
+
+        // Keep music.youtube.com resolution only — use the same YTM song id (no main-YouTube video search).
         if (!directVideoId) {
-          const videoResults = await searchVideosRobust(`${artist} ${trackName} music video`);
-          musicVideoId = videoResults?.[0]?.youtubeId?.trim() || videoId;
+          musicVideoId = videoId;
         }
       }
     }

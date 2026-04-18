@@ -11,11 +11,94 @@ export const dynamic = "force-dynamic";
 const GEMMA_MODEL = "gemma-4-26b-a4b-it";
 const googleApiKey = process.env.GEMINI_API_KEY;
 
-function extractJSON(text: string): string {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end === -1 || end < start) return text;
-  return text.slice(start, end + 1);
+/** Normalize common model quirks before JSON.parse */
+function normalizeJsonish(text: string): string {
+  return text
+    .replace(/^\uFEFF/, "")
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'");
+}
+
+/**
+ * Extract a balanced `{ ... }` object starting at `start`, respecting JSON strings.
+ * Fixes naive first-`{`..last-`}` slicing when extra `}` appear inside reasoning.
+ */
+function extractBalancedJsonObjectFrom(text: string, start: number): string | null {
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (inString) {
+      if (c === "\\") {
+        escape = true;
+        continue;
+      }
+      if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
+    if (c === "{") depth++;
+    if (c === "}") {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+function extractFirstJsonObject(text: string): string | null {
+  const normalized = normalizeJsonish(text);
+  const start = normalized.indexOf("{");
+  if (start === -1) return null;
+  return extractBalancedJsonObjectFrom(normalized, start);
+}
+
+/** Profile response: prefer object containing "persona" if the model prefixes noise. */
+function extractPersonaJsonObject(text: string): string | null {
+  const normalized = normalizeJsonish(text);
+  const keyIdx = normalized.search(/"persona"\s*:/);
+  if (keyIdx === -1) return extractFirstJsonObject(normalized);
+  const objStart = normalized.lastIndexOf("{", keyIdx);
+  if (objStart === -1) return extractFirstJsonObject(normalized);
+  return extractBalancedJsonObjectFrom(normalized, objStart);
+}
+
+/** Prefer the curation object keyed by primaryLanguage; otherwise first balanced object. */
+function extractCurationJsonObject(text: string): string | null {
+  const normalized = normalizeJsonish(text);
+  const re = /\{\s*"primaryLanguage"\s*:/g;
+  let last: string | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(normalized)) !== null) {
+    const slice = extractBalancedJsonObjectFrom(normalized, m.index);
+    if (slice) last = slice;
+  }
+  if (last) return last;
+  return extractFirstJsonObject(normalized);
+}
+
+function sanitizePersonaForPrompt(persona: string): string {
+  const oneLine = persona.replace(/\s+/g, " ").trim();
+  return oneLine.length > 2000 ? oneLine.slice(0, 2000) + "…" : oneLine;
+}
+
+function parseCurationJson(raw: string): { primaryLanguage?: string; tracks?: unknown[] } {
+  let trimmed = normalizeJsonish(raw.trim())
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/gi, "")
+    .replace(/`/g, "")
+    .trim();
+  const jsonText = extractCurationJsonObject(trimmed);
+  if (!jsonText) throw new Error("No JSON object found in model output");
+  return JSON.parse(jsonText);
 }
 
 /**
@@ -65,20 +148,36 @@ export async function POST(request: Request) {
         rawHistoryString = merged.map(t => `${t.title} by ${t.artist}`).join(", ");
         const channelString = channels.join(", ");
 
-        // Generate Persona using Gemma - Sentence Completion Mode
-        const profilePrompt = `Based on this music history and channel list, finish this specific sentence:
+        // Generate Persona — JSON-only so we don't embed chain-of-thought into Phase 2
+        const profilePrompt = `Based on this music history and channel list, finish this sentence (one line, no markdown):
 "The user is a [DESCRIPTIVE TRAITS] music enthusiast who balances [STYLE A] with [STYLE B]."
 
 History: [${rawHistoryString}]
 Channels: [${channelString}]
 
-STRICT: OUTPUT ONLY THE COMPLETED SENTENCE. NO BULLETS.
-Sentence: "The user is a`;
+Return ONLY valid JSON in this exact shape (the full sentence as the value of "persona"):
+{"persona":"The user is a ..."}`;
         
-        // We use temperature 0.3 for maximum focus in profiling
-        const textModel = genAI.getGenerativeModel({ model: GEMMA_MODEL, generationConfig: { temperature: 0.3 } });
+        const textModel = genAI.getGenerativeModel({
+          model: GEMMA_MODEL,
+          generationConfig: {
+            temperature: 0.3,
+            responseMimeType: "application/json",
+            maxOutputTokens: 512,
+          },
+        });
         const profileResult = await textModel.generateContent(profilePrompt);
-        userPersona = "The user is a " + profileResult.response.text().trim().replace(/^"|"$|[.*]$/g, "");
+        const profileRaw = normalizeJsonish(profileResult.response.text().trim());
+        const profileJson = extractPersonaJsonObject(profileRaw);
+        try {
+          if (profileJson) {
+            const parsed = JSON.parse(profileJson) as { persona?: string };
+            if (parsed.persona?.trim()) userPersona = parsed.persona.trim();
+          }
+        } catch {
+          const fallback = profileRaw.replace(/^[\s\S]*?The user is a/m, "The user is a").split("\n")[0]?.trim();
+          if (fallback?.startsWith("The user is a")) userPersona = fallback.replace(/^["']|["']$/g, "");
+        }
         console.log("[Recommendations] Persona Generated:", userPersona);
       } catch (e) {
         console.warn("[Recommendations] Profiler failed, using default persona.");
@@ -90,33 +189,23 @@ Sentence: "The user is a`;
     console.log("[Recommendations] Phase 2: Curation via Gemma 4...");
     const activePrompt = prompt || "Create a personalized discovery mix.";
     
-    const curatorPrompt = `You are a robotic recommendation engine.
-CONTEXT: ${userPersona}
-REQUEST: ${activePrompt}
+    const curatorPrompt = `You are a music recommendation engine. Output ONLY raw JSON, no markdown, no explanation.
+User profile: ${sanitizePersonaForPrompt(userPersona)}
+Request: ${activePrompt}
 
-TASK: Generate exactly 20 songs.
-RULES: 
-1. If the request implies a specific language, use it for 100% of songs.
-2. DO NOT use ellipses (...) or truncate.
-3. DO NOT use markdown code blocks.
-4. Output ONLY the raw JSON object.
-
-JSON SCHEMA: {
- "primaryLanguage": "string (e.g. Sinhala)",
- "tracks": [{"title": "string", "artist": "string"}]
-}`;
+Generate exactly 20 songs. If the request implies a specific language, use it for all 20 tracks.
+Return this exact structure with real values (not placeholders):
+{"primaryLanguage":"English","tracks":[{"title":"Song Name","artist":"Artist Name"}]}`;
 
     const curateResult = await model.generateContent(curatorPrompt);
-    let rawCuration = curateResult.response.text().trim();
-    
-    // Defensive cleaning
-    rawCuration = extractJSON(rawCuration).replace(/\.{2,}/g, "").replace(/…/g, "");
-    
-    let curationObj: any;
+    const rawCuration = curateResult.response.text();
+
+    let curationObj: { tracks?: unknown[]; primaryLanguage?: string };
     try {
-      curationObj = JSON.parse(rawCuration);
+      curationObj = parseCurationJson(rawCuration);
     } catch (e) {
-      console.error("[Recommendations] Final JSON Parse Failed:", rawCuration);
+      const preview = rawCuration.length > 2000 ? rawCuration.slice(0, 2000) + "…" : rawCuration;
+      console.error("[Recommendations] Final JSON Parse Failed:", preview);
       throw new Error("Gemma output was malformed even after surgical extraction");
     }
     
@@ -136,24 +225,9 @@ JSON SCHEMA: {
           if (!results || results.length === 0) return null;
 
           const topResult = results[0];
-          const titleLower = topResult.title.toLowerCase();
-          const targetLower = targetContext.toLowerCase();
-
-          // Filter Logic: Check if the title contains the target language/vibe or script
-          // For Sinhala, we also check for Sinhala characters (\u0D80-\u0DFF)
-          const isSinhala = targetLower.includes("sinhala");
-          const hasSinhalaScript = /[\u0D80-\u0DFF]/.test(topResult.title);
-          const hasKeyword = titleLower.includes(targetLower);
-
-          if (isSinhala && !hasSinhalaScript && !hasKeyword) {
-            console.log(`[Engine] Skipping non-Sinhala result: ${topResult.title}`);
-            return null;
-          }
-
-          if (!isSinhala && targetLower !== "music" && !hasKeyword) {
-            console.log(`[Engine] Verification failed for ${targetLower}: ${topResult.title}`);
-            return null;
-          }
+          // Trust the search: the query already includes `${targetContext}` (e.g. Sinhala / English).
+          // Do NOT require that word in the *video title* — real titles rarely contain "english",
+          // "mixed", or "sinhala", and Sinhala songs are often Latin-transliterated on YouTube.
 
           return {
             youtubeId: topResult.youtubeId,

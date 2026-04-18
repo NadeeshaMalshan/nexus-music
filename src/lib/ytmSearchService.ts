@@ -128,6 +128,7 @@ export async function searchSongsRobust(query: string): Promise<any[]> {
   return full.length > 0 ? full : [];
 }
 
+/** YT Music “music video” hits (InnerTube), not main youtube.com search. */
 export async function searchVideosRobust(query: string): Promise<any[]> {
   if (!query?.trim()) return [];
   const res = await searchWithRetry(query, "videos");

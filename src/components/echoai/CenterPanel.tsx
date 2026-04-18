@@ -498,7 +498,6 @@ export function CenterPanel(props: CenterPanelProps) {
       if (!res.ok) return;
       const data = (await res.json()) as { items?: SearchItem[] };
       const items = (data.items || [])
-        .map((x) => ({ ...x, isLive: true }))
         .filter((x) => !!x?.videoId)
         .slice(0, 12);
       setLiveNow(items);

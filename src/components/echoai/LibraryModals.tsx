@@ -36,6 +36,10 @@ function useMounted() {
 export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: ModalProps) {
   const { data: session } = useSession();
   const mounted = useMounted();
+  const shell = {
+    backgroundColor: `color-mix(in srgb, ${accentColor} 9%, rgb(14, 14, 16))`,
+    borderColor: `color-mix(in srgb, ${accentColor} 26%, rgba(255,255,255,0.1))`,
+  } as const;
   const [playlistName, setPlaylistName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<CreateModalSong[]>([]);
@@ -108,13 +112,24 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 30 }} 
             transition={MOTION_CONFIG.transition}
-            className="w-full h-full md:h-[85vh] md:max-h-[85vh] overflow-hidden md:rounded-[40px] bg-[#161618] border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex flex-col relative z-10 animate-gpu"
+            className="w-full h-full md:h-[85vh] md:max-h-[85vh] overflow-hidden md:rounded-[40px] border shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex flex-col relative z-10 animate-gpu"
+            style={shell}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header Area */}
-            <div className="flex items-center justify-between px-6 py-6 md:px-10 md:py-8 border-b border-white/5">
+            <div
+              className="flex items-center justify-between px-6 py-6 md:px-10 md:py-8 border-b"
+              style={{ borderBottomColor: `color-mix(in srgb, ${accentColor} 20%, rgba(255,255,255,0.06))` }}
+            >
               <div className="flex items-center gap-3 md:gap-4 font-black">
-                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/5 flex items-center justify-center text-white/40">
+                 <div
+                   className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center border"
+                   style={{
+                     backgroundColor: `color-mix(in srgb, ${accentColor} 12%, rgba(255,255,255,0.05))`,
+                     borderColor: `color-mix(in srgb, ${accentColor} 22%, rgba(255,255,255,0.08))`,
+                     color: `color-mix(in srgb, ${accentColor} 65%, rgb(161, 161, 170))`,
+                   }}
+                 >
                     <ListPlus className="w-5 h-5 md:w-6 md:h-6" />
                  </div>
                  <div>
@@ -155,7 +170,16 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                         placeholder="My Awesome Mix" 
                         value={playlistName}
                         onChange={(e) => setPlaylistName(e.target.value)}
-                        className="w-full bg-transparent text-xl md:text-2xl font-black text-white placeholder:text-white/10 focus:outline-none border-b border-white/5 pb-2 focus:border-white/20 transition-all"
+                        className="w-full bg-transparent text-xl md:text-2xl font-black text-white placeholder:text-white/10 focus:outline-none border-b pb-2 transition-all"
+                        style={{
+                          borderBottomColor: `color-mix(in srgb, ${accentColor} 22%, rgba(255,255,255,0.08))`,
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderBottomColor = `color-mix(in srgb, ${accentColor} 55%, rgba(255,255,255,0.25))`;
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderBottomColor = `color-mix(in srgb, ${accentColor} 22%, rgba(255,255,255,0.08))`;
+                        }}
                         autoFocus
                       />
                   </div>
@@ -170,7 +194,16 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                       placeholder="Search tracks to add..." 
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full h-14 bg-white/3 rounded-2xl pl-12 pr-6 text-white font-bold placeholder:text-white/10 border border-white/5 focus:bg-white/5 focus:border-white/20 outline-none transition-all shadow-inner"
+                      className="w-full h-14 bg-white/3 rounded-2xl pl-12 pr-6 text-white font-bold placeholder:text-white/10 border focus:bg-white/5 outline-none transition-all shadow-inner"
+                      style={{
+                        borderColor: `color-mix(in srgb, ${accentColor} 18%, rgba(255,255,255,0.06))`,
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = `color-mix(in srgb, ${accentColor} 45%, rgba(255,255,255,0.2))`;
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = `color-mix(in srgb, ${accentColor} 18%, rgba(255,255,255,0.06))`;
+                      }}
                     />
                     
                     {/* Search Result Overlay */}
@@ -181,7 +214,8 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
                             animate={{ opacity: 1, y: 0 }} 
                             exit={{ opacity: 0, y: 10 }}
                             transition={MOTION_CONFIG.transition}
-                            className="absolute top-16 left-0 right-0 z-20 bg-[#161618] rounded-3xl border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.4)] overflow-hidden animate-gpu"
+                            className="absolute top-16 left-0 right-0 z-20 rounded-3xl border shadow-[0_32px_64px_rgba(0,0,0,0.4)] overflow-hidden animate-gpu"
+                            style={shell}
                           >
                              {searchResults.slice(0, 5).map(song => (
                                 <div key={song.id} onClick={() => addSong(song)} className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer transition-all border-b border-white/5 last:border-0 group">
@@ -250,6 +284,10 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
   const { data: session } = useSession();
   const mounted = useMounted();
   const router = useRouter();
+  const shell = {
+    backgroundColor: `color-mix(in srgb, ${accentColor} 11%, rgb(11, 11, 13))`,
+    borderColor: `color-mix(in srgb, ${accentColor} 28%, rgba(255,255,255,0.1))`,
+  } as const;
   const [step, setStep] = useState<'input' | 'loading' | 'results'>('input');
   const [prompt, setPrompt] = useState("");
   const [favoriteArtists, setFavoriteArtists] = useState("");
@@ -264,7 +302,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
   const GENRE_CHIPS = ['Lofi', 'Pop', 'Classical', 'Retrowave', 'Electronic', 'Jazz', 'Acoustic', 'Hip Hop', 'Rock'];
 
   const firstArtwork = generatedResult.songs.length > 0 ? generatedResult.songs[0].artwork : null;
-  const palette = useArtworkColors(firstArtwork);
+  const palette = useArtworkColors(firstArtwork, accentColor);
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres(prev => prev.includes(genre) ? prev.filter(g => g !== genre) : [...prev, genre]);
@@ -345,7 +383,8 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 30 }} 
             transition={{ type: "spring", damping: 30, stiffness: 300, mass: 1 }}
-            className="w-full h-full md:max-w-5xl md:h-[90vh] md:max-h-[90vh] overflow-hidden md:rounded-[48px] bg-[#0d0d0f] border border-white/10 shadow-[0_50px_150px_rgba(0,0,0,0.9)] flex flex-col relative z-10 animate-gpu"
+            className="w-full h-full md:max-w-5xl md:h-[90vh] md:max-h-[90vh] overflow-hidden md:rounded-[48px] border shadow-[0_50px_150px_rgba(0,0,0,0.9)] flex flex-col relative z-10 animate-gpu"
+            style={shell}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Immersive Background */}
@@ -354,10 +393,22 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
             </div>
 
             {/* AI Top Bar */}
-            <div className="relative z-20 flex items-center justify-between px-6 py-6 md:px-12 md:py-8 border-b border-white/5 bg-black/20 backdrop-blur-md">
+            <div
+              className="relative z-20 flex items-center justify-between px-6 py-6 md:px-12 md:py-8 border-b backdrop-blur-md"
+              style={{
+                backgroundColor: `color-mix(in srgb, ${accentColor} 8%, rgba(0,0,0,0.35))`,
+                borderBottomColor: `color-mix(in srgb, ${accentColor} 22%, rgba(255,255,255,0.06))`,
+              }}
+            >
               <div className="flex items-center gap-3 md:gap-4">
-                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 shadow-lg">
-                    <Wand2 className="w-5 h-5 md:w-6 md:h-6 text-white/60" />
+                 <div
+                   className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center border shadow-lg"
+                   style={{
+                     backgroundColor: `color-mix(in srgb, ${accentColor} 14%, rgba(255,255,255,0.06))`,
+                     borderColor: `color-mix(in srgb, ${accentColor} 30%, rgba(255,255,255,0.12))`,
+                   }}
+                 >
+                    <Wand2 className="w-5 h-5 md:w-6 md:h-6" style={{ color: `color-mix(in srgb, ${accentColor} 75%, white)` }} />
                  </div>
                  <div>
                     <h2 className="text-white text-xl md:text-3xl font-black tracking-tighter">Echo AI</h2>
@@ -388,7 +439,14 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                         className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-[0.85] tracking-tighter"
                       >
                         Design your <br/>
-                        <span className="text-transparent bg-clip-text bg-linear-to-r from-white via-white to-white/20">Sound Profile</span>
+                        <span
+                          className="text-transparent bg-clip-text"
+                          style={{
+                            backgroundImage: `linear-gradient(to right, white, color-mix(in srgb, ${accentColor} 85%, white), rgba(255,255,255,0.2))`,
+                          }}
+                        >
+                          Sound Profile
+                        </span>
                       </m.h3>
                     </div>
                     
@@ -400,7 +458,16 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                            <input 
                              type="text" 
                              placeholder="e.g. Gunadasa Kapuge, The Weeknd..." 
-                             className="w-full bg-white/5 border border-white/5 rounded-2xl p-5 text-lg font-black text-white focus:border-white/20 transition-all outline-none"
+                             className="w-full bg-white/5 rounded-2xl p-5 text-lg font-black text-white transition-all outline-none border"
+                             style={{
+                               borderColor: `color-mix(in srgb, ${accentColor} 20%, rgba(255,255,255,0.06))`,
+                             }}
+                             onFocus={(e) => {
+                               e.currentTarget.style.borderColor = `color-mix(in srgb, ${accentColor} 50%, rgba(255,255,255,0.2))`;
+                             }}
+                             onBlur={(e) => {
+                               e.currentTarget.style.borderColor = `color-mix(in srgb, ${accentColor} 20%, rgba(255,255,255,0.06))`;
+                             }}
                              value={favoriteArtists}
                              onChange={(e) => setFavoriteArtists(e.target.value)}
                            />
@@ -416,10 +483,18 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                                  whileTap={{ scale: 0.95 }}
                                  onClick={() => toggleGenre(genre)}
                                  className={`px-5 py-2.5 rounded-full border text-xs font-black transition-all ${
-                                   selectedGenres.includes(genre) 
-                                     ? 'bg-white text-black border-white' 
-                                     : 'bg-white/5 text-white/40 border-white/5 hover:border-white/10'
+                                   selectedGenres.includes(genre)
+                                     ? "text-black border-transparent shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
+                                     : "bg-white/5 text-white/40 border-white/5 hover:border-white/10"
                                  }`}
+                                 style={
+                                   selectedGenres.includes(genre)
+                                     ? {
+                                         backgroundColor: accentColor,
+                                         borderColor: `color-mix(in srgb, ${accentColor} 65%, transparent)`,
+                                       }
+                                     : undefined
+                                 }
                                >
                                  {genre}
                                </m.button>
@@ -433,10 +508,24 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                         <div className="space-y-4">
                            <label className="text-[11px] font-black uppercase tracking-[0.3em] text-white/20 px-1">Final Vibe / Prompt</label>
                            <div className="relative group/input">
-                              <div className="absolute -inset-0.5 bg-linear-to-r from-white/20 to-transparent rounded-[32px] blur-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-1000" />
+                              <div
+                                className="absolute -inset-0.5 rounded-[32px] blur-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-1000"
+                                style={{
+                                  background: `linear-gradient(to right, color-mix(in srgb, ${accentColor} 45%, transparent), transparent)`,
+                                }}
+                              />
                               <textarea 
                                 placeholder="Describe the vibe... e.g. Night drive with heavy bass" 
-                                className="relative w-full h-40 md:h-52 bg-white/[0.03] rounded-3xl p-8 text-xl md:text-2xl font-black text-white placeholder:text-white/5 border border-white/5 focus:border-white/20 transition-all resize-none focus:outline-none shadow-2xl backdrop-blur-xl"
+                                className="relative w-full h-40 md:h-52 bg-white/[0.03] rounded-3xl p-8 text-xl md:text-2xl font-black text-white placeholder:text-white/5 border transition-all resize-none focus:outline-none shadow-2xl backdrop-blur-xl"
+                                style={{
+                                  borderColor: `color-mix(in srgb, ${accentColor} 18%, rgba(255,255,255,0.06))`,
+                                }}
+                                onFocus={(e) => {
+                                  e.currentTarget.style.borderColor = `color-mix(in srgb, ${accentColor} 45%, rgba(255,255,255,0.25))`;
+                                }}
+                                onBlur={(e) => {
+                                  e.currentTarget.style.borderColor = `color-mix(in srgb, ${accentColor} 18%, rgba(255,255,255,0.06))`;
+                                }}
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
                               />
@@ -503,7 +592,11 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                          initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
                          animate={{ opacity: 1, scale: 1, rotate: 0 }}
                          transition={{ duration: 0.8, ease: EXPO_OUT }}
-                         className="relative w-56 h-56 md:w-80 md:h-80 rounded-[40px] md:rounded-[64px] bg-linear-to-tr from-white/10 to-white/5 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden shrink-0 group/cover"
+                         className="relative w-56 h-56 md:w-80 md:h-80 rounded-[40px] md:rounded-[64px] border shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden shrink-0 group/cover"
+                         style={{
+                           backgroundColor: `color-mix(in srgb, ${accentColor} 14%, rgba(255,255,255,0.06))`,
+                           borderColor: `color-mix(in srgb, ${accentColor} 28%, rgba(255,255,255,0.1))`,
+                         }}
                        >
                           {generatedResult.songs.length > 0 ? (
                             <MusicArtwork
@@ -629,7 +722,13 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
 
              {/* Mobile only: docked above home indicator — sibling of scroll so it stays visible */}
              {step === "input" && (
-               <div className="lg:hidden shrink-0 relative z-30 border-t border-white/10 bg-[#0d0d0f]/95 backdrop-blur-md px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+               <div
+                 className="lg:hidden shrink-0 relative z-30 border-t backdrop-blur-md px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+                 style={{
+                   backgroundColor: `color-mix(in srgb, ${accentColor} 12%, rgba(13,13,15,0.95))`,
+                   borderTopColor: `color-mix(in srgb, ${accentColor} 22%, rgba(255,255,255,0.1))`,
+                 }}
+               >
                  <m.button 
                    whileHover={{ scale: 1.01 }}
                    whileTap={{ scale: 0.99 }}

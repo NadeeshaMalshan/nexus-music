@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export interface ArtworkPalette {
   /** 60% – dominant background color (darkened for UI use) */
@@ -16,6 +16,27 @@ const DEFAULT_PALETTE: ArtworkPalette = {
   secondary: "#1a1528",
   accent: "#a855f7",
 };
+
+function hexToRgb(hex: string): [number, number, number] | null {
+  const h = hex.replace(/^#/, "").trim();
+  if (h.length !== 6 || !/^[a-f\d]+$/i.test(h)) return null;
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+/** When no artwork image, derive FlowingBackground tones from the app accent (replaces fixed purple DEFAULT_PALETTE). */
+export function paletteFromAccent(accentHex: string): ArtworkPalette {
+  const rgb = hexToRgb(accentHex.trim() || "#FA233B");
+  if (!rgb) return DEFAULT_PALETTE;
+  const [h, s, l] = rgbToHsl(rgb[0], rgb[1], rgb[2]);
+  const [ph, ps, pl] = darkenHsl(h, s, l, 58);
+  const [sh, ss, sl] = darkenHsl(h, Math.min(s, 34), l, 42);
+  const [ah, as2, al] = vibrifyHsl(h, s, l);
+  return {
+    primary: hslToHex(ph, ps, pl),
+    secondary: hslToHex(sh, ss, sl),
+    accent: hslToHex(ah, as2, al),
+  };
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -111,7 +132,10 @@ function samplePixels(data: Uint8ClampedArray, count = 800): [number, number, nu
 
 // ── Core extraction ───────────────────────────────────────────────────────────
 
-async function extractPalette(imageUrl: string): Promise<ArtworkPalette> {
+async function extractPalette(
+  imageUrl: string,
+  fallbackOnError: ArtworkPalette = DEFAULT_PALETTE,
+): Promise<ArtworkPalette> {
   const tryExtract = (url: string, useProxy = false): Promise<ArtworkPalette | null> => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -169,13 +193,21 @@ async function extractPalette(imageUrl: string): Promise<ArtworkPalette> {
   const direct = await tryExtract(imageUrl, false);
   if (direct) return direct;
   
-  return (await tryExtract(imageUrl, true)) || DEFAULT_PALETTE;
+  return (await tryExtract(imageUrl, true)) || fallbackOnError;
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useArtworkColors(artworkUrl: string | null | undefined): ArtworkPalette {
-  const [palette, setPalette] = useState<ArtworkPalette>(DEFAULT_PALETTE);
+export function useArtworkColors(
+  artworkUrl: string | null | undefined,
+  accentColor?: string,
+): ArtworkPalette {
+  const accentFallback = useMemo(
+    () => paletteFromAccent(accentColor?.trim() || "#FA233B"),
+    [accentColor],
+  );
+
+  const [palette, setPalette] = useState<ArtworkPalette>(accentFallback);
   const lastUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -183,19 +215,20 @@ export function useArtworkColors(artworkUrl: string | null | undefined): Artwork
     lastUrlRef.current = artworkUrl;
 
     let cancelled = false;
-    extractPalette(artworkUrl).then((p) => {
+    extractPalette(artworkUrl, accentFallback).then((p) => {
       if (!cancelled) setPalette(p);
     });
-    return () => { cancelled = true; };
-  }, [artworkUrl]);
+    return () => {
+      cancelled = true;
+    };
+  }, [artworkUrl, accentFallback]);
 
-  // Reset to default when no artwork
   useEffect(() => {
     if (!artworkUrl) {
-      setPalette(DEFAULT_PALETTE);
+      setPalette(accentFallback);
       lastUrlRef.current = null;
     }
-  }, [artworkUrl]);
+  }, [artworkUrl, accentFallback]);
 
   return palette;
 }

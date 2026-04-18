@@ -206,12 +206,22 @@ export function YouTubeLibrary({
     );
   }, [playedHistory, ytHistory, searchQuery, accentColor, historyFeedMeta?.source]);
 
+  const headerSurfaceStyle = {
+    backgroundColor: `color-mix(in srgb, ${accentColor} 14%, rgb(10, 10, 12))`,
+    borderBottomColor: `color-mix(in srgb, ${accentColor} 28%, rgba(255,255,255,0.06))`,
+  } as const;
+
   if (!session?.accessToken) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#050505]">
+      <div
+        className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[50vh]"
+        style={{
+          backgroundColor: `color-mix(in srgb, ${accentColor} 16%, rgb(6, 6, 8))`,
+        }}
+      >
         <div 
           className="w-20 h-20 md:w-24 md:h-24 rounded-[32px] flex items-center justify-center mb-10 shadow-2xl"
-          style={{ backgroundImage: `linear-gradient(to top right, ${accentColor}, #FF5E3A)` }}
+          style={{ backgroundColor: `color-mix(in srgb, ${accentColor} 75%, #FF5E3A)` }}
         >
           <Music2 className="w-10 h-10 md:w-12 md:h-12 text-white" />
         </div>
@@ -229,7 +239,10 @@ export function YouTubeLibrary({
 
   return (
     <div className="flex-1 h-full flex flex-col bg-transparent">
-      <header className="px-6 pt-8 pb-4 md:px-8 md:pt-10 md:pb-6 lg:px-12 border-b border-white/3 sticky top-0 z-20 bg-[#0d0d0f]">
+      <header
+        className="px-6 pt-8 pb-4 md:px-8 md:pt-10 md:pb-6 lg:px-12 border-b sticky top-0 z-20 backdrop-blur-md backdrop-saturate-150"
+        style={headerSurfaceStyle}
+      >
         <div className="max-w-[1600px] mx-auto space-y-6 md:space-y-8">
            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
               <div>
@@ -261,14 +274,20 @@ export function YouTubeLibrary({
            </div>
 
            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 md:gap-6">
-              <div className="flex w-full sm:w-auto bg-white/3 p-1 rounded-xl md:rounded-2xl border border-white/5 overflow-x-auto no-scrollbar">
+              <div
+                 className="flex w-full sm:w-auto p-1 rounded-xl md:rounded-2xl border overflow-x-auto no-scrollbar"
+                 style={{
+                   backgroundColor: `color-mix(in srgb, ${accentColor} 10%, rgba(255,255,255,0.03))`,
+                   borderColor: `color-mix(in srgb, ${accentColor} 22%, rgba(255,255,255,0.06))`,
+                 }}
+              >
                  {(["playlists", "history", "liked"] as LibraryTab[]).map(tab => (
                     <button
                        key={tab}
                        onClick={() => setActiveTab(tab)}
                        className={`flex-1 sm:flex-none px-4 md:px-8 py-2 md:py-2.5 rounded-lg md:rounded-xl text-xs md:text-sm font-bold capitalize transition-all duration-300 ${
-                          activeTab === tab 
-                          ? "bg-white text-black shadow-2xl" 
+                          activeTab === tab
+                          ? "bg-white text-black shadow-2xl"
                           : "text-white/40 hover:text-white/60"
                        }`}
                     >
@@ -307,7 +326,7 @@ export function YouTubeLibrary({
            )}
            {loading ? (
               <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-4">
-                 <Loader2 className="w-8 h-8 md:w-10 md:h-10 animate-spin text-[#FA233B]" />
+                 <Loader2 className="w-8 h-8 md:w-10 md:h-10 animate-spin" style={{ color: accentColor }} />
                  <p className="text-white/20 font-bold uppercase tracking-widest text-[9px] md:text-[10px]">Syncing Database...</p>
               </div>
            ) : (
@@ -327,7 +346,7 @@ export function YouTubeLibrary({
                        >
                            <div 
                               className="relative aspect-square mb-3 md:mb-4 rounded-3xl md:rounded-[28px] overflow-hidden shadow-2xl flex items-center justify-center ring-1 ring-white/10 transition-transform duration-500 hover:scale-[1.03]"
-                              style={{ backgroundImage: `linear-gradient(to bottom right, ${accentColor}, #8E2DE2)` }}
+                              style={{ backgroundColor: `color-mix(in srgb, ${accentColor} 55%, #8E2DE2)` }}
                            >
                               <Heart className="w-8 h-8 md:w-16 md:h-16 text-white drop-shadow-xl" fill="white" />
                            </div>

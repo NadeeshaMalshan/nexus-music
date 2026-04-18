@@ -78,14 +78,20 @@ export async function POST(request: Request) {
       const genAI = new GoogleGenerativeAI(googleApiKey as string);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      const curatorPrompt = `You are an expert music curator. 
-User's Music Taste/History: [${userTasteSummary || "Varied global hits"}]
-User's Vibe Request: "${prompt}"
+      const curatorPrompt = `You are a world-class music curator for Nexus Music.
+Your mission: Create a playlist that matches the user's specific request while respecting their underlying musical taste "DNA".
 
-Based on their taste and the request, suggest EXACTLY 15 songs that would create the perfect playlist. 
-The songs should be a mix of their existing taste and new discoveries that fit the request.
-Format ONLY as a JSON array of objects with "title" and "artist" keys. 
-No extra text, no markdown blocks.`;
+USER CONTEXT:
+1. Primary Request (Vibe): "${prompt}"
+2. Taste DNA (History): [${userTasteSummary || "Varied global hits"}]
+
+STRATEGY:
+- CORE CONSTRAINT: If the user specified a language (e.g. Sinhala, Hindi, French) or a genre (e.g. Techno, Jazz), 100% of the songs MUST be in that language/genre. Do NOT mix in songs from the Taste DNA if they don't match the request's language/genre.
+- STYLE MAPPING: Use the Taste DNA to determine the *vibe* (e.g. if they like acoustic/melancholic songs in history, suggest melancholic songs in the requested genre).
+- NO LOW QUALITY: Strictly ignore "Live" versions, "Concerts", "Festivals", "Remixes" (unless asked), "Covers", "Karaoke", or "Parodies".
+- QUANTITY: Suggest EXACTLY 15 songs.
+
+Format ONLY as a JSON array of objects with "title" and "artist" keys. No extra text.`;
 
       let suggestedTracks: { title: string, artist: string }[] = [];
       try {
@@ -104,7 +110,9 @@ No extra text, no markdown blocks.`;
         const searchResults = await Promise.all(
           suggestedTracks.map(async (t) => {
             try {
-              const res = await searchSongsRobust(`${t.title} ${t.artist}`);
+              // Append "Official Audio" to prioritize studio versions and avoid live/festivals
+              const query = `${t.title} ${t.artist} Official Audio`;
+              const res = await searchSongsRobust(query);
               return res && res.length > 0 ? res[0] : null;
             } catch {
               return null;

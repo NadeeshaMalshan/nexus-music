@@ -65,74 +65,105 @@ export async function fetchUserPlaylists(accessToken: string): Promise<YouTubePl
   return out;
 }
 
-export async function fetchPlaylistItems(accessToken: string, playlistId: string, musicOnly = false): Promise<YouTubeTrack[]> {
-  const response = await fetch(
-    `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${playlistId}&maxResults=50`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
+/**
+ * Official "Liked videos" playlist id for the signed-in channel (often `LL`, but use API when possible).
+ */
+export async function getLikesPlaylistId(accessToken: string): Promise<string> {
+  const res = await fetch(
+    "https://www.googleapis.com/youtube/v3/channels?part=contentDetails&mine=true",
+    { headers: { Authorization: `Bearer ${accessToken}` } }
   );
+  if (!res.ok) {
+    console.warn("[youtube] channels.list mine failed", await res.text());
+    return "LL";
+  }
+  const data = await res.json();
+  const id = data.items?.[0]?.contentDetails?.relatedPlaylists?.likes;
+  return typeof id === "string" && id.length > 0 ? id : "LL";
+}
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    console.error("YouTube API Items error:", errorData);
-    throw new Error("Failed to fetch YouTube playlist items");
+export async function fetchPlaylistItems(accessToken: string, playlistId: string, musicOnly = false): Promise<YouTubeTrack[]> {
+  const allPlaylistRows: any[] = [];
+  let pageToken: string | undefined;
+
+  for (let page = 0; page < 20; page++) {
+    const url = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
+    url.searchParams.set("part", "snippet,contentDetails");
+    url.searchParams.set("playlistId", playlistId);
+    url.searchParams.set("maxResults", "50");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+    const response = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("YouTube API Items error:", errorData);
+      throw new Error("Failed to fetch YouTube playlist items");
+    }
+
+    const data = await response.json();
+    const batch = data.items || [];
+    allPlaylistRows.push(...batch);
+    pageToken = data.nextPageToken;
+    if (!pageToken) break;
   }
 
-  const data = await response.json();
-  const items = data.items || [];
-  if (items.length === 0) return [];
+  if (allPlaylistRows.length === 0) return [];
 
-  const videoIds = items.map((item: any) => item.contentDetails.videoId).filter(Boolean).join(",");
-  if (!videoIds) return [];
+  const videoIds = allPlaylistRows.map((item: any) => item.contentDetails?.videoId).filter(Boolean);
+  if (videoIds.length === 0) return [];
 
-  // Fetch extra details (durations, etc) using the videos endpoint
-  const videosResponse = await fetch(
-    `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${videoIds}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
-
-  const videosData = await videosResponse.json();
   const durationMap: Record<string, string> = {};
   const metadataMap: Record<string, any> = {};
 
-  videosData.items?.forEach((video: any) => {
-    durationMap[video.id] = parseISO8601Duration(video.contentDetails?.duration);
-    metadataMap[video.id] = video.snippet;
-  });
+  for (let i = 0; i < videoIds.length; i += 50) {
+    const chunk = videoIds.slice(i, i + 50).join(",");
+    const videosResponse = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${chunk}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!videosResponse.ok) continue;
+    const videosData = await videosResponse.json();
+    videosData.items?.forEach((video: any) => {
+      durationMap[video.id] = parseISO8601Duration(video.contentDetails?.duration);
+      metadataMap[video.id] = video.snippet;
+    });
+  }
 
-  return items.map((item: any) => {
-    const vId = item.contentDetails.videoId;
-    const moreInfo = metadataMap[vId];
-    const thumb = item.snippet.thumbnails?.maxres?.url || moreInfo?.thumbnails?.maxres?.url || 
-                  item.snippet.thumbnails?.standard?.url || moreInfo?.thumbnails?.standard?.url ||
-                  item.snippet.thumbnails?.high?.url || moreInfo?.thumbnails?.high?.url ||
-                  item.snippet.thumbnails?.default?.url;
-    
-    // Clean up " - Topic" from channel titles
-    let artist = item.snippet.videoOwnerChannelTitle || moreInfo?.channelTitle || "Unknown Artist";
-    artist = artist.replace(/\s*-\s*Topic$/, "");
+  return allPlaylistRows
+    .map((item: any) => {
+      const vId = item.contentDetails?.videoId;
+      if (!vId) return null;
+      const moreInfo = metadataMap[vId];
+      const thumb =
+        item.snippet?.thumbnails?.maxres?.url ||
+        moreInfo?.thumbnails?.maxres?.url ||
+        item.snippet?.thumbnails?.standard?.url ||
+        moreInfo?.thumbnails?.standard?.url ||
+        item.snippet?.thumbnails?.high?.url ||
+        moreInfo?.thumbnails?.high?.url ||
+        item.snippet?.thumbnails?.default?.url;
 
-    return {
-      id: item.id,
-      title: item.snippet.title,
-      artist: artist,
-      thumbnailUrl: thumb,
-      videoId: vId,
-      duration: durationMap[vId] || "0:00",
-    };
-  }).filter((item: any) => {
-    if (!musicOnly) return true;
-    const catId = metadataMap[item.videoId]?.categoryId;
-    // Category 10 is Music in YouTube Data API
-    return catId === "10";
-  });
+      let artist = item.snippet?.videoOwnerChannelTitle || moreInfo?.channelTitle || "Unknown Artist";
+      artist = artist.replace(/\s*-\s*Topic$/, "");
+
+      return {
+        id: item.id,
+        title: item.snippet?.title || "Unknown",
+        artist,
+        thumbnailUrl: thumb,
+        videoId: vId,
+        duration: durationMap[vId] || "0:00",
+      };
+    })
+    .filter((row: YouTubeTrack | null): row is YouTubeTrack => row !== null)
+    .filter((item: YouTubeTrack) => {
+      if (!musicOnly) return true;
+      const catId = metadataMap[item.videoId]?.categoryId;
+      return catId === "10";
+    });
 }
 
 /**
@@ -205,11 +236,10 @@ export async function fetchRecentMusicActivities(accessToken: string, max = 40):
 }
 
 export async function fetchLikedSongs(accessToken: string): Promise<YouTubeTrack[]> {
-  // "LL" = Liked videos playlist. Prefer category 10 (Music), but many official MVs / live sets
-  // use other categories (e.g. Entertainment), which made the list look empty while logged in.
-  const musicOnly = await fetchPlaylistItems(accessToken, "LL", true);
+  const likesId = await getLikesPlaylistId(accessToken);
+  const musicOnly = await fetchPlaylistItems(accessToken, likesId, true);
   if (musicOnly.length > 0) return musicOnly;
-  return fetchPlaylistItems(accessToken, "LL", false);
+  return fetchPlaylistItems(accessToken, likesId, false);
 }
 
 export async function rateVideo(accessToken: string, videoId: string, rating: "like" | "none"): Promise<void> {

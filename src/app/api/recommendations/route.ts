@@ -106,7 +106,14 @@ export async function POST(request: Request) {
 
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(googleApiKey as string);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        generationConfig: {
+          temperature: 1.0,
+          topP: 0.95,
+          topK: 40,
+        }
+      });
 
       const curatorPrompt = `You are a world-class music curator for Nexus Music.
 Your mission: Create a playlist that matches the user's specific request while respecting their underlying musical taste "DNA".
@@ -114,10 +121,12 @@ Your mission: Create a playlist that matches the user's specific request while r
 USER CONTEXT:
 1. Primary Request (Vibe): "${prompt}"
 2. Taste DNA (History): [${userTasteSummary || "Varied global hits"}]
+3. Randomness Seed: ${Date.now()}_${Math.random().toString(36).substring(7)}
 
 STRATEGY:
 - CORE CONSTRAINT: If the user specified a language (e.g. Sinhala, Hindi, French) or a genre (e.g. Techno, Jazz), 100% of the songs MUST be in that language/genre. Do NOT mix in songs from the Taste DNA if they don't match the request's language/genre.
 - STYLE MAPPING: Use the Taste DNA to determine the *vibe* (e.g. if they like acoustic/melancholic songs in history, suggest melancholic songs in the requested genre).
+- NO REPETITION: Do NOT suggest any songs that are explicitly listed in the Taste DNA (History) above. Prioritize fresh discoveries.
 - NO LOW QUALITY: Strictly ignore "Live" versions, "Concerts", "Festivals", "Remixes" (unless asked), "Covers", "Karaoke", or "Parodies".
 - QUANTITY: Suggest EXACTLY 20 songs.
 

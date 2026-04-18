@@ -8,13 +8,13 @@ let ytmusicInstance: YTMusic | null = null;
  */
 export async function getYTMusic() {
   if (!ytmusicInstance) {
-    ytmusicInstance = new YTMusic();
+    const instance = new YTMusic();
     const cookie = process.env.YTM_COOKIE;
     
     const init = async () => {
       try {
         if (cookie) {
-          await (ytmusicInstance as any).initialize({ 
+          await (instance as any).initialize({ 
             cookies: cookie,
             headers: {
               "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
@@ -23,7 +23,7 @@ export async function getYTMusic() {
             }
           });
         } else {
-          await ytmusicInstance.initialize();
+          await instance.initialize();
         }
       } catch (e) {
         console.error("[ytmClient] Initial init failed", e);
@@ -33,12 +33,13 @@ export async function getYTMusic() {
     await init();
 
     // Verification: Check if the instance actually got a key
-    const internalKey = (ytmusicInstance as any).yt?.apiKey;
+    const internalKey = (instance as any).yt?.apiKey;
     if (!internalKey) {
       console.warn("[ytmClient] Initialized instance has no API key, retrying...");
-      ytmusicInstance = new YTMusic();
-      await ytmusicInstance.initialize();
+      await instance.initialize();
     }
+    
+    ytmusicInstance = instance;
   }
-  return ytmusicInstance;
+  return ytmusicInstance!;
 }

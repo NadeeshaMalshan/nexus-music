@@ -47,6 +47,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const canManageYtLibrary = !!session?.accessToken;
 
   useEffect(() => {
     async function loadPlaylists() {
@@ -337,41 +338,43 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                 <ChevronDown size={20} className="text-white/10" />
              </div>
              <nav className="space-y-1">
-                {/* 1st Display: Create Playlist Button */}
-                <button 
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="flex items-center gap-4 px-4 py-3 text-white/40 hover:text-white transition-colors group w-full text-left"
-                >
-                   <div 
-                     className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:text-white transition-all duration-300"
-                     style={{ ['--hover-bg' as any]: accentColor }}
-                   >
-                      <Plus size={18} className="group-hover:scale-110 transition-transform" />
-                      <style jsx>{`
-                        div:hover { background-color: var(--art-accent, #FA233B); }
-                      `}</style>
-                   </div>
-                   <span className="text-[16px] font-bold">Create Checklist</span>
-                </button>
+                {canManageYtLibrary && (
+                  <>
+                    <button 
+                      onClick={() => setIsCreateModalOpen(true)}
+                      className="flex items-center gap-4 px-4 py-3 text-white/40 hover:text-white transition-colors group w-full text-left"
+                    >
+                       <div 
+                         className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:text-white transition-all duration-300"
+                         style={{ ['--hover-bg' as any]: accentColor }}
+                       >
+                          <Plus size={18} className="group-hover:scale-110 transition-transform" />
+                          <style jsx>{`
+                            div:hover { background-color: var(--art-accent, #FA233B); }
+                          `}</style>
+                       </div>
+                       <span className="text-[16px] font-bold">Create Checklist</span>
+                    </button>
 
-                {/* 2nd Display: Generate AI Playlist Button */}
-                <button 
-                  onClick={() => setIsAiModalOpen(true)}
-                  className="flex items-center gap-4 px-4 py-3 text-white/40 hover:text-white transition-colors group w-full text-left"
-                >
-                   <div 
-                    className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:text-white transition-all duration-300"
-                    style={{ ['--hover-bg' as any]: accentColor }}
-                   >
-                      <Sparkles size={16} className="group-hover:scale-110 transition-transform" />
-                      <style jsx>{`
-                        div:hover { background-color: var(--art-accent, #FA233B); }
-                      `}</style>
-                   </div>
-                   <span className="text-[16px] font-bold">Generate a Playlist</span>
-                </button>
+                    <button 
+                      onClick={() => setIsAiModalOpen(true)}
+                      className="flex items-center gap-4 px-4 py-3 text-white/40 hover:text-white transition-colors group w-full text-left"
+                    >
+                       <div 
+                        className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:text-white transition-all duration-300"
+                        style={{ ['--hover-bg' as any]: accentColor }}
+                       >
+                          <Sparkles size={16} className="group-hover:scale-110 transition-transform" />
+                          <style jsx>{`
+                            div:hover { background-color: var(--art-accent, #FA233B); }
+                          `}</style>
+                       </div>
+                       <span className="text-[16px] font-bold">Generate a Playlist</span>
+                    </button>
 
-                <div className="h-4" /> {/* Spacer */}
+                    <div className="h-4" />
+                  </>
+                )}
 
                 {playlists.slice(0, 10).map((pl, plIdx) => (
                   <Link
@@ -402,8 +405,12 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
         </div>
       </m.div>
 
-      <CreatePlaylistModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
-      <AiPlaylistModal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} />
+      {canManageYtLibrary && (
+        <>
+          <CreatePlaylistModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
+          <AiPlaylistModal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} />
+        </>
+      )}
 
       {/* Mobile Optimized Nav */}
       <m.div 

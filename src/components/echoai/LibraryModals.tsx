@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { X, Search, Plus, Minus, Music2, Sparkles, Loader2, ListPlus, Wand2, ChevronRight, PlaySquare, History, Play } from "lucide-react";
+import { createPortal } from "react-dom";
+import { X, Search, Plus, Minus, Music2, Sparkles, Loader2, ListPlus, Wand2, ChevronRight, PlaySquare, History, Play, Check } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, SLIDE_UP_VARIANTS, MOTION_CONFIG, EXPO_OUT, FADE_IN_VARIANTS } from "@/lib/animations";
 import { type Song } from "./types";
@@ -9,6 +10,7 @@ import { MusicArtwork } from "./MusicArtwork";
 import { FlowingBackground } from "./FlowingBackground";
 import { MarqueeText } from "./MarqueeText";
 import { useArtworkColors } from "@/lib/useArtworkColors";
+import { useRouter } from "next/navigation";
 
 interface CreateModalSong {
   id: string;
@@ -23,7 +25,14 @@ interface ModalProps {
   accentColor?: string;
 }
 
+function useMounted() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
+}
+
 export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: ModalProps) {
+  const mounted = useMounted();
   const [playlistName, setPlaylistName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<CreateModalSong[]>([]);
@@ -79,10 +88,10 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
     setSearchQuery("");
   };
 
-  return (
+  const tree = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
           <m.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/60"
@@ -224,15 +233,26 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
       )}
     </AnimatePresence>
   );
+
+  if (!mounted) return null;
+  return createPortal(tree, document.body);
 }
 
+type LibrarySyncStatus = "idle" | "saving" | "synced" | "error";
+
 export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: ModalProps) {
+  const mounted = useMounted();
+  const router = useRouter();
   const [step, setStep] = useState<'input' | 'loading' | 'results'>('input');
   const [prompt, setPrompt] = useState("");
   const [favoriteArtists, setFavoriteArtists] = useState("");
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [generatedResult, setGeneratedResult] = useState<{ name: string, songs: CreateModalSong[] }>({ name: "", songs: [] });
-  const [isSaving, setIsSaving] = useState(false);
+  const [librarySyncStatus, setLibrarySyncStatus] = useState<LibrarySyncStatus>("idle");
+
+  useEffect(() => {
+    if (isOpen) setLibrarySyncStatus("idle");
+  }, [isOpen]);
   
   const GENRE_CHIPS = ['Lofi', 'Pop', 'Classical', 'Retrowave', 'Electronic', 'Jazz', 'Acoustic', 'Hip Hop', 'Rock'];
 
@@ -268,6 +288,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
           artwork: rec.thumbnail
         })) as CreateModalSong[]
       });
+      setLibrarySyncStatus("idle");
       setStep('results');
     } catch (err) {
       console.error("AI Error:", err);
@@ -276,23 +297,34 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
   };
 
   const handleSaveToYt = async () => {
-    if (isSaving || !generatedResult.name) return;
-    setIsSaving(true);
+    if (librarySyncStatus === "saving" || librarySyncStatus === "synced") return;
+    const title = generatedResult.name?.trim();
+    const ids = generatedResult.songs.map((s) => s.id).filter(Boolean);
+    if (!title || ids.length === 0) return;
+
+    setLibrarySyncStatus("saving");
     try {
       const res = await fetch("/api/youtube/playlists/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: generatedResult.name, videoIds: generatedResult.songs.map(s => s.id) })
+        body: JSON.stringify({ title, videoIds: ids }),
       });
-      if (res.ok) { onClose(); window.location.reload(); }
-    } catch (err) { console.error("AI Save Error:", err);
-    } finally { setIsSaving(false); }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(typeof data.error === "string" ? data.error : "Failed to save playlist");
+      }
+      setLibrarySyncStatus("synced");
+      router.refresh();
+    } catch (err) {
+      console.error("AI Save Error:", err);
+      setLibrarySyncStatus("error");
+    }
   };
 
-  return (
+  const tree = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 lg:p-12">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 md:p-6 lg:p-12">
           <m.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/60 backdrop-blur-3xl"
@@ -330,13 +362,13 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
               </button>
             </div>
 
-             <div className="relative z-10 flex-1 min-h-0 overflow-y-auto p-6 md:p-12 custom-scrollbar">
+             <div className="relative z-10 flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 md:p-12 custom-scrollbar">
                 {step === 'input' && (
                   <m.div 
                     initial={{ opacity: 0, y: 20 }} 
                     animate={{ opacity: 1, y: 0 }} 
                     transition={MOTION_CONFIG.transition}
-                    className="flex flex-col min-h-[50vh] py-8 md:py-12 space-y-12 md:space-y-16 animate-gpu"
+                    className="flex flex-col min-h-[50vh] py-8 md:py-12 space-y-12 md:space-y-16 animate-gpu pb-4 md:pb-0"
                   >
                    <div className="text-center space-y-4 md:space-y-6">
                       <m.h3 
@@ -403,7 +435,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                                 whileTap={{ scale: 0.98 }}
                                 onClick={handleGenerate}
                                 disabled={!prompt.trim() && !favoriteArtists.trim() && selectedGenres.length === 0}
-                                className="absolute bottom-6 right-6 flex items-center gap-3 px-8 md:px-12 py-4 md:py-5 font-black rounded-full shadow-[0_20px_40px_rgba(0,0,0,0.5)] transition-all disabled:opacity-30 disabled:grayscale"
+                                className="hidden md:flex absolute bottom-6 right-6 items-center gap-3 px-8 md:px-12 py-4 md:py-5 font-black rounded-full shadow-[0_20px_40px_rgba(0,0,0,0.5)] transition-all disabled:opacity-30 disabled:grayscale"
                                 style={{ backgroundColor: accentColor || '#FFF', color: '#000' }}
                               >
                                  <span className="text-sm md:text-lg">Generate</span>
@@ -503,18 +535,44 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
 
                           <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
                             <m.button 
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
+                              whileHover={librarySyncStatus === "synced" || librarySyncStatus === "saving" ? undefined : { scale: 1.05 }}
+                              whileTap={librarySyncStatus === "synced" || librarySyncStatus === "saving" ? undefined : { scale: 0.95 }}
                               onClick={handleSaveToYt}
-                              disabled={isSaving}
-                              className="flex items-center justify-center gap-3 px-10 md:px-14 py-4 md:py-5 font-black rounded-full shadow-[0_20px_60px_rgba(0,0,0,0.6)] transition-all active:shadow-none disabled:opacity-30"
-                              style={{ backgroundColor: accentColor || '#FFF', color: '#000' }}
+                              disabled={librarySyncStatus === "saving" || librarySyncStatus === "synced"}
+                              className={`flex items-center justify-center gap-3 px-10 md:px-14 py-4 md:py-5 font-black rounded-full shadow-[0_20px_60px_rgba(0,0,0,0.6)] transition-all active:shadow-none ${
+                                librarySyncStatus === "synced"
+                                  ? "bg-white/10 text-white border border-white/20 cursor-default"
+                                  : librarySyncStatus === "error"
+                                    ? "bg-red-500/20 text-red-200 border border-red-500/30"
+                                    : ""
+                              }`}
+                              style={
+                                librarySyncStatus === "synced" || librarySyncStatus === "error"
+                                  ? undefined
+                                  : { backgroundColor: accentColor || "#FFF", color: "#000" }
+                              }
                             >
-                               <span className="text-base md:text-xl">{isSaving ? "Syncing..." : "Sync to Library"}</span>
-                               <Plus size={24} />
+                               {librarySyncStatus === "saving" && (
+                                 <Loader2 className="w-5 h-5 md:w-6 md:h-6 shrink-0 animate-spin" />
+                               )}
+                               {librarySyncStatus === "synced" && (
+                                 <Check className="w-5 h-5 md:w-6 md:h-6 shrink-0" strokeWidth={3} />
+                               )}
+                               <span className="text-base md:text-xl">
+                                 {librarySyncStatus === "saving" && "Syncing…"}
+                                 {librarySyncStatus === "synced" && "Synced"}
+                                 {librarySyncStatus === "error" && "Retry sync"}
+                                 {librarySyncStatus === "idle" && "Sync to Library"}
+                               </span>
+                               {(librarySyncStatus === "idle" || librarySyncStatus === "error") && (
+                                 <Plus size={24} />
+                               )}
                             </m.button>
                             <button 
-                              onClick={() => setStep('input')}
+                              onClick={() => {
+                                setLibrarySyncStatus("idle");
+                                setStep('input');
+                              }}
                               className="px-10 py-4 md:py-5 rounded-full bg-white/5 border border-white/10 text-white font-black hover:bg-white/10 transition-all text-base md:text-xl"
                             >
                               New Prompt
@@ -558,11 +616,31 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                   </m.div>
                 )}
              </div>
+
+             {/* Mobile only: docked above home indicator — sibling of scroll so it stays visible */}
+             {step === "input" && (
+               <div className="lg:hidden shrink-0 relative z-30 border-t border-white/10 bg-[#0d0d0f]/95 backdrop-blur-md px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                 <m.button 
+                   whileHover={{ scale: 1.01 }}
+                   whileTap={{ scale: 0.99 }}
+                   onClick={handleGenerate}
+                   disabled={!prompt.trim() && !favoriteArtists.trim() && selectedGenres.length === 0}
+                   className="flex w-full items-center justify-center gap-3 px-6 py-4 font-black rounded-2xl shadow-lg transition-all disabled:opacity-30 disabled:grayscale"
+                   style={{ backgroundColor: accentColor || "#FFF", color: "#000" }}
+                 >
+                   <span className="text-base">Generate playlist</span>
+                   <ChevronRight className="w-5 h-5" />
+                 </m.button>
+               </div>
+             )}
           </m.div>
         </div>
       )}
     </AnimatePresence>
   );
+
+  if (!mounted) return null;
+  return createPortal(tree, document.body);
 }
 
 /** History list for Library (YouTube Music browse + OAuth activity); lives here alongside other library modals/panes. */

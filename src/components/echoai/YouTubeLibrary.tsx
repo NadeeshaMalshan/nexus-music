@@ -129,7 +129,7 @@ export function YouTubeLibrary({
     );
   }, [playedHistory, ytHistory, searchQuery, accentColor, historyFeedMeta?.source]);
 
-  if (!session) {
+  if (!session?.accessToken) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#050505]">
         <div 

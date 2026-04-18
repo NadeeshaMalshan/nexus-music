@@ -10,29 +10,13 @@ const ACR_HOST   = process.env.ACR_HOST   ?? "identify-eu-west-1.acrcloud.com";
 const ACR_KEY    = process.env.ACR_ACCESS_KEY    ?? "";
 const ACR_SECRET = process.env.ACR_ACCESS_SECRET ?? "";
 
-// ─── iTunes Artwork ─────────────────────────────────────────────────────────
+// ─── YouTube Music Artwork ───────────────────────────────────────────────────
 async function getArtwork(artist: string, title: string): Promise<string | undefined> {
-  // 1. Clean terms
+  // Clean terms
   const clean = (s: string) => s.replace(/\(.*\)|\[.*\]/g, "").replace(/feat\..*/gi, "").trim();
   const cArtist = clean(artist);
   const cTitle = clean(title);
-  
-  try {
-    const searchTerm = encodeURIComponent(`${cArtist} ${cTitle}`);
-    const res = await fetch(`https://itunes.apple.com/search?term=${searchTerm}&limit=1&entity=song`, {
-      cache: "no-store",
-      headers: { "User-Agent": "Mozilla/5.0" },
-      signal: AbortSignal.timeout(4000)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.results?.length > 0) {
-        return data.results[0].artworkUrl100.replace("100x100bb.jpg", "800x800bb.jpg");
-      }
-    }
-  } catch {}
 
-  // 2. Fallback to YTM search for thumb
   try {
      const { getYTMusic } = await import("./ytmClient");
      const yt = await getYTMusic();
@@ -41,7 +25,9 @@ async function getArtwork(artist: string, title: string): Promise<string | undef
         const best: any = results[0];
         return best.thumbnails?.[best.thumbnails.length - 1]?.url || best.thumbnail?.url || undefined;
      }
-  } catch {}
+  } catch (e) {
+    console.warn("[Artwork] YTM search failed:", e);
+  }
 
   return undefined;
 }
@@ -49,22 +35,19 @@ async function getArtwork(artist: string, title: string): Promise<string | undef
 // ─── ACRCloud Audio Fingerprint ──────────────────────────────────────────────
 /**
  * Fetches a short audio chunk from a URL and identifies it via ACRCloud.
- * Used for Coachella, Ultra, and any festival without a metadata API.
+ * Used for Tomorrowland fallbacks when the API returns generic branding.
  */
 async function identifyViaACRCloud(audioUrl: string): Promise<LiveMetadata | null> {
   if (!ACR_KEY || !ACR_SECRET) return null;
 
   try {
-    // Fetch a 15-second chunk from the live stream (range header)
     const audioRes = await fetch(audioUrl, {
-      headers: { Range: "bytes=0-307200" }, // ~15s at 160kbps
+      headers: { Range: "bytes=0-307200" }, // ~15s
       signal: AbortSignal.timeout(8000),
     });
     if (!audioRes.ok) return null;
 
     const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
-
-    // Build ACRCloud HMAC signature
     const crypto = await import("node:crypto");
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const stringToSign = ["POST", "/v1/identify", ACR_KEY, "audio", "1", timestamp].join("\n");
@@ -105,18 +88,13 @@ async function identifyViaACRCloud(audioUrl: string): Promise<LiveMetadata | nul
   }
 }
 
-// ─── YouTube HLS Audio URL ────────────────────────────────────────────────────
-/**
- * Gets the direct audio stream URL from a YouTube live video ID.
- * Uses oEmbed + play-dl to resolve the HLS/DASH manifest.
- */
+// ─── YouTube Stream Resolver ─────────────────────────────────────────────────
 async function getYoutubeAudioStreamUrl(videoId: string): Promise<string | null> {
   try {
     const playdl = await import("play-dl");
     const info = await playdl.video_info(`https://www.youtube.com/watch?v=${videoId}`);
     const formats = info.format?.filter((f: any) => f.mimeType?.includes("audio") && f.url);
     if (formats && formats.length > 0) {
-      // Pick lowest bitrate for quick sampling
       const sorted = [...formats].sort((a: any, b: any) => (a.bitrate ?? 999999) - (b.bitrate ?? 999999));
       return sorted[0].url ?? null;
     }
@@ -128,14 +106,13 @@ async function getYoutubeAudioStreamUrl(videoId: string): Promise<string | null>
 
 // ─── Tomorrowland (Triton Digital) ───────────────────────────────────────────
 async function getTomorrowlandMetadata(mountName = "OWR_INTERNATIONAL_ADP", videoId?: string): Promise<LiveMetadata | null> {
-  // 1. Triton Digital
   try {
     const res = await fetch(
       `https://np.tritondigital.com/public/nowplaying?mountName=${mountName}&numberToFetch=1`,
       { 
         cache: "no-store", 
         headers: { 
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "User-Agent": "Mozilla/5.0",
           "Referer": "https://www.tomorrowland.com/"
         },
         signal: AbortSignal.timeout(5000)
@@ -143,18 +120,15 @@ async function getTomorrowlandMetadata(mountName = "OWR_INTERNATIONAL_ADP", vide
     );
     if (res.ok) {
       const xml = await res.text();
-      const artist =
-        xml.match(/<property name="track_artist_name">[\s\S]*?<!\[CDATA\[(.*?)\]\]>[\s\S]*?<\/property>/)?.[1] ||
-        xml.match(/<property name="now_playing_artist">(.*?)<\/property>/)?.[1];
-      const title =
-        xml.match(/<property name="cue_title">[\s\S]*?<!\[CDATA\[(.*?)\]\]>[\s\S]*?<\/property>/)?.[1] ||
-        xml.match(/<property name="now_playing_title">(.*?)<\/property>/)?.[1];
+      const artist = xml.match(/<property name="track_artist_name">[\s\S]*?<!\[CDATA\[(.*?)\]\]>[\s\S]*?<\/property>/)?.[1] ||
+                    xml.match(/<property name="now_playing_artist">(.*?)<\/property>/)?.[1];
+      const title = xml.match(/<property name="cue_title">[\s\S]*?<!\[CDATA\[(.*?)\]\]>[\s\S]*?<\/property>/)?.[1] ||
+                   xml.match(/<property name="now_playing_title">(.*?)<\/property>/)?.[1];
 
       if (artist && title) {
         const a = artist.trim();
         const t = title.trim();
 
-        // If the API returns generic branding, try ACRCloud as a better fallback
         if ((a.toLowerCase() === "tomorrowland" || a.toLowerCase().includes("world radio")) && videoId) {
            const streamUrl = await getYoutubeAudioStreamUrl(videoId);
            if (streamUrl) {
@@ -163,11 +137,8 @@ async function getTomorrowlandMetadata(mountName = "OWR_INTERNATIONAL_ADP", vide
            }
         }
 
-        const sourceName = mountName.includes("DAYBREAK")
-          ? "Daybreak Sessions"
-          : mountName.includes("ANTHEMS")
-          ? "TML Anthems"
-          : "One World Radio";
+        const sourceName = mountName.includes("DAYBREAK") ? "Daybreak Sessions" : 
+                           mountName.includes("ANTHEMS") ? "TML Anthems" : "One World Radio";
         const artwork = await getArtwork(a, t);
         return { artist: a, title: t, source: sourceName, artwork };
       }
@@ -176,32 +147,7 @@ async function getTomorrowlandMetadata(mountName = "OWR_INTERNATIONAL_ADP", vide
     console.warn(`[Triton] Fetch failed for ${mountName}`, err);
   }
 
-  // 1.1 Try OWR_INTERNATIONAL (sometimes different mount is active)
-  if (mountName === "OWR_INTERNATIONAL_ADP") {
-     try {
-       const res = await fetch(
-         `https://np.tritondigital.com/public/nowplaying?mountName=OWR_INTERNATIONAL&numberToFetch=1`,
-         { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(5000) }
-       );
-       if (res.ok) {
-         const xml = await res.text();
-         const artist = xml.match(/<property name="track_artist_name">[\s\S]*?<!\[CDATA\[(.*?)\]\]>[\s\S]*?<\/property>/)?.[1] ||
-                        xml.match(/<property name="now_playing_artist">(.*?)<\/property>/)?.[1];
-         const title = xml.match(/<property name="cue_title">[\s\S]*?<!\[CDATA\[(.*?)\]\]>[\s\S]*?<\/property>/)?.[1] ||
-                       xml.match(/<property name="now_playing_title">(.*?)<\/property>/)?.[1];
-         if (artist && title) {
-           const a = artist.trim();
-           const t = title.trim();
-           if (a.toLowerCase() !== "tomorrowland") {
-             const artwork = await getArtwork(a, t);
-             return { artist: a, title: t, source: "One World Radio", artwork };
-           }
-         }
-       }
-     } catch {}
-  }
-
-  // 2. TuneIn fallback (OWR only)
+  // OWR Fallback
   if (mountName === "OWR_INTERNATIONAL_ADP") {
     try {
       const res = await fetch("https://tunein.com/radio/Tomorrowland-One-World-Radio-s307749/", {
@@ -224,74 +170,6 @@ async function getTomorrowlandMetadata(mountName = "OWR_INTERNATIONAL_ADP", vide
   return null;
 }
 
-// ─── YouTube Title Parser (fallback) ─────────────────────────────────────────
-/**
- * Parses "Artist Name - Song Title | Festival 2025" style YouTube titles.
- * Coachella often formats: "Artist LIVE | Stage | Coachella 2025"
- */
-async function parseLiveTitle(rawTitle: string, festival: string): Promise<LiveMetadata | null> {
-  if (!rawTitle) return null;
-
-  // Remove stage names, year tags, "LIVE", and festival branding from title
-  const cleaned = rawTitle
-    .replace(/coachella\s*\d*/gi, "")
-    .replace(/ultra\s*(music festival)?\s*\d*/gi, "")
-    .replace(/tomorrowland\s*\d*/gi, "")
-    .replace(/\blive\b/gi, "")
-    .replace(/weekend\s*[12]/gi, "")
-    .replace(/\|\s*(mainstage|sahara|coachella stage|outdoor theatre|gobi|mojave|sonora|yuma|GV\d)\b.*/gi, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-
-  // Try "Artist - Song" format first
-  const dashParts = cleaned.split(/\s*-\s*/);
-  if (dashParts.length >= 2) {
-    const artist = dashParts[0].trim();
-    const song   = dashParts.slice(1).join(" - ").split(/[|(]/)[0].trim();
-    if (artist && song && artist.length < 60 && song.length < 80) {
-      const artwork = await getArtwork(artist, song);
-      return { artist, title: song, source: festival, artwork };
-    }
-  }
-
-  // If title before "|" looks like just an artist name, return partial info
-  const pipeParts = cleaned.split("|");
-  const artistOnly = pipeParts[0].trim();
-  if (artistOnly && artistOnly.length < 60) {
-    const artwork = await getArtwork(artistOnly, festival);
-    return { artist: artistOnly, title: `Live at ${festival}`, source: festival, artwork };
-  }
-
-  return null;
-}
-
-async function getGenericFestivalMetadata(festival: string, videoId?: string, rawTitle?: string): Promise<LiveMetadata | null> {
-  if (videoId && ACR_KEY && ACR_SECRET) {
-    const streamUrl = await getYoutubeAudioStreamUrl(videoId);
-    if (streamUrl) {
-      const acr = await identifyViaACRCloud(streamUrl);
-      if (acr) return { ...acr, source: `${festival} (ACRCloud)` };
-    }
-  }
-  if (rawTitle) return parseLiveTitle(rawTitle, festival);
-  return null;
-}
-
-// ─── Coachella ───────────────────────────────────────────────────────────────
-async function getCoachellaMetadata(videoId?: string, rawTitle?: string): Promise<LiveMetadata | null> {
-  return getGenericFestivalMetadata("Coachella", videoId, rawTitle);
-}
-
-// ─── Ultra / UMF ─────────────────────────────────────────────────────────────
-async function getUltraMetadata(videoId?: string, rawTitle?: string): Promise<LiveMetadata | null> {
-  return getGenericFestivalMetadata("Ultra Music Festival", videoId, rawTitle);
-}
-
-// ─── EDC ─────────────────────────────────────────────────────────────────────
-async function getEDCMetadata(videoId?: string, rawTitle?: string): Promise<LiveMetadata | null> {
-  return getGenericFestivalMetadata("EDC", videoId, rawTitle);
-}
-
 // ─── Main Export ──────────────────────────────────────────────────────────────
 export async function getLiveMetadata(
   query: string,
@@ -301,8 +179,9 @@ export async function getLiveMetadata(
   const q = (query || "").toLowerCase();
   const t = (currentTitle || "").toLowerCase();
 
-  // 1. Tomorrowland / One World Radio
-  const isTML = q.includes("tomorrowland") || t.includes("tomorrowland") || q.includes("one world") || t.includes("one world") || q.includes("owr") || t.includes("owr");
+  const isTML = q.includes("tomorrowland") || t.includes("tomorrowland") || 
+                q.includes("one world") || t.includes("one world") || 
+                q.includes("owr") || t.includes("owr");
   
   if (isTML) {
     if (q.includes("daybreak") || t.includes("daybreak"))
@@ -310,27 +189,10 @@ export async function getLiveMetadata(
     if (q.includes("anthem") || t.includes("anthem"))
       return getTomorrowlandMetadata("OWR_ANTHEMS", videoId);
       
-    // Default OWR
     const data = await getTomorrowlandMetadata("OWR_INTERNATIONAL_ADP", videoId);
     if (data && data.artist.toLowerCase() !== "tomorrowland") return data;
     
-    // Fallback search
     return getTomorrowlandMetadata("OWR_INTERNATIONAL", videoId);
-  }
-
-  // 2. Coachella
-  if (q.includes("coachella") || t.includes("coachella")) {
-    return getCoachellaMetadata(videoId, currentTitle);
-  }
-
-  // 3. Ultra / UMF
-  if (q.includes("ultra") || q.includes("umf") || t.includes("ultra") || t.includes("umf")) {
-    return getUltraMetadata(videoId, currentTitle);
-  }
-
-  // 4. EDC
-  if (q.includes("edc") || t.includes("edc") || q.includes("electric daisy") || t.includes("electric daisy")) {
-    return getEDCMetadata(videoId, currentTitle);
   }
 
   return null;

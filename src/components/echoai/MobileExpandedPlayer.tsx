@@ -252,10 +252,6 @@ export function MobileExpandedPlayer({
     targetTitle.includes("owr") ||
     targetTitle.includes("daybreak") ||
     targetTitle.includes("anthem") ||
-    targetTitle.includes("coachella") ||
-    targetTitle.includes("ultra") ||
-    targetTitle.includes("umf") ||
-    targetTitle.includes("edc") ||
     targetTitle.includes(" 24/7") ||
     (targetTitle.includes("live") && (targetTitle.includes("stream") || targetTitle.includes("festival") || targetTitle.includes("radio"))) ||
     (Math.abs(safeDuration) < 1 && isPlaying && (targetTitle.includes("fest") || targetTitle.includes("radio") || targetTitle.includes("live") || !!liveMetadata));

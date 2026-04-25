@@ -373,6 +373,96 @@ export async function addSongToPlaylist(accessToken: string, playlistId: string,
   }
 }
 
+/**
+ * Batches `videos.list` to attach duration (and best thumbnails) to search/related results.
+ */
+export async function hydrateYouTubeTrackDetails(accessToken: string, tracks: YouTubeTrack[]): Promise<YouTubeTrack[]> {
+  if (tracks.length === 0) return [];
+  const ids = tracks.map((t) => t.videoId).filter(Boolean);
+  if (ids.length === 0) return tracks;
+
+  const durationMap: Record<string, string> = {};
+  const thumbMap: Record<string, string> = {};
+
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50).join(",");
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${chunk}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!res.ok) continue;
+    const data = await res.json().catch(() => null);
+    if (!data) continue;
+    for (const video of data.items || []) {
+      const id = video.id;
+      if (!id) continue;
+      durationMap[id] = parseISO8601Duration(video.contentDetails?.duration);
+      const sn = video.snippet;
+      if (sn?.thumbnails) {
+        thumbMap[id] =
+          sn.thumbnails.maxres?.url ||
+          sn.thumbnails.high?.url ||
+          sn.thumbnails.default?.url ||
+          "";
+      }
+    }
+  }
+
+  return tracks.map((t) => ({
+    ...t,
+    duration: durationMap[t.videoId] || t.duration || "0:00",
+    thumbnailUrl: thumbMap[t.videoId] || t.thumbnailUrl,
+  }));
+}
+
+/**
+ * `search.list` in category Music (10). YouTube Data API only; uses the signed-in user’s quota.
+ */
+export async function searchYouTubeMusicCategoryVideos(
+  accessToken: string,
+  query: string,
+  maxResults = 12
+): Promise<YouTubeTrack[]> {
+  const q = query?.trim();
+  if (!q) return [];
+
+  const url = new URL("https://www.googleapis.com/youtube/v3/search");
+  url.searchParams.set("part", "snippet");
+  url.searchParams.set("q", q);
+  url.searchParams.set("type", "video");
+  url.searchParams.set("videoCategoryId", "10");
+  url.searchParams.set("maxResults", String(Math.min(15, maxResults + 3)));
+
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    assertNotYouTubeQuotaError(response, errorData);
+    console.error("YouTube search (music) error:", errorData);
+    return [];
+  }
+
+  const data = await response.json();
+  const items = (data.items || [])
+    .filter((item: any) => item.id?.videoId)
+    .map((item: any) => ({
+      id: item.id.videoId,
+      videoId: item.id.videoId,
+      title: item.snippet?.title || "Unknown",
+      artist: (item.snippet?.channelTitle || "Unknown").replace(/\s*-\s*Topic$/, ""),
+      thumbnailUrl:
+        item.snippet?.thumbnails?.maxres?.url ||
+        item.snippet?.thumbnails?.high?.url ||
+        item.snippet?.thumbnails?.default?.url ||
+        "",
+    })) as YouTubeTrack[];
+
+  const withDuration = await hydrateYouTubeTrackDetails(accessToken, items);
+  return withDuration.slice(0, maxResults);
+}
+
 export async function fetchRelatedVideos(accessToken: string, videoId: string): Promise<YouTubeTrack[]> {
   const response = await fetch(
     `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=15&videoCategoryId=10`,
@@ -384,19 +474,23 @@ export async function fetchRelatedVideos(accessToken: string, videoId: string): 
   );
 
   if (!response.ok) {
-    const errorData = await response.json();
+    const errorData = await response.json().catch(() => ({}));
     console.error("YouTube Related error:", errorData);
     return [];
   }
 
-  const data = await response.json();
-  return data.items.map((item: any) => ({
-    id: item.id.videoId,
-    title: item.snippet.title,
-    artist: item.snippet.channelTitle.replace(/\s*-\s*Topic$/, ""),
-    thumbnailUrl: item.snippet.thumbnails?.maxres?.url || item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
-    videoId: item.id.videoId,
-  }));
+  const data = await response.json().catch(() => null);
+  if (!data) return [];
+  const items = (data.items || [])
+    .filter((item: any) => item.id?.videoId)
+    .map((item: any) => ({
+      id: item.id.videoId,
+      title: item.snippet.title,
+      artist: item.snippet.channelTitle.replace(/\s*-\s*Topic$/, ""),
+      thumbnailUrl: item.snippet.thumbnails?.maxres?.url || item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
+      videoId: item.id.videoId,
+    })) as YouTubeTrack[];
+  return hydrateYouTubeTrackDetails(accessToken, items);
 }
 
 export async function fetchChannelStats(accessToken: string, channelId: string) {

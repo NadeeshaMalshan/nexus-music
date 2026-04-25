@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { UserSettings, DEFAULT_SETTINGS } from "@/types/settings";
 import { useSession } from "next-auth/react";
 import { MotionConfig } from "motion/react";
+import { readResponseJson } from "@/lib/readResponseJson";
 
 interface SettingsContextType {
   settings: UserSettings;
@@ -33,9 +34,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       try {
         const res = await fetch("/api/settings");
         if (res.ok) {
-          const apiSettings = await res.json();
-          setSettings(apiSettings);
-          localStorage.setItem("nexus_settings", JSON.stringify(apiSettings));
+          const apiSettings = await readResponseJson<UserSettings>(res);
+          if (apiSettings) {
+            setSettings(apiSettings);
+            localStorage.setItem("nexus_settings", JSON.stringify(apiSettings));
+          }
         }
       } catch (e) {
         console.error("Fetch settings error", e);

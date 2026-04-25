@@ -791,7 +791,7 @@ export function LibraryHistoryPane({
             <History className="w-12 h-12 md:w-14 md:h-14 text-white/15 mb-4" />
             <p className="text-lg font-black text-white/40">No history yet</p>
             <p className="text-sm text-white/25 font-medium mt-2 max-w-sm">
-              Play music in Nexus to build app history. Server admins can set <span className="text-white/45">YTM_COOKIE</span> to pull the YouTube Music history shelf as well.
+              When you are signed in, we show music-related activity from your YouTube account (Google does not expose full watch history to third-party apps).
             </p>
           </div>
         ) : (

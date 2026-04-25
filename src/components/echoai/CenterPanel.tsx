@@ -7,6 +7,7 @@ import { APPLE_EASE, FADE_IN_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
 import { type Song } from "./types";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
 import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
+import { readResponseJson } from "@/lib/readResponseJson";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { MusicArtwork } from "./MusicArtwork";
@@ -376,8 +377,8 @@ export function CenterPanel(props: CenterPanelProps) {
     try {
       const response = await fetch("/api/youtube/playlists", youtubeApiFetchInit(session.accessToken));
       if (response.ok) {
-        const data = await response.json();
-        setPlaylists(data.slice(0, 12));
+        const data = await readResponseJson<YouTubePlaylist[]>(response);
+        if (Array.isArray(data)) setPlaylists(data.slice(0, 12));
       }
     } catch (err) {
       console.error("Failed to fetch playlists:", err);
@@ -455,7 +456,8 @@ export function CenterPanel(props: CenterPanelProps) {
       });
 
       if (res.ok) {
-        const data = await res.json();
+        const data = await readResponseJson<{ recommendations?: unknown[] }>(res);
+        if (!data) return;
         const resolved = (data.recommendations || []).map((track: any) => ({
           ...track,
           id: track.youtubeId,
@@ -473,12 +475,25 @@ export function CenterPanel(props: CenterPanelProps) {
   const fetchAudioPicks = useCallback(async () => {
     setAudioPicksLoading(true);
     try {
+      // Taste comes from the signed-in YouTube account; results come from public YT Music songs/Up Next.
+      const pr = await fetch(
+        "/api/audio/personalized",
+        youtubeApiFetchInit(session?.accessToken, { cache: "no-store" })
+      );
+      if (pr.ok) {
+        const pdata = await readResponseJson<{ items?: SearchItem[] }>(pr);
+        const pitems = (pdata?.items || []).filter((x) => !!x?.videoId);
+        if (pitems.length > 0) {
+          setAudioPicks(pitems.slice(0, 12));
+          return;
+        }
+      }
       const seeds = seedQueries();
-      // Use YT Music song search (music.youtube.com) for audio-first picks.
       const q = `${seeds[0]} audio`;
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=songs`, { cache: "no-store" });
       if (!res.ok) return;
-      const data = (await res.json()) as { items?: SearchItem[] };
+      const data = await readResponseJson<{ items?: SearchItem[] }>(res);
+      if (!data) return;
       const items = (data.items || [])
         .filter((x) => !!x?.videoId)
         .slice(0, 12);
@@ -488,7 +503,7 @@ export function CenterPanel(props: CenterPanelProps) {
     } finally {
       setAudioPicksLoading(false);
     }
-  }, [seedQueries]);
+  }, [seedQueries, session?.accessToken]);
 
   const fetchLiveNow = useCallback(async () => {
     setLiveNowLoading(true);
@@ -497,7 +512,8 @@ export function CenterPanel(props: CenterPanelProps) {
       const q = `${seeds[0]} live`;
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=live`, { cache: "no-store" });
       if (!res.ok) return;
-      const data = (await res.json()) as { items?: SearchItem[] };
+      const data = await readResponseJson<{ items?: SearchItem[] }>(res);
+      if (!data) return;
       const items = (data.items || [])
         .filter((x) => !!x?.videoId)
         .slice(0, 12);
@@ -512,11 +528,27 @@ export function CenterPanel(props: CenterPanelProps) {
   const fetchVideoPicks = useCallback(async () => {
     setVideoPicksLoading(true);
     try {
+      // YouTube / YT Music only: history, top artists, related + YT Music search (no generative model).
+      if (session?.accessToken) {
+        const pr = await fetch(
+          "/api/music-videos/personalized",
+          youtubeApiFetchInit(session.accessToken, { cache: "no-store" })
+        );
+        if (pr.ok) {
+          const pdata = await readResponseJson<{ items?: SearchItem[] }>(pr);
+          const pitems = (pdata?.items || []).filter((x) => !!x?.videoId);
+          if (pitems.length > 0) {
+            setVideoPicks(pitems.slice(0, 12));
+            return;
+          }
+        }
+      }
       const seeds = seedQueries();
       const q = `${seeds[0]} official music video`;
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=videos`, { cache: "no-store" });
       if (!res.ok) return;
-      const data = (await res.json()) as { items?: SearchItem[] };
+      const data = await readResponseJson<{ items?: SearchItem[] }>(res);
+      if (!data) return;
       const items = (data.items || []).filter((x) => !!x?.videoId).slice(0, 12);
       setVideoPicks(items);
     } catch (e) {
@@ -524,7 +556,7 @@ export function CenterPanel(props: CenterPanelProps) {
     } finally {
       setVideoPicksLoading(false);
     }
-  }, [seedQueries]);
+  }, [seedQueries, session?.accessToken]);
 
   const fetchPlaylistRecs = useCallback(async () => {
     setPlaylistRecsLoading(true);
@@ -533,7 +565,8 @@ export function CenterPanel(props: CenterPanelProps) {
       const q = `${seeds[0]} mix playlist`;
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=playlists`, { cache: "no-store" });
       if (!res.ok) return;
-      const data = (await res.json()) as { items?: PlaylistSearchItem[] };
+      const data = await readResponseJson<{ items?: PlaylistSearchItem[] }>(res);
+      if (!data) return;
       const items = (data.items || [])
         .filter((x) => x?.type === "PLAYLIST" && x?.id)
         .slice(0, 12) as PlaylistSearchItem[];
@@ -552,7 +585,8 @@ export function CenterPanel(props: CenterPanelProps) {
       const q = seeds[0];
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=artists`, { cache: "no-store" });
       if (!res.ok) return;
-      const data = (await res.json()) as { items?: ArtistSearchItem[] };
+      const data = await readResponseJson<{ items?: ArtistSearchItem[] }>(res);
+      if (!data) return;
       const items = (data.items || [])
         .filter((x) => x?.type === "ARTIST" && (x as ArtistSearchItem).name)
         .slice(0, 12) as ArtistSearchItem[];
@@ -573,7 +607,10 @@ export function CenterPanel(props: CenterPanelProps) {
         youtubeApiFetchInit(session.accessToken, { cache: "no-store" })
       );
       if (!res.ok) return;
-      const data = (await res.json()) as { videoId?: string; title?: string; artist?: string; thumbnailUrl?: string; duration?: string }[];
+      const data = await readResponseJson<
+        { videoId?: string; title?: string; artist?: string; thumbnailUrl?: string; duration?: string }[]
+      >(res);
+      if (!data) return;
       const rows: SearchItem[] = (data || [])
         .filter((t) => !!t?.videoId)
         .slice(0, 20)
@@ -802,7 +839,12 @@ export function CenterPanel(props: CenterPanelProps) {
                 </Shelf>
               )}
 
-              <Shelf title="Music videos" subtitle="Watch the official visuals" onRefresh={fetchVideoPicks} loading={videoPicksLoading}>
+              <Shelf
+                title="Music videos"
+                subtitle="The visual half of what's been living rent-free in your head"
+                onRefresh={fetchVideoPicks}
+                loading={videoPicksLoading}
+              >
                 {videoPicksLoading ? (
                   Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />

@@ -1,6 +1,7 @@
 import YTMusic from "ytmusic-api";
 
 let ytmusicInstance: YTMusic | null = null;
+let publicYtmusicInstance: YTMusic | null = null;
 
 /**
  * Initializes and returns a singleton YTMusic instance.
@@ -42,4 +43,17 @@ export async function getYTMusic() {
     ytmusicInstance = instance;
   }
   return ytmusicInstance!;
+}
+
+/**
+ * Public YouTube Music client: never sends YTM_COOKIE. Use this when a feature
+ * must rely on public YT Music ranking only, while taste signals come from OAuth.
+ */
+export async function getPublicYTMusic() {
+  if (!publicYtmusicInstance) {
+    const instance = new YTMusic();
+    await instance.initialize();
+    publicYtmusicInstance = instance;
+  }
+  return publicYtmusicInstance!;
 }

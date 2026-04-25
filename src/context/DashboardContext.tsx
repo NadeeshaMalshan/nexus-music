@@ -6,6 +6,7 @@ import { type YouTubePlaylist } from "@/lib/youtubeData";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { useSession } from "next-auth/react";
 import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
+import { readResponseJson } from "@/lib/readResponseJson";
 import { useArtworkColors } from "@/lib/useArtworkColors";
 import { useSettings } from "./SettingsContext";
 import { type LiveMetadata } from "@/lib/live-tracker";
@@ -444,19 +445,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (status !== "authenticated") return;
     fetch("/api/youtube/liked", youtubeApiFetchInit(session?.accessToken))
-      .then((res) => res.json())
-      .then((tracks) => {
-        if (Array.isArray(tracks)) {
-          const rows: LikedLibraryTrackRow[] = tracks
-            .map((t: any) => ({
-              videoId: String(t.videoId || "").trim(),
-              title: String(t.title ?? ""),
-              artist: String(t.artist ?? ""),
-            }))
-            .filter((r) => r.videoId);
-          setLikedSongs(new Set(rows.map((r) => r.videoId)));
-          setLikedLibraryTracks(rows);
-        }
+      .then(async (res) => {
+        if (!res.ok) return;
+        const tracks = await readResponseJson<unknown[]>(res);
+        if (!Array.isArray(tracks)) return;
+        const rows: LikedLibraryTrackRow[] = tracks
+          .map((t: any) => ({
+            videoId: String(t.videoId || "").trim(),
+            title: String(t.title ?? ""),
+            artist: String(t.artist ?? ""),
+          }))
+          .filter((r) => r.videoId);
+        setLikedSongs(new Set(rows.map((r) => r.videoId)));
+        setLikedLibraryTracks(rows);
       })
       .catch((err) => console.error("Error fetching liked songs:", err));
   }, [status, session?.accessToken]);
@@ -499,7 +500,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           setAudioData(null);
           return;
         }
-        const payload = (await response.json()) as AudioPayload;
+        const payload = await readResponseJson<AudioPayload>(response);
+        if (!payload) {
+          setAudioData(null);
+          return;
+        }
         audioCacheRef.current[cacheKey] = payload;
         setAudioData(payload);
 
@@ -561,8 +566,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           cache: "no-store",
         });
         if (!response.ok) throw new Error("Failed to fetch direct URL");
-        const data = await response.json();
-        if (data.url) {
+        const data = await readResponseJson<{ url?: string }>(response);
+        if (data?.url) {
           setDirectAudioUrl(data.url);
         }
       } catch (error) {
@@ -600,8 +605,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           { signal: controller.signal, cache: "no-store" }
         );
         if (!response.ok) throw new Error("Failed to fetch lyrics");
-        const payload = (await response.json()) as LyricsPayload;
-        setLyricsData(payload);
+        const payload = await readResponseJson<LyricsPayload>(response);
+        setLyricsData(payload ?? null);
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           console.error("Failed to load lyrics payload:", error);
@@ -643,7 +648,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({ recentTrackId: currentSong!.id, userHistory }),
         });
         if (!recRes.ok) throw new Error(`API error ${recRes.status}`);
-        const recData = await recRes.json();
+        const recData = await readResponseJson<{ recommendations?: unknown[] }>(recRes);
+        if (!recData) return;
         const recs = (recData.recommendations || []).slice(0, 5);
         const resolvedSongs: Song[] = recs.map((rec: any) => ({
           id: rec.youtubeId,
@@ -677,7 +683,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           setUpNextQueue([]);
           return;
         }
-        const data = await res.json();
+        const data = await readResponseJson<{ queue?: unknown[] }>(res);
+        if (!data) {
+          setUpNextQueue([]);
+          return;
+        }
         const tracks: Song[] = (data.queue || []).map((t: any) => ({
           id: t.youtubeId,
           title: t.title,
@@ -722,7 +732,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           { signal: controller.signal, cache: "no-store" }
         );
         if (response.ok) {
-          const facts = await response.json();
+          const facts = await readResponseJson<unknown>(response);
           setKnowFacts(Array.isArray(facts) ? facts : []);
         }
       } catch (err) {
@@ -770,7 +780,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         const url  = `/api/live-tracker?query=${encodeURIComponent(query)}&title=${encodeURIComponent(currentSong.title)}&videoId=${encodeURIComponent(videoId)}`;
         const res = await fetch(url);
         if (res.ok) {
-          const data = await res.json();
+          const data = await readResponseJson<LiveMetadata>(res);
           if (data?.artist && data?.title) {
             setLiveMetadata(prev => {
               if (prev?.title === data.title && prev?.artist === data.artist) return prev;
@@ -1359,8 +1369,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         const query = `${liveMetadata.artist} - ${liveMetadata.title}`;
         const searchRes = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         if (searchRes.ok) {
-          const searchData = await searchRes.json();
-          const bestMatch = searchData.items?.find((item: any) => item.type === "SONG") || searchData.items?.[0];
+          const searchData = await readResponseJson<{ items?: { type?: string; videoId?: string }[] }>(searchRes);
+          const bestMatch = searchData?.items?.find((item) => item.type === "SONG") || searchData?.items?.[0];
           if (bestMatch?.videoId) {
             targetId = bestMatch.videoId;
             finalMeta = { title: liveMetadata.title, artist: liveMetadata.artist };

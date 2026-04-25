@@ -7,8 +7,8 @@ import { fetchYTMusicBrowseHistory } from "@/lib/ytmHistoryBrowse";
 
 export const dynamic = "force-dynamic";
 
-// Gemma 4 26B (A4B) model ID
-const GEMMA_MODEL = "gemma-4-26b-a4b-it";
+// Gemini 2.5 Flash (recommendation pipeline: profiler, curation, explanations)
+const RECOMMENDATIONS_MODEL = "gemini-2.5-flash";
 const googleApiKey = process.env.GEMINI_API_KEY;
 
 /** Normalize common model quirks before JSON.parse */
@@ -105,7 +105,7 @@ function parseCurationJson(raw: string): { primaryLanguage?: string; tracks?: un
  * ─────────────────────────────────────────────────────────────────────────────
  * POST /api/recommendations
  * Deep AI Recommendation Pipeline: Profiler -> Brain -> Engine
- * Powered by Gemma 4 26B (A4B)
+ * Powered by Gemini 2.5 Flash
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export async function POST(request: Request) {
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
     const genAI = new GoogleGenerativeAI(googleApiKey);
     const model = genAI.getGenerativeModel({ 
-      model: GEMMA_MODEL,
+      model: RECOMMENDATIONS_MODEL,
       generationConfig: { 
         temperature: 0.7, 
         topP: 0.95, 
@@ -159,7 +159,7 @@ Return ONLY valid JSON in this exact shape (the full sentence as the value of "p
 {"persona":"The user is a ..."}`;
         
         const textModel = genAI.getGenerativeModel({
-          model: GEMMA_MODEL,
+          model: RECOMMENDATIONS_MODEL,
           generationConfig: {
             temperature: 0.3,
             responseMimeType: "application/json",
@@ -186,7 +186,7 @@ Return ONLY valid JSON in this exact shape (the full sentence as the value of "p
 
     // ── PHASE 2: THE BRAIN ──────────────────────────────────────────────
     // Generate the playlist based on Persona + Current Prompt
-    console.log("[Recommendations] Phase 2: Curation via Gemma 4...");
+    console.log("[Recommendations] Phase 2: Curation via Gemini 2.5 Flash...");
     const activePrompt = prompt || "Create a personalized discovery mix.";
     
     const curatorPrompt = `You are a music recommendation engine. Output ONLY raw JSON, no markdown, no explanation.
@@ -206,7 +206,7 @@ Return this exact structure with real values (not placeholders):
     } catch (e) {
       const preview = rawCuration.length > 2000 ? rawCuration.slice(0, 2000) + "…" : rawCuration;
       console.error("[Recommendations] Final JSON Parse Failed:", preview);
-      throw new Error("Gemma output was malformed even after surgical extraction");
+      throw new Error("Model output was malformed even after surgical extraction");
     }
     
     const suggestedTracks = curationObj.tracks || [];
@@ -262,7 +262,7 @@ Format ONLY as a JSON array of strings.`;
     return NextResponse.json({ recommendations });
   } catch (error: any) {
     console.error("[Recommendations] Fatal Error:", error);
-    return NextResponse.json({ error: "Gemma Pipeline failed", detail: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Recommendation pipeline failed", detail: error.message }, { status: 500 });
   }
 }
 

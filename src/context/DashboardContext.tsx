@@ -656,7 +656,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           title: rec.title,
           artist: rec.artist,
           artwork: rec.thumbnail,
-          duration: rec.duration || "0:00",
           color: palette.accent,
         }));
         if (resolvedSongs.length > 0) {

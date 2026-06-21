@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
-import { searchSongsRobust } from "@/lib/ytmSearchService";
-import ytdl from "@distube/ytdl-core";
+import { searchSongsRobust, searchVideosRobust } from "@/lib/ytmSearchService";
+
+interface VideoSearchResult {
+  youtubeId: string;
+  title: string;
+  artist: string;
+}
 
 function youtubeHqThumbnail(videoId: string): string {
   return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
@@ -26,6 +31,14 @@ function upgradeThumbnail(url?: string, videoId?: string): string {
   }
 
   return url;
+}
+
+function cleanSongTitleForVideoSearch(title: string): string {
+  return title
+    .replace(/\s*[\(\[][^)]*?(radio|edit|audio|lyric|visualizer|remaster|version|feat|ft|with|clip|cover|tribute|karaoke|instrumental|hd|4k|video|mv|m\/v)[^)]*?[\)\]]/gi, "")
+    .replace(/\s+-\s+.*$/gi, "") // remove anything after " - " if it got added to the title
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 
@@ -54,6 +67,72 @@ export async function GET(request: Request) {
     if (isVideo && directVideoId) {
        // For standard videos, we prioritize the passed metadata (from YouTube oembed)
        // This ensures channel name -> artist and video title -> trackName
+       try {
+         const cleanTitle = cleanSongTitleForVideoSearch(trackName);
+         const cleanArtist = artist.replace(/\s*-\s*Topic\s*$/i, "").trim();
+         const videoQuery = `${cleanArtist} ${cleanTitle} official music video`.trim();
+         console.log(`[audio] Searching official M/V for: "${videoQuery}"`);
+         
+         const searchResults = await searchVideosRobust(videoQuery);
+         if (searchResults && searchResults.length > 0) {
+           let bestMatch: VideoSearchResult | null = null;
+           let backupMatch: VideoSearchResult | null = null;
+           const queryArtistLower = cleanArtist.toLowerCase();
+           const queryTitleLower = cleanTitle.toLowerCase();
+           
+           const channelBlacklist = [
+             "fan club", "fanclub", "karaoke", "lyrics", "tribute", 
+             "cover", "upscaled", "bootleg", "fan page", "fanpage", 
+             "nightcore", "slowed", "reverb", "loop", "mashup", "unofficial"
+           ];
+
+           const titleBlacklist = [
+             "unofficial", "fan-made", "fanmade", "tribute", "cover", 
+             "bootleg", "karaoke", "instrumental", "preview", "teaser"
+           ];
+
+           for (const searchItem of searchResults) {
+             const res = searchItem as VideoSearchResult;
+             const titleLower = res.title.toLowerCase();
+             const artistLower = res.artist.toLowerCase();
+             const cleanResultArtist = artistLower.replace(/\s*-\s*Topic\s*$/i, "").trim();
+             const cleanResultTitle = cleanSongTitleForVideoSearch(res.title).toLowerCase();
+             
+             const hasBlacklistedArtistWord = channelBlacklist.some(word => cleanResultArtist.includes(word));
+             const hasBlacklistedTitleWord = titleBlacklist.some(word => titleLower.includes(word));
+             
+             if (hasBlacklistedArtistWord || hasBlacklistedTitleWord) {
+               continue;
+             }
+             
+             const artistMatches = cleanResultArtist.includes(queryArtistLower) || queryArtistLower.includes(cleanResultArtist);
+             const titleMatches = cleanResultTitle.includes(queryTitleLower) || queryTitleLower.includes(cleanResultTitle);
+             
+             if (artistMatches && titleMatches) {
+               const isOfficialMV = titleLower.includes("official") && (titleLower.includes("video") || titleLower.includes("m/v") || titleLower.includes("mv"));
+               const isMV = titleLower.includes("music video") || titleLower.includes("m/v") || titleLower.includes("mv");
+               const isLyricOrAudio = titleLower.includes("lyric") || titleLower.includes("audio") || titleLower.includes("karaoke");
+               
+               if (isOfficialMV && !isLyricOrAudio) {
+                 bestMatch = res;
+                 break; // Perfect match found
+               } else if (isMV && !isLyricOrAudio) {
+                 bestMatch = res; // Good match
+               } else if (!backupMatch && !isLyricOrAudio) {
+                 backupMatch = res; // Keep as backup (first match with clean artist)
+               }
+             }
+           }
+           
+           const finalMatch = bestMatch || backupMatch;
+           if (finalMatch) {
+             console.log(`[audio] Found M/V: "${finalMatch.title}" (${finalMatch.youtubeId})`);
+             musicVideoId = finalMatch.youtubeId;
+           }
+         }
+       } catch (err) {
+         console.error("[audio] Error searching for official video:", err);
+       }
     } else {
       // Fetch refined metadata from YouTube Music based on the query
       const searchResults = await searchSongsRobust(query || "");

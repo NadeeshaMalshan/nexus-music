@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Play, Loader2, Music, RefreshCw, ListPlus, PlaySquare, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, Loader2, Music, RefreshCw, ListPlus, PlaySquare, ChevronLeft, ChevronRight, LogIn } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, FADE_IN_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
 import { type Song } from "./types";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
 import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
 import { readResponseJson } from "@/lib/readResponseJson";
-import { useSession } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { MusicArtwork } from "./MusicArtwork";
 import { YouTubeLibrary } from "./YouTubeLibrary";
@@ -139,8 +139,9 @@ function ForYouCard(props: {
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
   onNavigateArtist?: (name: string) => void;
+  priority?: boolean;
 }) {
-  const { track, index, onPlay, isPlaying, accentColor, onAddToQueue, onPlayNext, onNavigateArtist } = props;
+  const { track, index, onPlay, isPlaying, accentColor, onAddToQueue, onPlayNext, onNavigateArtist, priority } = props;
 
   return (
     <m.div
@@ -157,6 +158,7 @@ function ForYouCard(props: {
           variant="track"
           rounded="3xl"
           className="transition-transform duration-700 group-hover:scale-110"
+          priority={priority}
         />
         
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-4">
@@ -458,6 +460,7 @@ export function CenterPanel(props: CenterPanelProps) {
       if (res.ok) {
         const data = await readResponseJson<{ recommendations?: unknown[] }>(res);
         if (!data) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const resolved = (data.recommendations || []).map((track: any) => ({
           ...track,
           id: track.youtubeId,
@@ -789,7 +792,6 @@ export function CenterPanel(props: CenterPanelProps) {
               <Settings />
             </m.div>
           )}
-
           {activeView === "home" && (
             <m.div
               key="home"
@@ -799,201 +801,248 @@ export function CenterPanel(props: CenterPanelProps) {
               variants={FADE_IN_VARIANTS}
               className="flex-1 h-full min-h-0 overflow-y-auto custom-scrollbar px-6 md:px-10 lg:px-16 pt-12 pb-40 space-y-20"
             >
-              <header className="mb-12">
-                <h1 className="text-[48px] font-black tracking-tighter text-white leading-none mb-3">Listen Now</h1>
-                <p className="text-[20px] font-medium text-white/40">
-                  Personalized for you
-                </p>
-              </header>
-
-              <Shelf title="Recommended Songs" subtitle="AI picks based on your recent plays" onRefresh={fetchForYou} loading={forYouLoading}>
-                {forYouLoading ? (
-                   Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
-                   ))
-                ) : (
-                  forYouTracks.map((track, i) => (
-                    <div key={`${track.id || track.title}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0">
-                      <ForYouCard
-                        track={track}
-                        index={i}
-                        accentColor={accentColor}
-                        isPlaying={forYouPlayingId === track.id}
-                        onPlay={() => handlePlayForYou(track)}
-                        onAddToQueue={onAddToQueue}
-                        onPlayNext={onPlayNext}
-                        onNavigateArtist={props.onNavigateArtist}
-                      />
-                    </div>
-                  ))
-                )}
-              </Shelf>
-
-              {recentPlaysItems.length > 0 && (
-                <Shelf title="Recent plays" subtitle="Picks from your session in Nexus">
-                  {recentPlaysItems.map((item, i) => (
-                    <div key={`recent-${item.videoId}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0">
-                      <SearchCard item={item} index={i} accentColor={accentColor} onPlay={() => playSearchItem(item, { preferVideo: false })} />
-                    </div>
-                  ))}
-                </Shelf>
-              )}
-
-              <Shelf
-                title="Music videos"
-                subtitle="The visual half of what's been living rent-free in your head"
-                onRefresh={fetchVideoPicks}
-                loading={videoPicksLoading}
-              >
-                {videoPicksLoading ? (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
-                  ))
-                ) : videoPicks.length === 0 ? (
-                  <div className="text-white/40 font-medium px-1">No videos surfaced yet. Play something to tune this row.</div>
-                ) : (
-                  videoPicks.map((item, i) => (
-                    <div key={`mv-${item.videoId}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0 hover:-translate-y-1 transition-all duration-300">
-                      <SearchCard
-                        item={item}
-                        index={i}
-                        accentColor={accentColor}
-                        mediaAspect="video"
-                        onPlay={() => playSearchItem(item, { preferVideo: true })}
-                      />
-                    </div>
-                  ))
-                )}
-              </Shelf>
-
-              <Shelf title="Audio Picks" subtitle="Clean audio-first versions for focus listening" onRefresh={fetchAudioPicks} loading={audioPicksLoading}>
-                {audioPicksLoading ? (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
-                  ))
-                ) : audioPicks.length === 0 ? (
-                  <div className="text-white/40 font-medium px-1">No audio picks yet. Play a song to personalize.</div>
-                ) : (
-                  audioPicks.map((item, i) => (
-                    <div key={`${item.videoId}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0 hover:-translate-y-1 transition-all duration-300">
-                      <SearchCard
-                        item={item}
-                        index={i}
-                        accentColor={accentColor}
-                        badge={undefined}
-                        onPlay={() => playSearchItem(item, { preferVideo: false })}
-                      />
-                    </div>
-                  ))
-                )}
-              </Shelf>
-
-              <Shelf title="Live Now" subtitle="Streams and sets happening right now" onRefresh={fetchLiveNow} loading={liveNowLoading}>
-                {liveNowLoading ? (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
-                  ))
-                ) : liveNow.length === 0 ? (
-                  <div className="text-white/40 font-medium px-1">No live matches right now. Try again in a bit.</div>
-                ) : (
-                  liveNow.map((item, i) => (
-                    <div key={`${item.videoId}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0 hover:-translate-y-1 transition-all duration-300">
-                      <SearchCard
-                        item={item}
-                        index={i}
-                        accentColor={accentColor}
-                        onPlay={() => playSearchItem({ ...item, duration: "LIVE", isLive: true }, { preferVideo: true, isLive: true })}
-                      />
-                    </div>
-                  ))
-                )}
-              </Shelf>
-
-              <Shelf
-                title="Recommended playlists"
-                subtitle="Mixes and stations tuned to your taste"
-                onRefresh={fetchPlaylistRecs}
-                loading={playlistRecsLoading}
-              >
-                {playlistRecsLoading ? (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
-                  ))
-                ) : playlistRecs.length === 0 ? (
-                  <div className="text-white/40 font-medium px-1">No playlist suggestions right now.</div>
-                ) : (
-                  playlistRecs.map((p, i) => (
-                    <div
-                      key={`pl-${p.id}-${i}`}
-                      onClick={() => openPlaylistRec(p)}
-                      className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0 cursor-pointer transition-all duration-300 hover:-translate-y-1"
+              {!session ? (
+                <div className="flex flex-col justify-center items-center py-4 text-center max-w-2xl mx-auto px-4">
+                  <m.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                    className="flex flex-col items-center"
+                  >
+                    <div 
+                      className="w-14 h-14 rounded-full flex items-center justify-center mb-5 border border-white/5 bg-white/[0.02]"
+                      style={{
+                        boxShadow: "inset 0 0 12px rgba(255,255,255,0.05), 0 15px 30px rgba(0,0,0,0.4)"
+                      }}
                     >
-                      <m.div
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.04, ease: APPLE_EASE }}
-                        className="group flex flex-col"
-                      >
-                        <div className="relative aspect-square overflow-hidden rounded-[22px] bg-[#161618] shadow-[0_20px_40px_rgba(0,0,0,0.4)] ring-1 ring-white/5 transition-all duration-500 group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.55)]">
-                          <MusicArtwork
-                            src={p.thumbnail}
-                            alt={p.title}
-                            iconSize={34}
-                            variant="track"
-                            rounded="3xl"
-                            className="transition-transform duration-700 group-hover:scale-110"
+                      <LogIn size={24} className="text-white/70" />
+                    </div>
+                    <h1 className="text-[34px] sm:text-[40px] font-black tracking-tight text-white leading-none mb-3">
+                      Listen to Nexus.
+                    </h1>
+                    <p className="text-[14px] sm:text-[15px] text-white/35 font-medium leading-relaxed max-w-md mb-6">
+                      Sign in with Google to synchronize your YouTube library, unlock AI-driven recommendations, and control your playback queue.
+                    </p>
+                    <button
+                      onClick={() => signIn("google")}
+                      className="px-8 py-3.5 rounded-full bg-white text-black font-extrabold text-[14px] tracking-tight hover:scale-105 active:scale-95 transition-all shadow-[0_12px_30px_rgba(255,255,255,0.08)] hover:shadow-[0_12px_30px_rgba(255,255,255,0.18)] hover:bg-[#ececf0]"
+                    >
+                      Connect with Google
+                    </button>
+                  </m.div>
+
+                  {recentPlaysItems.length > 0 && (
+                    <div className="w-full mt-10 pt-6 border-t border-white/5 text-left">
+                      <Shelf title="Recent plays" subtitle="Picks from your session in Nexus">
+                        {recentPlaysItems.map((item, i) => (
+                          <div key={`recent-${item.videoId}-${i}`} className="w-[180px] sm:w-[200px] lg:w-[220px] shrink-0 translate-y-0">
+                            <SearchCard item={item} index={i} accentColor={accentColor} onPlay={() => playSearchItem(item, { preferVideo: false })} />
+                          </div>
+                        ))}
+                      </Shelf>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <header className="mb-12">
+                    <h1 className="text-[48px] font-black tracking-tighter text-white leading-none mb-3">Listen Now</h1>
+                    <p className="text-[20px] font-medium text-white/40">
+                      Personalized for you
+                    </p>
+                  </header>
+
+                  <Shelf title="Recommended Songs" subtitle="AI picks based on your recent plays" onRefresh={fetchForYou} loading={forYouLoading}>
+                    {forYouLoading ? (
+                       Array.from({ length: 6 }).map((_, i) => (
+                          <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
+                       ))
+                    ) : (
+                      forYouTracks.map((track, i) => (
+                        <div key={`${track.id || track.title}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0">
+                          <ForYouCard
+                            track={track}
+                            index={i}
+                            accentColor={accentColor}
+                            isPlaying={forYouPlayingId === track.id}
+                            onPlay={() => handlePlayForYou(track)}
+                            onAddToQueue={onAddToQueue}
+                            onPlayNext={onPlayNext}
+                            onNavigateArtist={props.onNavigateArtist}
+                            priority={i < 3}
                           />
                         </div>
-                        <div className="mt-4 px-1 text-left">
-                          <h3 className="line-clamp-2 h-[42px] text-[17px] font-bold leading-tight tracking-tight text-white">{p.title}</h3>
-                          <p className="mt-1 truncate text-[14px] font-medium text-white/40">{p.author}</p>
-                          <p className="mt-2 text-[12px] font-semibold uppercase tracking-wider text-white/28">Playlist</p>
+                      ))
+                    )}
+                  </Shelf>
+
+                  {recentPlaysItems.length > 0 && (
+                    <Shelf title="Recent plays" subtitle="Picks from your session in Nexus">
+                      {recentPlaysItems.map((item, i) => (
+                        <div key={`recent-${item.videoId}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0">
+                          <SearchCard item={item} index={i} accentColor={accentColor} onPlay={() => playSearchItem(item, { preferVideo: false })} />
                         </div>
-                      </m.div>
-                    </div>
-                  ))
-                )}
-              </Shelf>
+                      ))}
+                    </Shelf>
+                  )}
 
-              <Shelf title="Artists for you" subtitle="Based on what you’ve been playing" onRefresh={fetchArtistRecs} loading={artistRecsLoading}>
-                {artistRecsLoading ? (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="h-[220px] w-[180px] shrink-0 rounded-3xl bg-[#161618] animate-pulse" />
-                  ))
-                ) : artistRecs.length === 0 ? (
-                  <div className="text-white/40 font-medium px-1">No artist matches yet.</div>
-                ) : (
-                  artistRecs.map((a, i) => (
-                    <ArtistRecCard key={`${a.id}-${i}`} artist={a} index={i} onOpen={() => onNavigateArtist?.(a.name)} />
-                  ))
-                )}
-              </Shelf>
+                  <Shelf
+                    title="Music videos"
+                    subtitle="The visual half of what's been living rent-free in your head"
+                    onRefresh={fetchVideoPicks}
+                    loading={videoPicksLoading}
+                  >
+                    {videoPicksLoading ? (
+                      Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
+                      ))
+                    ) : videoPicks.length === 0 ? (
+                      <div className="text-white/40 font-medium px-1">No videos surfaced yet. Play something to tune this row.</div>
+                    ) : (
+                      videoPicks.map((item, i) => (
+                        <div key={`mv-${item.videoId}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0 hover:-translate-y-1 transition-all duration-300">
+                          <SearchCard
+                            item={item}
+                            index={i}
+                            accentColor={accentColor}
+                            mediaAspect="video"
+                            onPlay={() => playSearchItem(item, { preferVideo: true })}
+                          />
+                        </div>
+                      ))
+                    )}
+                  </Shelf>
 
-              {session && (
-                <Shelf title="Your Playlists" onRefresh={fetchPlaylists} loading={playlistsLoading}>
-                  {playlists.map((playlist) => (
-                    <div
-                      key={playlist.id}
-                      onClick={() => onPlaylistClick?.(playlist)}
-                      className="w-[200px] shrink-0 cursor-pointer group flex flex-col"
-                    >
-                      <div className="relative aspect-square rounded-[20px] overflow-hidden bg-[#161618] shadow-2xl transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]">
-                        <MusicArtwork
-                          src={playlist.thumbnailUrl?.replace(/([=|-][swh])\d+/g, "$1800") || playlist.thumbnailUrl}
-                          alt={playlist.title}
-                          iconSize={34}
-                          variant="track"
-                          rounded="2xl"
-                          className="transition-transform duration-700 group-hover:scale-110"
-                        />
-                      </div>
-                      <div className="mt-4">
-                        <h3 className="font-bold text-white text-[16px] tracking-tight truncate leading-tight mb-1">{playlist.title}</h3>
-                        <p className="text-[13px] text-white/40 font-medium truncate">YouTube Library</p>
-                      </div>
-                    </div>
-                  ))}
-                </Shelf>
+                  <Shelf title="Audio Picks" subtitle="Clean audio-first versions for focus listening" onRefresh={fetchAudioPicks} loading={audioPicksLoading}>
+                    {audioPicksLoading ? (
+                      Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
+                      ))
+                    ) : audioPicks.length === 0 ? (
+                      <div className="text-white/40 font-medium px-1">No audio picks yet. Play a song to personalize.</div>
+                    ) : (
+                      audioPicks.map((item, i) => (
+                        <div key={`${item.videoId}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0 hover:-translate-y-1 transition-all duration-300">
+                          <SearchCard
+                            item={item}
+                            index={i}
+                            accentColor={accentColor}
+                            badge={undefined}
+                            onPlay={() => playSearchItem(item, { preferVideo: false })}
+                          />
+                        </div>
+                      ))
+                    )}
+                  </Shelf>
+
+                  <Shelf title="Live Now" subtitle="Streams and sets happening right now" onRefresh={fetchLiveNow} loading={liveNowLoading}>
+                    {liveNowLoading ? (
+                      Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
+                      ))
+                    ) : liveNow.length === 0 ? (
+                      <div className="text-white/40 font-medium px-1">No live matches right now. Try again in a bit.</div>
+                    ) : (
+                      liveNow.map((item, i) => (
+                        <div key={`${item.videoId}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0 hover:-translate-y-1 transition-all duration-300">
+                          <SearchCard
+                            item={item}
+                            index={i}
+                            accentColor={accentColor}
+                            onPlay={() => playSearchItem({ ...item, duration: "LIVE", isLive: true }, { preferVideo: true, isLive: true })}
+                          />
+                        </div>
+                      ))
+                    )}
+                  </Shelf>
+
+                  <Shelf
+                    title="Recommended playlists"
+                    subtitle="Mixes and stations tuned to your taste"
+                    onRefresh={fetchPlaylistRecs}
+                    loading={playlistRecsLoading}
+                  >
+                    {playlistRecsLoading ? (
+                      Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
+                      ))
+                    ) : playlistRecs.length === 0 ? (
+                      <div className="text-white/40 font-medium px-1">No playlist suggestions right now.</div>
+                    ) : (
+                      playlistRecs.map((p, i) => (
+                        <div
+                          key={`pl-${p.id}-${i}`}
+                          onClick={() => openPlaylistRec(p)}
+                          className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0 cursor-pointer transition-all duration-300 hover:-translate-y-1"
+                        >
+                          <m.div
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.04, ease: APPLE_EASE }}
+                            className="group flex flex-col"
+                          >
+                            <div className="relative aspect-square overflow-hidden rounded-[22px] bg-[#161618] shadow-[0_20px_40px_rgba(0,0,0,0.4)] ring-1 ring-white/5 transition-all duration-500 group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.55)]">
+                              <MusicArtwork
+                                src={p.thumbnail}
+                                alt={p.title}
+                                iconSize={34}
+                                variant="track"
+                                rounded="3xl"
+                                className="transition-transform duration-700 group-hover:scale-110"
+                              />
+                            </div>
+                            <div className="mt-4 px-1 text-left">
+                              <h3 className="line-clamp-2 h-[42px] text-[17px] font-bold leading-tight tracking-tight text-white">{p.title}</h3>
+                              <p className="mt-1 truncate text-[14px] font-medium text-white/40">{p.author}</p>
+                              <p className="mt-2 text-[12px] font-semibold uppercase tracking-wider text-white/28">Playlist</p>
+                            </div>
+                          </m.div>
+                        </div>
+                      ))
+                    )}
+                  </Shelf>
+
+                  <Shelf title="Artists for you" subtitle="Based on what you’ve been playing" onRefresh={fetchArtistRecs} loading={artistRecsLoading}>
+                    {artistRecsLoading ? (
+                      Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-[220px] w-[180px] shrink-0 rounded-3xl bg-[#161618] animate-pulse" />
+                      ))
+                    ) : artistRecs.length === 0 ? (
+                      <div className="text-white/40 font-medium px-1">No artist matches yet.</div>
+                    ) : (
+                      artistRecs.map((a, i) => (
+                        <ArtistRecCard key={`${a.id}-${i}`} artist={a} index={i} onOpen={() => onNavigateArtist?.(a.name)} />
+                      ))
+                    )}
+                  </Shelf>
+
+                  {session && (
+                    <Shelf title="Your Playlists" onRefresh={fetchPlaylists} loading={playlistsLoading}>
+                      {playlists.map((playlist) => (
+                        <div
+                          key={playlist.id}
+                          onClick={() => onPlaylistClick?.(playlist)}
+                          className="w-[200px] shrink-0 cursor-pointer group flex flex-col"
+                        >
+                          <div className="relative aspect-square rounded-[20px] overflow-hidden bg-[#161618] shadow-2xl transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]">
+                            <MusicArtwork
+                              src={playlist.thumbnailUrl?.replace(/([=|-][swh])\d+/g, "$1800") || playlist.thumbnailUrl}
+                              alt={playlist.title}
+                              iconSize={34}
+                              variant="track"
+                              rounded="2xl"
+                              className="transition-transform duration-700 group-hover:scale-110"
+                            />
+                          </div>
+                          <div className="mt-4">
+                            <h3 className="font-bold text-white text-[16px] tracking-tight truncate leading-tight mb-1">{playlist.title}</h3>
+                            <p className="text-[13px] text-white/40 font-medium truncate">YouTube Library</p>
+                          </div>
+                        </div>
+                      ))}
+                    </Shelf>
+                  )}
+                </>
               )}
             </m.div>
           )}

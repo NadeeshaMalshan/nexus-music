@@ -52,12 +52,27 @@ export function MobileExpandedPlayer({
   onClearQueue,
   onReorderUpNext,
   onArtistClick,
+  isOpen,
 }: ExpandedPlayerProps) {
   const { palette, resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const { settings } = useSettings();
   const { jamState } = useJam();
   const [jamWarning, setJamWarning] = useState<string | null>(null);
   const [liveLikeToast, setLiveLikeToast] = useState<{ title: string; artist: string; artwork?: string | null } | null>(null);
+  const [hasOpened, setHasOpened] = useState(false);
+
+  const isMountedRef = useRef(false);
+  useEffect(() => {
+    if (isOpen) {
+      if (isMountedRef.current) {
+        setTimeout(() => setHasOpened(true), 0);
+      }
+    } else {
+      setTimeout(() => setHasOpened(false), 0);
+    }
+    isMountedRef.current = true;
+  }, [isOpen]);
+
   const videoContainerRef = useRef<HTMLDivElement>(null);
 
   const toggleFullscreen = () => {
@@ -548,6 +563,7 @@ export function MobileExpandedPlayer({
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
+      onAnimationComplete={() => setHasOpened(true)}
       transition={{ type: "spring", damping: 30, stiffness: 300, mass: 0.8 }}
       drag="y"
       dragControls={dragControls}
@@ -576,7 +592,7 @@ export function MobileExpandedPlayer({
       </AnimatePresence>
 
       {/* Background */}
-      <FlowingBackground palette={palette} artwork={liveMetadata?.artwork || currentSong.artwork} />
+      <FlowingBackground palette={palette} artwork={liveMetadata?.artwork || currentSong.artwork} animate={hasOpened} />
 
       {/* Top Grabber */}
       <div 

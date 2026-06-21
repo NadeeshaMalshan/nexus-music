@@ -66,13 +66,15 @@ export function FloatingPlayer({
   const safeDuration = durationSec > 0 ? durationSec : fallbackDuration;
   const isReallyLive = currentSong?.isLive || displaySong.duration === "LIVE" || !!liveMetadata || safeDuration > 43200 || (!isIdle && isPlaying && safeDuration === 0);
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
-
   return (
     <m.div 
       className="group relative flex h-20 w-full max-w-[780px] items-center gap-4 border border-white/10 px-4 shadow-[0_32px_80px_rgba(0,0,0,0.6)] rounded-[24px] overflow-hidden transition-colors duration-1000 mx-auto mb-24 md:mb-10 lg:mb-12 pointer-events-auto"
-      style={{ backgroundColor: 'color-mix(in srgb, var(--art-accent, #1c1c1e) 15%, #080808)' }}
+      style={{ 
+        backgroundColor: 'color-mix(in srgb, var(--art-accent, #1c1c1e) 15%, rgba(8, 8, 8, 0.45))',
+        backdropFilter: 'blur(40px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+      }}
     >
-      <div className="absolute inset-0 bg-[#080808] -z-10" />
         
         {/* Left Section: Playback Controls */}
         <div className={`flex items-center gap-3 md:gap-5 shrink-0 ${isIdle ? 'opacity-40 grayscale' : ''}`}>

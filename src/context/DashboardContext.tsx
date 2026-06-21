@@ -478,7 +478,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const controller = new AbortController();
     async function loadAudioMeta() {
       const hasId = !!currentSong?.id;
-      const isVideo = currentSong?.preferVideoPlayback || currentSong?.isLive;
+      const isVideo = viewMode === "video" || currentSong?.preferVideoPlayback || currentSong?.isLive;
       const cacheKey = hasId ? (`${currentSong.id}_${audioQuery}_${isVideo ? 'v' : 'a'}`) : audioQuery;
       
       if (audioCacheRef.current[cacheKey]) {
@@ -532,7 +532,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
     loadAudioMeta();
     return () => controller.abort();
-  }, [audioQuery]);
+  }, [audioQuery, viewMode]);
 
   // Direct URL Extraction for Music Mode
   useEffect(() => {
@@ -647,7 +647,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ recentTrackId: currentSong!.id, userHistory }),
         });
-        if (!recRes.ok) throw new Error(`API error ${recRes.status}`);
+        if (!recRes.ok) {
+          const errData = await readResponseJson<{ error?: string; detail?: string }>(recRes).catch(() => null);
+          throw new Error(`API error ${recRes.status}: ${errData?.detail || errData?.error || "Unknown Error"}`);
+        }
         const recData = await readResponseJson<{ recommendations?: unknown[] }>(recRes);
         if (!recData) return;
         const recs = (recData.recommendations || []).slice(0, 5);

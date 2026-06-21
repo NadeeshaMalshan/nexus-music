@@ -6,7 +6,6 @@ import { LeftSidebar } from "./LeftSidebar";
 import { RightSidebar } from "./RightSidebar";
 import { FloatingPlayer } from "./FloatingPlayer";
 import { ExpandedPlayer } from "./ExpandedPlayer";
-import { ListMusic } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { m, AnimatePresence } from "motion/react";
@@ -42,7 +41,6 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     setVolume,
     onRemoveFromUpNext,
     onClearQueue,
-    onPlayPlaylist,
     onReorderUpNext,
     aiLoading,
     playVideo,
@@ -89,10 +87,10 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     if (typeof document === "undefined") return;
     
     // Update theme-color meta tag
-    let meta = document.querySelector('meta[name="theme-color"]');
+    let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
     if (!meta) {
       meta = document.createElement('meta');
-      (meta as any).name = "theme-color";
+      meta.name = "theme-color";
       document.getElementsByTagName('head')[0].appendChild(meta);
     }
     
@@ -102,7 +100,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     meta.setAttribute("content", activeColor);
     
     // For iOS specific status bar
-    let appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    const appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
     if (appleMeta) {
       // 'black-translucent' allows our app background (which is themed) to show through
       appleMeta.setAttribute("content", currentSong ? "black-translucent" : "black");
@@ -149,7 +147,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
             key="floating-player"
             initial={false}
             animate={{ y: 0, opacity: 1 }}
-            className="fixed inset-x-0 bottom-0 z-60 pointer-events-none flex items-center justify-center px-4 pb-safe"
+            className="fixed inset-x-0 bottom-0 z-70 pointer-events-none flex items-center justify-center px-4 pb-safe"
           >
             <FloatingPlayer
               onExpand={() => {
@@ -204,6 +202,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           }
         >
           <ExpandedPlayer
+            isOpen={isExpandedPlayerOpen}
             onClose={() => setIsExpandedPlayerOpen(false)}
             currentSong={mergedCurrentSong}
             onSongClick={onSongClick}

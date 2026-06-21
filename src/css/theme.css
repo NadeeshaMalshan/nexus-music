@@ -139,6 +139,8 @@
 
   html {
     font-size: var(--font-size);
+    zoom: 0.8;
+    height: 125%;
   }
 
   h1 {
@@ -185,6 +187,60 @@
 
   body {
     @apply bg-background text-foreground;
+    min-height: 125%;
+  }
+
+  /* Override viewport height classes to account for 0.8 zoom */
+  .h-screen {
+    height: 125vh !important;
+  }
+  .min-h-screen {
+    min-height: 125vh !important;
+  }
+  .h-\[100dvh\] {
+    height: 125dvh !important;
+  }
+  .max-h-\[100dvh\] {
+    max-height: 125dvh !important;
+  }
+  .h-\[calc\(100vh-5\.5rem\)\] {
+    height: calc(125vh - 5.5rem) !important;
+  }
+  .min-h-\[60vh\] {
+    min-height: 75vh !important;
+  }
+  .h-\[75vh\] {
+    height: 93.75vh !important;
+  }
+  .pt-\[10vh\] {
+    padding-top: 12.5vh !important;
+  }
+  .pb-\[40vh\] {
+    padding-bottom: 50vh !important;
+  }
+  .max-h-\[70vh\] {
+    max-height: 87.5vh !important;
+  }
+  .pb-\[40dvh\] {
+    padding-bottom: 50dvh !important;
+  }
+  .top-\[15dvh\] {
+    top: 18.75dvh !important;
+  }
+  .h-\[85vh\] {
+    height: 106.25vh !important;
+  }
+  .max-h-\[85vh\] {
+    max-height: 106.25vh !important;
+  }
+  .h-\[90vh\] {
+    height: 112.5vh !important;
+  }
+  .max-h-\[90vh\] {
+    max-height: 112.5vh !important;
+  }
+  .min-h-\[50vh\] {
+    min-height: 62.5vh !important;
   }
 
   /* Shared Animation Layers */

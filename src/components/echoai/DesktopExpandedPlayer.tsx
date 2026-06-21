@@ -2,15 +2,32 @@
 
 import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
 import YouTube from "react-youtube";
-import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus, PlaySquare, Maximize } from "lucide-react";
-import { m, AnimatePresence, Reorder } from "motion/react";
-import { APPLE_EASE, EXPO_OUT, MOTION_CONFIG, APPLE_LYRICS_TRANSITION } from "@/lib/animations";
+import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, PlaySquare, Maximize } from "lucide-react";
+import { m, AnimatePresence } from "motion/react";
+import { MOTION_CONFIG, APPLE_LYRICS_TRANSITION } from "@/lib/animations";
 import { type ExpandedPlayerProps } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
-import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { MusicArtwork } from "./MusicArtwork";
 import { useSettings } from "@/context/SettingsContext";
 import { useJam } from "@/context/JamContext";
+
+interface YouTubePlayer {
+  getPlayerState: () => number;
+  playVideo: () => void;
+  pauseVideo: () => void;
+  setVolume: (volume: number) => void;
+  getCurrentTime: () => number;
+}
+
+interface LyricLineProps {
+  line: string;
+  index: number;
+  isActive: boolean;
+  isInstrumental: boolean;
+  syncedLine: { at: number; text: string; isInstrumental: boolean } | null;
+  currentTimeSec: number;
+  onSeek: (time: number) => void;
+}
 
 import { useDashboard } from "@/context/DashboardContext";
 import { FlowingBackground } from "./FlowingBackground";
@@ -41,35 +58,44 @@ export function DesktopExpandedPlayer({
   onRateSong,
   isLiked = false,
   isLoggedIn,
-  playVideo,
-  pauseVideo,
-  pauseBackgroundPlayer,
   setCurrentTimeSec,
   setIsPlaying,
   viewMode,
   setViewMode,
   onClearQueue,
-  onReorderUpNext,
   onArtistClick,
+  isOpen,
 }: ExpandedPlayerProps) {
   const { palette, resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">(viewMode === "video" ? "controls" : "lyrics");
-  const [imageError, setImageError] = useState(false);
-  const [isControlsVisible, setIsControlsVisible] = useState(true);
+  const [isControlsVisible] = useState(true);
   const [liveLikeToast, setLiveLikeToast] = useState<{ title: string; artist: string; artwork?: string | null } | null>(null);
+  const [hasOpened, setHasOpened] = useState(false);
+
+  const isMountedRef = useRef(false);
+  useEffect(() => {
+    if (isOpen) {
+      if (isMountedRef.current) {
+        setTimeout(() => setHasOpened(true), 0);
+      }
+    } else {
+      setTimeout(() => setHasOpened(false), 0);
+    }
+    isMountedRef.current = true;
+  }, [isOpen]);
 
   // Auto-switch tab if viewMode changes
   useEffect(() => {
     if (viewMode === "music" && activeTab === "controls") {
-      setActiveTab("lyrics");
+      setTimeout(() => setActiveTab("lyrics"), 0);
     }
     if (viewMode === "video" && activeTab === "lyrics") {
-      setActiveTab("controls");
+      setTimeout(() => setActiveTab("controls"), 0);
     }
   }, [viewMode, activeTab]);
   
-  const ytPlayerInstance = useRef<any>(null);
+  const ytPlayerInstance = useRef<YouTubePlayer | null>(null);
   const videoSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   // Ref so callbacks always see the latest isPlaying without closure staleness
   const isPlayingRef = useRef(isPlaying);
@@ -82,16 +108,16 @@ export function DesktopExpandedPlayer({
   const prevViewModeRef2 = useRef(viewMode);
   useEffect(() => {
     if (prevViewModeRef2.current !== "video" && viewMode === "video") {
-      setVideoKey((k) => k + 1);
+      setTimeout(() => {
+        setVideoKey((k) => k + 1);
+      }, 0);
       ytPlayerInstance.current = null; // clear stale ref before new player mounts
     }
     prevViewModeRef2.current = viewMode;
   }, [viewMode]);
   const storylineRef = useRef<HTMLDivElement>(null);
-  const storylineIndexRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
-  const videoInitSeekRef = useRef<boolean>(false);
   const videoContainerRef = useRef<HTMLDivElement>(null);
 
   const toggleFullscreen = () => {
@@ -105,7 +131,6 @@ export function DesktopExpandedPlayer({
     }
   };
 
-  const capturedTimeRef = useRef<number>(0);
 
   const plainLines = useMemo(() => (lyricsContent || "")
     .replace(/\[\d{1,3}:\d{2}(?::\d{2})?(?:\.\d{1,4})?\]/g, "")
@@ -151,7 +176,7 @@ export function DesktopExpandedPlayer({
   }) : -1;
 
   // Memoize lyrics components to prevent total re-render on activeIndex change
-  const LyricLine = React.memo(({ line, index, isActive, isInstrumental, syncedLine, currentTimeSec, onSeek }: any) => {
+  const LyricLine = React.memo(({ line, index, isActive, isInstrumental, syncedLine, currentTimeSec, onSeek }: LyricLineProps) => {
     let instProgress = 0;
     if (isInstrumental && isActive) {
       const start = syncedLine.at;
@@ -171,23 +196,28 @@ export function DesktopExpandedPlayer({
         onClick={() => hasSynced && onSeek(syncedLine?.at)}
         layout
         animate={{
-          opacity: hasSynced ? (isActive ? 1 : 0.4) : 0.8,
-          scale: hasSynced ? (isActive ? 1.05 : 1) : 1,
-          x: hasSynced ? (isActive ? 12 : 0) : 0,
+          opacity: hasSynced ? (isActive ? 1 : 0.3) : 0.8,
+          scale: hasSynced ? (isActive ? 1.02 : 0.98) : 1,
+          x: hasSynced ? (isActive ? 10 : 0) : 0,
           filter: hasSynced 
-            ? (isActive ? "blur(0px) brightness(1.2)" : "blur(4px) brightness(0.6)") 
+            ? (isActive ? "blur(0px) brightness(1.1)" : "blur(3px) brightness(0.5)") 
             : "blur(0px) brightness(1.0)"
         }}
+        whileHover={hasSynced && !isActive ? {
+          opacity: 0.65,
+          scale: 0.99,
+          filter: "blur(0px) brightness(0.9)"
+        } : undefined}
         initial={false}
         transition={{
           ...APPLE_LYRICS_TRANSITION,
-          filter: { duration: 0.8, ease: "easeOut" }
+          filter: { duration: 0.6, ease: "easeOut" }
         }}
-        className={`group flex items-center origin-left transform ${hasSynced ? "cursor-pointer" : "cursor-default"} ${
+        className={`group flex items-center origin-left transform ${hasSynced ? "z-10 cursor-pointer" : "cursor-default"} ${
           isInstrumental 
               ? (isActive ? "h-[100px]" : "h-0 overflow-hidden") 
               : "py-6"
-        } ${hasSynced ? "hover:opacity-70" : ""}`}
+        }`}
       >
         {isInstrumental ? (
           <div className={`flex gap-4 items-center h-full transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
@@ -197,7 +227,7 @@ export function DesktopExpandedPlayer({
           </div>
         ) : (
           <p 
-            className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_12px_24px_rgba(0,0,0,0.4)] text-[48px] leading-[1.05] text-white`}
+            className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-2xl text-[44px] leading-[1.1] text-white`}
           >
             {line}
           </p>
@@ -310,7 +340,7 @@ export function DesktopExpandedPlayer({
       }, 500);
     }
     return () => { if (videoSyncIntervalRef.current) clearInterval(videoSyncIntervalRef.current); };
-  }, [viewMode]);
+  }, [viewMode, setCurrentTimeSec]);
 
   // Resume on tab/page becoming visible again (e.g. switching back from another app)
   useEffect(() => {
@@ -374,42 +404,50 @@ export function DesktopExpandedPlayer({
     onSeek(ratio * safeDuration);
   };
 
-  const handleVolumeClick = (event: MouseEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-    onVolumeChange(ratio * 100);
-  };
+
 
   const renderTabSelector = () => (
-    <div className="flex w-max max-w-full items-center gap-1 rounded-full border border-white/5 bg-black/40 p-1 backdrop-blur-3xl shadow-2xl">
+    <div className="flex w-max max-w-full items-center gap-1 rounded-full border border-white/5 bg-black/40 p-1 backdrop-blur-3xl shadow-2xl relative">
       {viewMode === "video" && (
         <button
           type="button"
           onClick={() => setActiveTab("controls")}
-          className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all sm:gap-2 sm:px-6 sm:text-sm ${activeTab === "controls" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"}`}
+          className={`relative flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all sm:gap-2 sm:px-6 sm:text-sm z-10 ${activeTab === "controls" ? "text-white" : "text-white/60 hover:text-white"}`}
         >
+          {activeTab === "controls" && (
+            <m.div layoutId="active-tab-bg" className="absolute inset-0 bg-white/10 border border-white/5 rounded-full -z-10 shadow-sm" />
+          )}
           <PlaySquare size={14} className="sm:h-4 sm:w-4" /> <span>Now Playing</span>
         </button>
       )}
       <button
         type="button"
         onClick={() => setActiveTab("lyrics")}
-        className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all sm:gap-2 sm:px-6 sm:text-sm ${activeTab === "lyrics" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"}`}
+        className={`relative flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all sm:gap-2 sm:px-6 sm:text-sm z-10 ${activeTab === "lyrics" ? "text-white" : "text-white/60 hover:text-white"}`}
       >
+        {activeTab === "lyrics" && (
+          <m.div layoutId="active-tab-bg" className="absolute inset-0 bg-white/10 border border-white/5 rounded-full -z-10 shadow-sm" />
+        )}
         <Mic2 size={14} className="sm:h-4 sm:w-4" /> <span>Lyrics</span>
       </button>
       <button
         type="button"
         onClick={() => setActiveTab("queue")}
-        className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all sm:gap-2 sm:px-6 sm:text-sm ${activeTab === "queue" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"}`}
+        className={`relative flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all sm:gap-2 sm:px-6 sm:text-sm z-10 ${activeTab === "queue" ? "text-white" : "text-white/60 hover:text-white"}`}
       >
+        {activeTab === "queue" && (
+          <m.div layoutId="active-tab-bg" className="absolute inset-0 bg-white/10 border border-white/5 rounded-full -z-10 shadow-sm" />
+        )}
         <ListMusic size={14} className="sm:h-4 sm:w-4" /> <span>Queue</span>
       </button>
       <button
         type="button"
         onClick={() => setActiveTab("ai")}
-        className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all sm:gap-2 sm:px-6 sm:text-sm ${activeTab === "ai" ? "bg-white/20 text-white shadow-sm" : "text-white/60 hover:text-white"}`}
+        className={`relative flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all sm:gap-2 sm:px-6 sm:text-sm z-10 ${activeTab === "ai" ? "text-white" : "text-white/60 hover:text-white"}`}
       >
+        {activeTab === "ai" && (
+          <m.div layoutId="active-tab-bg" className="absolute inset-0 bg-white/10 border border-white/5 rounded-full -z-10 shadow-sm" />
+        )}
         <BookOpen size={14} className="sm:h-4 sm:w-4" /> <span>Story</span>
       </button>
     </div>
@@ -493,14 +531,28 @@ export function DesktopExpandedPlayer({
       )}
 
       <div className={`${isCompact ? "mt-1" : "mt-3"} flex items-center justify-center gap-10`}>
-        <button onClick={onPrev} className="text-white/80 active:scale-95 transition-transform"><SkipBack size={isCompact ? 32 : 42} fill="currentColor" /></button>
+        <button 
+          onClick={onPrev} 
+          className="text-white/60 hover:text-white hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer"
+        >
+          <SkipBack size={isCompact ? 32 : 42} fill="currentColor" strokeWidth={0} />
+        </button>
         <button 
           onClick={onTogglePlay}
-          className={`flex ${isCompact ? "h-16 w-16" : "h-20 w-20"} items-center justify-center text-white active:scale-95 transition-transform`}
+          className={`flex ${isCompact ? "h-16 w-16" : "h-20 w-20"} items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-white hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer shadow-lg`}
         >
-          {isPlaying ? <Pause size={isCompact ? 32 : 38} fill="white" /> : <Play size={isCompact ? 32 : 38} fill="white" className="ml-2" />}
+          {isPlaying ? (
+            <Pause size={isCompact ? 28 : 34} fill="currentColor" strokeWidth={0} />
+          ) : (
+            <Play size={isCompact ? 28 : 34} fill="currentColor" strokeWidth={0} className={isCompact ? "ml-1" : "ml-1.5"} />
+          )}
         </button>
-        <button onClick={onNext} className="text-white/80 active:scale-95 transition-transform"><SkipForward size={isCompact ? 32 : 42} fill="currentColor" /></button>
+        <button 
+          onClick={onNext} 
+          className="text-white/60 hover:text-white hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer"
+        >
+          <SkipForward size={isCompact ? 32 : 42} fill="currentColor" strokeWidth={0} />
+        </button>
       </div>
 
       <div className={`${isCompact ? "mt-4 px-6" : "mt-8 px-4 pb-2"} flex w-full items-center gap-5`}>
@@ -560,6 +612,7 @@ export function DesktopExpandedPlayer({
       initial={{ y: "100%", opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: "100%", opacity: 0 }}
+      onAnimationComplete={() => setHasOpened(true)}
       transition={{ type: "spring", damping: 30, stiffness: 200, mass: 1 }}
       className="fixed inset-0 z-[60] flex max-h-[100dvh] flex-col bg-black overflow-hidden"
     >
@@ -577,7 +630,7 @@ export function DesktopExpandedPlayer({
         )}
       </AnimatePresence>
 
-      <FlowingBackground palette={palette} artwork={liveMetadata?.artwork || currentSong.artwork} />
+      <FlowingBackground palette={palette} artwork={liveMetadata?.artwork || currentSong.artwork} animate={hasOpened} />
 
       <AnimatePresence>
         {isControlsVisible && (
@@ -611,7 +664,7 @@ export function DesktopExpandedPlayer({
                     e.target.setVolume(volume); 
                     // For live streams in music mode, force tiny quality to save data
                     const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
-                    try { e.target.setPlaybackQuality(vq); } catch(err) {}
+                    try { e.target.setPlaybackQuality(vq); } catch {}
                     if(isPlaying) e.target.playVideo(); 
                   }}
                   onStateChange={e => {
@@ -621,7 +674,7 @@ export function DesktopExpandedPlayer({
                       setIsPlaying(true);
                       // Force quality again after playback starts to ensure it sticks
                       const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
-                      try { e.target.setPlaybackQuality(vq); } catch(err) {}
+                      try { e.target.setPlaybackQuality(vq); } catch {}
                     } else if (e.data === 2) {
                       if (!isPlayingRef.current) {
                         setIsPlaying(false);
@@ -668,11 +721,14 @@ export function DesktopExpandedPlayer({
               <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={48} />
             )}
           </m.div>
-          <div className="mt-6 flex w-full justify-center gap-1 rounded-full border border-white/5 bg-black/20 p-1 backdrop-blur-md max-w-[200px]">
+          <div className="mt-6 flex w-full justify-center gap-1 rounded-full border border-white/5 bg-black/20 p-1 backdrop-blur-md max-w-[200px] relative">
             <button 
               onClick={() => setViewMode("music")} 
-              className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-xs font-bold transition-all ${viewMode === "music" ? "bg-white text-black" : "text-white/60 hover:text-white"}`}
+              className={`relative flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-xs font-bold transition-all duration-300 z-10 ${viewMode === "music" ? "text-black" : "text-white/60 hover:text-white"}`}
             >
+              {viewMode === "music" && (
+                <m.div layoutId="view-mode-bg" className="absolute inset-0 bg-white rounded-full -z-10" />
+              )}
               <Music size={14} /> Music
             </button>
             <button 
@@ -683,8 +739,11 @@ export function DesktopExpandedPlayer({
                 }
                 setViewMode("video");
               }} 
-              className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-xs font-bold transition-all ${viewMode === "video" ? "bg-white text-black" : "text-white/60 hover:text-white"}`}
+              className={`relative flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-xs font-bold transition-all duration-300 z-10 ${viewMode === "video" ? "text-black" : "text-white/60 hover:text-white"}`}
             >
+              {viewMode === "video" && (
+                <m.div layoutId="view-mode-bg" className="absolute inset-0 bg-white rounded-full -z-10" />
+              )}
               <Video size={14} /> Video
             </button>
           </div>
@@ -705,22 +764,46 @@ export function DesktopExpandedPlayer({
                      animate={{ opacity: 1, y: 0 }}
                      exit={{ opacity: 0, y: -10 }}
                      transition={MOTION_CONFIG.transition}
-                     className="flex-1 overflow-hidden"
+                     className="flex-1 overflow-hidden flex items-center justify-center"
                    >
-                     <div ref={scrollRef} className="h-full overflow-y-auto custom-scrollbar px-4 pt-[10vh] pb-[40vh] no-scrollbar">
-                        <div className="max-w-2xl mx-auto">
-                          {lines.map((l, i) => (
-                            <LyricLine
-                              key={i}
-                              line={l}
-                              index={i}
-                              isActive={i === activeIndex}
-                              isInstrumental={displayHasSynced && syncedLines[i]?.isInstrumental}
-                              syncedLine={displayHasSynced ? syncedLines[i] : null}
-                              currentTimeSec={currentTimeSec}
-                              onSeek={onSeek}
-                            />
-                          ))}
+                     {(!lyricsContent || lyricsContent === "Loading lyrics..." || lyricsContent === "Lyrics not available for this track yet.") ? (
+                       <div className="text-center p-8 max-w-md mx-auto space-y-6 animate-gpu">
+                         <div className="h-16 w-16 mx-auto rounded-full bg-white/5 border border-white/5 flex items-center justify-center shadow-lg">
+                           <Mic2 size={24} className="text-white/20" />
+                         </div>
+                         <div className="space-y-2">
+                           <h3 className="text-xl font-bold text-white/90 tracking-tight">
+                             {lyricsContent === "Loading lyrics..." ? "Loading Lyrics" : "Lyrics Unavailable"}
+                           </h3>
+                           <p className="text-sm font-semibold text-white/30 leading-relaxed text-balance">
+                             {lyricsContent === "Loading lyrics..." 
+                               ? "Fetching and synchronizing lyrics from Genius databases..." 
+                               : "We couldn't find lyrics for this song. Enjoy the high-fidelity playback."}
+                           </p>
+                         </div>
+                       </div>
+                     ) : (
+                       <div 
+                         ref={scrollRef} 
+                         className="h-full w-full overflow-y-auto custom-scrollbar px-4 pt-[25vh] pb-[40vh] no-scrollbar"
+                         style={{
+                           maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+                           WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+                         }}
+                       >
+                          <div className="max-w-2xl mx-auto">
+                            {lines.map((l, i) => (
+                              <LyricLine
+                                key={i}
+                                line={l}
+                                index={i}
+                                isActive={i === activeIndex}
+                                isInstrumental={displayHasSynced && syncedLines[i]?.isInstrumental}
+                                syncedLine={displayHasSynced ? syncedLines[i] : null}
+                                currentTimeSec={currentTimeSec}
+                                onSeek={onSeek}
+                              />
+                            ))}
 
                           {/* Lyrics Credits */}
                           {(geniusData?.writers || lyricsSource) && (
@@ -743,7 +826,8 @@ export function DesktopExpandedPlayer({
                           )}
                         </div>
                      </div>
-                   </m.div>
+                     )}
+                    </m.div>
                  )}
                  {activeTab === "queue" && (
                    <m.div 
@@ -859,7 +943,14 @@ export function DesktopExpandedPlayer({
                         </div>
                       </div>
 
-                      <div ref={storylineRef} className="flex-1 overflow-hidden overflow-x-hidden overscroll-none px-12 pt-10 pb-[50vh] no-scrollbar relative">
+                      <div 
+                        ref={storylineRef} 
+                        className="flex-1 overflow-hidden overflow-x-hidden overscroll-none px-12 pt-10 pb-[50vh] no-scrollbar relative"
+                        style={{
+                          maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+                          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+                        }}
+                      >
                           {knowLoading ? (
                                <div className="flex flex-col items-center justify-center h-full gap-8 opacity-60">
                                   <div className="relative">
@@ -892,7 +983,7 @@ export function DesktopExpandedPlayer({
                                   ) : (
                                       <div className="flex flex-col items-center justify-center py-40 opacity-20 text-center max-w-lg mx-auto">
                                           <BookOpen size={64} className="mb-8 opacity-20" />
-                                          <p className="text-2xl font-black italic leading-tight text-balance">This track's story is waiting for the perfect moment to reveal itself...</p>
+                                          <p className="text-2xl font-black italic leading-tight text-balance">This track&apos;s story is waiting for the perfect moment to reveal itself...</p>
                                       </div>
                                   )}
 

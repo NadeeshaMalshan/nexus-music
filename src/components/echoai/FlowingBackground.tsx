@@ -9,6 +9,7 @@ interface FlowingBackgroundProps {
   artwork?: string | null;
   opacity?: number;
   blur?: string;
+  animate?: boolean;
 }
 
 /**
@@ -149,7 +150,7 @@ function paletteEqual(a: ArtworkPalette, b: ArtworkPalette) {
 }
 
 export const FlowingBackground = memo(function FlowingBackground(props: FlowingBackgroundProps) {
-  const { palette, artwork, blur = "50px" } = props;
+  const { palette, artwork, blur = "50px", animate = true } = props;
   const stableArtwork = useMemo(() => artwork ?? null, [artwork]);
 
   return (
@@ -159,7 +160,11 @@ export const FlowingBackground = memo(function FlowingBackground(props: FlowingB
         <StaticFlowingBackground palette={palette} artwork={stableArtwork} blur={blur} />
       </div>
       <div className="absolute inset-0 hidden lg:block">
-        <FlowingBackgroundInner {...props} blur={blur} />
+        {animate ? (
+          <FlowingBackgroundInner {...props} blur={blur} />
+        ) : (
+          <StaticFlowingBackground palette={palette} artwork={stableArtwork} blur={blur} />
+        )}
       </div>
     </div>
   );
@@ -167,4 +172,5 @@ export const FlowingBackground = memo(function FlowingBackground(props: FlowingB
   paletteEqual(prev.palette, next.palette) &&
   prev.artwork === next.artwork &&
   prev.blur === next.blur &&
-  prev.opacity === next.opacity);
+  prev.opacity === next.opacity &&
+  prev.animate === next.animate);

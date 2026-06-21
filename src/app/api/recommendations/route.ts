@@ -91,7 +91,7 @@ function sanitizePersonaForPrompt(persona: string): string {
 }
 
 function parseCurationJson(raw: string): { primaryLanguage?: string; tracks?: unknown[] } {
-  let trimmed = normalizeJsonish(raw.trim())
+  const trimmed = normalizeJsonish(raw.trim())
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/gi, "")
     .replace(/`/g, "")
@@ -109,11 +109,13 @@ function parseCurationJson(raw: string): { primaryLanguage?: string; tracks?: un
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export async function POST(request: Request) {
-  try {
-    const body = await request.json().catch(() => ({}));
-    const { prompt, favoriteArtists = [], genres = [] } = body;
+  const body = await request.json().catch(() => ({}));
+  const { prompt, favoriteArtists = [], genres = [], recentTrackId } = body;
 
-    if (!googleApiKey) return NextResponse.json({ error: "API key missing" }, { status: 500 });
+  try {
+    if (!googleApiKey) {
+      throw new Error("API key missing");
+    }
 
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
     const genAI = new GoogleGenerativeAI(googleApiKey);
@@ -261,7 +263,32 @@ Format ONLY as a JSON array of strings.`;
 
     return NextResponse.json({ recommendations });
   } catch (error: any) {
-    console.error("[Recommendations] Fatal Error:", error);
+    console.error("[Recommendations] Fatal Gemini Error:", error);
+
+    // Fallback: If Gemini fails (429 quota, missing key, etc.), get related tracks from YouTube Music
+    if (recentTrackId) {
+      console.log(`[Recommendations] Falling back to YouTube Music Related Tracks for: ${recentTrackId}`);
+      try {
+        const { getRelatedTracksRobust } = await import("@/lib/youtubeMusicRelated");
+        const rawSuggestions = await getRelatedTracksRobust(recentTrackId);
+
+        const fallbackRecommendations = rawSuggestions.slice(0, 10).map((t: any) => ({
+          youtubeId: t.youtubeId,
+          title: t.title,
+          artist: t.artists ? t.artists[0]?.name : "Unknown Artist",
+          thumbnail: t.thumbnail || t.thumbnailUrl || "",
+          duration: t.duration || "0:00",
+          reason: "Similar track from YouTube Music related catalog (AI quota fallback)."
+        })).filter((t: any) => t.youtubeId && t.youtubeId !== recentTrackId);
+
+        if (fallbackRecommendations.length > 0) {
+          return NextResponse.json({ recommendations: fallbackRecommendations });
+        }
+      } catch (fallbackError: any) {
+        console.error("[Recommendations] Fallback recommendation failed:", fallbackError);
+      }
+    }
+
     return NextResponse.json({ error: "Recommendation pipeline failed", detail: error.message }, { status: 500 });
   }
 }

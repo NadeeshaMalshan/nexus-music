@@ -47,11 +47,10 @@ body {
   animation-delay: 1000ms;
 }
 
-/* Glassmorphism Enhancement */
+/* Solid Panel Styling (Glassmorphism Removed) */
 .glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111116;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Neon Glow Effect (Static) */

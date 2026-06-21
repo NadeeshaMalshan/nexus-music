@@ -1,7 +1,7 @@
 "use client";
 
 import { Music, UserRound } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export type MusicArtworkVariant = "track" | "artist";
 
@@ -14,6 +14,7 @@ interface MusicArtworkProps {
   variant?: MusicArtworkVariant;
   /** Applied to both the loaded image and the placeholder panel */
   rounded?: "none" | "md" | "xl" | "2xl" | "3xl" | "full";
+  priority?: boolean;
 }
 
 const ROUNDED: Record<NonNullable<MusicArtworkProps["rounded"]>, string> = {
@@ -38,13 +39,16 @@ export function MusicArtwork({
   iconSize = 24,
   variant = "track",
   rounded = "none",
+  priority = false,
 }: MusicArtworkProps) {
+  const [prevSrc, setPrevSrc] = useState(src);
   const [hasError, setHasError] = useState(false);
   const r = ROUNDED[rounded];
 
-  useEffect(() => {
+  if (src !== prevSrc) {
+    setPrevSrc(src);
     setHasError(false);
-  }, [src]);
+  }
 
   const effectiveSrc = normalizeSrc(src);
 
@@ -53,7 +57,8 @@ export function MusicArtwork({
       <img
         src={effectiveSrc}
         alt={alt}
-        loading="lazy"
+        loading={priority ? "eager" : "lazy"}
+        fetchPriority={priority ? "high" : undefined}
         decoding="async"
         onError={() => setHasError(true)}
         className={`h-full w-full object-cover transition-transform duration-500 animate-gpu ${r} ${className}`.trim()}

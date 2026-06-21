@@ -11,6 +11,9 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  experimental: {
+    webpackBuildWorker: true,
+  },
   images: {
     unoptimized: true,
     remotePatterns: [

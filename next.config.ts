@@ -11,6 +11,7 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  turbopack: {},
   experimental: {
     webpackBuildWorker: true,
   },

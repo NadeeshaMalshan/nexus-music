@@ -181,6 +181,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
               volume={volume}
               onVolumeChange={setVolume}
               onArtistClick={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
+              onSeek={onSeek}
             />
           </m.div>
         )}

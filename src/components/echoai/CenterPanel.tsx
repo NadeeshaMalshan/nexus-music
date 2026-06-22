@@ -364,6 +364,7 @@ export function CenterPanel(props: CenterPanelProps) {
   const router = useRouter();
   const segments = pathname.split("/").filter(Boolean);
   const { data: session } = useSession();
+  const { currentSong, isRightSidebarOpen } = useDashboard();
   const [playlists, setPlaylists] = useState<YouTubePlaylist[]>([]);
   const [playlistsLoading, setPlaylistsLoading] = useState(false);
   const [forYouTracks, setForYouTracks] = useState<(ForYouTrack & { id?: string; artwork?: string })[]>([]);
@@ -880,36 +881,58 @@ export function CenterPanel(props: CenterPanelProps) {
                 </div>
               ) : (
                 <>
-                  <header className="mb-12">
-                    <h1 className="text-[48px] font-black tracking-tighter text-white leading-none mb-3">Listen Now</h1>
-                    <p className="text-[20px] font-medium text-white/40">
-                      Personalized for you
-                    </p>
-                  </header>
+                  <section className={`relative rounded-[32px] overflow-hidden mb-12 flex flex-col lg:flex-row border border-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.5)] group transition-[margin-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:mr-[380px]" : "lg:mr-0"}`}>
+                    <div className="absolute inset-0 z-0">
+                      <img 
+                        src={currentSong?.artwork || (forYouTracks[0]?.artwork)} 
+                        alt="Background" 
+                        className="w-full h-full object-cover opacity-40 mix-blend-screen scale-105 group-hover:scale-100 transition-transform duration-[2s] ease-out"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#0d0d0d]/90 via-[#0d0d0d]/60 to-[#0d0d0d]/90"></div>
+                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0d0d0d]/50 to-[#0d0d0d]"></div>
+                    </div>
 
-                  <Shelf title="Recommended Songs" subtitle="AI picks based on your recent plays" onRefresh={fetchForYou} loading={forYouLoading}>
-                    {forYouLoading ? (
-                       Array.from({ length: 6 }).map((_, i) => (
-                          <div key={i} className="w-[240px] shrink-0 aspect-square rounded-[24px] bg-[#161618] animate-pulse" />
-                       ))
-                    ) : (
-                      forYouTracks.map((track, i) => (
-                        <div key={`${track.id || track.title}-${i}`} className="w-[200px] sm:w-[220px] lg:w-[240px] shrink-0 translate-y-0">
-                          <ForYouCard
-                            track={track}
-                            index={i}
-                            accentColor={accentColor}
-                            isPlaying={forYouPlayingId === track.id}
-                            onPlay={() => handlePlayForYou(track)}
-                            onAddToQueue={onAddToQueue}
-                            onPlayNext={onPlayNext}
-                            onNavigateArtist={props.onNavigateArtist}
-                            priority={i < 3}
-                          />
-                        </div>
-                      ))
-                    )}
-                  </Shelf>
+                    <div className="relative z-10 w-full flex flex-col lg:flex-row justify-between p-6 sm:p-8 lg:p-14 min-h-[300px]">
+                      <div className="flex-1 flex items-center justify-start max-w-2xl lg:pr-8">
+                        <h1 className="text-[36px] sm:text-[52px] lg:text-[64px] font-black tracking-tighter text-white leading-[1.05] drop-shadow-xl">
+                          {currentSong ? (
+                            <>More songs like <br/><span className="text-white/60">{currentSong.title}</span></>
+                          ) : "Recommended for you"}
+                        </h1>
+                      </div>
+
+                      <div className="w-full lg:w-[420px] mt-8 lg:mt-0 flex flex-col gap-3 justify-center">
+                        {forYouLoading ? (
+                           Array.from({ length: 3 }).map((_, i) => (
+                              <div key={i} className="w-full h-24 bg-white/5 animate-pulse" />
+                           ))
+                        ) : (
+                           forYouTracks.slice(0, 3).map((track, i) => (
+                              <div 
+                                key={i} 
+                                onClick={() => handlePlayForYou(track)}
+                                className="group/item flex items-center gap-5 bg-black/20 hover:bg-white/10 backdrop-blur-md border border-white/10 p-3 rounded-2xl cursor-pointer transition-all duration-300 hover:translate-x-2"
+                              >
+                                <div className="w-[72px] h-[72px] shrink-0 bg-black overflow-hidden rounded-xl relative shadow-lg">
+                                  <MusicArtwork src={track.artwork} alt={track.title} rounded="none" className="w-full h-full" />
+                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/item:opacity-100 flex items-center justify-center transition-opacity duration-300">
+                                    {forYouPlayingId === track.id ? (
+                                      <Loader2 size={24} className="animate-spin text-white" />
+                                    ) : (
+                                      <Play size={24} fill="white" className="text-white ml-1" />
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0 pr-2">
+                                  <p className="text-white font-black text-[18px] truncate tracking-tight mb-0.5">{track.title}</p>
+                                  <p className="text-white/50 font-bold text-[13px] truncate tracking-wide uppercase">{track.artist}</p>
+                                </div>
+                              </div>
+                           ))
+                        )}
+                      </div>
+                    </div>
+                  </section>
 
                   {recentPlaysItems.length > 0 && (
                     <Shelf title="Recent plays" subtitle="Picks from your session in Nexus">

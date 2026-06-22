@@ -78,6 +78,7 @@ type DashboardContextType = {
   songIsInLikedLibrary: (song: { id: string; title: string; artist: string; musicVideoId?: string }, audio?: AudioPayload | null) => boolean;
   resolveLikedLibraryRateVideoId: (song: { id: string; title: string; artist: string; musicVideoId?: string }) => string;
   upNextQueue: Song[];
+  previousQueue: Song[];
   playedHistory: Song[];
   aiLoading: boolean;
   overrideArtwork: string | null;
@@ -97,6 +98,7 @@ type DashboardContextType = {
   setCurrentSong: (song: Song | null) => void;
   setQueueSongs: (songs: Song[]) => void;
   setUpNextQueue: React.Dispatch<React.SetStateAction<Song[]>>;
+  setPreviousQueue: React.Dispatch<React.SetStateAction<Song[]>>;
   setVolume: (volume: number) => void;
   setIsRightSidebarOpen: (open: boolean) => void;
   setRightSidebarMode: (mode: "queue" | "jam" | "lyrics") => void;
@@ -188,6 +190,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [playedHistory, setPlayedHistory] = useState<Song[]>([]);
   const [overrideArtwork, setOverrideArtwork] = useState<string | null>(null);
   const [upNextQueue, setUpNextQueue] = useState<Song[]>([]);
+  const [previousQueue, setPreviousQueue] = useState<Song[]>([]);
   const [knowFacts, setKnowFacts] = useState<string[]>([]);
   const [knowLoading, setKnowLoading] = useState(false);
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
@@ -1504,6 +1507,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const onSongClick = useCallback((song: Song, shouldResetQueue: boolean = true) => {
     if (shouldResetQueue) {
       setUpNextQueue([]);
+      setPreviousQueue([]);
+    } else {
+      // If clicked from within the upNextQueue, slice it and update previous queue
+      const currentIndex = upNextQueueRef.current.findIndex(s => s.id === song.id);
+      if (currentIndex !== -1) {
+         setPreviousQueue(prev => {
+            const newPrev = [...prev];
+            if (currentSongRef.current) newPrev.push(currentSongRef.current);
+            // Add any skipped songs from the queue to the previous cache
+            const skipped = upNextQueueRef.current.slice(0, currentIndex);
+            const combined = [...newPrev, ...skipped];
+            return combined.slice(-4); // Keep last 4
+         });
+         setUpNextQueue(prev => prev.slice(currentIndex + 1));
+      }
     }
     const isLive = song.isLive || song.duration === "LIVE";
     if (song.preferVideoPlayback || isLive) {
@@ -1539,6 +1557,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
     if (upNextQueue.length > 0) {
       const next = upNextQueue[0];
+      setPreviousQueue(prev => {
+         const newPrev = currentSong ? [...prev, currentSong] : [...prev];
+         return newPrev.slice(-4); // Keep last 4
+      });
       setUpNextQueue((prev) => prev.slice(1));
       onSongClick(next, false); // <--- Don't reset when auto-playing
       return;
@@ -1579,9 +1601,23 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, [durationSec, currentSong?.duration, isUsingNativeAudio]);
 
   const onPrev = useCallback(() => {
-    // With AI queue, 'Prev' usually just restarts the song
-    onSeek(0);
-  }, [onSeek]);
+    if (currentTimeSec > 5 || previousQueue.length === 0) {
+       onSeek(0);
+       return;
+    }
+    
+    // Pop the last song from previousQueue
+    const prevSong = previousQueue[previousQueue.length - 1];
+    setPreviousQueue(prev => prev.slice(0, -1));
+    
+    // Push the current song back to the top of upNextQueue
+    if (currentSongRef.current) {
+       setUpNextQueue(prev => [currentSongRef.current!, ...prev]);
+    }
+    
+    // Play the previous song without resetting queue
+    onSongClick(prevSong, false);
+  }, [onSeek, currentTimeSec, previousQueue, onSongClick]);
 
   const songIsInLikedLibrary = useCallback(
     (song: { id: string; title: string; artist: string; musicVideoId?: string }, audio?: AudioPayload | null) => {
@@ -1859,14 +1895,16 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setViewMode,
     ytPlayerRef,
     setUpNextQueue,
+    setPreviousQueue,
+    previousQueue,
     rightSidebarMode,
   }), [
-    audioData, queueSongs, currentSong, isPlaying, currentTimeSec, 
+    audioData, queueSongs, previousQueue, currentSong, isPlaying, currentTimeSec, 
     durationSec, volume, lyricsData, lyricsLoading, knowFacts, 
     knowLoading, likedSongs, likedLibraryTracks, songIsInLikedLibrary, resolveLikedLibraryRateVideoId, upNextQueue, playedHistory, aiLoading, 
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
-    setIsPlaying, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata
+    setIsPlaying, setQueueSongs, setPreviousQueue, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata
   ]);
 
   return (

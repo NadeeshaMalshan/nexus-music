@@ -28,6 +28,7 @@ interface FloatingPlayerProps {
   volume: number;
   onVolumeChange: (v: number) => void;
   onArtistClick?: (artistName: string) => void;
+  onSeek?: (time: number) => void;
 }
 
 export function FloatingPlayer({
@@ -49,6 +50,7 @@ export function FloatingPlayer({
   volume,
   onVolumeChange,
   onArtistClick,
+  onSeek,
 }: FloatingPlayerProps) {
   const { resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const isIdle = !currentSong;
@@ -68,12 +70,7 @@ export function FloatingPlayer({
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
   return (
     <m.div 
-      className="group relative flex h-20 w-full max-w-[780px] items-center gap-4 border border-white/10 px-4 shadow-[0_32px_80px_rgba(0,0,0,0.6)] rounded-[24px] overflow-hidden transition-colors duration-1000 mx-auto mb-24 md:mb-10 lg:mb-12 pointer-events-auto"
-      style={{ 
-        backgroundColor: 'color-mix(in srgb, var(--art-accent, #1c1c1e) 15%, rgba(8, 8, 8, 0.45))',
-        backdropFilter: 'blur(40px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-      }}
+      className="group relative flex h-[76px] w-full max-w-[800px] items-center justify-between gap-6 border border-white/10 px-6 shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden mx-auto mb-24 md:mb-10 lg:mb-12 pointer-events-auto bg-[#0a0a0a]/90 backdrop-blur-2xl"
     >
         
         {/* Left Section: Playback Controls */}
@@ -89,13 +86,13 @@ export function FloatingPlayer({
           <button
             onClick={onTogglePlay}
             disabled={isIdle}
-            className="text-white rounded-full p-1 md:p-1.5 hover:bg-white/10 disabled:cursor-not-allowed"
+            className="text-white hover:scale-105 active:scale-95 transition-transform disabled:cursor-not-allowed"
             style={{ color: isIdle ? 'white' : 'var(--art-accent, white)' }}
           >
             {isPlaying ? (
-              <Pause className="w-6 h-6 md:w-7 md:h-7" fill="currentColor" strokeWidth={1} />
+              <Pause className="w-8 h-8" fill="currentColor" strokeWidth={0} />
             ) : (
-              <Play className="w-6 h-6 md:w-7 md:h-7 pl-0.5" fill="currentColor" strokeWidth={1} />
+              <Play className="w-8 h-8" fill="currentColor" strokeWidth={0} />
             )}
           </button>
           
@@ -115,35 +112,35 @@ export function FloatingPlayer({
         >
           <div 
             onClick={!isIdle ? onExpand : undefined}
-            className={`relative flex items-center gap-2 md:gap-3 bg-black/30 rounded-[20px] p-1.5 md:p-2 pr-3 md:pr-4 border border-white/5 overflow-hidden ${
+            className={`relative flex items-center gap-4 bg-white/5 rounded-xl p-1.5 pr-6 border border-transparent overflow-hidden ${
               !isIdle 
-                ? "cursor-pointer group/card hover:bg-black/40" 
+                ? "cursor-pointer group/card hover:bg-white/10 hover:border-white/10 transition-all duration-300" 
                 : "cursor-default opacity-80"
             }`}
           >
             {/* Artwork Wrapper */}
-            <div className={`relative h-9 w-9 md:h-11 md:w-11 shrink-0 overflow-hidden rounded-xl shadow-lg border border-white/10 ${!isIdle ? 'group-hover/card:scale-105' : ''}`}>
-               <MusicArtwork src={displaySong.artwork} alt={displaySong.title} iconSize={20} />
+            <div className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-lg shadow-md border border-white/5 ${!isIdle ? 'group-hover/card:scale-[1.02] transition-transform' : ''}`}>
+               <MusicArtwork src={displaySong.artwork} alt={displaySong.title} iconSize={20} rounded="none" className="w-full h-full" />
                {!isIdle && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                    <Maximize2 size={14} className="text-white" />
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                    <Maximize2 size={16} className="text-white" />
                  </div>
                )}
                {isIdle && (
                  <m.div 
-                   animate={{ opacity: [0.2, 0.4, 0.2] }}
+                   animate={{ opacity: [0.1, 0.2, 0.1] }}
                    transition={{ duration: 3, repeat: Infinity, ease: APPLE_EASE }}
-                   className="absolute inset-0 bg-linear-to-tr from-white/10 to-transparent"
+                   className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent"
                  />
                )}
             </div>
 
             {/* Scrolling Song Info */}
-            <div className="min-w-0 flex-1 overflow-hidden">
-               <div className="flex flex-col">
+            <div className="min-w-[120px] flex-1 overflow-hidden">
+               <div className="flex flex-col justify-center h-full">
                   <MarqueeText 
                     text={displaySong.title} 
-                    className="text-xs md:text-sm font-black text-white tracking-tight leading-tight" 
+                    className="text-[16px] font-black text-white tracking-tighter leading-none mb-1" 
                   />
                   <button
                     onClick={(e) => {
@@ -152,7 +149,7 @@ export function FloatingPlayer({
                         onArtistClick(displaySong.artist);
                       }
                     }}
-                    className={`w-full text-left mt-0.5 ${
+                    className={`w-full text-left ${
                       !isIdle && onArtistClick
                         ? "cursor-pointer"
                         : "cursor-default"
@@ -160,25 +157,12 @@ export function FloatingPlayer({
                   >
                     <MarqueeText 
                       text={displaySong.artist} 
-                      className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-white/30 hover:text-white/70 transition-colors"
+                      className="text-[11px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors leading-none"
                     />
                   </button>
                </div>
             </div>
 
-            {/* Linear Progress Indicator */}
-            {!isReallyLive && (
-              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/5">
-                <div
-                  className="h-full shadow-[0_0_8px_var(--art-accent,rgba(255,255,255,0.4))]"
-                  style={{ 
-                    width: `${progress}%`, 
-                    backgroundColor: `var(--art-accent, white)`,
-                    transition: 'none'
-                  }}
-                />
-              </div>
-            )}
           </div>
         </m.div>
 
@@ -196,7 +180,7 @@ export function FloatingPlayer({
                 size={20}
                 fill={isLiked ? "var(--art-accent, #FA243C)" : "none"}
                 stroke={isLiked ? "var(--art-accent, #FA243C)" : "currentColor"}
-                className={isLiked ? "drop-shadow-[0_0_8px_var(--art-accent,rgba(250,36,60,0.4))]" : "text-white/30 hover:text-white"}
+                className={isLiked ? "" : "text-white/30 hover:text-white"}
               />
             </button>
           )}
@@ -267,7 +251,27 @@ export function FloatingPlayer({
           </button>
           
           
+          
         </div>
+
+        {/* Interactive Linear Progress Indicator (Outer Bottom Edge) */}
+        {!isReallyLive && (
+          <div className="absolute bottom-0 left-0 right-0 h-3 group/seek flex items-end overflow-hidden z-20">
+            <input
+              type="range"
+              min={0}
+              max={safeDuration || 100}
+              value={currentTimeSec || 0}
+              onChange={(e) => {
+                if (onSeek) onSeek(parseFloat(e.target.value));
+              }}
+              className="w-full h-[3px] appearance-none bg-white/5 cursor-pointer hover:h-[5px] transition-[height] m-0 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-0 [&::-webkit-slider-thumb]:h-0 [&::-moz-range-thumb]:w-0 [&::-moz-range-thumb]:h-0 [&::-moz-range-thumb]:border-0"
+              style={{
+                background: `linear-gradient(to right, var(--art-accent, #FA243C) ${progress}%, transparent ${progress}%)`,
+              }}
+            />
+          </div>
+        )}
     </m.div>
   );
 }

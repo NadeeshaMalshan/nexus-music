@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles, UserRound, Video } from "lucide-react";
+import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles, UserRound, Video, ChevronLeft, ChevronRight } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { type Song } from "./types";
@@ -41,12 +41,89 @@ const formatCount = (count: string | number) => {
   return num.toString();
 };
 
+function CategoryShelf({ shelf, isRightSidebarOpen }: { shelf: any, isRightSidebarOpen: boolean }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (dir: "left" | "right") => {
+    if (!scrollRef.current) return;
+    const amount = dir === "left" ? -800 : 800;
+    scrollRef.current.scrollBy({ left: amount, behavior: "smooth" });
+  };
+
+  return (
+    <div className="w-full relative group/shelf">
+      <div className={`mb-6 flex items-center justify-between px-1 transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+      }`}>
+        <h3 className="text-[20px] md:text-[24px] font-bold text-white tracking-tight">{shelf.title}</h3>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => scroll("left")}
+            className="text-white/40 hover:text-white transition-all hover:scale-110 active:scale-90"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={24} strokeWidth={2.5} />
+          </button>
+          <button 
+            onClick={() => scroll("right")}
+            className="text-white/40 hover:text-white transition-all hover:scale-110 active:scale-90"
+            aria-label="Scroll right"
+          >
+            <ChevronRight size={24} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
+      <div 
+        ref={scrollRef}
+        className="flex items-start gap-4 overflow-x-auto no-scrollbar scroll-smooth px-1 pb-4"
+      >
+        {shelf.items.map((item: any, j: number) => (
+          <div key={j} className="w-[160px] md:w-[200px] shrink-0 group cursor-pointer" onClick={() => {
+            if (item.playlistId) {
+              if (item.subtitle.toLowerCase().includes("album")) {
+                window.location.href = `/album/${item.playlistId}`;
+              } else {
+                window.location.href = `/playlists/${item.playlistId}`;
+              }
+            }
+          }}>
+            <div className="relative w-full aspect-square rounded-xl overflow-hidden mb-3 shadow-lg">
+              {item.thumbnail ? (
+                <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+              ) : (
+                <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-white/20" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                 <div className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-2xl scale-75 group-hover:scale-100 transition-transform">
+                   <Play size={20} className="ml-1" fill="currentColor" />
+                 </div>
+              </div>
+            </div>
+            <h4 className="text-[14px] md:text-[15px] font-bold text-white truncate">{item.title}</h4>
+            <p className="text-[12px] md:text-[13px] text-white/50 truncate mt-1">{item.subtitle}</p>
+          </div>
+        ))}
+        {isRightSidebarOpen && (
+          <div className="hidden lg:block w-[380px] shrink-0 pointer-events-none" />
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue, onPlayNext, onNavigateArtist }: SearchPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("Top");
   const [isListening, setIsListening] = useState(false);
   const [identifiedSong, setIdentifiedSong] = useState<string | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [exploreSections, setExploreSections] = useState<any[]>([]);
+  const [exploreLoading, setExploreLoading] = useState(true);
+  const [selectedCategoryTitle, setSelectedCategoryTitle] = useState<string | null>(null);
+  const [selectedCategoryData, setSelectedCategoryData] = useState<any[]>([]);
+  const [categoryLoading, setCategoryLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
   const [resultsByCategory, setResultsByCategory] = useState<Record<string, SearchItem[]>>({});
   const [songColors, setSongColors] = useState<Record<string, string>>({});
@@ -119,6 +196,18 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
       img.onerror = () => resolve(null);
       img.src = src;
     });
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/explore")
+      .then(res => res.json())
+      .then(data => {
+        if (data.sections) {
+          setExploreSections(data.sections);
+        }
+      })
+      .catch(err => console.error("Failed to load explore data", err))
+      .finally(() => setExploreLoading(false));
   }, []);
 
   const handleMusicIdentifier = async () => {
@@ -415,11 +504,12 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
       transition={MOTION_CONFIG.transition}
       className="flex-1 h-full overflow-y-auto bg-transparent relative custom-scrollbar flex flex-col animate-gpu"
     >
-      <div className={`flex w-full flex-col px-6 py-10 md:px-12 md:py-12 pb-48 text-left transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-        isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
-      }`}>
-        <div className="flex items-center justify-between mb-8 md:mb-10">
-          <h1 className="text-3xl md:text-5xl lg:text-[56px] font-black text-white tracking-tighter leading-none">Search</h1>
+      <div className="flex w-full flex-col px-6 py-10 md:px-12 md:py-12 pb-48 text-left">
+        <div className={`transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+        }`}>
+        <div className="flex items-center justify-between mb-8 md:mb-12">
+          <h1 className="text-[56px] md:text-[80px] lg:text-[100px] font-black text-white tracking-tighter leading-none drop-shadow-2xl">Search</h1>
           <button
             onClick={onClose}
             className="md:hidden font-bold text-lg px-4 py-2 bg-white/5 rounded-full"
@@ -439,16 +529,15 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
               e.preventDefault();
               void runSearch();
             }}
-            className="relative flex items-center w-full rounded-2xl md:rounded-[24px] bg-white/4 border border-white/5 px-4 md:px-6 py-4 md:py-5 focus-within:bg-white/8 focus-within:ring-2 shadow-2xl"
-            style={{ ringColor: 'var(--art-accent, #FA243C)33' } as any}
+            className="relative flex items-center w-full rounded-2xl bg-black/40 border border-white/10 px-4 md:px-8 py-5 md:py-7 focus-within:border-white shadow-2xl backdrop-blur-3xl transition-colors duration-300"
           >
-            <Search className="w-5 h-5 md:w-6 md:h-6 text-white/40 mr-3 md:mr-4" />
+            <Search className="w-6 h-6 md:w-8 md:h-8 text-white/40 mr-4 md:mr-6" />
             <input
               type="text"
               placeholder="Artists, Songs, Lyrics..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-transparent text-lg md:text-2xl font-black text-white placeholder:text-white/10 focus:outline-none"
+              className="flex-1 bg-transparent text-xl md:text-3xl font-black text-white placeholder:text-white/20 focus:outline-none tracking-tight"
               autoFocus
             />
             {searchQuery && (
@@ -493,10 +582,10 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
 
                   void runSearch(q, cat);
                 }}
-                className={`px-5 py-2.5 rounded-full border text-[13px] font-bold capitalize ${
+                className={`px-6 py-3 rounded-xl border text-[13px] font-black tracking-wide capitalize transition-all ${
                   activeCategory === cat 
-                  ? "bg-white text-black border-white" 
-                  : "bg-white/3 text-white/30 border-white/5 hover:bg-white/10 hover:text-white"
+                  ? "bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.4)]" 
+                  : "bg-transparent text-white/50 border-white/10 hover:border-white/40 hover:text-white"
                 }`}
               >
                 {cat}
@@ -504,25 +593,104 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
             ))}
           </div>
         </m.div>
+        </div>
 
-        {!searchQuery && !identifiedSong && (
+        {selectedCategoryTitle && !searchQuery && !identifiedSong ? (
+          <div className="w-full py-8 animate-gpu flex flex-col gap-12">
+            <div className={`flex items-center gap-4 mb-4 transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+            }`}>
+               <button onClick={() => { setSelectedCategoryTitle(null); setSelectedCategoryData([]); }} className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors"><ChevronLeft size={24} /></button>
+               <h2 className="text-[32px] md:text-[40px] font-black text-white tracking-tighter leading-none">{selectedCategoryTitle}</h2>
+            </div>
+            
+            {categoryLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                 <div key={i} className="w-full">
+                   <div className="w-48 h-8 bg-white/10 rounded-lg animate-pulse mb-6"></div>
+                   <div className="flex gap-4 overflow-hidden">
+                     {Array.from({ length: 5 }).map((_, j) => (
+                       <div key={j} className="w-[160px] md:w-[200px] shrink-0">
+                         <div className="w-full aspect-square bg-white/5 rounded-xl animate-pulse mb-3"></div>
+                         <div className="w-3/4 h-4 bg-white/5 rounded mt-2"></div>
+                         <div className="w-1/2 h-3 bg-white/5 rounded mt-2"></div>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+              ))
+            ) : (
+              selectedCategoryData.map((shelf, i) => (
+                <CategoryShelf key={i} shelf={shelf} isRightSidebarOpen={isRightSidebarOpen} />
+              ))
+            )}
+          </div>
+        ) : !searchQuery && !identifiedSong ? (
           <m.div 
             initial={false}
             animate={{ y: 0, opacity: 1 }} 
-            className="w-full max-w-3xl py-12 md:py-20 space-y-6 md:space-y-8 animate-gpu"
+            className={`w-full py-8 animate-gpu flex flex-col gap-12 transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+            }`}
           >
-             <div className="w-16 h-16 md:w-20 md:h-20 bg-linear-to-tr from-white/10 to-transparent rounded-2xl md:rounded-3xl flex items-center justify-center opacity-40">
-                <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-white" />
-             </div>
-             <div className="space-y-4">
-               <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight">Curation Studio</h2>
-               <p className="text-lg md:text-xl font-bold text-white/20 max-w-md">Browse millions of tracks or use Nexus Intelligence to discover the perfect setlist for your vibe.</p>
-             </div>
+             {exploreLoading ? (
+               // Loading Skeletons
+               Array.from({ length: 2 }).map((_, i) => (
+                 <div key={i} className="w-full">
+                   <div className="w-48 h-8 bg-white/10 rounded-lg animate-pulse mb-6"></div>
+                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                     {Array.from({ length: 6 }).map((_, j) => (
+                       <div key={j} className="aspect-[2/1] md:aspect-[5/3] w-full bg-white/5 rounded-xl animate-pulse"></div>
+                     ))}
+                   </div>
+                 </div>
+               ))
+             ) : (
+               exploreSections.map((section) => (
+                 <div key={section.title} className="w-full">
+                   <h2 className="text-[24px] md:text-[32px] font-black text-white tracking-tighter leading-none mb-6">{section.title}</h2>
+                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                     {section.items.map((item: any) => (
+                       <button
+                         key={item.name}
+                         onClick={() => {
+                           if (item.browseId) {
+                             setSelectedCategoryTitle(item.name);
+                             setCategoryLoading(true);
+                             setSearchQuery("");
+                             fetch(`/api/explore/category?browseId=${item.browseId}&params=${item.params || ''}`)
+                               .then(res => res.json())
+                               .then(data => {
+                                 if (data.shelves) setSelectedCategoryData(data.shelves);
+                               })
+                               .catch(err => console.error(err))
+                               .finally(() => setCategoryLoading(false));
+                           } else {
+                             setSearchQuery(item.name);
+                             void runSearch(item.name);
+                           }
+                         }}
+                         className="relative flex aspect-[2/1] md:aspect-[5/3] w-full overflow-hidden rounded-xl p-4 md:p-5 transition-transform hover:scale-[1.02] active:scale-95 shadow-lg group"
+                         style={{ backgroundColor: item.color }}
+                       >
+                         <span className="text-xl md:text-2xl font-black text-white text-left break-words max-w-[80%] leading-tight drop-shadow-md z-10">
+                           {item.name}
+                         </span>
+                         <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-black/30 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500" />
+                       </button>
+                     ))}
+                   </div>
+                 </div>
+               ))
+             )}
           </m.div>
-        )}
+        ) : null}
 
         {identifiedSong && !searchQuery && (
-           <div className="mb-10 p-6 rounded-3xl bg-white/5 border border-white/5 animate-in fade-in slide-in-from-top-4">
+           <div className={`transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+             isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+           }`}>
+             <div className="mb-10 p-6 rounded-3xl bg-white/5 border border-white/5 animate-in fade-in slide-in-from-top-4">
               <div className="flex items-center gap-4">
                  <div 
                   className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${isListening ? "animate-pulse" : "text-white"}`}
@@ -535,15 +703,23 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                    <p className="text-white/60 font-medium">{identifiedSong}</p>
                 </div>
               </div>
+             </div>
            </div>
         )}
 
         {searchQuery && (
-          <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={MOTION_CONFIG.transition} className="w-full max-w-5xl animate-gpu">
-            <h2 className="text-[24px] font-black text-white mb-6 px-1">
+          <m.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            transition={MOTION_CONFIG.transition} 
+            className={`w-full max-w-5xl animate-gpu transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+            }`}
+          >
+            <h2 className="text-[32px] md:text-[40px] font-black text-white tracking-tighter mb-8 px-1 drop-shadow-xl">
               {searchLoading ? "Finding..." : activeCategory === "Top" ? "Top Results" : activeCategory}
             </h2>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2">
               {mappedSongs.map((song, index) => (
                 <SwipeableSongRow
                   key={song.id}
@@ -567,7 +743,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                   <m.div
                     initial={false}
                     animate={{ opacity: 1, x: 0 }}
-                    className="group flex cursor-pointer items-center justify-between rounded-2xl p-3 px-4 hover:bg-white/[0.04] animate-gpu"
+                    className="group flex cursor-pointer items-center justify-between p-3 px-4 md:rounded-xl bg-black/20 hover:bg-white/10 border border-white/5 hover:translate-x-2 transition-all duration-300 animate-gpu shadow-lg"
                     onClick={() => {
                       // For Artist category → navigate to artist page
                       if (song.type === "ARTIST") {
@@ -616,7 +792,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                         </div>
                       </div>
                       <div className="flex flex-col flex-1 min-w-0 pr-4">
-                        <p className="truncate text-[18px] font-bold text-white leading-tight mb-1">{song.title}</p>
+                        <p className="truncate text-[20px] font-black text-white leading-none mb-2 tracking-tight">{song.title}</p>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-2 min-w-0">
                           {song.isLive || song.duration === "LIVE" ? (
@@ -635,7 +811,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                               e.stopPropagation();
                               onNavigateArtist?.(song.artist);
                             }}
-                            className="truncate text-[15px] font-medium text-white/40 hover:text-white/80 cursor-pointer"
+                            className="truncate text-[12px] font-black uppercase tracking-widest text-white/40 hover:text-white cursor-pointer transition-colors"
                           >
                             {song.artist}
                           </p>

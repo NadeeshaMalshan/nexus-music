@@ -1240,19 +1240,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           // Since we already had the next audio playing via crossfade,
           // set the directAudioUrl to the next track's URL (it's already set by onSongClick flow)
           // The audio is already playing so we just need to make sure we don't re-set src
-          if (directAudioUrl && nextAudio.src !== directAudioUrl) {
+          if (directAudioUrl && nativeAudioRef.current && nativeAudioRef.current.src !== directAudioUrl) {
             // Audio already loaded and playing from crossfade, skip re-assignment
           }
           return; // Don't re-assign src, it's already playing
         }
 
         // Normal (non-crossfade) src assignment
-        if (directAudioUrl && audio.src !== directAudioUrl) {
+        if (directAudioUrl && nativeAudioRef.current && nativeAudioRef.current.src !== directAudioUrl) {
             // Reset crossfade state for clean start
             crossfadeActiveRef.current = false;
             nextAudioPreloadedUrlRef.current = null;
 
-            audio.src = directAudioUrl;
+            nativeAudioRef.current.src = directAudioUrl;
             if (currentGainRef.current) {
               currentGainRef.current.gain.value = volumeRef.current / 100;
             }

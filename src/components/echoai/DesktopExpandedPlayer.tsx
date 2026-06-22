@@ -90,9 +90,6 @@ export function DesktopExpandedPlayer({
     if (viewMode === "music" && activeTab === "controls") {
       setTimeout(() => setActiveTab("lyrics"), 0);
     }
-    if (viewMode === "video" && activeTab === "lyrics") {
-      setTimeout(() => setActiveTab("controls"), 0);
-    }
   }, [viewMode, activeTab]);
   
   const ytPlayerInstance = useRef<YouTubePlayer | null>(null);

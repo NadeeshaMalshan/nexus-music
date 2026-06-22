@@ -13,6 +13,8 @@ export const metadata: Metadata = {
     "High-fidelity AI-powered music dashboard blending Spotify intelligence, YouTube playback, and Nexus AI insights.",
   manifest: "/manifest.json",
   icons: {
+    icon: "/icons/icon-192x192.png",
+    shortcut: "/icons/icon-192x192.png",
     apple: "/icons/icon-192x192.png",
   },
   appleWebApp: {

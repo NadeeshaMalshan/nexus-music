@@ -124,12 +124,6 @@ export function MobileExpandedPlayer({
     };
   }, [activeTab]);
 
-  useEffect(() => {
-    if (viewMode === "video" && activeTab === "lyrics") {
-      setActiveTab("controls");
-    }
-  }, [viewMode, activeTab]);
-
 
   const ytPlayerInstance = useRef<any>(null);
   const isPlayingRef = useRef(isPlaying);

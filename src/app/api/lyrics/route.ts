@@ -255,16 +255,54 @@ async function scrapeGeniusLyrics(url: string): Promise<string | null> {
   }
 }
 
+function cleanLyricsQuery(track: string, artist: string): { track: string; artist: string } {
+  let cleanArtist = artist
+    .replace(/\s*-\s*Topic$/i, "")
+    .replace(/\s*VEVO$/i, "")
+    .trim();
+  
+  // 1. Clean track title by removing common YouTube suffixes in brackets/parentheses
+  let cleanTrack = track
+    .replace(/\s*[\(\[][^)]*?(official|music|video|audio|lyric|visualizer|remaster|edit|version|feat|ft|with|clip|cover|tribute|karaoke|instrumental|hd|4k|mv|m\/v)[^)]*?[\)\]]/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  // 2. If the track title contains the artist's name, clean it up (e.g. "Adele - Hello" -> "Hello")
+  const hyphenIndex = cleanTrack.indexOf(" - ");
+  if (hyphenIndex !== -1) {
+    const part1 = cleanTrack.substring(0, hyphenIndex).trim();
+    const part2 = cleanTrack.substring(hyphenIndex + 3).trim();
+    
+    const part1Lower = part1.toLowerCase();
+    const artistLower = cleanArtist.toLowerCase();
+    
+    if (part1Lower.includes(artistLower) || artistLower.includes(part1Lower)) {
+      cleanTrack = part2;
+    } else if (artistLower === "unknown artist" || artistLower === "unknown") {
+      cleanTrack = part2;
+      cleanArtist = part1;
+    } else {
+      // Fallback: If hyphen is present, part2 is usually the track name
+      cleanTrack = part2;
+    }
+  }
+
+  // 3. Strip any remaining feat/ft details not inside parentheses
+  cleanTrack = cleanTrack.replace(/\s+(feat|ft|with)\.?\s+.*$/gi, "").trim();
+
+  return { track: cleanTrack, artist: cleanArtist };
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const track = searchParams.get("track")?.trim();
-  const artist = searchParams.get("artist")?.trim();
+  const rawTrack = searchParams.get("track")?.trim();
+  const rawArtist = searchParams.get("artist")?.trim();
   const durationRaw = searchParams.get("duration");
   const albumName = searchParams.get("album")?.trim() || "Unknown";
   const durationSeconds =
     durationRaw && !Number.isNaN(Number(durationRaw)) ? Number(durationRaw) : null;
 
-  if (!track || !artist) {
+  if (!rawTrack || !rawArtist) {
     return NextResponse.json(
       {
         success: false,
@@ -273,6 +311,9 @@ export async function GET(request: Request) {
       { status: 400 }
     );
   }
+
+  const { track, artist } = cleanLyricsQuery(rawTrack, rawArtist);
+  console.log(`[lyrics] Cleaned "${rawTrack}" by "${rawArtist}" -> "${track}" by "${artist}"`);
 
   try {
     // Run all external sources concurrently for maximum responsiveness.

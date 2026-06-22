@@ -167,6 +167,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // State
   const [audioData, setAudioData] = useState<AudioPayload | null>(null);
   const audioCacheRef = useRef<Record<string, AudioPayload>>({});
+  const lyricsCacheRef = useRef<Record<string, LyricsPayload>>({});
+  const knowCacheRef = useRef<Record<string, string[]>>({});
+  const directUrlCacheRef = useRef<Record<string, string>>({});
+  const prefetchedIdsRef = useRef<Set<string>>(new Set());
   const [queueSongs, setQueueSongs] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [lastSeedFetched, setLastSeedFetched] = useState<string | null>(null);
@@ -197,6 +201,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const [directAudioUrl, setDirectAudioUrl] = useState<string | null>(null);
   const nativeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const nextNativeAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Crossfade Web Audio API nodes
+  const crossfadeCtxRef = useRef<AudioContext | null>(null);
+  const currentGainRef = useRef<GainNode | null>(null);
+  const nextGainRef = useRef<GainNode | null>(null);
+  const currentSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const nextSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const crossfadeActiveRef = useRef(false);
+  const nextAudioPreloadedUrlRef = useRef<string | null>(null);
   const isUsingNativeAudio = useMemo(() => {
     if (currentSong?.isLive) return false;
     return viewMode === "music" && !!directAudioUrl;
@@ -428,9 +441,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty("--art-accent", palette.accent);
   }, [palette]);
 
-  // Dynamic Tab Title
+  // Dynamic Tab Title and Favicon
   useEffect(() => {
     if (typeof document === "undefined") return;
+    
+    // 1. Update Document Title
     if (currentSong) {
       const prefix = isPlaying ? "▶ " : "";
       const displayTitle = liveMetadata?.title || currentSong.title;
@@ -439,7 +454,22 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     } else {
       document.title = "Nexus | Premium AI Ecosystem";
     }
-  }, [currentSong, isPlaying, liveMetadata]);
+
+    // 2. Update Dynamic Favicon
+    const defaultIcon = "/icons/icon-192x192.png";
+    const faviconUrl = effectiveArtwork || defaultIcon;
+    const links = document.querySelectorAll("link[rel~='icon'], link[rel='apple-touch-icon']");
+    if (links.length > 0) {
+      links.forEach((link: any) => {
+        link.href = faviconUrl;
+      });
+    } else {
+      const link = document.createElement("link");
+      link.rel = "icon";
+      link.href = faviconUrl;
+      document.head.appendChild(link);
+    }
+  }, [currentSong, isPlaying, liveMetadata, effectiveArtwork]);
 
   // Fetch liked songs
   useEffect(() => {
@@ -484,6 +514,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       if (audioCacheRef.current[cacheKey]) {
         const payload = audioCacheRef.current[cacheKey];
         setAudioData(payload);
+        // Also restore prefetched lyrics/know if available
+        const lk = `${payload.trackName || currentSong?.title}_${payload.artist || currentSong?.artist}`;
+        if (lyricsCacheRef.current[lk] && !lyricsData) setLyricsData(lyricsCacheRef.current[lk]);
+        if (knowCacheRef.current[lk]) setKnowFacts(knowCacheRef.current[lk]);
+        if (directUrlCacheRef.current[currentSong?.id || '']) setDirectAudioUrl(directUrlCacheRef.current[currentSong?.id || '']);
         return;
       }
       setAudioData(null);
@@ -553,6 +588,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Check prefetch cache first
+    if (directUrlCacheRef.current[currentSong.id]) {
+      setDirectAudioUrl(directUrlCacheRef.current[currentSong.id]);
+      return;
+    }
+
     const controller = new AbortController();
     async function loadDirectUrl() {
       if (!currentSong?.id) {
@@ -568,6 +609,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         if (!response.ok) throw new Error("Failed to fetch direct URL");
         const data = await readResponseJson<{ url?: string }>(response);
         if (data?.url) {
+          directUrlCacheRef.current[currentSong.id] = data.url;
           setDirectAudioUrl(data.url);
         }
       } catch (error) {
@@ -588,11 +630,20 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (!currentSong) {
       return;
     }
-    const track = (liveMetadata?.title || currentSong.title)?.trim();
-    const artist = (liveMetadata?.artist || currentSong.artist)?.trim();
+    const track = (liveMetadata?.title || audioData?.trackName || currentSong.title)?.trim();
+    const artist = (liveMetadata?.artist || audioData?.artist || currentSong.artist)?.trim();
     if (!track || !artist) {
       return;
     }
+
+    // Check prefetch cache first
+    const lyricsKey = `${track}_${artist}`;
+    if (lyricsCacheRef.current[lyricsKey]) {
+      setLyricsData(lyricsCacheRef.current[lyricsKey]);
+      setLyricsLoading(false);
+      return;
+    }
+
     const duration = youtubeTimestampToSeconds(currentSong.duration);
     const durationQuery = duration != null ? `&duration=${encodeURIComponent(String(Math.round(duration)))}` : "";
 
@@ -606,6 +657,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         );
         if (!response.ok) throw new Error("Failed to fetch lyrics");
         const payload = await readResponseJson<LyricsPayload>(response);
+        if (payload) lyricsCacheRef.current[lyricsKey] = payload;
         setLyricsData(payload ?? null);
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
@@ -618,7 +670,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
     void loadLyrics();
     return () => controller.abort();
-  }, [currentSong, liveMetadata?.title, liveMetadata?.artist]);
+  }, [currentSong, liveMetadata?.title, liveMetadata?.artist, audioData?.trackName, audioData?.artist]);
 
   // Track session played history
   useEffect(() => {
@@ -629,6 +681,84 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       });
     }
   }, [currentSong]);
+
+  // Prefetch next 2 songs in queue for seamless playback
+  useEffect(() => {
+    if (!currentSong || upNextQueue.length === 0) return;
+    const toPrefetch = upNextQueue.slice(0, 2);
+    const controller = new AbortController();
+
+    async function prefetchSong(song: Song) {
+      if (prefetchedIdsRef.current.has(song.id)) return;
+      prefetchedIdsRef.current.add(song.id);
+      const query = `${song.artist} ${song.title}`.trim();
+      const isVideo = viewMode === "video" || song.preferVideoPlayback || song.isLive;
+      const audioCacheKey = `${song.id}_${query}_${isVideo ? 'v' : 'a'}`;
+
+      // 1. Prefetch audio metadata
+      if (!audioCacheRef.current[audioCacheKey]) {
+        try {
+          const url = `/api/audio?query=${encodeURIComponent(query)}&videoId=${song.id}&artist=${encodeURIComponent(song.artist)}&title=${encodeURIComponent(song.title)}${isVideo ? '&isVideo=true' : ''}`;
+          const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+          if (res.ok) {
+            const payload = await res.json() as AudioPayload;
+            if (payload) audioCacheRef.current[audioCacheKey] = payload;
+          }
+        } catch { /* ignore prefetch errors */ }
+      }
+
+      const cached = audioCacheRef.current[audioCacheKey];
+      const trackName = cached?.trackName || song.title;
+      const artistName = cached?.artist || song.artist;
+      const lyricsKey = `${trackName}_${artistName}`;
+
+      // 2. Prefetch direct audio URL (music mode only)
+      if (viewMode === "music" && !song.isLive && !directUrlCacheRef.current[song.id]) {
+        try {
+          const res = await fetch(`/api/get-audio-url?videoId=${song.id}`, { signal: controller.signal, cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json() as { url?: string };
+            if (data?.url) directUrlCacheRef.current[song.id] = data.url;
+          }
+        } catch { /* ignore */ }
+      }
+
+      // 3. Prefetch lyrics
+      if (!lyricsCacheRef.current[lyricsKey]) {
+        try {
+          const res = await fetch(`/api/lyrics?track=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}`, { signal: controller.signal, cache: "no-store" });
+          if (res.ok) {
+            const payload = await res.json() as LyricsPayload;
+            if (payload) lyricsCacheRef.current[lyricsKey] = payload;
+          }
+        } catch { /* ignore */ }
+      }
+
+      // 4. Prefetch know/story facts
+      if (!knowCacheRef.current[lyricsKey]) {
+        try {
+          const res = await fetch(`/api/know?track=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}&videoId=${encodeURIComponent(song.id)}`, { signal: controller.signal, cache: "no-store" });
+          if (res.ok) {
+            const facts = await res.json();
+            if (Array.isArray(facts)) knowCacheRef.current[lyricsKey] = facts;
+          }
+        } catch { /* ignore */ }
+      }
+
+      console.log(`[Prefetch] Cached: "${trackName}" by "${artistName}"`);
+    }
+
+    // Stagger prefetch to avoid overwhelming the server
+    const timers: NodeJS.Timeout[] = [];
+    toPrefetch.forEach((song, i) => {
+      timers.push(setTimeout(() => void prefetchSong(song), (i + 1) * 2000));
+    });
+
+    return () => {
+      controller.abort();
+      timers.forEach(clearTimeout);
+    };
+  }, [currentSong?.id, upNextQueue, viewMode]);
 
   // AI Queue and Up Next logic
   useEffect(() => {
@@ -727,6 +857,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const videoId = currentSong.id;
     if (!track || !artist || !videoId) return;
 
+    // Check prefetch cache first
+    const knowKey = `${track}_${artist}`;
+    if (knowCacheRef.current[knowKey]) {
+      setKnowFacts(knowCacheRef.current[knowKey]);
+      setKnowLoading(false);
+      return;
+    }
+
     const controller = new AbortController();
     async function loadKnowFacts() {
       setKnowLoading(true);
@@ -737,7 +875,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         );
         if (response.ok) {
           const facts = await readResponseJson<unknown>(response);
-          setKnowFacts(Array.isArray(facts) ? facts : []);
+          const factsArray = Array.isArray(facts) ? facts : [];
+          knowCacheRef.current[knowKey] = factsArray;
+          setKnowFacts(factsArray);
         }
       } catch (err) {
         if ((err as Error).name !== "AbortError") console.error("Failed to load know facts:", err);
@@ -927,23 +1067,86 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 if (Number.isFinite(duration) && duration > 0) {
                   setDurationSec(duration);
                   
-                  // Handle next track
-                  const bufferTime = settingsRef.current.gaplessPlayback ? 1.0 : 0.5;
-                  if (current >= duration - bufferTime) {
-                    onNextRef.current();
+                  const crossfadeSec = settingsRef.current.crossfade;
+                  const gapless = settingsRef.current.gaplessPlayback;
+
+                  // === GAPLESS PRE-BUFFER ===
+                  // When ~3s from end (or crossfade duration, whichever is larger), 
+                  // pre-buffer the next song into the secondary audio element
+                  const preloadThreshold = Math.max(crossfadeSec > 0 ? crossfadeSec + 1 : 3, 3);
+                  if (current >= duration - preloadThreshold && !nextAudioPreloadedUrlRef.current) {
+                    const nextSongs = upNextQueueRef.current;
+                    if (nextSongs.length > 0) {
+                      const nextSong = nextSongs[0];
+                      const cachedUrl = directUrlCacheRef.current[nextSong.id];
+                      if (cachedUrl && nextNativeAudioRef.current) {
+                        nextNativeAudioRef.current.src = cachedUrl;
+                        nextNativeAudioRef.current.preload = "auto";
+                        nextNativeAudioRef.current.load();
+                        nextAudioPreloadedUrlRef.current = cachedUrl;
+                        console.log(`[Gapless] Pre-buffered next: "${nextSong.title}"`);
+                      }
+                    }
+                  }
+
+                  // === CROSSFADE LOGIC ===
+                  if (crossfadeSec > 0 && current >= (duration - crossfadeSec)) {
+                    const remaining = duration - current;
+                    const ratio = Math.max(0, remaining / crossfadeSec);
+
+                    // Fade out current track
+                    if (currentGainRef.current) {
+                      currentGainRef.current.gain.value = ratio * (volumeRef.current / 100);
+                    } else {
+                      audio.volume = (volumeRef.current / 100) * ratio;
+                    }
+
+                    // Start and fade IN the next track if not already crossfading
+                    if (!crossfadeActiveRef.current && nextAudioPreloadedUrlRef.current && nextNativeAudioRef.current) {
+                      crossfadeActiveRef.current = true;
+                      const nextAudio = nextNativeAudioRef.current;
+                      if (nextGainRef.current) {
+                        nextGainRef.current.gain.value = 0;
+                      } else {
+                        nextAudio.volume = 0;
+                      }
+                      nextAudio.play().catch(() => {});
+                      console.log(`[Crossfade] Starting fade-in of next track`);
+                    }
+
+                    // Ramp up the next track volume
+                    if (crossfadeActiveRef.current && nextNativeAudioRef.current) {
+                      const fadeInRatio = 1 - ratio;
+                      if (nextGainRef.current) {
+                        nextGainRef.current.gain.value = fadeInRatio * (volumeRef.current / 100);
+                      } else {
+                        nextNativeAudioRef.current.volume = (volumeRef.current / 100) * fadeInRatio;
+                      }
+                    }
+
+                    // Trigger next when almost done
+                    if (gapless && remaining <= 0.3) {
+                      onNextRef.current();
+                    }
+                  } else {
+                    // Normal volume (no crossfade zone)
+                    if (currentGainRef.current) {
+                      currentGainRef.current.gain.value = volumeRef.current / 100;
+                    } else {
+                      audio.volume = volumeRef.current / 100;
+                    }
+                  }
+
+                  // Standard gapless trigger (no crossfade)
+                  if (crossfadeSec === 0) {
+                    const bufferTime = gapless ? 0.3 : 0.5;
+                    if (current >= duration - bufferTime) {
+                      onNextRef.current();
+                    }
                   }
                 }
-
-                // Apply Volume & Crossfade
-                if (duration > 0 && settingsRef.current.crossfade > 0 && current >= (duration - settingsRef.current.crossfade)) {
-                  const remaining = duration - current;
-                  const ratio = Math.max(0, remaining / settingsRef.current.crossfade);
-                  audio.volume = (volumeRef.current / 100) * ratio;
-                } else {
-                  audio.volume = volumeRef.current / 100;
-                }
               }
-            }, 500);
+            }, 200);  // Faster interval (200ms) for smoother crossfade ramping
 
             return () => {
               window.clearInterval(nativeProgressInterval);
@@ -1006,8 +1209,48 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     // Sync native audio if in use
     if (isUsingNativeAudio && nativeAudioRef.current) {
         const audio = nativeAudioRef.current;
+
+        // If crossfade just completed and the next audio was pre-buffered,
+        // swap: promote nextAudio to current (it's already playing)
+        if (crossfadeActiveRef.current && nextNativeAudioRef.current && nextAudioPreloadedUrlRef.current) {
+          // The next audio is already playing with crossfade - just swap refs
+          const prevAudio = nativeAudioRef.current;
+          const nextAudio = nextNativeAudioRef.current;
+
+          // Pause and clear the old track
+          try { prevAudio.pause(); prevAudio.src = ''; } catch {}
+
+          // Swap the ref assignments by swapping the DOM elements' roles
+          // The nextAudio keeps playing; set its volume to full
+          if (nextGainRef.current) {
+            nextGainRef.current.gain.value = volumeRef.current / 100;
+          } else {
+            nextAudio.volume = volumeRef.current / 100;
+          }
+
+          // Reset crossfade state
+          crossfadeActiveRef.current = false;
+          nextAudioPreloadedUrlRef.current = null;
+
+          // Since we already had the next audio playing via crossfade,
+          // set the directAudioUrl to the next track's URL (it's already set by onSongClick flow)
+          // The audio is already playing so we just need to make sure we don't re-set src
+          if (directAudioUrl && nextAudio.src !== directAudioUrl) {
+            // Audio already loaded and playing from crossfade, skip re-assignment
+          }
+          return; // Don't re-assign src, it's already playing
+        }
+
+        // Normal (non-crossfade) src assignment
         if (directAudioUrl && audio.src !== directAudioUrl) {
+            // Reset crossfade state for clean start
+            crossfadeActiveRef.current = false;
+            nextAudioPreloadedUrlRef.current = null;
+
             audio.src = directAudioUrl;
+            if (currentGainRef.current) {
+              currentGainRef.current.gain.value = volumeRef.current / 100;
+            }
             if (userIntentRef.current === "playing") {
                 audio.play().catch(e => console.warn("Native audio play failed:", e));
                 setIsPlaying(true);
@@ -1632,7 +1875,16 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         onPause={() => {
             if (userIntentRef.current === "paused") setIsPlaying(false);
         }}
-        onEnded={() => onNext()}
+        onEnded={() => {
+          // If crossfade didn't handle the transition, do it now
+          if (!crossfadeActiveRef.current) onNext();
+        }}
+      />
+      {/* Secondary Audio Element for Gapless/Crossfade pre-buffering */}
+      <audio
+        ref={nextNativeAudioRef}
+        style={{ display: "none" }}
+        preload="auto"
       />
     </DashboardContext.Provider>
   );

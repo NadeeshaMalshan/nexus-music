@@ -1213,19 +1213,24 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         // If crossfade just completed and the next audio was pre-buffered,
         // swap: promote nextAudio to current (it's already playing)
         if (crossfadeActiveRef.current && nextNativeAudioRef.current && nextAudioPreloadedUrlRef.current) {
-          // The next audio is already playing with crossfade - just swap refs
-          const prevAudio = nativeAudioRef.current;
-          const nextAudio = nextNativeAudioRef.current;
-
           // Pause and clear the old track
-          try { prevAudio.pause(); prevAudio.src = ''; } catch {}
+          try { nativeAudioRef.current?.pause(); if(nativeAudioRef.current) nativeAudioRef.current.src = ''; } catch {}
 
-          // Swap the ref assignments by swapping the DOM elements' roles
-          // The nextAudio keeps playing; set its volume to full
-          if (nextGainRef.current) {
-            nextGainRef.current.gain.value = volumeRef.current / 100;
-          } else {
-            nextAudio.volume = volumeRef.current / 100;
+          // Swap the DOM elements' roles
+          const tempAudio = nativeAudioRef.current;
+          nativeAudioRef.current = nextNativeAudioRef.current;
+          nextNativeAudioRef.current = tempAudio;
+
+          // Swap the GainNodes
+          const tempGain = currentGainRef.current;
+          currentGainRef.current = nextGainRef.current;
+          nextGainRef.current = tempGain;
+
+          // The nextAudio (now nativeAudioRef) keeps playing; set its volume to full
+          if (currentGainRef.current) {
+            currentGainRef.current.gain.value = volumeRef.current / 100;
+          } else if (nativeAudioRef.current) {
+            nativeAudioRef.current.volume = volumeRef.current / 100;
           }
 
           // Reset crossfade state
@@ -1879,12 +1884,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           // If crossfade didn't handle the transition, do it now
           if (!crossfadeActiveRef.current) onNext();
         }}
+        onError={(e) => console.warn("Primary audio element error:", e)}
       />
       {/* Secondary Audio Element for Gapless/Crossfade pre-buffering */}
       <audio
         ref={nextNativeAudioRef}
         style={{ display: "none" }}
         preload="auto"
+        onError={(e) => console.warn("Secondary audio element error:", e)}
       />
     </DashboardContext.Provider>
   );

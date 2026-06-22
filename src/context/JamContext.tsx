@@ -256,19 +256,13 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         switch (type) {
             case "join":
                 if (currentState.isHost) {
-                   // TOTAL RESET on join as requested
-                   d.setUpNextQueue([]);
-                   d.setCurrentSong(null);
-                   safePause();
-                   d.onSeek(0);
-                   
-                   // Broadcast the reset state to the new member
+                   // Broadcast the actual current state to the new member
                    broadcast("sync-play", { 
-                        isPlaying: false, 
-                        currentTime: 0,
-                        song: null 
+                        isPlaying: d.isPlaying, 
+                        currentTime: d.currentTimeSec,
+                        song: d.currentSong 
                    });
-                   broadcast("sync-queue", { queue: [] });
+                   broadcast("sync-queue", { queue: d.upNextQueue });
                 }
                 break;
             case "sync-play":

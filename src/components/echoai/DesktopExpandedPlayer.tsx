@@ -112,7 +112,7 @@ export function DesktopExpandedPlayer({
     }
     prevViewModeRef2.current = viewMode;
   }, [viewMode]);
-  const storylineRef = useRef<HTMLDivElement>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
   const videoContainerRef = useRef<HTMLDivElement>(null);
@@ -276,16 +276,6 @@ export function DesktopExpandedPlayer({
   const handleStoryJump = (index: number) => {
     setStoryActiveIndex(index);
     setStoryProgress(0);
-    const el = storylineRef.current;
-    if (el) {
-      const items = el.querySelectorAll(".story-fact");
-      const targetItem = items[index] as HTMLElement;
-      if (targetItem) {
-        const containerHeight = el.clientHeight;
-        const targetScroll = targetItem.offsetTop - (containerHeight / 2) + (targetItem.clientHeight / 2);
-        el.scrollTo({ top: targetScroll, behavior: "smooth" });
-      }
-    }
   };
 
   useEffect(() => {
@@ -297,17 +287,8 @@ export function DesktopExpandedPlayer({
     const interval = setInterval(() => {
       setStoryProgress(prev => {
         if (prev >= 100) {
-          const el = storylineRef.current;
-          if (el) {
-            const items = el.querySelectorAll(".story-fact");
-            if (items.length > 0) {
-              const nextIndex = (storyActiveIndex + 1) % items.length;
-              setStoryActiveIndex(nextIndex);
-              const nextItem = items[nextIndex] as HTMLElement;
-              const containerHeight = el.clientHeight;
-              const targetScroll = nextItem.offsetTop - (containerHeight / 2) + (nextItem.clientHeight / 2);
-              el.scrollTo({ top: targetScroll, behavior: "smooth" });
-            }
+          if (knowFacts.length > 0) {
+            setStoryActiveIndex((storyActiveIndex + 1) % knowFacts.length);
           }
           return 0;
         }
@@ -925,7 +906,7 @@ export function DesktopExpandedPlayer({
                         <div className="flex items-center gap-3">
                            <div>
                              <h2 className="text-4xl font-black text-white tracking-tight">Story</h2>
-                             <p className="text-white/40 text-[11px] font-black uppercase tracking-[0.3em] mt-1">Echo AI Insights</p>
+                             <p className="text-white/40 text-[11px] font-black uppercase tracking-[0.3em] mt-1">By: GENIUS</p>
                            </div>
                         </div>
                         <div className="flex flex-1 gap-1.5 ml-10">
@@ -947,14 +928,17 @@ export function DesktopExpandedPlayer({
                         </div>
                       </div>
 
-                      <div 
-                        ref={storylineRef} 
-                        className="flex-1 overflow-hidden overflow-x-hidden overscroll-none px-12 pt-10 pb-[50vh] no-scrollbar relative"
-                        style={{
-                          maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
-                          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
-                        }}
-                      >
+                      <div className="flex-1 relative overflow-hidden px-12 pt-10 pb-24">
+                            {/* Tap Navigation Zones */}
+                            <div className="absolute inset-y-0 left-0 w-1/3 z-20" onClick={() => {
+                                setStoryActiveIndex(prev => prev === 0 ? knowFacts.length - 1 : prev - 1);
+                                setStoryProgress(0);
+                            }} />
+                            <div className="absolute inset-y-0 right-0 w-2/3 z-20" onClick={() => {
+                                setStoryActiveIndex(prev => (prev + 1) % knowFacts.length);
+                                setStoryProgress(0);
+                            }} />
+
                           {knowLoading ? (
                                <div className="flex flex-col items-center justify-center h-full gap-8 opacity-60">
                                   <div className="relative">
@@ -967,37 +951,39 @@ export function DesktopExpandedPlayer({
                                   </div>
                                </div>
                           ) : (
-                              <div className="space-y-64">
-                                  {knowFacts.length > 0 ? (
-                                      knowFacts.map((fact, i) => (
-                                          <m.div 
-                                             key={i} 
-                                             animate={{ 
-                                                opacity: i === storyActiveIndex ? 1 : 0.15,
-                                                scale: i === storyActiveIndex ? 1 : 0.95,
-                                                x: i === storyActiveIndex ? 10 : 0,
-                                                filter: i === storyActiveIndex ? "blur(0px)" : "blur(4px)"
-                                             }}
-                                             transition={{ duration: 1.5, ease: [0.19, 1, 0.22, 1] }}
-                                             className={`story-fact font-black leading-[1.1] text-white tracking-tighter drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)] transition-all duration-500 ${fact.length > 140 ? 'text-[38px]' : 'text-[52px]'}`}
-                                          >
-                                              {fact}
-                                          </m.div>
-                                      ))
-                                  ) : (
-                                      <div className="flex flex-col items-center justify-center py-40 opacity-20 text-center max-w-lg mx-auto">
-                                          <BookOpen size={64} className="mb-8 opacity-20" />
-                                          <p className="text-2xl font-black italic leading-tight text-balance">This track&apos;s story is waiting for the perfect moment to reveal itself...</p>
-                                      </div>
-                                  )}
-
-                                  {knowFacts.length > 0 && (
-                                     <div className="pt-32 pb-40 text-center">
-                                         <div className="h-px w-16 bg-white/10 mx-auto mb-10" />
-                                         <p className="text-[11px] font-black uppercase tracking-[0.5em] text-white/10">The Narrative Concludes</p>
-                                     </div>
-                                  )}
-                              </div>
+                                <div className="absolute inset-x-12 top-12 bottom-20">
+                                    <AnimatePresence mode="wait">
+                                        {knowFacts.length > 0 ? (
+                                                <m.div 
+                                                key={storyActiveIndex}
+                                                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 1.05, y: -15 }}
+                                                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                                                className="absolute inset-0 flex flex-col justify-center p-8 sm:p-16"
+                                            >
+                                                <div className="flex-1 flex flex-col justify-center">
+                                                    <p className={`font-black leading-[1.1] text-white tracking-tighter [text-shadow:0_4px_24px_rgba(0,0,0,0.6)] text-left text-balance py-4 ${knowFacts[storyActiveIndex].length > 200 ? 'text-[36px]' : knowFacts[storyActiveIndex].length > 100 ? 'text-[48px]' : 'text-[64px]'}`}>
+                                                        {knowFacts[storyActiveIndex]}
+                                                    </p>
+                                                </div>
+                                                <div className="flex justify-center mt-8">
+                                                    <div className="h-1.5 w-16 bg-white/20 rounded-full" />
+                                                </div>
+                                            </m.div>
+                                        ) : (
+                                            <m.div 
+                                                key="empty"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                className="absolute inset-0 flex flex-col items-center justify-center py-40 opacity-20 text-center max-w-lg mx-auto"
+                                            >
+                                                <BookOpen size={64} className="mb-8 opacity-20" />
+                                                <p className="text-2xl font-black italic leading-tight text-balance">This track&apos;s story is waiting for the perfect moment to reveal itself...</p>
+                                            </m.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                           )}
                       </div>
                     </m.div>

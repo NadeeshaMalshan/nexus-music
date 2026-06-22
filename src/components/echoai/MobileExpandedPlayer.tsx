@@ -143,7 +143,7 @@ export function MobileExpandedPlayer({
   const videoSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
-  const storylineRef = useRef<HTMLDivElement>(null);
+
   const storylineIndexRef = useRef(0);
   const capturedTimeRef = useRef<number>(0);
   const videoInitSeekRef = useRef<boolean>(false);
@@ -290,16 +290,6 @@ export function MobileExpandedPlayer({
   const handleStoryJump = (index: number) => {
     setStoryActiveIndex(index);
     setStoryProgress(0);
-    const el = storylineRef.current;
-    if (el) {
-      const items = el.querySelectorAll(".story-fact");
-      const targetItem = items[index] as HTMLElement;
-      if (targetItem) {
-        const containerHeight = el.clientHeight;
-        const targetScroll = targetItem.offsetTop - (containerHeight / 2) + (targetItem.clientHeight / 2);
-        el.scrollTo({ top: targetScroll, behavior: "smooth" });
-      }
-    }
   };
 
   useEffect(() => {
@@ -314,17 +304,8 @@ export function MobileExpandedPlayer({
     const interval = setInterval(() => {
       setStoryProgress(prev => {
         if (prev >= 100) {
-          const el = storylineRef.current;
-          if (el) {
-            const items = el.querySelectorAll(".story-fact");
-            if (items.length > 0) {
-               const nextIndex = (storyActiveIndex + 1) % items.length;
-               setStoryActiveIndex(nextIndex);
-               const nextItem = items[nextIndex] as HTMLElement;
-               const containerHeight = el.clientHeight;
-               const targetScroll = nextItem.offsetTop - (containerHeight / 2) + (nextItem.clientHeight / 2);
-               el.scrollTo({ top: targetScroll, behavior: "smooth" });
-            }
+          if (knowFacts.length > 0) {
+            setStoryActiveIndex((storyActiveIndex + 1) % knowFacts.length);
           }
           return 0;
         }
@@ -993,7 +974,7 @@ export function MobileExpandedPlayer({
                     <div className="flex flex-col h-full bg-linear-to-b from-black/20 to-transparent">
                         <div className="px-10 pt-8 pb-4 flex items-center justify-between border-b border-white/5">
                             <div className="flex items-center gap-2">
-                                <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-white/40">Behind the Music</h3>
+                                <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-white/40">By: GENIUS</h3>
                             </div>
                             <div className="flex flex-1 gap-1.5 ml-6">
                                 {knowFacts.map((_, i) => (
@@ -1014,7 +995,17 @@ export function MobileExpandedPlayer({
                             </div>
                         </div>
 
-                        <div ref={storylineRef} className="flex-1 overflow-hidden overflow-x-hidden overscroll-none px-10 pt-12 pb-[40dvh] no-scrollbar relative">
+                        <div className="flex-1 relative overflow-hidden px-6 pt-6 pb-24">
+                            {/* Tap Navigation Zones */}
+                            <div className="absolute inset-y-0 left-0 w-1/3 z-20" onClick={() => {
+                                setStoryActiveIndex(prev => prev === 0 ? knowFacts.length - 1 : prev - 1);
+                                setStoryProgress(0);
+                            }} />
+                            <div className="absolute inset-y-0 right-0 w-2/3 z-20" onClick={() => {
+                                setStoryActiveIndex(prev => (prev + 1) % knowFacts.length);
+                                setStoryProgress(0);
+                            }} />
+
                             {knowLoading ? (
                                 <div className="flex flex-col items-center justify-center h-full gap-6">
                                     <div className="relative">
@@ -1030,42 +1021,39 @@ export function MobileExpandedPlayer({
                                     </div>
                                 </div>
                             ) : (
-                                 <div className="space-y-48">
-                                     {knowFacts.length > 0 ? (
-                                         knowFacts.map((fact, i) => (
-                                             <m.div 
-                                                key={i} 
-                                                id={`story-fact-${i}`}
-                                                animate={{ 
-                                                    opacity: i === storyActiveIndex ? 1 : 0.2,
-                                                    scale: i === storyActiveIndex ? 1 : 0.95,
-                                                    y: i === storyActiveIndex ? 0 : 20,
-                                                    filter: i === storyActiveIndex ? "blur(0px)" : "blur(2px)"
-                                                }}
-                                                transition={{ duration: 1.2, ease: [0.19, 1, 0.22, 1] }}
-                                                className="story-fact group"
-                                             >
-                                                <div className="flex items-start gap-4">
-                                                 <div className={`font-black text-white leading-[1.1] tracking-tighter drop-shadow-[0_15px_30px_rgba(0,0,0,0.5)] transition-all duration-500 ${fact.length > 110 ? 'text-[28px]' : 'text-[36px]'}`}>
-                                                        {fact}
-                                                    </div>
+                                <div className="absolute inset-x-6 top-6 bottom-24">
+                                    <AnimatePresence mode="wait">
+                                        {knowFacts.length > 0 ? (
+                                                <m.div 
+                                                key={storyActiveIndex}
+                                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 1.05, y: -10 }}
+                                                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                                                className="absolute inset-0 flex flex-col justify-center p-8"
+                                            >
+                                                <div className="flex-1 flex flex-col justify-center">
+                                                    <p className={`font-black text-white leading-[1.1] tracking-tighter [text-shadow:0_4px_24px_rgba(0,0,0,0.6)] text-left text-balance py-4 ${knowFacts[storyActiveIndex].length > 150 ? 'text-[28px]' : knowFacts[storyActiveIndex].length > 80 ? 'text-[36px]' : 'text-[46px]'}`}>
+                                                        {knowFacts[storyActiveIndex]}
+                                                    </p>
                                                 </div>
-                                             </m.div>
-                                         ))
-                                     ) : (
-                                         <div className="flex flex-col items-center justify-center h-full opacity-20 text-center px-10">
-                                             <BookOpen size={48} className="mb-6 opacity-30" />
-                                             <p className="text-lg font-bold italic leading-relaxed">The story of this track is still being written by the universe...</p>
-                                         </div>
-                                     )}
-                                     
-                                     {knowFacts.length > 0 && (
-                                         <div className="pt-20 pb-40 text-center">
-                                             <div className="h-px w-10 bg-white/10 mx-auto mb-8" />
-                                             <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">End of Story</p>
-                                         </div>
-                                     )}
-                                 </div>
+                                                <div className="flex justify-center mt-6">
+                                                    <div className="h-1 w-12 bg-white/20 rounded-full" />
+                                                </div>
+                                            </m.div>
+                                        ) : (
+                                            <m.div 
+                                                key="empty"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                className="absolute inset-0 flex flex-col items-center justify-center opacity-20 text-center px-4"
+                                            >
+                                                <BookOpen size={48} className="mb-6 opacity-30" />
+                                                <p className="text-lg font-bold italic leading-relaxed">The story of this track is still being written by the universe...</p>
+                                            </m.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                             )}
                         </div>
                     </div>

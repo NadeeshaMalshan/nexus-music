@@ -268,7 +268,9 @@ function cleanLyricsQuery(track: string, artist: string): { track: string; artis
     .trim();
 
   // 2. If the track title contains the artist's name, clean it up (e.g. "Adele - Hello" -> "Hello")
-  const hyphenIndex = cleanTrack.indexOf(" - ");
+  // Normalize em-dash and en-dash to standard hyphen
+  const normalizedTrack = cleanTrack.replace(/[\u2013\u2014]/g, "-");
+  const hyphenIndex = normalizedTrack.indexOf(" - ");
   if (hyphenIndex !== -1) {
     const part1 = cleanTrack.substring(0, hyphenIndex).trim();
     const part2 = cleanTrack.substring(hyphenIndex + 3).trim();

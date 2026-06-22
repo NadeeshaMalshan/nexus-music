@@ -178,7 +178,7 @@ export function DesktopExpandedPlayer({
   // Memoize lyrics components to prevent total re-render on activeIndex change
   const LyricLine = React.memo(({ line, index, isActive, isInstrumental, syncedLine, currentTimeSec, onSeek }: LyricLineProps) => {
     let instProgress = 0;
-    if (isInstrumental && isActive) {
+    if (isInstrumental && isActive && syncedLine) {
       const start = syncedLine.at;
       const next = syncedLines[index + 1];
       const end = next ? next.at : start + 5;
@@ -193,7 +193,7 @@ export function DesktopExpandedPlayer({
     return (
       <m.div 
         ref={el => { elementsRef.current[index] = el; }} 
-        onClick={() => hasSynced && onSeek(syncedLine?.at)}
+        onClick={() => hasSynced && syncedLine && onSeek(syncedLine.at)}
         layout
         animate={{
           opacity: hasSynced ? (isActive ? 1 : 0.3) : 0.8,

@@ -805,9 +805,9 @@ export function LibraryHistoryPane({
                   onSongClick?.(track as Song);
                 }
               }}
-              className="group flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-white/3 border border-white/5 hover:bg-white/8 transition-all cursor-pointer relative overflow-hidden"
+              className="group flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-white/[0.02] border border-transparent hover:bg-white/[0.06] transition-all duration-300 cursor-pointer relative overflow-hidden"
             >
-              <div className="h-12 w-12 md:h-16 md:h-16 shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shadow-lg relative">
+              <div className="h-12 w-12 md:w-16 md:h-16 shrink-0 rounded-xl overflow-hidden bg-zinc-800/40 shadow-lg relative">
                 <MusicArtwork
                   src={track.artwork}
                   alt={track.title}

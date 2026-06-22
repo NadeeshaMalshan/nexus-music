@@ -10,6 +10,7 @@ import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
 import { readResponseJson } from "@/lib/readResponseJson";
 import { useSession, signIn } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import { useDashboard } from "@/context/DashboardContext";
 import { MusicArtwork } from "./MusicArtwork";
 import { YouTubeLibrary } from "./YouTubeLibrary";
 import { PlaylistDetail } from "./PlaylistDetail";
@@ -69,8 +70,8 @@ type ArtistSearchItem = {
 };
 
 // ─── Shelf Component ─────────────────────────────────────────────────────────
-function Shelf(props: {
-  title: string;
+export function Shelf(props: {
+  title: React.ReactNode;
   subtitle?: string;
   onRefresh?: () => void;
   loading?: boolean;
@@ -78,6 +79,7 @@ function Shelf(props: {
 }) {
   const { title, subtitle, onRefresh, loading, children } = props;
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const { isRightSidebarOpen } = useDashboard();
 
   const scroll = (dir: "left" | "right") => {
     if (!scrollRef.current) return;
@@ -87,7 +89,9 @@ function Shelf(props: {
 
   return (
     <section className="relative group/shelf">
-      <div className="mb-6 flex items-center justify-between px-1">
+      <div className={`mb-6 flex items-center justify-between px-1 transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+      }`}>
         <div>
           <h2 className="text-[28px] font-black text-white tracking-tight leading-none">{title}</h2>
           {subtitle && <p className="text-[14px] text-zinc-500 mt-2 font-medium">{subtitle}</p>}
@@ -102,18 +106,20 @@ function Shelf(props: {
                <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
             </button>
           )}
-          <div className="hidden items-center gap-2 lg:flex opacity-0 group-hover/shelf:opacity-100">
+          <div className="flex items-center gap-5">
             <button 
               onClick={() => scroll("left")}
-              className="p-2 rounded-full bg-[#1c1c1e] hover:bg-[#2c2c2e] text-white"
+              className="text-white/40 hover:text-white transition-all hover:scale-110 active:scale-90"
+              aria-label="Scroll left"
             >
-              <ChevronLeft size={20} />
+              <ChevronLeft size={24} strokeWidth={2.5} />
             </button>
             <button 
               onClick={() => scroll("right")}
-              className="p-2 rounded-full bg-[#1c1c1e] hover:bg-[#2c2c2e] text-white"
+              className="text-white/40 hover:text-white transition-all hover:scale-110 active:scale-90"
+              aria-label="Scroll right"
             >
-              <ChevronRight size={20} />
+              <ChevronRight size={24} strokeWidth={2.5} />
             </button>
           </div>
         </div>
@@ -124,6 +130,9 @@ function Shelf(props: {
         className="flex items-start gap-x-8 overflow-x-auto no-scrollbar scroll-smooth px-1 pb-4"
       >
         {children}
+        {isRightSidebarOpen && (
+          <div className="hidden lg:block w-[380px] shrink-0 pointer-events-none" />
+        )}
       </div>
     </section>
   );
@@ -373,6 +382,26 @@ export function CenterPanel(props: CenterPanelProps) {
   const [likedTracks, setLikedTracks] = useState<SearchItem[]>([]);
   const [likedTracksLoading, setLikedTracksLoading] = useState(false);
 
+  const [videoSeed, setVideoSeed] = useState("Trending Hits");
+  const [audioSeed, setAudioSeed] = useState("Lofi Beats");
+  const [liveSeed, setLiveSeed] = useState("Synthwave");
+  const [playlistSeed, setPlaylistSeed] = useState("Billboard Hot 100");
+  const [artistSeed, setArtistSeed] = useState("Pop Music");
+
+  useEffect(() => {
+    const videoList = ["Trending Hits", "Pop Music 2025", "Billboard Hot 100", "Viral Hits", "Summer Anthems", "New Releases"];
+    const audioList = ["Lofi Beats", "Acoustic Chill", "R&B Hits", "Chill Vibes", "Indie Pop", "Acoustic Guitar", "Jazz Relax"];
+    const liveList = ["Electronic Set", "Live Acoustic", "Jazz Session", "Synthwave", "Chillout Live", "Festival Set", "Piano Live"];
+    const playlistList = ["Party Mix", "Workout Hits", "Focus Study", "Sleep Ambient", "Dance Hits", "Summer Vibes", "Sad Acoustic"];
+    const artistList = ["The Weeknd", "Taylor Swift", "Dua Lipa", "Drake", "Post Malone", "Billie Eilish", "Bruno Mars", "Ed Sheeran"];
+
+    setVideoSeed(videoList[Math.floor(Math.random() * videoList.length)]);
+    setAudioSeed(audioList[Math.floor(Math.random() * audioList.length)]);
+    setLiveSeed(liveList[Math.floor(Math.random() * liveList.length)]);
+    setPlaylistSeed(playlistList[Math.floor(Math.random() * playlistList.length)]);
+    setArtistSeed(artistList[Math.floor(Math.random() * artistList.length)]);
+  }, []);
+
   const fetchPlaylists = useCallback(async () => {
     if (!session?.accessToken) return;
     setPlaylistsLoading(true);
@@ -413,7 +442,7 @@ export function CenterPanel(props: CenterPanelProps) {
       uniq.push(x);
       if (uniq.length >= 40) break;
     }
-    return uniq.length > 0 ? uniq : ["Top Hits 2024"];
+    return uniq.length > 0 ? uniq : ["__FALLBACK_SEED__"];
   }, [likedTracks]);
 
   const sessionHistoryStrings = React.useMemo((): string[] => {
@@ -432,6 +461,7 @@ export function CenterPanel(props: CenterPanelProps) {
     // Extract most frequent artists from the profile history strings.
     const counts = new Map<string, number>();
     for (const s of profileHistoryStrings) {
+      if (s === "__FALLBACK_SEED__") continue;
       const idx = s.toLowerCase().lastIndexOf(" by ");
       const artist = idx >= 0 ? s.slice(idx + 4).trim() : "";
       if (!artist) continue;
@@ -441,7 +471,7 @@ export function CenterPanel(props: CenterPanelProps) {
       .sort((a, b) => b[1] - a[1])
       .map(([artist]) => artist);
     const top = ranked.slice(0, 2);
-    return top.length > 0 ? top : ["Top Hits 2024"];
+    return top.length > 0 ? top : ["__FALLBACK_SEED__"];
   }, [profileHistoryStrings]);
 
   const fetchForYou = useCallback(async () => {
@@ -492,7 +522,8 @@ export function CenterPanel(props: CenterPanelProps) {
         }
       }
       const seeds = seedQueries();
-      const q = `${seeds[0]} audio`;
+      const queryValue = seeds[0] === "__FALLBACK_SEED__" ? audioSeed : seeds[0];
+      const q = `${queryValue} audio`;
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=songs`, { cache: "no-store" });
       if (!res.ok) return;
       const data = await readResponseJson<{ items?: SearchItem[] }>(res);
@@ -506,13 +537,14 @@ export function CenterPanel(props: CenterPanelProps) {
     } finally {
       setAudioPicksLoading(false);
     }
-  }, [seedQueries, session?.accessToken]);
+  }, [seedQueries, session?.accessToken, audioSeed]);
 
   const fetchLiveNow = useCallback(async () => {
     setLiveNowLoading(true);
     try {
       const seeds = seedQueries();
-      const q = `${seeds[0]} live`;
+      const queryValue = seeds[0] === "__FALLBACK_SEED__" ? liveSeed : seeds[0];
+      const q = `${queryValue} live`;
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=live`, { cache: "no-store" });
       if (!res.ok) return;
       const data = await readResponseJson<{ items?: SearchItem[] }>(res);
@@ -526,7 +558,7 @@ export function CenterPanel(props: CenterPanelProps) {
     } finally {
       setLiveNowLoading(false);
     }
-  }, [seedQueries]);
+  }, [seedQueries, liveSeed]);
 
   const fetchVideoPicks = useCallback(async () => {
     setVideoPicksLoading(true);
@@ -547,7 +579,8 @@ export function CenterPanel(props: CenterPanelProps) {
         }
       }
       const seeds = seedQueries();
-      const q = `${seeds[0]} official music video`;
+      const queryValue = seeds[0] === "__FALLBACK_SEED__" ? videoSeed : seeds[0];
+      const q = `${queryValue} official music video`;
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=videos`, { cache: "no-store" });
       if (!res.ok) return;
       const data = await readResponseJson<{ items?: SearchItem[] }>(res);
@@ -559,13 +592,14 @@ export function CenterPanel(props: CenterPanelProps) {
     } finally {
       setVideoPicksLoading(false);
     }
-  }, [seedQueries, session?.accessToken]);
+  }, [seedQueries, session?.accessToken, videoSeed]);
 
   const fetchPlaylistRecs = useCallback(async () => {
     setPlaylistRecsLoading(true);
     try {
       const seeds = seedQueries();
-      const q = `${seeds[0]} mix playlist`;
+      const queryValue = seeds[0] === "__FALLBACK_SEED__" ? playlistSeed : seeds[0];
+      const q = `${queryValue} mix playlist`;
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=playlists`, { cache: "no-store" });
       if (!res.ok) return;
       const data = await readResponseJson<{ items?: PlaylistSearchItem[] }>(res);
@@ -579,13 +613,14 @@ export function CenterPanel(props: CenterPanelProps) {
     } finally {
       setPlaylistRecsLoading(false);
     }
-  }, [seedQueries]);
+  }, [seedQueries, playlistSeed]);
 
   const fetchArtistRecs = useCallback(async () => {
     setArtistRecsLoading(true);
     try {
       const seeds = seedQueries();
-      const q = seeds[0];
+      const queryValue = seeds[0] === "__FALLBACK_SEED__" ? artistSeed : seeds[0];
+      const q = queryValue;
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=artists`, { cache: "no-store" });
       if (!res.ok) return;
       const data = await readResponseJson<{ items?: ArtistSearchItem[] }>(res);
@@ -599,7 +634,7 @@ export function CenterPanel(props: CenterPanelProps) {
     } finally {
       setArtistRecsLoading(false);
     }
-  }, [seedQueries]);
+  }, [seedQueries, artistSeed]);
 
   const fetchLikedTracks = useCallback(async () => {
     if (!session?.accessToken) return;
@@ -802,12 +837,12 @@ export function CenterPanel(props: CenterPanelProps) {
               className="flex-1 h-full min-h-0 overflow-y-auto custom-scrollbar px-6 md:px-10 lg:px-16 pt-12 pb-40 space-y-20"
             >
               {!session ? (
-                <div className="flex flex-col justify-center items-center py-4 text-center max-w-2xl mx-auto px-4">
+                <div className="flex flex-col justify-start items-start py-4 text-left w-full">
                   <m.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                    className="flex flex-col items-center"
+                    className="flex flex-col items-start"
                   >
                     <div 
                       className="w-14 h-14 rounded-full flex items-center justify-center mb-5 border border-white/5 bg-white/[0.02]"

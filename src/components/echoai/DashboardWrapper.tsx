@@ -9,6 +9,7 @@ import { ExpandedPlayer } from "./ExpandedPlayer";
 import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { m, AnimatePresence } from "motion/react";
+import { EchoAIDashboard } from "./EchoAIDashboard";
 
 export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -95,8 +96,8 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     }
     
     // When a song is playing, let the status bar follow the artwork vibe.
-    // Use the current accent color if a song is loaded, otherwise default to black.
-    const activeColor = currentSong ? palette.accent : "#050505";
+    // Use the current accent color if a song is loaded, otherwise default to #0D0D0D.
+    const activeColor = currentSong ? palette.accent : "#0D0D0D";
     meta.setAttribute("content", activeColor);
     
     // For iOS specific status bar
@@ -111,26 +112,28 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   const activeView = pathname === "/" ? "home" : pathname.split("/")[1] || "home";
 
   return (
-    <div className="relative h-screen overflow-hidden text-zinc-100 bg-[#06060c]">
-      {/* Background with optimized CSS transition */}
+    <div className="relative h-screen overflow-hidden text-zinc-100 bg-[#0D0D0D]">
+      {/* Redesigned Background: Solid #0D0D0D by default, ambient artwork glows when playing */}
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-animate animate-gpu"
+        className="pointer-events-none absolute -inset-16 scale-110 transition-opacity duration-[1200ms] ease-out"
         style={{
-          backgroundImage: `
-            radial-gradient(circle at 15% 15%, ${palette.primary}cc, transparent 70%),
-            radial-gradient(circle at 85% 85%, ${palette.secondary}99, transparent 70%),
-            radial-gradient(circle at 50% 50%, ${palette.accent}22, transparent 90%)
-          `,
-          filter: "blur(120px) saturate(2.5)",
+          opacity: currentSong ? 1 : 0,
         }}
       >
-          <div className="absolute inset-0 opacity-[0.15] bg-gradient-animate" style={{
-            backgroundImage: `radial-gradient(circle at 50% 50%, ${palette.accent}, transparent)`,
-          }} />
+        <div
+          className="w-full h-full bg-gradient-animate animate-gpu"
+          style={{
+            backgroundImage: currentSong ? `
+              radial-gradient(circle at 0% 0%, ${palette.primary}33 0%, ${palette.primary}0a 45%, transparent 75%),
+              radial-gradient(circle at 100% 100%, ${palette.secondary}29 0%, ${palette.secondary}08 45%, transparent 75%)
+            ` : "none",
+            filter: "blur(140px) saturate(2.0)",
+          }}
+        />
       </div>
-      <div className="pointer-events-none absolute inset-0 bg-black/10" />
+      <div className="pointer-events-none absolute inset-0 bg-black/[0.08]" />
       <main
-        className={`relative z-10 flex h-full min-h-0 w-full min-w-0 ${isRightSidebarOpen && !isExpandedPlayerOpen ? "lg:pr-[380px]" : ""}`}
+        className="relative z-10 flex h-full min-h-0 w-full min-w-0"
       >
         <LeftSidebar
           activeView={activeView}
@@ -138,7 +141,10 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           accentColor={themeColor}
         />
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <EchoAIDashboard />
+          <div className="hidden">{children}</div>
+        </div>
       </main>
 
       <AnimatePresence>

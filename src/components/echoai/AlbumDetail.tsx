@@ -24,7 +24,7 @@ interface AlbumDetailProps {
 }
 
 export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNavigateArtist, accentColor, currentSongId, onAddToQueue, onPlayNext, onPlayPlaylist }: AlbumDetailProps) {
-  const { setOverrideArtwork } = useDashboard();
+  const { setOverrideArtwork, isRightSidebarOpen } = useDashboard();
   const [albumData, setAlbumData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -127,7 +127,9 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
   };
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-transparent custom-scrollbar pb-40">
+    <div className={`flex-1 h-full overflow-y-auto bg-transparent custom-scrollbar pb-40 transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+    }`}>
       {/* Navigation & Header */}
       <div className="relative px-6 py-8 lg:px-12">
         <button 

@@ -3,7 +3,7 @@ import { X, Play, Sparkles, Trash2, GripVertical, Plus } from "lucide-react";
 import { type Song } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { AudioVisualizer } from "./AudioVisualizer";
-import { motion, Reorder } from "motion/react";
+import { motion, Reorder, AnimatePresence } from "motion/react";
 import { JamSession } from "./JamSession";
 import { MusicArtwork } from "./MusicArtwork";
 
@@ -127,20 +127,25 @@ export function RightSidebar({
     });
   }, [activeIndex, hasSynced, activeTab]);
 
-  if (!isOpen) return null;
-
   return (
-    <>
-      <motion.div 
-        key={accentColor}
-        className="fixed right-0 top-0 z-60 hidden h-[100dvh] w-[380px] flex-col border-l border-white/10 shadow-2xl lg:flex"
-        animate={{ 
-          backgroundColor: accentColor 
-            ? `color-mix(in srgb, ${accentColor} 12%, #000000)` 
-            : "#000000" 
-        }}
-        transition={{ duration: 1 }}
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          key="right-sidebar"
+          initial={{ x: "100%", opacity: 0 }}
+          animate={{ 
+            x: 0, 
+            opacity: 1,
+            backgroundColor: "rgba(13, 13, 13, 0.82)" 
+          }}
+          exit={{ x: "100%", opacity: 0 }}
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="fixed right-0 top-0 z-60 hidden h-[100dvh] w-[380px] flex-col border-l border-white/10 shadow-2xl lg:flex"
+          style={{
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)"
+          }}
+        >
           <div className="flex items-center justify-between px-6 py-5 pt-[max(1.5rem,env(safe-area-inset-top))] border-b border-white/5">
             <h2 className="text-[17px] font-black uppercase tracking-[0.2em] text-white/90">
               {activeTab === "queue" ? "Queue" : activeTab === "lyrics" ? "Lyrics" : "Session"}
@@ -349,7 +354,8 @@ export function RightSidebar({
               </div>
             )}
           </div>
-      </motion.div>
-    </>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

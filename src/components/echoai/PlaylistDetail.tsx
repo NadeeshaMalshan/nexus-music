@@ -28,7 +28,7 @@ interface PlaylistDetailProps {
 
 export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentColor, currentSongId, onAddToQueue, onPlayNext, onPlayPlaylist, onNavigateArtist, onBack }: PlaylistDetailProps) {
   const { data: session } = useSession();
-  const { setOverrideArtwork } = useDashboard();
+  const { setOverrideArtwork, isRightSidebarOpen } = useDashboard();
   const [currentPlaylist, setCurrentPlaylist] = useState<YouTubePlaylist>(playlist);
   const [tracks, setTracks] = useState<YouTubeTrack[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,7 +174,9 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
   };
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-transparent custom-scrollbar pb-40">
+    <div className={`flex-1 h-full overflow-y-auto bg-transparent custom-scrollbar pb-40 transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+    }`}>
       {/* Back Button */}
       {onBack && (
         <div className="px-6 pt-8 lg:px-12">

@@ -51,7 +51,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const [resultsByCategory, setResultsByCategory] = useState<Record<string, SearchItem[]>>({});
   const [songColors, setSongColors] = useState<Record<string, string>>({});
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const { songIsInLikedLibrary, resolveLikedLibraryRateVideoId, onRateSong } = useDashboard();
+  const { songIsInLikedLibrary, resolveLikedLibraryRateVideoId, onRateSong, isRightSidebarOpen } = useDashboard();
   const searchTimeoutRef = useRef<number | null>(null);
   const searchRunIdRef = useRef(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -415,7 +415,9 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
       transition={MOTION_CONFIG.transition}
       className="flex-1 h-full overflow-y-auto bg-transparent relative custom-scrollbar flex flex-col animate-gpu"
     >
-      <div className="flex w-full flex-col px-6 py-10 md:px-12 md:py-12 pb-48 text-left">
+      <div className={`flex w-full flex-col px-6 py-10 md:px-12 md:py-12 pb-48 text-left transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+      }`}>
         <div className="flex items-center justify-between mb-8 md:mb-10">
           <h1 className="text-3xl md:text-5xl lg:text-[56px] font-black text-white tracking-tighter leading-none">Search</h1>
           <button

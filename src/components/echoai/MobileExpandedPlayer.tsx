@@ -731,6 +731,14 @@ export function MobileExpandedPlayer({
                       }, 400);
                     }
                   }
+                  else if (e.data === 5) {
+                    // CUED: If a new song has cued but isPlaying is true, start playing automatically
+                    if (isPlayingRef.current) {
+                      try {
+                        e.target.playVideo();
+                      } catch { /* ignore */ }
+                    }
+                  }
                 }}
                 className="h-full w-full pointer-events-none select-none transition-transform duration-700" 
                 iframeClassName="h-full w-full"

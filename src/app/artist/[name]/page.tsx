@@ -1,5 +1,3 @@
-import { EchoAIDashboard } from "@/components/echoai/EchoAIDashboard";
-
-export default function ArtistNamePage() {
-  return <EchoAIDashboard />;
+export default function ArtistPage() {
+  return null;
 }

@@ -278,7 +278,7 @@ Format ONLY as a JSON array of strings.`;
           artist: t.artists ? t.artists[0]?.name : "Unknown Artist",
           thumbnail: t.thumbnail || t.thumbnailUrl || "",
           duration: t.duration || "0:00",
-          reason: "Similar track from YouTube Music related catalog (AI quota fallback)."
+          reason: ""
         })).filter((t: any) => t.youtubeId && t.youtubeId !== recentTrackId);
 
         if (fallbackRecommendations.length > 0) {

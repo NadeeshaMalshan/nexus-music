@@ -23,6 +23,7 @@ import {
 import { useDashboard } from "@/context/DashboardContext";
 import { useSession } from "next-auth/react";
 import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
+import { Shelf } from "./CenterPanel";
 import { MusicArtwork } from "./MusicArtwork";
 import { type Song } from "./types";
 import { SwipeableSongRow } from "./SwipeableSongRow";
@@ -93,7 +94,7 @@ function fmtMs(ms: number) {
 // ─── ArtistPage ───────────────────────────────────────────────────────────────
 export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePlaylist, onNavigateAlbum }: ArtistPageProps) {
   const { data: session } = useSession();
-  const { onSongClick, onAddToQueue, onPlayNext, currentSong, isPlaying, palette, setOverrideArtwork } = useDashboard();
+  const { onSongClick, onAddToQueue, onPlayNext, currentSong, isPlaying, palette, setOverrideArtwork, isRightSidebarOpen } = useDashboard();
 
   const [data, setData] = useState<ArtistData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -589,7 +590,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
             <div className="px-4 md:px-6 lg:px-10 py-8 pb-40 space-y-16">
 
               {/* ── Top Songs ────────────────────────────────────────────── */}
-              <section>
+              <section className={`transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"}`}>
                 <div className="flex items-center justify-between mb-6 px-1">
                   <div className="overflow-hidden">
                     <AnimatePresence mode="wait">
@@ -793,204 +794,181 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
 
               {/* ── Discography ────────────────────────────────────────────── */}
               {(data.albums?.length || data.singles?.length) && (
-                <section>
-                  <h2 className="text-2xl font-black text-white tracking-tight mb-6 px-1">
-                    Discography
-                  </h2>
-                  <div className="flex gap-6 overflow-x-auto no-scrollbar pb-4 px-1">
-                    {[...(data.albums || []), ...(data.singles || [])].map((item, i) => (
-                      <m.div
-                        key={item.id + i}
-                        initial={false}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="group flex flex-col gap-3 shrink-0 w-[160px] md:w-[180px] cursor-pointer animate-gpu"
-                        onClick={() => onNavigateAlbum?.(item.id)}
-                      >
-                        <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white/5 shadow-2xl group-hover:scale-105">
-                          <MusicArtwork
-                            src={item.image}
-                            alt={item.name}
-                            iconSize={40}
-                            variant="track"
-                            rounded="2xl"
-                            className="h-full w-full"
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                             <button
-                                onClick={(e) => {
-                                   e.stopPropagation();
-                                   playAlbumContent(item.id);
-                                }}
-                                className="w-12 h-12 rounded-full bg-(--art-accent,#FA243C) flex items-center justify-center shadow-2xl hover:scale-110 transition-transform"
-                             >
-                                {shelfLoading === item.id ? (
-                                   <Loader2 size={24} className="animate-spin text-black" />
-                                ) : (
-                                   <Play size={20} fill="black" />
-                                )}
-                             </button>
-                          </div>
+                <Shelf title="Discography">
+                  {[...(data.albums || []), ...(data.singles || [])].map((item, i) => (
+                    <m.div
+                      key={item.id + i}
+                      initial={false}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="group flex flex-col gap-3 shrink-0 w-[160px] md:w-[180px] cursor-pointer animate-gpu"
+                      onClick={() => onNavigateAlbum?.(item.id)}
+                    >
+                      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white/5 shadow-2xl group-hover:scale-105">
+                        <MusicArtwork
+                          src={item.image}
+                          alt={item.name}
+                          iconSize={40}
+                          variant="track"
+                          rounded="2xl"
+                          className="h-full w-full"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                           <button
+                              onClick={(e) => {
+                                 e.stopPropagation();
+                                 playAlbumContent(item.id);
+                              }}
+                              className="w-12 h-12 rounded-full bg-(--art-accent,#FA243C) flex items-center justify-center shadow-2xl hover:scale-110 transition-transform"
+                           >
+                              {shelfLoading === item.id ? (
+                                 <Loader2 size={24} className="animate-spin text-black" />
+                              ) : (
+                                 <Play size={20} fill="black" />
+                              )}
+                           </button>
                         </div>
-                        <div className="min-w-0 pr-1">
-                          <h4 className="font-bold text-white text-[15px] leading-tight truncate">{item.name}</h4>
-                          <p className="text-[12px] font-bold text-white/30 truncate mt-0.5">
-                            {item.type} • {item.year}
-                          </p>
-                        </div>
-                      </m.div>
-                    ))}
-                  </div>
-                </section>
+                      </div>
+                      <div className="min-w-0 pr-1">
+                        <h4 className="font-bold text-white text-[15px] leading-tight truncate">{item.name}</h4>
+                        <p className="text-[12px] font-bold text-white/30 truncate mt-0.5">
+                          {item.type} • {item.year}
+                        </p>
+                      </div>
+                    </m.div>
+                  ))}
+                </Shelf>
               )}
 
               {/* ── Music Videos ────────────────────────────────────────────── */}
               {data.videos && data.videos.length > 0 && (
-                <section>
-                  <h2 className="text-2xl font-black text-white tracking-tight mb-6 px-1 flex items-center gap-2">
-                    <Video size={22} className="text-white/50" /> Videos
-                  </h2>
-                  <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 px-1">
-                    {data.videos.map((v, i) => (
-                      <m.div
-                        key={v.id}
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 + i * 0.05, ...MOTION_CONFIG.transition }}
-                        className="group flex flex-col gap-3 shrink-0 w-[240px] md:w-[280px] cursor-pointer animate-gpu"
-                        onClick={() => {
-                           onSongClick({
-                             id: v.id,
-                             title: v.name,
-                             artist: data.name,
-                             artwork: v.image,
-                             duration: "0:00",
-                             color: palette.accent,
-                             preferVideoPlayback: true,
-                           });
-                        }}
-                      >
-                        <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-white/5 shadow-2xl">
-                          <MusicArtwork
-                            src={v.image}
-                            alt={v.name}
-                            iconSize={44}
-                            variant="track"
-                            rounded="2xl"
-                            className="h-full w-full transition-transform duration-700 group-hover:scale-110"
-                          />
-                          {/* Music video badge */}
-                          <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 rounded-lg px-2 py-1 pointer-events-none">
-                            <Video size={11} className="text-white/80" />
-                            <span className="text-[10px] font-black text-white/80 uppercase tracking-wider leading-none">MV</span>
-                          </div>
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                             <Play size={32} fill="white" />
-                          </div>
+                <Shelf title={<span className="flex items-center gap-2.5"><Video size={22} className="text-white/50" /> Videos</span>}>
+                  {data.videos.map((v, i) => (
+                    <m.div
+                      key={v.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 + i * 0.05, ...MOTION_CONFIG.transition }}
+                      className="group flex flex-col gap-3 shrink-0 w-[240px] md:w-[280px] cursor-pointer animate-gpu"
+                      onClick={() => {
+                         onSongClick({
+                           id: v.id,
+                           title: v.name,
+                           artist: data.name,
+                           artwork: v.image,
+                           duration: "0:00",
+                           color: palette.accent,
+                           preferVideoPlayback: true,
+                         });
+                      }}
+                    >
+                      <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-white/5 shadow-2xl">
+                        <MusicArtwork
+                          src={v.image}
+                          alt={v.name}
+                          iconSize={44}
+                          variant="track"
+                          rounded="2xl"
+                          className="h-full w-full transition-transform duration-700 group-hover:scale-110"
+                        />
+                        {/* Music video badge */}
+                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 rounded-lg px-2 py-1 pointer-events-none">
+                          <Video size={11} className="text-white/80" />
+                          <span className="text-[10px] font-black text-white/80 uppercase tracking-wider leading-none">MV</span>
                         </div>
-                        <h4 className="font-bold text-white text-[14px] leading-tight line-clamp-2">{v.name}</h4>
-                      </m.div>
-                    ))}
-                  </div>
-                </section>
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                           <Play size={32} fill="white" />
+                        </div>
+                      </div>
+                      <h4 className="font-bold text-white text-[14px] leading-tight line-clamp-2">{v.name}</h4>
+                    </m.div>
+                  ))}
+                </Shelf>
               )}
 
               {/* ── Featured Playlists ──────────────────────────────────────── */}
               {data.playlists && data.playlists.length > 0 && (
-                <section>
-                  <h2 className="text-2xl font-black text-white tracking-tight mb-6 px-1">
-                    Featured On
-                  </h2>
-                  <div className="flex gap-6 overflow-x-auto no-scrollbar pb-4 px-1">
-                    {data.playlists.map((p, i) => (
-                      <m.div
-                        key={`${p.id}-${i}`}
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 + i * 0.05, ...MOTION_CONFIG.transition }}
-                        className="group flex flex-col gap-3 shrink-0 w-[160px] md:w-[180px] cursor-pointer animate-gpu"
-                        onClick={() => onNavigatePlaylist?.(p.id)}
-                      >
-                        <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white/5 shadow-2xl">
-                          <MusicArtwork
-                            src={p.image}
-                            alt={p.name}
-                            iconSize={40}
-                            variant="track"
-                            rounded="2xl"
-                            className="h-full w-full transition-transform duration-500 group-hover:scale-110"
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                             <button
-                                onClick={(e) => {
-                                   e.stopPropagation();
-                                   playPlaylistContent(p.id);
-                                }}
-                                className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center border border-white/20 hover:scale-110 transition-transform"
-                             >
-                                {shelfLoading === p.id ? (
-                                    <Loader2 size={24} className="animate-spin text-white" />
-                                ) : (
-                                    <Play size={20} fill="white" />
-                                )}
-                             </button>
-                          </div>
+                <Shelf title="Featured On">
+                  {data.playlists.map((p, i) => (
+                    <m.div
+                      key={`${p.id}-${i}`}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 + i * 0.05, ...MOTION_CONFIG.transition }}
+                      className="group flex flex-col gap-3 shrink-0 w-[160px] md:w-[180px] cursor-pointer animate-gpu"
+                      onClick={() => onNavigatePlaylist?.(p.id)}
+                    >
+                      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white/5 shadow-2xl">
+                        <MusicArtwork
+                          src={p.image}
+                          alt={p.name}
+                          iconSize={40}
+                          variant="track"
+                          rounded="2xl"
+                          className="h-full w-full transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                           <button
+                              onClick={(e) => {
+                                 e.stopPropagation();
+                                 playPlaylistContent(p.id);
+                              }}
+                              className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center border border-white/20 hover:scale-110 transition-transform"
+                           >
+                              {shelfLoading === p.id ? (
+                                  <Loader2 size={24} className="animate-spin text-white" />
+                              ) : (
+                                  <Play size={20} fill="white" />
+                              )}
+                           </button>
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="font-bold text-white text-[14px] leading-tight truncate">{p.name}</h4>
-                          <p className="text-[11px] font-bold text-white/30 truncate mt-0.5">{p.author}</p>
-                        </div>
-                      </m.div>
-                    ))}
-                  </div>
-                </section>
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-white text-[14px] leading-tight truncate">{p.name}</h4>
+                        <p className="text-[11px] font-bold text-white/30 truncate mt-0.5">{p.author}</p>
+                      </div>
+                    </m.div>
+                  ))}
+                </Shelf>
               )}
 
               {/* ── Related Artists ──────────────────────────────────────── */}
               {data.relatedArtists.length > 0 && (
-                <section>
-                  <div className="flex items-center justify-between mb-6 px-1">
-                    <h2 className="text-2xl font-black text-white tracking-tight">
-                      Fans Also Like
-                    </h2>
-                  </div>
-
-                  <div className="flex gap-6 overflow-x-auto no-scrollbar pb-4 px-1">
-                    {data.relatedArtists.map((artist, i) => (
-                      <m.div
-                        key={`${artist.id}-${i}`}
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 + i * 0.05, ...MOTION_CONFIG.transition }}
-                        className="group flex flex-col items-center gap-3 shrink-0 w-[140px] md:w-[160px] cursor-pointer animate-gpu"
-                        onClick={() => onNavigateArtist?.(artist.name)}
-                      >
-                        <div className="relative w-full aspect-square rounded-full overflow-hidden bg-white/5 border-2 border-white/0 group-hover:border-(--art-accent,#FA243C) transition-all duration-300 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-                          <MusicArtwork
-                            src={artist.image}
-                            alt={artist.name}
-                            iconSize={48}
-                            variant="artist"
-                            rounded="full"
-                            className="h-full w-full transition-transform duration-500 group-hover:scale-110"
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                            <ChevronRight size={28} className="text-white" />
-                          </div>
+                <Shelf title="Fans Also Like">
+                  {data.relatedArtists.map((artist, i) => (
+                    <m.div
+                      key={`${artist.id}-${i}`}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 + i * 0.05, ...MOTION_CONFIG.transition }}
+                      className="group flex flex-col items-center gap-3 shrink-0 w-[140px] md:w-[160px] cursor-pointer animate-gpu"
+                      onClick={() => onNavigateArtist?.(artist.name)}
+                    >
+                      <div className="relative w-full aspect-square rounded-full overflow-hidden bg-white/5 border-2 border-white/0 group-hover:border-(--art-accent,#FA243C) transition-all duration-300 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+                        <MusicArtwork
+                          src={artist.image}
+                          alt={artist.name}
+                          iconSize={48}
+                          variant="artist"
+                          rounded="full"
+                          className="h-full w-full transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <ChevronRight size={28} className="text-white" />
                         </div>
-                        <div className="text-center w-full">
-                          <h4 className="font-black text-white text-[14px] leading-tight truncate w-full group-hover:underline">
-                            {artist.name}
-                          </h4>
-                          {artist.followers && (
-                            <p className="text-[11px] font-bold text-white/30 mt-0.5">
-                              {artist.followers} followers
-                            </p>
-                          )}
-                        </div>
-                      </m.div>
-                    ))}
-                  </div>
-                </section>
+                      </div>
+                      <div className="text-center w-full">
+                        <h4 className="font-black text-white text-[14px] leading-tight truncate w-full group-hover:underline">
+                          {artist.name}
+                        </h4>
+                        {artist.followers && (
+                          <p className="text-[11px] font-bold text-white/30 mt-0.5">
+                            {artist.followers} followers
+                          </p>
+                        )}
+                      </div>
+                    </m.div>
+                  ))}
+                </Shelf>
               )}
 
             </div>

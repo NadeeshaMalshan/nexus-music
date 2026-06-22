@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useDashboard } from "@/context/DashboardContext";
 
 interface AudioVisualizerProps {
   active: boolean;
@@ -19,41 +19,68 @@ export function AudioVisualizer({
   width = "16px",
   height = "16px"
 }: AudioVisualizerProps) {
-  
-  // Memoize random durations to prevent re-renders while keeping unique animations
-  const barDurations = useMemo(() => 
-    new Array(barCount).fill(0).map(() => 0.5 + Math.random() * 0.5), 
-  [barCount]);
+  const { isPlaying } = useDashboard();
+  const isAnimating = active && isPlaying;
 
   return (
     <div 
       className="flex items-end justify-center overflow-hidden animate-gpu" 
       style={{ width, height, gap: `${gap}px` }}
     >
-      {[...Array(barCount)].map((_, i) => (
-        <div
-          key={i}
-          className={`rounded-full shadow-[0_0_8px_var(--visualizer-color)] transition-all duration-300 ${active ? "animate-audio-bar" : ""}`}
-          style={{
-            width: "2.5px",
-            height: active ? "100%" : "30%",
-            backgroundColor: color,
-            animationDuration: `${barDurations[i]}s`,
-            animationDelay: `${i * 0.1}s`,
-            //@ts-ignore
-            "--visualizer-color": active ? `${color}66` : "transparent"
-          }}
-        />
-      ))}
+      {[...Array(barCount)].map((_, i) => {
+        // Assign a distinct keyframe animation name to each bar for variety
+        const animationName = `beat-bar-${(i % 4) + 1}`;
+        return (
+          <div
+            key={i}
+            className={`rounded-full shadow-[0_0_8px_var(--visualizer-color)] transition-all duration-300`}
+            style={{
+              width: "2.5px",
+              height: isAnimating ? "100%" : "30%",
+              backgroundColor: color,
+              animationName: isAnimating ? animationName : "none",
+              animationDuration: "0.65s", // ~110 BPM rhythmic pulse
+              animationIterationCount: "infinite",
+              animationTimingFunction: "ease-in-out",
+              animationDelay: `${i * 0.08}s`,
+              //@ts-ignore
+              "--visualizer-color": isAnimating ? `${color}66` : "transparent"
+            }}
+          />
+        );
+      })}
       <style jsx global>{`
-        @keyframes audio-bar {
+        @keyframes beat-bar-1 {
           0%, 100% { height: 30%; }
-          50% { height: 100%; }
+          15% { height: 100%; }
+          30% { height: 40%; }
+          55% { height: 95%; }
+          75% { height: 35%; }
+          85% { height: 75%; }
         }
-        .animate-audio-bar {
-          animation-name: audio-bar;
-          animation-iteration-count: infinite;
-          animation-timing-function: ease-in-out;
+        @keyframes beat-bar-2 {
+          0%, 100% { height: 25%; }
+          15% { height: 85%; }
+          35% { height: 30%; }
+          55% { height: 100%; }
+          70% { height: 40%; }
+          85% { height: 60%; }
+        }
+        @keyframes beat-bar-3 {
+          0%, 100% { height: 35%; }
+          20% { height: 90%; }
+          40% { height: 45%; }
+          60% { height: 80%; }
+          75% { height: 35%; }
+          90% { height: 100%; }
+        }
+        @keyframes beat-bar-4 {
+          0%, 100% { height: 20%; }
+          15% { height: 100%; }
+          30% { height: 35%; }
+          50% { height: 75%; }
+          70% { height: 25%; }
+          85% { height: 90%; }
         }
       `}</style>
     </div>

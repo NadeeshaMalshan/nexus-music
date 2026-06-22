@@ -149,14 +149,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
   return (
     <>
       <m.div 
-        key={accentColor}
-        className="hidden h-full w-[360px] shrink-0 flex-col px-6 py-10 overflow-hidden lg:flex relative border-r border-white/5"
-        animate={{ 
-          backgroundColor: accentColor 
-            ? `color-mix(in srgb, ${accentColor} 12%, #000000)` 
-            : "#000000" 
-        }}
-        transition={{ duration: 1 }}
+        className="hidden h-full w-[360px] shrink-0 flex-col px-6 py-10 overflow-hidden lg:flex relative border-r border-white/5 bg-[#0D0D0D]"
       >
         {/* Search Bar */}
         <div className="mb-12 relative z-50">

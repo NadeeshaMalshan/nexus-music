@@ -23,6 +23,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { VideoQuality, AudioQuality, DefaultPlayMode } from "@/types/settings";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { MusicArtwork } from "./MusicArtwork";
+import { useDashboard } from "@/context/DashboardContext";
 
 interface SettingsRowProps {
   icon: React.ReactNode;
@@ -93,6 +94,7 @@ function Select<T extends string>({
 export function Settings() {
   const { settings, updateSetting } = useSettings();
   const { data: session, status } = useSession();
+  const { isRightSidebarOpen } = useDashboard();
 
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -109,12 +111,14 @@ export function Settings() {
   };
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-transparent px-4 py-8 md:px-10 md:py-12 lg:px-16 pb-40 custom-scrollbar">
+    <div className={`flex-1 h-full overflow-y-auto bg-transparent px-4 py-8 md:px-10 md:py-12 lg:px-16 pb-40 custom-scrollbar transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+    }`}>
       <m.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="max-w-4xl mx-auto animate-gpu"
+        className="max-w-4xl mr-auto animate-gpu"
       >
   
         {/* ── Header ────────────────────────────────────────────────────────── */}

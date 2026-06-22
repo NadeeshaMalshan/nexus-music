@@ -660,6 +660,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           artist: rec.artist,
           artwork: rec.thumbnail,
           color: palette.accent,
+          duration: rec.duration || "0:00",
         }));
         if (resolvedSongs.length > 0) {
           setQueueSongs((prev) => {

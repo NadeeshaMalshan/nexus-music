@@ -549,16 +549,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         // If this was a direct link, sync refined metadata (clean artist/title) back to the song object
         if (currentSong?.isDirectLink && payload.videoId === currentSong.id) {
           if (payload.trackName !== currentSong.title || payload.artist !== currentSong.artist) {
-            setCurrentSong((prev) =>
-              prev?.id === payload.videoId
-                ? {
-                    ...prev,
-                    title: payload.trackName || prev.title,
-                    artist: payload.artist || prev.artist,
-                    artwork: payload.coverArt || prev.artwork,
-                  }
-                : prev
-            );
+            setCurrentSong((prev) => {
+              if (prev?.id !== payload.videoId) return prev;
+              // Preserve multi-artist strings: if the original has multiple artists
+              // (comma, &, feat., ft.) but the API only returns one, keep the original.
+              const multiArtistRe = /,\s*|\s+&\s+|\s+feat\.\s+|\s+ft\.\s+/i;
+              const prevHasMultiple = multiArtistRe.test(prev.artist);
+              const payloadHasMultiple = payload.artist ? multiArtistRe.test(payload.artist) : false;
+              const keepOriginalArtist = prevHasMultiple && !payloadHasMultiple && payload.artist;
+              return {
+                ...prev,
+                title: payload.trackName || prev.title,
+                artist: keepOriginalArtist ? prev.artist : (payload.artist || prev.artist),
+                artwork: payload.coverArt || prev.artwork,
+              };
+            });
           }
         }
       } catch (error) {

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchSongsRobust } from "@/lib/ytmSearchService";
 import { fetchYoutubeDataApiWithKeyRotation } from "@/lib/youtubeDataApiFetch";
-import { extractFeaturedArtists } from "@/lib/metadata";
 import https from "https";
 
 function fetchHtmlForceIpv4(urlStr: string): Promise<string> {
@@ -122,14 +121,11 @@ function musicVideoToItem(m: {
 
   let thumb = m.thumbnailUrl?.trim() || youtubeHqThumbnail(id);
   thumb = upgradeYtMusicThumbnail(thumb);
-  
-  const rawTitle = m.title?.trim() || "Unknown title";
-  const { displayTitle, displayArtist } = extractFeaturedArtists(rawTitle, artist);
 
   return {
     videoId: id,
-    title: displayTitle,
-    author: displayArtist,
+    title: m.title?.trim() || "Unknown title",
+    author: artist,
     duration: dur,
     thumbnail: thumb,
   };
@@ -283,9 +279,8 @@ export async function GET(request: Request) {
 
             finalItems = detailsItems.map((item: any) => {
               const id = item.id;
-              const rawTitle = item.snippet?.title || "Unknown Title";
-              const rawAuthor = (item.snippet?.channelTitle || "Unknown Artist").replace(/\s*-\s*Topic$/, "");
-              const { displayTitle, displayArtist } = extractFeaturedArtists(rawTitle, rawAuthor);
+              const title = item.snippet?.title || "Unknown Title";
+              const author = (item.snippet?.channelTitle || "Unknown Artist").replace(/\s*-\s*Topic$/, "");
 
               let duration = "LIVE";
               const ytDuration = item.contentDetails?.duration;
@@ -304,8 +299,8 @@ export async function GET(request: Request) {
 
               return {
                 videoId: id,
-                title: displayTitle,
-                author: displayArtist,
+                title,
+                author,
                 duration,
                 thumbnail,
                 views: item.statistics?.viewCount || "0",
@@ -341,10 +336,8 @@ export async function GET(request: Request) {
                     const video = item.videoRenderer;
                     if (!video) continue;
                     const videoId = video.videoId;
-                    const rawTitle = video.title?.runs?.[0]?.text || "Unknown Stream";
-                    const rawAuthor = video.ownerText?.runs?.[0]?.text || "Unknown Channel";
-                    const { displayTitle, displayArtist } = extractFeaturedArtists(rawTitle, rawAuthor);
-                    
+                    const title = video.title?.runs?.[0]?.text || "Unknown Stream";
+                    const author = video.ownerText?.runs?.[0]?.text || "Unknown Channel";
                     const duration = video.lengthText?.simpleText || "LIVE";
                     const thumbnail = video.thumbnail?.thumbnails?.[0]?.url || youtubeHqThumbnail(videoId);
                     const isLive = checkIfVideoIsLive(video);
@@ -352,8 +345,8 @@ export async function GET(request: Request) {
                     if (isLive) {
                       scrapedItems.push({
                         videoId,
-                        title: displayTitle,
-                        author: displayArtist,
+                        title,
+                        author,
                         duration: "LIVE",
                         thumbnail,
                         isLive: true

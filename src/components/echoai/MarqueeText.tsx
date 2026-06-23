@@ -5,25 +5,34 @@ import { useEffect, useRef, useState } from "react";
 
 interface MarqueeTextProps {
   text: string;
-  children?: React.ReactNode;
   className?: string;
   speed?: number; // pixels per second
   gap?: number;
   active?: boolean;
 }
 
-export function MarqueeText({ text, children, className, speed = 35, gap = 50, active = true }: MarqueeTextProps) {
+export function MarqueeText({ text, className, speed = 35, gap = 50, active = true }: MarqueeTextProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const measureRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [textWidth, setTextWidth] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   useEffect(() => {
     const measure = () => {
-      if (containerRef.current && measureRef.current) {
+      if (containerRef.current) {
         const cWidth = containerRef.current.offsetWidth;
-        const tWidth = measureRef.current.offsetWidth;
-        
+        // Create a temporary element to measure full text width without constraints
+        const span = document.createElement("span");
+        span.style.visibility = "hidden";
+        span.style.position = "absolute";
+        span.style.whiteSpace = "nowrap";
+        span.style.font = window.getComputedStyle(containerRef.current).font;
+        span.innerText = text;
+        document.body.appendChild(span);
+        const tWidth = span.offsetWidth;
+        document.body.removeChild(span);
+
+        setContainerWidth(cWidth);
         setTextWidth(tWidth);
         setIsOverflowing(tWidth > cWidth && cWidth > 0);
       }
@@ -36,54 +45,45 @@ export function MarqueeText({ text, children, className, speed = 35, gap = 50, a
       window.removeEventListener("resize", measure);
       clearTimeout(timer);
     };
-  }, [text, children]);
+  }, [text]);
+
+  if (!isOverflowing || !active) {
+    return (
+      <div ref={containerRef} className={`truncate w-full block ${className}`}>
+        {text}
+      </div>
+    );
+  }
 
   const duration = (textWidth + gap) / (speed || 35);
 
   return (
-    <>
-      {/* Hidden element for measuring actual rendered width */}
-      <div 
-        ref={measureRef} 
-        className={`absolute top-0 left-0 invisible whitespace-nowrap w-max pointer-events-none ${className || ''}`}
-        aria-hidden="true"
+    <div 
+      ref={containerRef} 
+      className={`relative w-full overflow-hidden whitespace-nowrap block ${className}`}
+      style={{
+        maskImage: 'linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent)',
+        WebkitMaskImage: 'linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent)',
+      }}
+    >
+      <m.div
+        key={`${text}-${textWidth}`}
+        animate={{ x: [0, -(textWidth + gap)] }}
+        transition={{
+          duration,
+          repeat: Infinity,
+          ease: "linear",
+          repeatDelay: 2,
+        }}
+        className="inline-block"
       >
-        {children || text}
-      </div>
-
-      {(!isOverflowing || !active) ? (
-        <div ref={containerRef} className={`truncate w-full block ${className || ''}`}>
-          {children || text}
-        </div>
-      ) : (
-        <div 
-          ref={containerRef} 
-          className={`relative w-full overflow-hidden whitespace-nowrap block ${className || ''}`}
-          style={{
-            maskImage: 'linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent)',
-            WebkitMaskImage: 'linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent)',
-          }}
-        >
-          <m.div
-            key={`${text}-${textWidth}`}
-            animate={{ x: [0, -(textWidth + gap)] }}
-            transition={{
-              duration,
-              repeat: Infinity,
-              ease: "linear",
-              repeatDelay: 2,
-            }}
-            className="inline-block"
-          >
-            <span className="inline-block" style={{ paddingRight: `${gap}px` }}>
-              {children || text}
-            </span>
-            <span className="inline-block" style={{ paddingRight: `${gap}px` }}>
-              {children || text}
-            </span>
-          </m.div>
-        </div>
-      )}
-    </>
+        <span className="inline-block" style={{ paddingRight: `${gap}px` }}>
+          {text}
+        </span>
+        <span className="inline-block" style={{ paddingRight: `${gap}px` }}>
+          {text}
+        </span>
+      </m.div>
+    </div>
   );
 }

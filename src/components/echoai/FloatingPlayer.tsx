@@ -8,6 +8,7 @@ import { MusicArtwork } from "./MusicArtwork";
 import { APPLE_EASE, SLIDE_UP_VARIANTS } from "@/lib/animations";
 import { useDashboard } from "@/context/DashboardContext";
 import { MarqueeText } from "./MarqueeText";
+import { ArtistLinks } from "./ArtistLinks";
 
 interface FloatingPlayerProps {
   onExpand: () => void;
@@ -55,19 +56,10 @@ export function FloatingPlayer({
   const { resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const isIdle = !currentSong;
   
-  const rawTitle = liveMetadata?.title || currentSong?.title || "Nexus Music";
-  const featMatch = rawTitle.match(/\b(?:feat\.|ft\.|featuring)\s+([^)\]]+)/i);
-  const featured = featMatch ? featMatch[1].trim() : "";
-  const cleanTitle = rawTitle.replace(/\s*[([].*?[)\]]\s*/g, '').trim();
-  const baseArtist = liveMetadata?.artist || currentSong?.artist || "Ready to stream";
-  const fullArtist = featured && !baseArtist.toLowerCase().includes(featured.toLowerCase()) 
-    ? `${baseArtist} & ${featured}` 
-    : baseArtist;
-
   const displaySong = {
     id: currentSong?.id || "idle",
-    title: cleanTitle,
-    artist: fullArtist,
+    title: liveMetadata?.title || currentSong?.title || "Nexus Music",
+    artist: liveMetadata?.artist || currentSong?.artist || "Ready to stream",
     artwork: liveMetadata?.artwork || currentSong?.artwork || null,
     duration: currentSong?.duration || "0:00",
     color: currentSong?.color || "#FA243C",
@@ -151,34 +143,18 @@ export function FloatingPlayer({
                     text={displaySong.title} 
                     className="text-[16px] font-black text-white tracking-tighter leading-none mb-1" 
                   />
-                  <div 
-                    className="w-full text-left overflow-x-auto no-scrollbar custom-scrollbar"
-                    style={{
-                      maskImage: 'linear-gradient(to right, black 85%, transparent)',
-                      WebkitMaskImage: 'linear-gradient(to right, black 85%, transparent)'
-                    }}
+                  <div
+                    className={`w-full text-left truncate ${
+                      !isIdle && onArtistClick
+                        ? "cursor-pointer"
+                        : "cursor-default"
+                    }`}
                   >
-                    <div className="text-[11px] font-black uppercase tracking-widest text-white/40 leading-none whitespace-nowrap min-w-max pb-1">
-                      {displaySong.artist.split(/(,\s*|\s*&\s*|\s+feat\.\s+|\s+featuring\s+)/i).map((part, i) => {
-                         if (part.match(/^(,\s*|\s*&\s*|\s+feat\.\s+|\s+featuring\s+)$/i)) {
-                            return <span key={i} className="whitespace-pre">{part}</span>;
-                         }
-                         return (
-                            <span 
-                              key={i} 
-                              className={(!isIdle && onArtistClick) ? "hover:text-white cursor-pointer transition-colors" : ""}
-                              onClick={(e) => {
-                                if (!isIdle && onArtistClick) {
-                                  e.stopPropagation();
-                                  onArtistClick(part.trim());
-                                }
-                              }}
-                            >
-                              {part}
-                            </span>
-                         );
-                      })}
-                    </div>
+                    <ArtistLinks
+                      artist={displaySong.artist}
+                      onArtistClick={!isIdle ? onArtistClick : undefined}
+                      className="text-[11px] font-black uppercase tracking-widest text-white/40 leading-none"
+                    />
                   </div>
                </div>
             </div>

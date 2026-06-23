@@ -1,5 +1,4 @@
 import { assertNotYouTubeQuotaError } from "@/lib/youtubeApiErrors";
-import { extractFeaturedArtists } from "@/lib/metadata";
 
 export interface YouTubePlaylist {
   id: string;
@@ -163,15 +162,13 @@ export async function fetchPlaylistItems(accessToken: string, playlistId: string
       item.snippet?.thumbnails?.default?.url ||
       "";
 
-    let rawArtist = item.snippet?.videoOwnerChannelTitle || moreInfo?.channelTitle || "Unknown Artist";
-    rawArtist = rawArtist.replace(/\s*-\s*Topic$/, "");
-    const rawTitle = item.snippet?.title || "Unknown";
-    const { displayTitle, displayArtist } = extractFeaturedArtists(rawTitle, rawArtist);
+    let artist = item.snippet?.videoOwnerChannelTitle || moreInfo?.channelTitle || "Unknown Artist";
+    artist = artist.replace(/\s*-\s*Topic$/, "");
 
     return {
       id: String(item.id ?? ""),
-      title: displayTitle,
-      artist: displayArtist,
+      title: item.snippet?.title || "Unknown",
+      artist,
       thumbnailUrl: thumb,
       videoId: vId,
       duration: durationMap[vId] || "0:00",
@@ -248,10 +245,8 @@ export async function fetchRecentMusicActivities(accessToken: string, max = 40):
   const out: YouTubeTrack[] = [];
   const addVideo = (video: any) => {
     const vId = video.id;
-    const rawTitle = video.snippet?.title || "Unknown";
-    const rawArtist = (video.snippet?.channelTitle || "Unknown").replace(/\s*-\s*Topic$/, "");
-    const { displayTitle, displayArtist } = extractFeaturedArtists(rawTitle, rawArtist);
-    
+    const title = video.snippet?.title || "Unknown";
+    const artist = (video.snippet?.channelTitle || "Unknown").replace(/\s*-\s*Topic$/, "");
     const thumb =
       video.snippet?.thumbnails?.high?.url ||
       video.snippet?.thumbnails?.medium?.url ||
@@ -260,8 +255,8 @@ export async function fetchRecentMusicActivities(accessToken: string, max = 40):
     out.push({
       id: vId,
       videoId: vId,
-      title: displayTitle,
-      artist: displayArtist,
+      title,
+      artist,
       thumbnailUrl: thumb,
       duration: parseISO8601Duration(video.contentDetails?.duration || ""),
     });
@@ -452,22 +447,17 @@ export async function searchYouTubeMusicCategoryVideos(
   const data = await response.json();
   const items = (data.items || [])
     .filter((item: any) => item.id?.videoId)
-    .map((item: any) => {
-      const rawTitle = item.snippet?.title || "Unknown";
-      const rawArtist = (item.snippet?.channelTitle || "Unknown").replace(/\s*-\s*Topic$/, "");
-      const { displayTitle, displayArtist } = extractFeaturedArtists(rawTitle, rawArtist);
-      return {
-        id: item.id.videoId,
-        videoId: item.id.videoId,
-        title: displayTitle,
-        artist: displayArtist,
-        thumbnailUrl:
-          item.snippet?.thumbnails?.maxres?.url ||
-          item.snippet?.thumbnails?.high?.url ||
-          item.snippet?.thumbnails?.default?.url ||
-          "",
-      };
-    }) as YouTubeTrack[];
+    .map((item: any) => ({
+      id: item.id.videoId,
+      videoId: item.id.videoId,
+      title: item.snippet?.title || "Unknown",
+      artist: (item.snippet?.channelTitle || "Unknown").replace(/\s*-\s*Topic$/, ""),
+      thumbnailUrl:
+        item.snippet?.thumbnails?.maxres?.url ||
+        item.snippet?.thumbnails?.high?.url ||
+        item.snippet?.thumbnails?.default?.url ||
+        "",
+    })) as YouTubeTrack[];
 
   const withDuration = await hydrateYouTubeTrackDetails(accessToken, items);
   return withDuration.slice(0, maxResults);
@@ -493,18 +483,13 @@ export async function fetchRelatedVideos(accessToken: string, videoId: string): 
   if (!data) return [];
   const items = (data.items || [])
     .filter((item: any) => item.id?.videoId)
-    .map((item: any) => {
-      const rawTitle = item.snippet.title;
-      const rawArtist = item.snippet.channelTitle.replace(/\s*-\s*Topic$/, "");
-      const { displayTitle, displayArtist } = extractFeaturedArtists(rawTitle, rawArtist);
-      return {
-        id: item.id.videoId,
-        title: displayTitle,
-        artist: displayArtist,
-        thumbnailUrl: item.snippet.thumbnails?.maxres?.url || item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
-        videoId: item.id.videoId,
-      };
-    }) as YouTubeTrack[];
+    .map((item: any) => ({
+      id: item.id.videoId,
+      title: item.snippet.title,
+      artist: item.snippet.channelTitle.replace(/\s*-\s*Topic$/, ""),
+      thumbnailUrl: item.snippet.thumbnails?.maxres?.url || item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
+      videoId: item.id.videoId,
+    })) as YouTubeTrack[];
   return hydrateYouTubeTrackDetails(accessToken, items);
 }
 

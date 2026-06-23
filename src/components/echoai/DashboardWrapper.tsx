@@ -60,10 +60,18 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
 
   const mergedCurrentSong = useMemo(() => {
     if (!currentSong) return null;
+    // Preserve multi-artist strings: if currentSong has multiple artists
+    // (comma, &, feat., ft.) but audioData only returns one, keep the original.
+    const multiArtistRe = /,\s*|\s+&\s+|\s+feat\.\s+|\s+ft\.\s+/i;
+    const currentHasMultiple = multiArtistRe.test(currentSong.artist);
+    const audioHasMultiple = audioData?.artist ? multiArtistRe.test(audioData.artist) : false;
+    const resolvedArtist = liveMetadata?.artist
+      || (audioData?.artist && (!currentHasMultiple || audioHasMultiple) ? audioData.artist : null)
+      || currentSong.artist;
     return {
       ...currentSong,
       title: liveMetadata?.title || audioData?.trackName || currentSong.title,
-      artist: liveMetadata?.artist || audioData?.artist || currentSong.artist,
+      artist: resolvedArtist,
       artwork: liveMetadata?.artwork || audioData?.coverArt || currentSong.artwork,
       musicVideoId: audioData?.musicVideoId || currentSong.musicVideoId,
     };

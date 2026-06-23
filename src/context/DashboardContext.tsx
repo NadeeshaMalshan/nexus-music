@@ -484,6 +484,56 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("nexus_history", JSON.stringify(playedHistory));
   }, [playedHistory]);
 
+  // Synchronize playing status to backend on change (event-driven)
+  useEffect(() => {
+    if (!currentSong || !session?.user?.email) return;
+
+    const controller = new AbortController();
+    const updateStatus = async () => {
+      try {
+        await fetch("/api/user/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            song: currentSong,
+            isPlaying: isPlaying,
+          }),
+        });
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          console.error("Failed to sync live status:", err);
+        }
+      }
+    };
+
+    updateStatus();
+
+    return () => {
+      controller.abort();
+    };
+  }, [currentSong, isPlaying, session?.user?.email]);
+
+  // Clear live status on tab close / reload
+  useEffect(() => {
+    if (!session?.user?.email) return;
+
+    const handleUnload = () => {
+      // keepalive: true ensures the fetch completes even if the page is unloading
+      fetch("/api/user/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clear" }),
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    window.addEventListener("beforeunload", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+    };
+  }, [session?.user?.email]);
+
   // Palette handling
   const effectiveArtwork = useMemo(() => overrideArtwork || liveMetadata?.artwork || audioData?.coverArt || currentSong?.artwork || null, [overrideArtwork, liveMetadata, audioData, currentSong]);
   const palette = useArtworkColors(effectiveArtwork);
@@ -1600,6 +1650,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setCurrentTimeSec(0);
     lastTimeBucketRef.current = -1;
     setIsPlaying(true);
+
+    // Record statistics log to database
+    if (session?.user?.email) {
+      fetch("/api/user/stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "play", song }),
+      }).catch((err) => console.error("Failed to log play event to database:", err));
+    }
     
     // Update local history
     setPlayedHistory((prev) => {
@@ -1607,7 +1666,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const filtered = prev.filter((s) => s.id !== song.id);
       return [song, ...filtered].slice(0, 50); // Keep last 50
     });
-  }, [setViewMode, setIsExpandedPlayerOpen]);
+  }, [setViewMode, setIsExpandedPlayerOpen, session]);
 
   const lastNextCallRef = useRef(0);
   const onNext = useCallback(() => {

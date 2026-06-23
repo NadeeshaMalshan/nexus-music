@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { Play, Loader2, Music, RefreshCw, ListPlus, PlaySquare, ChevronLeft, ChevronRight, LogIn } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, FADE_IN_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
@@ -16,6 +16,7 @@ import { YouTubeLibrary } from "./YouTubeLibrary";
 import { PlaylistDetail } from "./PlaylistDetail";
 import { AlbumDetail } from "./AlbumDetail";
 import { Settings } from "./Settings";
+import { StatsProfile } from "./StatsProfile";
 import { useRouter } from "next/navigation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -844,6 +845,23 @@ export function CenterPanel(props: CenterPanelProps) {
               {...FADE_IN_VARIANTS}
             >
               <Settings />
+            </m.div>
+          )}
+
+          {activeView === "stats" && (
+            <m.div 
+              key="stats" 
+              className="flex-1 h-full min-h-0 flex flex-col overflow-hidden"
+              {...FADE_IN_VARIANTS}
+            >
+              <Suspense fallback={
+                <div className="flex-1 h-full flex flex-col items-center justify-center bg-transparent">
+                  <Loader2 size={48} className="animate-spin text-white/50 animate-pulse" style={{ color: accentColor }} />
+                  <p className="text-zinc-500 text-[15px] font-semibold mt-4">Loading your music metrics...</p>
+                </div>
+              }>
+                <StatsProfile accentColor={accentColor} />
+              </Suspense>
             </m.div>
           )}
           {activeView === "home" && (

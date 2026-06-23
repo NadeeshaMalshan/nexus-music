@@ -19,27 +19,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid or missing videoId" }, { status: 400 });
   }
 
-  const title = searchParams.get("title");
-  const artist = searchParams.get("artist");
-
   console.log(`[get-audio-url] videoId: ${videoId}, isLive: ${isLive}`);
-  let url = await getYoutubeDirectAudioUrl(videoId, isLive);
-
-  // Vercel Block Fallback
-  if (!url && title && artist && !isLive) {
-    try {
-      console.log(`[get-audio-url] Blocked. Falling back to Topic for: ${title} - ${artist}`);
-      const { searchSongsRobust } = await import("@/lib/ytmSearchService");
-      const searchResults = await searchSongsRobust(`${title} ${artist} Topic`);
-      const topicVideo = searchResults.find((r: any) => r.youtubeId && r.youtubeId !== videoId);
-      if (topicVideo?.youtubeId) {
-        console.log(`[get-audio-url] Found Topic fallback videoId: ${topicVideo.youtubeId}`);
-        url = await getYoutubeDirectAudioUrl(topicVideo.youtubeId, false);
-      }
-    } catch (e) {
-      console.error("[get-audio-url] Topic fallback failed", e);
-    }
-  }
+  const url = await getYoutubeDirectAudioUrl(videoId, isLive);
 
   if (!url) {
     return NextResponse.json(

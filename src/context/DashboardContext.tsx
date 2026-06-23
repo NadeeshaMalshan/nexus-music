@@ -61,7 +61,6 @@ type LyricsPayload = {
 
 type DashboardContextType = {
   // Player State
-  isUsingNativeAudio: boolean;
   audioData: AudioPayload | null;
   queueSongs: Song[];
   currentSong: Song | null;
@@ -606,7 +605,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
       console.log(`[DashboardContext] Loading direct URL for: ${currentSong.id}`);
       try {
-        const response = await fetch(`/api/get-audio-url?videoId=${currentSong.id}&isLive=${currentSong.isLive || ""}&title=${encodeURIComponent(currentSong.title)}&artist=${encodeURIComponent(currentSong.artist)}`, {
+        const response = await fetch(`/api/get-audio-url?videoId=${currentSong.id}&isLive=${currentSong.isLive || ""}`, {
           signal: controller.signal,
           cache: "no-store",
         });
@@ -1304,7 +1303,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const silenceHidden =
         viewMode === "video" ||
         isUsingNativeAudio ||
-        !isUsingNativeAudio ||
         !!currentSong?.isLive ||
         (isReallyLivePlayback && isExpandedPlayerOpen);
 
@@ -1900,14 +1898,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setPreviousQueue,
     previousQueue,
     rightSidebarMode,
-    isUsingNativeAudio,
   }), [
     audioData, queueSongs, previousQueue, currentSong, isPlaying, currentTimeSec, 
     durationSec, volume, lyricsData, lyricsLoading, knowFacts, 
     knowLoading, likedSongs, likedLibraryTracks, songIsInLikedLibrary, resolveLikedLibraryRateVideoId, upNextQueue, playedHistory, aiLoading, 
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
-    setIsPlaying, setQueueSongs, setPreviousQueue, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata, isUsingNativeAudio
+    setIsPlaying, setQueueSongs, setPreviousQueue, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata
   ]);
 
   return (

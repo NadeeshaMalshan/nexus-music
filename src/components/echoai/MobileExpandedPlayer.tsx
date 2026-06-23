@@ -54,7 +54,7 @@ export function MobileExpandedPlayer({
   onArtistClick,
   isOpen,
 }: ExpandedPlayerProps) {
-  const { palette, resolveLikedLibraryRateVideoId, liveMetadata, isUsingNativeAudio } = useDashboard();
+  const { palette, resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const { settings } = useSettings();
   const { jamState } = useJam();
   const [jamWarning, setJamWarning] = useState<string | null>(null);
@@ -354,7 +354,7 @@ export function MobileExpandedPlayer({
 
   useEffect(() => {
     const p = ytPlayerInstance.current;
-    if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && p) {
+    if ((viewMode === "video" || currentSong.isLive) && p) {
       const state = p.getPlayerState?.();
       if (isPlaying) {
         if (state !== 1 && state !== 3) p.playVideo();
@@ -362,13 +362,13 @@ export function MobileExpandedPlayer({
         if (state !== 2 && state !== 5) p.pauseVideo();
       }
     }
-  }, [isPlaying, viewMode, currentSong.isLive, currentSong.id, isUsingNativeAudio]);
+  }, [isPlaying, viewMode, currentSong.isLive, currentSong.id]);
 
   useEffect(() => {
-    if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && ytPlayerInstance.current) {
+    if ((viewMode === "video" || currentSong.isLive) && ytPlayerInstance.current) {
       try { ytPlayerInstance.current.setVolume(volume); } catch { /* ignore */ }
     }
-  }, [volume, viewMode, currentSong.isLive, isUsingNativeAudio]);
+  }, [volume, viewMode, currentSong.isLive]);
 
   const youtubeOpts = {
     height: '100%',
@@ -468,15 +468,7 @@ export function MobileExpandedPlayer({
         </m.button>
         <m.button 
           whileTap={{ scale: 0.9 }}
-          onClick={() => {
-            if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && ytPlayerInstance.current) {
-              try {
-                if (!isPlaying) ytPlayerInstance.current.playVideo();
-                else ytPlayerInstance.current.pauseVideo();
-              } catch {}
-            }
-            onTogglePlay();
-          }}
+          onClick={onTogglePlay}
           className="flex h-24 w-24 items-center justify-center text-white active:scale-95 transition-transform"
         >
           {isPlaying ? <Pause size={72} fill="white" strokeWidth={0} /> : <Play size={72} fill="white" strokeWidth={0} className="ml-2" />}
@@ -668,7 +660,7 @@ export function MobileExpandedPlayer({
            When activeTab === 'controls', this container is positioned/sized based on viewMode.
            When activeTab !== 'controls', we hide it but keep it playing (z-index 0, opacity 0).
         */}
-        {(viewMode === "video" || isReallyLive || !isUsingNativeAudio) && (
+        {(viewMode === "video" || isReallyLive) && (
           <div 
             className={`absolute transition-all duration-700 pointer-events-none ${
               activeTab === "controls" 
@@ -733,12 +725,6 @@ export function MobileExpandedPlayer({
                     className="absolute inset-0 z-30 pointer-events-auto"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && ytPlayerInstance.current) {
-                        try {
-                          if (!isPlaying) ytPlayerInstance.current.playVideo();
-                          else ytPlayerInstance.current.pauseVideo();
-                        } catch {}
-                      }
                       onTogglePlay();
                     }}
                   />

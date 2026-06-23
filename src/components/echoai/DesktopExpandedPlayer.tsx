@@ -66,7 +66,7 @@ export function DesktopExpandedPlayer({
   onArtistClick,
   isOpen,
 }: ExpandedPlayerProps) {
-  const { palette, resolveLikedLibraryRateVideoId, liveMetadata, isUsingNativeAudio } = useDashboard();
+  const { palette, resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">(viewMode === "video" ? "controls" : "lyrics");
   const [isControlsVisible] = useState(true);
@@ -337,7 +337,7 @@ export function DesktopExpandedPlayer({
 
   useEffect(() => {
     const p = ytPlayerInstance.current;
-    if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && p) {
+    if ((viewMode === "video" || currentSong.isLive) && p) {
       const state = p.getPlayerState?.();
       if (isPlaying) {
         if (state !== 1 && state !== 3) p.playVideo();
@@ -345,13 +345,13 @@ export function DesktopExpandedPlayer({
         if (state !== 2 && state !== 5) p.pauseVideo();
       }
     }
-  }, [isPlaying, viewMode, currentSong.isLive, isUsingNativeAudio]);
+  }, [isPlaying, viewMode, currentSong.isLive]);
 
   useEffect(() => {
-    if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && ytPlayerInstance.current) {
+    if ((viewMode === "video" || currentSong.isLive) && ytPlayerInstance.current) {
       try { ytPlayerInstance.current.setVolume(volume); } catch { /* ignore */ }
     }
-  }, [volume, viewMode, currentSong.isLive, isUsingNativeAudio]);
+  }, [volume, viewMode, currentSong.isLive]);
 
   const youtubeOpts = {
     height: '100%',
@@ -516,15 +516,7 @@ export function DesktopExpandedPlayer({
           <SkipBack size={isCompact ? 32 : 42} fill="currentColor" strokeWidth={0} />
         </button>
         <button 
-          onClick={() => {
-            if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && ytPlayerInstance.current) {
-              try {
-                if (!isPlaying) ytPlayerInstance.current.playVideo();
-                else ytPlayerInstance.current.pauseVideo();
-              } catch {}
-            }
-            onTogglePlay();
-          }}
+          onClick={onTogglePlay}
           className={`flex ${isCompact ? "h-16 w-16" : "h-20 w-20"} items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-white hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer shadow-lg`}
         >
           {isPlaying ? (
@@ -636,7 +628,7 @@ export function DesktopExpandedPlayer({
       <div className={`relative z-10 mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-2 items-center gap-12 px-8 pb-8 overflow-y-auto lg:overflow-visible custom-scrollbar transition-all duration-700 animate-gpu ${viewMode === 'video' ? 'max-w-[1800px] lg:grid-cols-[1.8fr_1fr]' : 'max-w-[1400px]'}`}>
         <div className={`mx-auto flex w-full flex-col items-center justify-center ${viewMode === 'video' ? 'max-w-full' : 'max-w-[400px]'} animate-gpu`}>
           <m.div className={`group relative w-full overflow-hidden rounded-[32px] border border-white/10 bg-black shadow-2xl flex items-center justify-center animate-gpu transform-gpu ${viewMode === "music" ? "aspect-square" : "aspect-video"}`}>
-            {(viewMode === "video" || isReallyLive || !isUsingNativeAudio) && (
+            {(viewMode === "video" || isReallyLive) && (
               <div 
                 ref={videoContainerRef}
                 className={`group/vid relative overflow-hidden ${viewMode === "music" ? "absolute inset-0 opacity-0 pointer-events-none" : "h-full w-full bg-black"}`}
@@ -684,16 +676,11 @@ export function DesktopExpandedPlayer({
                   className="h-full w-full origin-center pointer-events-none select-none" 
                 />
 
+                {/* Interaction Blocker - Prevents YT internal UI from showing while allowing custom play/pause */}
                 <div 
                   className="absolute inset-0 z-10 cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && ytPlayerInstance.current) {
-                      try {
-                        if (!isPlaying) ytPlayerInstance.current.playVideo();
-                        else ytPlayerInstance.current.pauseVideo();
-                      } catch {}
-                    }
                     onTogglePlay();
                   }}
                 />

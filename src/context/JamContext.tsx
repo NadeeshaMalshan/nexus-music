@@ -51,6 +51,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   const isSyncingRef = useRef(false);
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const jamStateRef = useRef(jamState);
+  const isInitialSyncCompletedRef = useRef(false);
   
   // NTP/RTT logic
   const rttRef = useRef<number>(0);
@@ -266,6 +267,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
                 }
                 break;
             case "sync-play":
+                isInitialSyncCompletedRef.current = true;
                 const targetSongId = payload.song?.id;
                 // If song mismatch, sync song first (must use live state — handler closure is long-lived)
                 if (targetSongId && targetSongId !== d.currentSong?.id) {
@@ -324,6 +326,18 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
             d.onSeek(0);
             
             console.log(`[Jam] Successfully joined session. Clear local state and stop background playback.`);
+
+            // Request the host's current playback position and queue
+            setTimeout(() => {
+                broadcast("join", {}, true);
+                console.log(`[Jam] Broadcasted "join" sync request to Host.`);
+            }, 300);
+
+            // Auto-fallback handshake complete to enable collaborative updates
+            setTimeout(() => {
+                isInitialSyncCompletedRef.current = true;
+                console.log(`[Jam] Initial sync handshake marked complete (fallback).`);
+            }, 3000);
         }
     });
 
@@ -351,7 +365,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
   // Sync state hooks - Optimized to prevent flooding
   useEffect(() => {
-    if (!jamState.roomId) return;
+    if (!jamState.roomId || !isInitialSyncCompletedRef.current) return;
     
     // Broadcast major state changes immediately
     if (!isSyncingRef.current) {
@@ -367,7 +381,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
   // Detect manual seeks
   useEffect(() => {
-    if (!jamState.roomId || isSyncingRef.current) return;
+    if (!jamState.roomId || isSyncingRef.current || !isInitialSyncCompletedRef.current) return;
     
     const now = Date.now();
     const elapsedSinceLastUpdate = (now - lastUpdateRef.current) / 1000;
@@ -386,12 +400,12 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   }, [dashboard.currentTimeSec, dashboard.isPlaying, jamState.roomId, broadcast]);
 
   useEffect(() => {
-    if (!jamState.roomId || isSyncingRef.current || !dashboard.currentSong) return;
+    if (!jamState.roomId || isSyncingRef.current || !dashboard.currentSong || !isInitialSyncCompletedRef.current) return;
     broadcast("sync-song", { song: dashboard.currentSong });
   }, [dashboard.currentSong?.id, jamState.roomId, broadcast]);
 
   useEffect(() => {
-    if (!jamState.roomId || isSyncingRef.current) return;
+    if (!jamState.roomId || isSyncingRef.current || !isInitialSyncCompletedRef.current) return;
     broadcast("sync-queue", { queue: dashboard.upNextQueue });
   }, [dashboard.upNextQueue, jamState.roomId, broadcast]);
 
@@ -415,20 +429,23 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
 
   const createJam = async () => {
     const id = Math.random().toString(36).substring(2, 8).toUpperCase();
+    isInitialSyncCompletedRef.current = true; // Host is synced from start
     setJamState({ roomId: id, participants: 1, listeners: [], isHost: true, isJoining: false });
     connectToJam(id, undefined, true);
     return id;
   };
 
   const joinJam = async (id: string, name?: string) => {
+    isInitialSyncCompletedRef.current = false; // Reset handshake flag for Guest
     setJamState({ roomId: id, participants: 1, listeners: [], isHost: false, isJoining: true });
     connectToJam(id, name, false);
-    await broadcast("join", {}); // Alert others
+    // Do NOT broadcast "join" immediately; we will trigger it in subscription_succeeded
     setJamState(prev => ({ ...prev, isJoining: false }));
   };
 
   const leaveJam = () => {
     const id = jamState.roomId;
+    isInitialSyncCompletedRef.current = false;
     if (pusherRef.current && id) {
         pusherRef.current.unsubscribe(`presence-jam-${id}`);
         pusherRef.current.disconnect();

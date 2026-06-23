@@ -262,17 +262,16 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         switch (type) {
             case "join":
                 if (currentState.isHost) {
-                   // Broadcast the actual current state to the new member
+                   // Broadcast the actual current state to the new member (force broadcast to bypass syncing locks)
                    broadcast("sync-play", { 
                         isPlaying: d.isPlaying, 
                         currentTime: d.currentTimeSec,
                         song: d.currentSong 
-                   });
-                   broadcast("sync-queue", { queue: d.upNextQueue });
+                   }, true);
+                   broadcast("sync-queue", { queue: d.upNextQueue }, true);
                 }
                 break;
             case "sync-play":
-                isInitialSyncCompletedRef.current = true;
                 const targetSongId = payload.song?.id;
                 // If song mismatch, sync song first (must use live state — handler closure is long-lived)
                 if (targetSongId && targetSongId !== d.currentSong?.id) {

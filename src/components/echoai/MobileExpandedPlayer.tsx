@@ -105,12 +105,12 @@ export function MobileExpandedPlayer({
     const resetTimer = () => {
       setIsControlsVisible(true);
       if (timerRef.current) clearTimeout(timerRef.current);
-      
+
       // Auto-hide controls in immersive mode (Lyrics/Queue/AI)
       if (activeTab !== "controls") {
         timerRef.current = setTimeout(() => {
           setIsControlsVisible(false);
-        }, 5000); 
+        }, 5000);
       }
     };
 
@@ -153,7 +153,7 @@ export function MobileExpandedPlayer({
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean), [lyricsContent]);
-  
+
   const syncedLines = useMemo(() => {
     const raw = parseLrcContent(lyricsContent || "");
     const cleaned = raw.reduce<{ at: number; text: string; isInstrumental: boolean }[]>((acc, line) => {
@@ -174,13 +174,13 @@ export function MobileExpandedPlayer({
 
     const finalLines = [];
     for (let i = 0; i < cleaned.length; i++) {
-        finalLines.push(cleaned[i]);
-        if (i < cleaned.length - 1) {
-            const gap = cleaned[i + 1].at - cleaned[i].at;
-            if (gap > 20 && !cleaned[i].isInstrumental && !cleaned[i + 1].isInstrumental) {
-                finalLines.push({ at: cleaned[i].at + (gap * 0.3), text: "", isInstrumental: true });
-            }
+      finalLines.push(cleaned[i]);
+      if (i < cleaned.length - 1) {
+        const gap = cleaned[i + 1].at - cleaned[i].at;
+        if (gap > 20 && !cleaned[i].isInstrumental && !cleaned[i + 1].isInstrumental) {
+          finalLines.push({ at: cleaned[i].at + (gap * 0.3), text: "", isInstrumental: true });
         }
+      }
     }
     return finalLines;
   }, [lyricsContent]);
@@ -207,7 +207,7 @@ export function MobileExpandedPlayer({
     const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
 
     return (
-      <m.div 
+      <m.div
         ref={el => { elementsRef.current[index] = el; }}
         onClick={() => hasSynced && onSeek(syncedLine?.at)}
         layout
@@ -215,8 +215,8 @@ export function MobileExpandedPlayer({
           opacity: hasSynced ? (isActive ? 1 : 0.4) : 0.8,
           scale: hasSynced ? (isActive ? 1.05 : 1) : 1,
           x: hasSynced ? (isActive ? 10 : 0) : 0,
-          filter: hasSynced 
-            ? (isActive ? "blur(0px) brightness(1.2)" : "blur(4px) brightness(0.6)") 
+          filter: hasSynced
+            ? (isActive ? "blur(0px) brightness(1.2)" : "blur(4px) brightness(0.6)")
             : "blur(0px) brightness(1.0)"
         }}
         initial={false}
@@ -224,11 +224,10 @@ export function MobileExpandedPlayer({
           ...APPLE_LYRICS_TRANSITION,
           filter: { duration: 0.8, ease: "easeOut" }
         }}
-        className={`group flex items-center origin-left transform ${hasSynced ? "cursor-pointer" : "cursor-default"} ${
-          isInstrumental 
-              ? (isActive ? "h-20" : "h-0 overflow-hidden") 
-              : "py-6"
-        }`}
+        className={`group flex items-center origin-left transform ${hasSynced ? "cursor-pointer" : "cursor-default"} ${isInstrumental
+            ? (isActive ? "h-20" : "h-0 overflow-hidden")
+            : "py-6"
+          }`}
       >
         {isInstrumental ? (
           <div className={`flex gap-3 items-center h-full transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
@@ -253,10 +252,10 @@ export function MobileExpandedPlayer({
 
   const safeDuration = durationSec || currentSong.durationObj?.totalSeconds || 0;
   const targetTitle = (liveMetadata?.title || currentSong.title || "").toLowerCase();
-  const isReallyLive = 
-    currentSong.isLive || 
-    currentSong.duration === "LIVE" || 
-    safeDuration > 43200 || 
+  const isReallyLive =
+    currentSong.isLive ||
+    currentSong.duration === "LIVE" ||
+    safeDuration > 43200 ||
     targetTitle.includes("one world radio") ||
     targetTitle.includes("owr") ||
     targetTitle.includes("daybreak") ||
@@ -271,16 +270,16 @@ export function MobileExpandedPlayer({
   useEffect(() => {
     if (!hasSynced || activeIndex < 0 || !scrollRef.current) return;
     if (activeTab !== "lyrics") return;
-    
+
     const activeEl = elementsRef.current[activeIndex];
     if (activeEl && scrollRef.current) {
-        const containerHeight = scrollRef.current.clientHeight;
-        const targetScroll = activeEl.offsetTop - (containerHeight / 2) + (activeEl.clientHeight / 2);
-        
-        scrollRef.current.scrollTo({
-            top: Math.max(0, targetScroll),
-            behavior: "smooth"
-        });
+      const containerHeight = scrollRef.current.clientHeight;
+      const targetScroll = activeEl.offsetTop - (containerHeight / 2) + (activeEl.clientHeight / 2);
+
+      scrollRef.current.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: "smooth"
+      });
     }
   }, [activeIndex, hasSynced, activeTab]);
 
@@ -297,10 +296,10 @@ export function MobileExpandedPlayer({
       // Don't reset everything, just stop the progress
       return;
     }
-    
+
     const tick = 100; // ms
     const totalDuration = 10000; // 10s per fact
-    
+
     const interval = setInterval(() => {
       setStoryProgress(prev => {
         if (prev >= 100) {
@@ -312,7 +311,7 @@ export function MobileExpandedPlayer({
         return prev + (tick / totalDuration) * 100;
       });
     }, tick);
-    
+
     return () => clearInterval(interval);
   }, [activeTab, knowLoading, isPlaying, storyActiveIndex, knowFacts.length]);
 
@@ -373,12 +372,12 @@ export function MobileExpandedPlayer({
   const youtubeOpts = {
     height: '100%',
     width: '100%',
-    playerVars: { 
-      autoplay: 0, 
-      controls: 0, 
-      modestbranding: 1, 
-      rel: 0, 
-      iv_load_policy: 3, 
+    playerVars: {
+      autoplay: 0,
+      controls: 0,
+      modestbranding: 1,
+      rel: 0,
+      iv_load_policy: 3,
       playsinline: 1,
       enablejsapi: 1,
       origin: typeof window !== "undefined" ? window.location.origin : undefined
@@ -444,10 +443,10 @@ export function MobileExpandedPlayer({
       {!isReallyLive && (
         <div className="space-y-4 mb-2">
           <div onClick={handleSeekClick} className="group relative h-1.5 w-full cursor-pointer rounded-full bg-white/10 overflow-hidden">
-            <m.div 
-                className="absolute inset-y-0 left-0 bg-white/60" 
-                animate={{ width: `${progress}%` }}
-                transition={{ type: "tween", duration: 0.5 }}
+            <m.div
+              className="absolute inset-y-0 left-0 bg-white/60"
+              animate={{ width: `${progress}%` }}
+              transition={{ type: "tween", duration: 0.5 }}
             />
           </div>
           <div className="flex justify-between text-[13px] font-black tracking-tight text-white/20">
@@ -459,23 +458,23 @@ export function MobileExpandedPlayer({
 
       {/* Main Controls - Apple Style Spacing */}
       <div className="flex items-center justify-around py-4">
-        <m.button 
+        <m.button
           whileTap={{ scale: 0.8 }}
-          onClick={onPrev} 
+          onClick={onPrev}
           className="text-white active:scale-90 transition-transform p-4"
         >
           <SkipBack size={48} fill="currentColor" />
         </m.button>
-        <m.button 
+        <m.button
           whileTap={{ scale: 0.9 }}
           onClick={onTogglePlay}
           className="flex h-24 w-24 items-center justify-center text-white active:scale-95 transition-transform"
         >
           {isPlaying ? <Pause size={72} fill="white" strokeWidth={0} /> : <Play size={72} fill="white" strokeWidth={0} className="ml-2" />}
         </m.button>
-        <m.button 
+        <m.button
           whileTap={{ scale: 0.8 }}
-          onClick={onNext} 
+          onClick={onNext}
           className="text-white active:scale-90 transition-transform p-4"
         >
           <SkipForward size={48} fill="currentColor" />
@@ -484,13 +483,13 @@ export function MobileExpandedPlayer({
 
       {/* Volume - Apple Tactical Slider */}
       <div className="mt-6 flex items-center gap-6">
-        <m.div 
+        <m.div
           animate={{ scale: volume === 0 ? 0.7 : 1, opacity: volume === 0 ? 0.3 : 0.6 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Volume2 size={16} className="text-white" />
         </m.div>
-        
+
         <div className="relative h-2 flex-1 flex items-center group">
           <input
             type="range"
@@ -503,27 +502,27 @@ export function MobileExpandedPlayer({
           />
           {/* Tactical Track */}
           <div className="relative h-2.5 w-full rounded-full bg-white/10 z-10 pointer-events-none overflow-hidden backdrop-blur-md border border-white/5">
-             <m.div 
-                className="absolute inset-y-0 left-0 bg-white/70"
-                animate={{ width: `${volume}%` }}
-                transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
-             />
+            <m.div
+              className="absolute inset-y-0 left-0 bg-white/70"
+              animate={{ width: `${volume}%` }}
+              transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
+            />
           </div>
           {/* Tactical Knob */}
-          <m.div 
+          <m.div
             className="absolute top-1/2 h-7 w-7 -translate-y-1/2 rounded-full bg-white shadow-[0_10px_30px_rgba(0,0,0,0.6)] z-20 pointer-events-none border border-black/5"
             animate={{ left: `${volume}%`, scale: volume > 0 ? 1 : 0.85 }}
             transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
             style={{ x: "-50%" }}
           >
-             <div className="absolute inset-0 rounded-full bg-linear-to-b from-white to-white/95" />
+            <div className="absolute inset-0 rounded-full bg-linear-to-b from-white to-white/95" />
           </m.div>
         </div>
 
-        <m.div 
-          animate={{ 
+        <m.div
+          animate={{
             scale: volume > 80 ? 1.2 : 1,
-            opacity: volume > 80 ? 0.9 : 0.6 
+            opacity: volume > 80 ? 0.9 : 0.6
           }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
@@ -534,7 +533,7 @@ export function MobileExpandedPlayer({
   );
 
   return (
-    <m.div 
+    <m.div
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
@@ -554,7 +553,7 @@ export function MobileExpandedPlayer({
     >
       <AnimatePresence>
         {jamWarning && (
-          <m.div 
+          <m.div
             initial={{ opacity: 0, y: -20, x: "-50%" }}
             animate={{ opacity: 1, y: 0, x: "-50%" }}
             exit={{ opacity: 0, y: -20, x: "-50%" }}
@@ -570,7 +569,7 @@ export function MobileExpandedPlayer({
       <FlowingBackground palette={palette} artwork={liveMetadata?.artwork || currentSong.artwork} animate={hasOpened} />
 
       {/* Top Grabber */}
-      <div 
+      <div
         className="relative z-50 flex justify-center pt-[max(0.75rem,env(safe-area-inset-top))] pb-1 cursor-grab active:cursor-grabbing"
         onPointerDown={(e) => dragControls.start(e)}
       >
@@ -580,73 +579,73 @@ export function MobileExpandedPlayer({
       {/* Mobile Top Bar */}
       <AnimatePresence mode="wait">
         {isControlsVisible && (
-          <m.div 
-            initial={{ y: -20, opacity: 0 }} 
-            animate={{ y: 0, opacity: 1 }} 
+          <m.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
             exit={{ y: -20, opacity: 0 }}
             transition={MOTION_CONFIG.transition}
             className="relative z-40 flex items-center justify-between px-6 pt-4 pb-4 cursor-grab active:cursor-grabbing animate-gpu"
             onPointerDown={(e) => dragControls.start(e)}
           >
             {activeTab === "controls" ? (
-                <div className="w-full flex items-center justify-between">
-                    <button 
-                        onClick={onClose} 
-                        className="p-2 rounded-full bg-white/5 backdrop-blur-md"
-                    >
-                        <ChevronDown size={28} className="text-white/70" />
-                    </button>
-                    {isLoggedIn && (
-                        <button
-                            onClick={() => {
-                              if (isLiked) {
-                                void onRateSong(resolveLikedLibraryRateVideoId(currentSong), "none");
-                              } else {
-                                const liveTitle = liveMetadata?.title;
-                                const liveArtist = liveMetadata?.artist;
-                                void onRateSong(
-                                  currentSong.id,
-                                  "like",
-                                  liveTitle && liveArtist
-                                    ? { title: liveTitle, artist: liveArtist }
-                                    : { title: currentSong.title, artist: currentSong.artist }
-                                );
-                                if (currentSong.isLive && liveTitle && liveArtist) {
-                                  setLiveLikeToast({
-                                    title: liveTitle,
-                                    artist: liveArtist,
-                                    artwork: liveMetadata?.artwork ?? currentSong.artwork,
-                                  });
-                                }
-                              }
-                            }}
-                            className="p-2 rounded-full bg-white/5 backdrop-blur-md"
-                        >
-                            <Heart size={24} style={{ fill: isLiked ? 'var(--art-accent, #FA243C)' : 'none', color: isLiked ? 'var(--art-accent, #FA243C)' : 'rgb(255 255 255 / 0.7)' }} />
-                        </button>
-                    )}
-                </div>
+              <div className="w-full flex items-center justify-between">
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-full bg-white/5 backdrop-blur-md"
+                >
+                  <ChevronDown size={28} className="text-white/70" />
+                </button>
+                {isLoggedIn && (
+                  <button
+                    onClick={() => {
+                      if (isLiked) {
+                        void onRateSong(resolveLikedLibraryRateVideoId(currentSong), "none");
+                      } else {
+                        const liveTitle = liveMetadata?.title;
+                        const liveArtist = liveMetadata?.artist;
+                        void onRateSong(
+                          currentSong.id,
+                          "like",
+                          liveTitle && liveArtist
+                            ? { title: liveTitle, artist: liveArtist }
+                            : { title: currentSong.title, artist: currentSong.artist }
+                        );
+                        if (currentSong.isLive && liveTitle && liveArtist) {
+                          setLiveLikeToast({
+                            title: liveTitle,
+                            artist: liveArtist,
+                            artwork: liveMetadata?.artwork ?? currentSong.artwork,
+                          });
+                        }
+                      }
+                    }}
+                    className="p-2 rounded-full bg-white/5 backdrop-blur-md"
+                  >
+                    <Heart size={24} style={{ fill: isLiked ? 'var(--art-accent, #FA243C)' : 'none', color: isLiked ? 'var(--art-accent, #FA243C)' : 'rgb(255 255 255 / 0.7)' }} />
+                  </button>
+                )}
+              </div>
             ) : (
-                <div className="w-full flex items-center gap-4">
-                    <button 
-                        onClick={onClose} 
-                        className="p-2 rounded-full bg-white/5 backdrop-blur-md"
-                    >
-                        <ChevronDown size={24} className="text-white/70" />
-                    </button>
-                    <m.div layoutId="compact-art" className="h-10 w-10 shrink-0 rounded-lg overflow-hidden shadow-lg animate-gpu">
-                       <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={16} />
-                    </m.div>
-                    <div className="flex-1 min-w-0">
-                        <h2 className="truncate text-base font-black text-white">{liveMetadata?.title || currentSong.title}</h2>
-                        <button 
-                          onClick={() => onArtistClick?.(liveMetadata?.artist || currentSong.artist)}
-                          className="truncate text-xs font-bold text-white/50 active:text-white transition-colors text-left"
-                        >
-                          {liveMetadata?.artist || currentSong.artist}
-                        </button>
-                    </div>
+              <div className="w-full flex items-center gap-4">
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-full bg-white/5 backdrop-blur-md"
+                >
+                  <ChevronDown size={24} className="text-white/70" />
+                </button>
+                <m.div layoutId="compact-art" className="h-10 w-10 shrink-0 rounded-lg overflow-hidden shadow-lg animate-gpu">
+                  <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={16} />
+                </m.div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="truncate text-base font-black text-white">{liveMetadata?.title || currentSong.title}</h2>
+                  <button
+                    onClick={() => onArtistClick?.(liveMetadata?.artist || currentSong.artist)}
+                    className="truncate text-xs font-bold text-white/50 active:text-white transition-colors text-left"
+                  >
+                    {liveMetadata?.artist || currentSong.artist}
+                  </button>
                 </div>
+              </div>
             )}
           </m.div>
         )}
@@ -661,14 +660,13 @@ export function MobileExpandedPlayer({
            When activeTab !== 'controls', we hide it but keep it playing (z-index 0, opacity 0).
         */}
         {(viewMode === "video" || isReallyLive) && (
-          <div 
-            className={`absolute transition-all duration-700 pointer-events-none ${
-              activeTab === "controls" 
-                ? (viewMode === "video" 
-                    ? "inset-0 z-20 opacity-100 scale-100" 
-                    : "top-[15dvh] left-1/2 -translate-x-1/2 w-[70vw] aspect-square rounded-[20px] overflow-hidden opacity-0 z-0 scale-50")
+          <div
+            className={`absolute transition-all duration-700 pointer-events-none ${activeTab === "controls"
+                ? (viewMode === "video"
+                  ? "inset-0 z-20 opacity-100 scale-100"
+                  : "top-[15dvh] left-1/2 -translate-x-1/2 w-[70vw] aspect-square rounded-[20px] overflow-hidden opacity-0 z-0 scale-50")
                 : "inset-0 opacity-0 z-0 pointer-events-none scale-0"
-            }`}
+              }`}
           >
             <div ref={videoContainerRef} className="h-full w-full bg-black relative flex items-center justify-center">
               {currentSong.isLive && activeTab === "controls" && viewMode === "video" && (
@@ -677,23 +675,23 @@ export function MobileExpandedPlayer({
                   <span className="text-[10px] font-black text-white uppercase tracking-widest">Live</span>
                 </div>
               )}
-              <YouTube 
+              <YouTube
                 key={`mobile-yt-${videoKey}`}
-                videoId={currentSong.musicVideoId || currentSong.id} 
-                opts={youtubeOpts} 
-                onReady={e => { 
-                  ytPlayerInstance.current = e.target; 
-                  e.target.setVolume(volume); 
+                videoId={currentSong.musicVideoId || currentSong.id}
+                opts={youtubeOpts}
+                onReady={e => {
+                  ytPlayerInstance.current = e.target;
+                  e.target.setVolume(volume);
                   const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
-                  try { e.target.setPlaybackQuality(vq); } catch(err) {}
-                  if(isPlaying) e.target.playVideo(); 
+                  try { e.target.setPlaybackQuality(vq); } catch (err) { }
+                  if (isPlaying) e.target.playVideo();
                 }}
                 onStateChange={e => {
                   if (e.data === 0) onNext();
                   else if (e.data === 1) {
                     setIsPlaying(true);
                     const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
-                    try { e.target.setPlaybackQuality(vq); } catch(err) {}
+                    try { e.target.setPlaybackQuality(vq); } catch (err) { }
                   }
                   else if (e.data === 2) {
                     if (!isPlayingRef.current) setIsPlaying(false);
@@ -715,13 +713,13 @@ export function MobileExpandedPlayer({
                     }
                   }
                 }}
-                className="h-full w-full pointer-events-none select-none transition-transform duration-700" 
+                className="h-full w-full pointer-events-none select-none transition-transform duration-700"
                 iframeClassName="h-full w-full"
               />
               {/* Interaction Blocker & Controls (Only active in controls + video mode) */}
               {activeTab === "controls" && viewMode === "video" && (
                 <>
-                  <div 
+                  <div
                     className="absolute inset-0 z-30 pointer-events-auto"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -746,95 +744,95 @@ export function MobileExpandedPlayer({
 
         <AnimatePresence mode="wait">
           {activeTab === "controls" ? (
-            <m.div 
-                key="controls"
-                initial={{ opacity: 0, scale: 0.92 }} 
-                animate={{ opacity: 1, scale: 1 }} 
-                exit={{ opacity: 0, scale: 0.92 }}
-                transition={{ duration: 0.7, ease: EXPO_OUT }}
-                className="flex flex-1 flex-col items-center justify-between pb-12 animate-gpu"
+            <m.div
+              key="controls"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.7, ease: EXPO_OUT }}
+              className="flex flex-1 flex-col items-center justify-between pb-12 animate-gpu"
             >
               {/* Artwork Section */}
               <div className={`w-full flex-[1.4] flex items-center justify-center transition-all duration-300 ${viewMode === 'video' ? 'px-0' : 'px-10'}`}>
-                <m.div 
-                    className={`relative w-full shadow-[0_40px_100px_rgba(0,0,0,0.6)] animate-gpu transform-gpu transition-all duration-300 ${viewMode === 'video' ? 'aspect-video max-w-full rounded-none! overflow-visible! border-none!' : 'aspect-square max-w-[340px] rounded-[20px] overflow-hidden border border-white/10'}`}
+                <m.div
+                  className={`relative w-full shadow-[0_40px_100px_rgba(0,0,0,0.6)] animate-gpu transform-gpu transition-all duration-300 ${viewMode === 'video' ? 'aspect-video max-w-full rounded-none! overflow-visible! border-none!' : 'aspect-square max-w-[340px] rounded-[20px] overflow-hidden border border-white/10'}`}
                 >
-                    {viewMode === "music" && (
-                        <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={64} />
-                    )}
+                  {viewMode === "music" && (
+                    <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={64} />
+                  )}
                 </m.div>
               </div>
-              
+
               {/* Info & Switches Section */}
               <div className="w-full flex flex-col px-10 mt-2 mb-4">
-                  <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                          {liveMetadata && (
-                             <m.div 
-                               initial={{ opacity: 0, scale: 0.9 }}
-                               animate={{ opacity: 1, scale: 1 }}
-                               className="mb-2 flex items-center gap-1.5"
-                             >
-                                <span className="px-2 py-0.5 rounded-[4px] bg-red-600 text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-red-500/20">
-                                   <div className="h-1 w-1 rounded-full bg-white animate-pulse" />
-                                   Live Radio
-                                </span>
-                                <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] line-clamp-1">{liveMetadata.source}</span>
-                             </m.div>
-                          )}
-                          <MarqueeText 
-                            text={liveMetadata?.title || currentSong.title} 
-                            className="text-[28px] leading-none font-black text-white tracking-tight mb-1"
-                          />
-                          <button 
-                            onClick={() => onArtistClick?.(liveMetadata?.artist || currentSong.artist)}
-                            className="w-full text-left mt-1.5"
-                          >
-                            <MarqueeText 
-                              text={liveMetadata?.artist || currentSong.artist} 
-                              className="text-[19px] font-bold text-white/40 active:text-white/70 transition-colors"
-                            />
-                          </button>
-                      </div>
-                      <div className="flex shrink-0 bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-2xl">
-                          <button 
-                            onClick={() => setViewMode("music")} 
-                            className={`p-2 rounded-full transition-all ${viewMode === "music" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
-                          >
-                            <Music size={15} />
-                          </button>
-                          <button 
-                            onClick={() => {
-                              if (jamState.roomId) {
-                                setJamWarning("Video mode disabled in Jam");
-                                return;
-                              }
-                              setViewMode("video");
-                            }} 
-                            className={`p-2 rounded-full transition-all ${viewMode === "video" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
-                          >
-                            <Video size={15} />
-                          </button>
-                      </div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    {liveMetadata && (
+                      <m.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="mb-2 flex items-center gap-1.5"
+                      >
+                        <span className="px-2 py-0.5 rounded-[4px] bg-red-600 text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-red-500/20">
+                          <div className="h-1 w-1 rounded-full bg-white animate-pulse" />
+                          Live Radio
+                        </span>
+                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] line-clamp-1">{liveMetadata.source}</span>
+                      </m.div>
+                    )}
+                    <MarqueeText
+                      text={liveMetadata?.title || currentSong.title}
+                      className="text-[28px] leading-none font-black text-white tracking-tight mb-1"
+                    />
+                    <button
+                      onClick={() => onArtistClick?.(liveMetadata?.artist || currentSong.artist)}
+                      className="w-full text-left mt-1.5"
+                    >
+                      <MarqueeText
+                        text={liveMetadata?.artist || currentSong.artist}
+                        className="text-[19px] font-bold text-white/40 active:text-white/70 transition-colors"
+                      />
+                    </button>
                   </div>
+                  <div className="flex shrink-0 bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-2xl">
+                    <button
+                      onClick={() => setViewMode("music")}
+                      className={`p-2 rounded-full transition-all ${viewMode === "music" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
+                    >
+                      <Music size={15} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (jamState.roomId) {
+                          setJamWarning("Video mode disabled in Jam");
+                          return;
+                        }
+                        setViewMode("video");
+                      }}
+                      className={`p-2 rounded-full transition-all ${viewMode === "video" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
+                    >
+                      <Video size={15} />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Controls Section */}
               <div className="w-full">
-                  {renderControls()}
+                {renderControls()}
               </div>
 
             </m.div>
           ) : (
-            <m.div 
-                key="immersive"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                transition={MOTION_CONFIG.transition}
-                className="flex flex-1 flex-col overflow-hidden animate-gpu"
+            <m.div
+              key="immersive"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={MOTION_CONFIG.transition}
+              className="flex flex-1 flex-col overflow-hidden animate-gpu"
             >
               <AnimatePresence mode="wait">
                 {activeTab === "lyrics" && (
-                  <m.div 
+                  <m.div
                     key="lyrics"
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -845,7 +843,7 @@ export function MobileExpandedPlayer({
                     <div ref={scrollRef} className="h-full overflow-y-auto px-10 pt-10 pb-[40dvh] custom-scrollbar no-scrollbar swipe-up">
                       <div className="max-w-2xl mx-auto">
                         {lines.map((line, index) => (
-                          <LyricLine 
+                          <LyricLine
                             key={index}
                             line={line}
                             index={index}
@@ -880,9 +878,9 @@ export function MobileExpandedPlayer({
                     </div>
                   </m.div>
                 )}
-                
+
                 {activeTab === "queue" && (
-                  <m.div 
+                  <m.div
                     key="queue"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -896,8 +894,8 @@ export function MobileExpandedPlayer({
                           <h2 className="text-3xl font-black text-white tracking-tight">Queue</h2>
                           <p className="text-white/40 text-xs font-bold uppercase tracking-widest mt-1">Up Next</p>
                         </div>
-                        <button 
-                          onClick={() => onClearQueue?.()} 
+                        <button
+                          onClick={() => onClearQueue?.()}
                           className="px-4 py-1.5 rounded-full bg-white/5 text-white/40 text-[12px] font-black uppercase transition-all active:scale-95"
                         >
                           Clear
@@ -913,7 +911,7 @@ export function MobileExpandedPlayer({
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="truncate font-black text-white text-[15px] leading-tight">{currentSong.title}</p>
-                            <button 
+                            <button
                               onClick={() => onArtistClick?.(currentSong.artist)}
                               className="truncate text-xs font-bold text-white/40 active:text-white/70 transition-colors mt-0.5 text-left"
                             >
@@ -932,9 +930,9 @@ export function MobileExpandedPlayer({
 
                       <div className="space-y-1">
                         {upNextQueue.map((song, i) => (
-                          <div 
-                            key={song.id} 
-                            onClick={() => onSongClick(song, false)} 
+                          <div
+                            key={song.id}
+                            onClick={() => onSongClick(song, false)}
                             className="flex items-center gap-4 py-2.5 px-2 rounded-xl active:bg-white/5 transition-all"
                           >
                             <div className="h-11 w-11 shrink-0 rounded-lg overflow-hidden shadow-sm opacity-90">
@@ -942,15 +940,15 @@ export function MobileExpandedPlayer({
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="truncate font-bold text-white text-[14px] leading-tight">{song.title}</p>
-                              <button 
+                              <button
                                 onClick={(e) => { e.stopPropagation(); onArtistClick?.(song.artist); }}
                                 className="truncate text-[11px] font-bold text-white/30 active:text-white/60 transition-colors mt-0.5 text-left"
                               >
                                 {song.artist}
                               </button>
                             </div>
-                            <button 
-                              onClick={e => { e.stopPropagation(); onRemoveFromUpNext?.(i); }} 
+                            <button
+                              onClick={e => { e.stopPropagation(); onRemoveFromUpNext?.(i); }}
                               className="p-2 text-white/10 active:text-red-500 transition-colors"
                             >
                               <GripVertical size={16} />
@@ -963,7 +961,7 @@ export function MobileExpandedPlayer({
                 )}
 
                 {activeTab === "ai" && (
-                  <m.div 
+                  <m.div
                     key="story"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -972,114 +970,100 @@ export function MobileExpandedPlayer({
                     className="flex-1 overflow-hidden"
                   >
                     <div className="flex flex-col h-full bg-linear-to-b from-black/20 to-transparent">
-                        <div className="px-10 pt-8 pb-4 flex items-center justify-between border-b border-white/5">
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-white/40">By: GENIUS</h3>
-                            </div>
-                            <div className="flex flex-1 gap-1.5 ml-6">
-                                {knowFacts.map((_, i) => (
-                                    <div 
-                                        key={i} 
-                                        onClick={() => handleStoryJump(i)}
-                                        className="relative h-2 flex-1 rounded-full bg-white/10 overflow-hidden cursor-pointer group/bar"
-                                    >
-                                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/bar:opacity-100 transition-opacity" />
-                                        <div 
-                                            className="absolute inset-y-0 left-0 bg-white/60 transition-all duration-[100ms] linear pointer-events-none"
-                                            style={{ 
-                                                width: i < storyActiveIndex ? "100%" : i === storyActiveIndex ? `${storyProgress}%` : "0%" 
-                                            }}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
+                      <div className="px-10 pt-8 pb-4 flex items-center justify-between border-b border-white/5">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-white/40">By: GENIUS</h3>
                         </div>
-
-                        <div className="flex-1 relative overflow-hidden px-6 pt-6 pb-24">
-                            {/* Tap Navigation Zones */}
-                            <div className="absolute inset-y-0 left-0 w-1/3 z-20" onClick={() => {
-                                setStoryActiveIndex(prev => prev === 0 ? knowFacts.length - 1 : prev - 1);
-                                setStoryProgress(0);
-                            }} />
-                            <div className="absolute inset-y-0 right-0 w-2/3 z-20" onClick={() => {
-                                setStoryActiveIndex(prev => (prev + 1) % knowFacts.length);
-                                setStoryProgress(0);
-                            }} />
-
-                            {knowLoading ? (
-                                <div className="flex flex-col items-center justify-center h-full gap-6">
-                                    <div className="relative">
-                                        <div className="w-16 h-16 border-[3px] border-white/5 rounded-full" />
-                                        <div className="absolute top-0 left-0 w-16 h-16 border-[3px] border-t-white/40 rounded-full animate-spin" />
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <Sparkles size={20} className="text-white/20 animate-pulse" />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col items-center gap-1">
-                                        <p className="text-white/60 text-xs font-black uppercase tracking-[0.3em]">Echo AI</p>
-                                        <p className="text-white/30 text-[10px] font-bold">Unlocking track secrets...</p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="absolute inset-x-6 top-6 bottom-24">
-                                    <AnimatePresence mode="wait">
-                                        {knowFacts.length > 0 ? (
-                                                <m.div 
-                                                key={storyActiveIndex}
-                                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                exit={{ opacity: 0, scale: 1.05, y: -10 }}
-                                                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                                                className="absolute inset-0 flex flex-col justify-center p-8"
-                                            >
-                                                <div className="flex-1 flex flex-col justify-center">
-                                                    <p className={`font-black text-white leading-[1.1] tracking-tighter [text-shadow:0_4px_24px_rgba(0,0,0,0.6)] text-left text-balance py-4 ${knowFacts[storyActiveIndex].length > 150 ? 'text-[28px]' : knowFacts[storyActiveIndex].length > 80 ? 'text-[36px]' : 'text-[46px]'}`}>
-                                                        {knowFacts[storyActiveIndex]}
-                                                    </p>
-                                                </div>
-                                                <div className="flex justify-center mt-6">
-                                                    <div className="h-1 w-12 bg-white/20 rounded-full" />
-                                                </div>
-                                            </m.div>
-                                        ) : (
-                                            <m.div 
-                                                key="empty"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                className="absolute inset-0 flex flex-col items-center justify-center opacity-20 text-center px-4"
-                                            >
-                                                <BookOpen size={48} className="mb-6 opacity-30" />
-                                                <p className="text-lg font-bold italic leading-relaxed">The story of this track is still being written by the universe...</p>
-                                            </m.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            )}
+                        <div className="flex flex-1 gap-1.5 ml-6">
+                          {knowFacts.map((_, i) => (
+                            <div
+                              key={i}
+                              onClick={() => handleStoryJump(i)}
+                              className="relative h-2 flex-1 rounded-full bg-white/10 overflow-hidden cursor-pointer group/bar"
+                            >
+                              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/bar:opacity-100 transition-opacity" />
+                              <div
+                                className="absolute inset-y-0 left-0 bg-white/60 transition-all duration-[100ms] linear pointer-events-none"
+                                style={{
+                                  width: i < storyActiveIndex ? "100%" : i === storyActiveIndex ? `${storyProgress}%` : "0%"
+                                }}
+                              />
+                            </div>
+                          ))}
                         </div>
+                      </div>
+
+                      <div className="flex-1 relative overflow-hidden px-6 pt-6 pb-24">
+                        {/* Tap Navigation Zones */}
+                        <div className="absolute inset-y-0 left-0 w-1/3 z-20" onClick={() => {
+                          setStoryActiveIndex(prev => prev === 0 ? knowFacts.length - 1 : prev - 1);
+                          setStoryProgress(0);
+                        }} />
+                        <div className="absolute inset-y-0 right-0 w-2/3 z-20" onClick={() => {
+                          setStoryActiveIndex(prev => (prev + 1) % knowFacts.length);
+                          setStoryProgress(0);
+                        }} />
+
+                        {knowLoading ? (
+                          <div className="flex flex-col items-center justify-center h-full gap-6">
+                            <div className="relative">
+                              <div className="w-16 h-16 border-[3px] border-white/5 rounded-full" />
+                              <div className="absolute top-0 left-0 w-16 h-16 border-[3px] border-t-white/40 rounded-full animate-spin" />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <Sparkles size={20} className="text-white/20 animate-pulse" />
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-center gap-1">
+                              <p className="text-white/60 text-xs font-black uppercase tracking-[0.3em]">Echo AI</p>
+                              <p className="text-white/30 text-[10px] font-bold">Unlocking track secrets...</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="absolute inset-x-6 top-6 bottom-24">
+                            <AnimatePresence mode="wait">
+                              {knowFacts.length > 0 ? (
+                                <m.div
+                                  key={storyActiveIndex}
+                                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                                  exit={{ opacity: 0, scale: 1.05, y: -10 }}
+                                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                                  className="absolute inset-0 flex flex-col justify-center p-8"
+                                >
+                                  <div className="flex-1 flex flex-col justify-center">
+                                    <p className={`font-black text-white leading-[1.1] tracking-tighter [text-shadow:0_4px_24px_rgba(0,0,0,0.6)] text-left text-balance py-4 ${knowFacts[storyActiveIndex].length > 150 ? 'text-[28px]' : knowFacts[storyActiveIndex].length > 80 ? 'text-[36px]' : 'text-[46px]'}`}>
+                                      {knowFacts[storyActiveIndex]}
+                                    </p>
+                                  </div>
+                                  <div className="flex justify-center mt-6">
+                                    <div className="h-1 w-12 bg-white/20 rounded-full" />
+                                  </div>
+                                </m.div>
+                              ) : (
+                                <m.div
+                                  key="empty"
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  className="absolute inset-0 flex flex-col items-center justify-center opacity-20 text-center px-4"
+                                >
+                                  <BookOpen size={48} className="mb-6 opacity-30" />
+                                  <p className="text-lg font-bold italic leading-relaxed">The story of this track is still being written by the universe...</p>
+                                </m.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </m.div>
                 )}
               </AnimatePresence>
 
               {activeTab === "jam" && (
-                 <div className="flex-1 overflow-y-auto px-8 pt-6 pb-[40dvh] custom-scrollbar swipe-up">
-                     <div className="mb-8 space-y-1">
-                        <h2 className="text-[28px] font-black text-white tracking-tight">Echo AI</h2>
-                        <p className="text-[13px] font-bold text-white/30 uppercase tracking-[0.2em]">Shared Listening</p>
-                     </div>
-                     <JamSession />
-                     <m.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.3 }}
-                        className="mt-10 rounded-[28px] border border-white/5 bg-white/3 p-8 shadow-2xl backdrop-blur-xl animate-gpu"
-                      >
-                         <p className="text-[15px] font-medium leading-[1.6] text-white/60">
-                             Echo AI lets you listen to music simultaneously with friends. 
-                             <span className="block mt-2 font-bold text-white/80">Control is shared—anyone can play, pause, or skip tracks in real-time.</span>
-                         </p>
-                     </m.div>
-                 </div>
+                <div className="flex-1 overflow-y-auto px-6 pt-4 pb-[40dvh] custom-scrollbar swipe-up">
+                  <JamSession />
+
+                </div>
               )}
             </m.div>
           )}
@@ -1089,21 +1073,21 @@ export function MobileExpandedPlayer({
       {/* Bottom Interface */}
       <AnimatePresence>
         {isControlsVisible && (
-          <m.div 
-            initial={{ y: 100, opacity: 0 }} 
-            animate={{ y: 0, opacity: 1 }} 
+          <m.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={MOTION_CONFIG.transition}
             className={`relative z-50 flex flex-col gap-6 pt-4 pb-10 animate-gpu ${activeTab !== 'controls' ? 'bg-linear-to-t from-black/60 to-transparent' : ''}`}
           >
-             {activeTab !== "controls" && (
-                 <div className="w-full">
-                    {renderControls()}
-                 </div>
-             )}
-             <div className="w-full">
-                {renderTabSelector()}
-             </div>
+            {activeTab !== "controls" && (
+              <div className="w-full">
+                {renderControls()}
+              </div>
+            )}
+            <div className="w-full">
+              {renderTabSelector()}
+            </div>
           </m.div>
         )}
       </AnimatePresence>

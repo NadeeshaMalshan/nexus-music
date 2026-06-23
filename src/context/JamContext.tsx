@@ -66,6 +66,11 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     jamStateRef.current = jamState;
   }, [jamState]);
 
+  // Sync Jam active state to Dashboard Context to override crossfade
+  useEffect(() => {
+    dashboard.setIsJamActive(!!jamState.roomId);
+  }, [jamState.roomId, dashboard]);
+
   // Broadcast sync events via Direct Client Events (Blazing Fast)
   const broadcast = useCallback(async (type: string, payload: any, forced = false) => {
     const currentState = jamStateRef.current;

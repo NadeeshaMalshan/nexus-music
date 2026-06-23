@@ -124,6 +124,8 @@ type DashboardContextType = {
   pauseBackgroundPlayer: () => void;
   viewMode: "music" | "video";
   setViewMode: (mode: "music" | "video") => void;
+  isJamActive: boolean;
+  setIsJamActive: (active: boolean) => void;
   
   // Refs
   ytPlayerRef: React.RefObject<{
@@ -174,6 +176,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const directUrlCacheRef = useRef<Record<string, string>>({});
   const prefetchedIdsRef = useRef<Set<string>>(new Set());
   const [queueSongs, setQueueSongs] = useState<Song[]>([]);
+  const [isJamActive, setIsJamActive] = useState(false);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [lastSeedFetched, setLastSeedFetched] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -209,62 +212,55 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const getActiveAudio = useCallback(() => activePlayerIndex.current === 1 ? audio1Ref.current : audio2Ref.current, []);
   const getInactiveAudio = useCallback(() => activePlayerIndex.current === 1 ? audio2Ref.current : audio1Ref.current, []);
-  const getActiveGain = useCallback(() => activePlayerIndex.current === 1 ? currentGainRef.current : nextGainRef.current, []);
-  const getInactiveGain = useCallback(() => activePlayerIndex.current === 1 ? nextGainRef.current : currentGainRef.current, []);
 
-  // Crossfade Web Audio API nodes
-  const crossfadeCtxRef = useRef<AudioContext | null>(null);
-  const currentGainRef = useRef<GainNode | null>(null); // for audio1
-  const nextGainRef = useRef<GainNode | null>(null); // for audio2
-  const currentSourceRef = useRef<MediaElementAudioSourceNode | null>(null); // for audio1
-  const nextSourceRef = useRef<MediaElementAudioSourceNode | null>(null); // for audio2
+  // Crossfade state variables
   const crossfadeActiveRef = useRef(false);
   const nextAudioPreloadedUrlRef = useRef<string | null>(null);
 
-  const initCrossfadeAudio = useCallback(() => {
-    if (typeof window === "undefined") return;
-    if (crossfadeCtxRef.current) {
-      if (crossfadeCtxRef.current.state === "suspended") {
-        crossfadeCtxRef.current.resume().catch(() => {});
-      }
-      return;
-    }
+  // Volume Ramping Intervals for smooth HTML5 crossfades
+  const volumeRamp1Ref = useRef<NodeJS.Timeout | null>(null);
+  const volumeRamp2Ref = useRef<NodeJS.Timeout | null>(null);
 
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioContextClass();
-      crossfadeCtxRef.current = ctx;
-
-      if (audio1Ref.current && audio2Ref.current) {
-        audio1Ref.current.crossOrigin = "anonymous";
-        audio2Ref.current.crossOrigin = "anonymous";
-
-        // Create MediaElementSource nodes
-        currentSourceRef.current = ctx.createMediaElementSource(audio1Ref.current);
-        nextSourceRef.current = ctx.createMediaElementSource(audio2Ref.current);
-
-        // Create GainNodes
-        currentGainRef.current = ctx.createGain();
-        nextGainRef.current = ctx.createGain();
-
-        // Connect sources to gain nodes
-        currentSourceRef.current.connect(currentGainRef.current);
-        nextSourceRef.current.connect(nextGainRef.current);
-
-        // Connect gain nodes to destination
-        currentGainRef.current.connect(ctx.destination);
-        nextGainRef.current.connect(ctx.destination);
-
-        // Set initial volumes
-        currentGainRef.current.gain.setValueAtTime(volumeRef.current / 100, ctx.currentTime);
-        nextGainRef.current.gain.setValueAtTime(0, ctx.currentTime);
-
-        console.log("[Crossfade] Web Audio API AudioContext and GainNodes initialized.");
-      }
-    } catch (e) {
-      console.error("[Crossfade] Failed to initialize Web Audio API:", e);
+  const cancelVolumeRamp = useCallback((index: 1 | 2) => {
+    if (index === 1 && volumeRamp1Ref.current) {
+      clearInterval(volumeRamp1Ref.current);
+      volumeRamp1Ref.current = null;
+    } else if (index === 2 && volumeRamp2Ref.current) {
+      clearInterval(volumeRamp2Ref.current);
+      volumeRamp2Ref.current = null;
     }
   }, []);
+
+  const cancelAllVolumeRamps = useCallback(() => {
+    cancelVolumeRamp(1);
+    cancelVolumeRamp(2);
+  }, [cancelVolumeRamp]);
+
+  const rampVolume = useCallback((playerIndex: 1 | 2, targetVol: number, durationMs: number) => {
+    cancelVolumeRamp(playerIndex);
+    const audio = playerIndex === 1 ? audio1Ref.current : audio2Ref.current;
+    if (!audio) return;
+
+    const startVol = audio.volume;
+    const steps = Math.max(5, Math.floor(durationMs / 50));
+    const diff = targetVol - startVol;
+    let currentStep = 0;
+
+    const interval = setInterval(() => {
+      currentStep++;
+      if (currentStep >= steps) {
+        audio.volume = targetVol;
+        if (playerIndex === 1) volumeRamp1Ref.current = null;
+        else volumeRamp2Ref.current = null;
+        clearInterval(interval);
+      } else {
+        audio.volume = Math.max(0, Math.min(1, startVol + (diff * (currentStep / steps))));
+      }
+    }, 50);
+
+    if (playerIndex === 1) volumeRamp1Ref.current = interval;
+    else volumeRamp2Ref.current = interval;
+  }, [cancelVolumeRamp]);
 
   const isUsingNativeAudio = useMemo(() => {
     if (currentSong?.isLive) return false;
@@ -659,10 +655,32 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Set the relative proxy streaming URL directly to bypass CORS blocks and ytdl latency
-    const streamUrl = `/api/audio/stream?videoId=${currentSong.id}`;
-    directUrlCacheRef.current[currentSong.id] = streamUrl;
-    setDirectAudioUrl(streamUrl);
+    const controller = new AbortController();
+    async function loadDirectUrl() {
+      if (!currentSong?.id) {
+        console.warn("[DashboardContext] Skipping loadDirectUrl - currentSong.id is missing");
+        return;
+      }
+      console.log(`[DashboardContext] Loading direct URL for: ${currentSong.id}`);
+      try {
+        const response = await fetch(`/api/get-audio-url?videoId=${currentSong.id}&isLive=${currentSong.isLive || ""}`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("Failed to fetch direct URL");
+        const data = await readResponseJson<{ url?: string }>(response);
+        if (data?.url) {
+          directUrlCacheRef.current[currentSong.id] = data.url;
+          setDirectAudioUrl(data.url);
+        }
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          console.error("Failed to load direct audio URL:", error);
+        }
+      }
+    }
+    void loadDirectUrl();
+    return () => controller.abort();
   }, [currentSong, viewMode]);
 
   // Lyrics loading logic
@@ -757,7 +775,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
       // 2. Prefetch direct audio URL (music mode only)
       if (viewMode === "music" && !song.isLive && !directUrlCacheRef.current[song.id]) {
-        directUrlCacheRef.current[song.id] = `/api/audio/stream?videoId=${song.id}`;
+        try {
+          const res = await fetch(`/api/get-audio-url?videoId=${song.id}`, { signal: controller.signal, cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json() as { url?: string };
+            if (data?.url) directUrlCacheRef.current[song.id] = data.url;
+          }
+        } catch { /* ignore */ }
       }
 
       // 3. Prefetch lyrics
@@ -1047,9 +1071,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
               // Apply Volume & Quality
               // Crossfade Logic: Ramp down volume if near the end
               const currentSec = player.getCurrentTime() || 0;
-              if (duration > 0 && settingsRef.current.crossfade > 0 && currentSec >= (duration - settingsRef.current.crossfade)) {
+              const crossfadeSec = isJamActive ? 0 : settingsRef.current.crossfade;
+              if (duration > 0 && crossfadeSec > 0 && currentSec >= (duration - crossfadeSec)) {
                   const remaining = duration - currentSec;
-                  const ratio = Math.max(0, remaining / settingsRef.current.crossfade);
+                  const ratio = Math.max(0, remaining / crossfadeSec);
                   const targetVolume = Math.floor(volumeRef.current * ratio);
                   player.setVolume(targetVolume);
                 } else {
@@ -1104,7 +1129,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 if (Number.isFinite(duration) && duration > 0) {
                   setDurationSec(duration);
                   
-                  const crossfadeSec = settingsRef.current.crossfade;
+                  const crossfadeSec = isJamActive ? 0 : settingsRef.current.crossfade;
                   const gapless = settingsRef.current.gaplessPlayback;
 
                   // === GAPLESS PRE-BUFFER ===
@@ -1114,14 +1139,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                     const nextSongs = upNextQueueRef.current;
                     if (nextSongs.length > 0) {
                       const nextSong = nextSongs[0];
-                      const cachedUrl = `/api/audio/stream?videoId=${nextSong.id}`;
+                      const cachedUrl = directUrlCacheRef.current[nextSong.id];
                       const inactiveAudio = getInactiveAudio();
-                      if (inactiveAudio) {
+                      if (cachedUrl && inactiveAudio) {
                         inactiveAudio.src = cachedUrl;
                         inactiveAudio.preload = "auto";
                         inactiveAudio.load();
                         nextAudioPreloadedUrlRef.current = cachedUrl;
-                        console.log(`[Gapless] Pre-buffered next via proxy: "${nextSong.title}"`);
+                        console.log(`[Gapless] Pre-buffered next direct CDN: "${nextSong.title}"`);
                       }
                     }
                   }
@@ -1134,47 +1159,28 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                       
                       if (nextSongs.length > 0 && inactiveAudio && nextAudioPreloadedUrlRef.current) {
                         crossfadeActiveRef.current = true;
-                        initCrossfadeAudio();
-                        
-                        const ctx = crossfadeCtxRef.current;
-                        const activeGain = getActiveGain();
-                        const inactiveGain = getInactiveGain();
                         
                         console.log(`[Crossfade] Initiating crossfade. Active player index was: ${activePlayerIndex.current}`);
 
-                        if (ctx && activeGain && inactiveGain) {
-                          const t = ctx.currentTime;
-                          const remaining = Math.max(0, duration - current);
-                          const targetVol = volumeRef.current / 100;
+                        const remaining = Math.max(0, duration - current);
+                        const targetVol = volumeRef.current / 100;
 
-                          // Fade out current active player
-                          activeGain.gain.cancelScheduledValues(t);
-                          activeGain.gain.setValueAtTime(activeGain.gain.value, t);
-                          activeGain.gain.linearRampToValueAtTime(0, t + remaining);
-
-                          // Fade in next (inactive) player
-                          inactiveGain.gain.cancelScheduledValues(t);
-                          inactiveGain.gain.setValueAtTime(0, t);
-                          inactiveGain.gain.linearRampToValueAtTime(targetVol, t + crossfadeSec);
-                        } else {
-                          // Fallback if audio context isn't supported/failed
-                          inactiveAudio.volume = 0;
-                        }
-                        
+                        // Play the next track
+                        inactiveAudio.volume = 0;
                         inactiveAudio.play().catch(e => console.warn("[Crossfade] Inactive audio play failed:", e));
+
+                        // Smooth HTML5 volume ramping
+                        rampVolume(activePlayerIndex.current, 0, remaining * 1000);
+                        rampVolume(activePlayerIndex.current === 1 ? 2 : 1, targetVol, crossfadeSec * 1000);
                       }
                     }
                   } else {
-                    // Outside crossfade: Keep active gain at full volume and inactive gain at 0
-                    const activeGain = getActiveGain();
-                    const inactiveGain = getInactiveGain();
-                    if (crossfadeCtxRef.current) {
-                      const t = crossfadeCtxRef.current.currentTime;
-                      if (activeGain) activeGain.gain.setValueAtTime(volumeRef.current / 100, t);
-                      if (inactiveGain) inactiveGain.gain.setValueAtTime(0, t);
-                    } else {
-                      const activeAudio = getActiveAudio();
+                    // Outside crossfade: Keep active player at full volume and inactive at 0
+                    // Only apply if not currently in active volume ramping interval
+                    if (!volumeRamp1Ref.current && !volumeRamp2Ref.current) {
                       if (activeAudio) activeAudio.volume = volumeRef.current / 100;
+                      const inactiveAudio = getInactiveAudio();
+                      if (inactiveAudio) inactiveAudio.volume = 0;
                     }
                   }
 
@@ -1253,6 +1259,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         // If crossfade just completed and the next audio was pre-buffered,
         // swap: promote inactiveAudio to active (it's already playing)
         if (crossfadeActiveRef.current && inactiveAudio && nextAudioPreloadedUrlRef.current) {
+          // Cancel active ramps
+          cancelAllVolumeRamps();
+
           // Pause and clear the old track
           if (activeAudio) {
             try {
@@ -1264,15 +1273,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           // Promote inactive audio to active
           activePlayerIndex.current = activePlayerIndex.current === 1 ? 2 : 1;
 
-          // Ensure audio context volume is set to normal user-controlled level on the promoted player
-          initCrossfadeAudio();
-          const activeGain = getActiveGain();
-          if (activeGain && crossfadeCtxRef.current) {
-            const t = crossfadeCtxRef.current.currentTime;
-            activeGain.gain.cancelScheduledValues(t);
-            activeGain.gain.setValueAtTime(volumeRef.current / 100, t);
-          } else if (getActiveAudio()) {
-            getActiveAudio()!.volume = volumeRef.current / 100;
+          // Ensure volume is set to normal user-controlled level on the promoted player
+          const promotedAudio = getActiveAudio();
+          if (promotedAudio) {
+            promotedAudio.volume = volumeRef.current / 100;
           }
 
           // Reset crossfade state
@@ -1282,7 +1286,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Normal (non-crossfade) src assignment
-        if (directAudioUrl && activeAudio && activeAudio.src !== window.location.origin + directAudioUrl && !activeAudio.src.endsWith(directAudioUrl)) {
+        if (directAudioUrl && activeAudio && activeAudio.src !== directAudioUrl && !activeAudio.src.endsWith(directAudioUrl)) {
+            // Cancel active ramps
+            cancelAllVolumeRamps();
+
             // Reset crossfade state for clean start
             crossfadeActiveRef.current = false;
             nextAudioPreloadedUrlRef.current = null;
@@ -1292,21 +1299,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
               try {
                 inactiveAudio.pause();
                 inactiveAudio.src = "";
+                inactiveAudio.volume = 0;
               } catch {}
             }
 
-            // Ensure audio context is ready
-            initCrossfadeAudio();
-
-            const activeGain = getActiveGain();
-            const inactiveGain = getInactiveGain();
-            if (activeGain && crossfadeCtxRef.current) {
-              activeGain.gain.setValueAtTime(volumeRef.current / 100, crossfadeCtxRef.current.currentTime);
-            }
-            if (inactiveGain && crossfadeCtxRef.current) {
-              inactiveGain.gain.setValueAtTime(0, crossfadeCtxRef.current.currentTime);
-            }
-
+            activeAudio.volume = volumeRef.current / 100;
             activeAudio.src = directAudioUrl;
             if (userIntentRef.current === "playing") {
                 activeAudio.play().catch(e => console.warn("Native audio play failed:", e));
@@ -1340,16 +1337,20 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     // we don't want to re-load the exact same video if it's already playing.
   }, [audioData?.videoId, currentSong?.id, isPlayerReady, isUsingNativeAudio, directAudioUrl]);
 
-  // Keep hidden player silent whenever expanded video mode is active (covers toggle without track change).
+  // Keep player volumes synced with settings
   useEffect(() => {
     const p = ytPlayerRef.current;
-    const activeAudio = getActiveAudio();
-    if (activeAudio) {
-        activeAudio.volume = volume / 100;
-    }
-    const activeGain = getActiveGain();
-    if (activeGain && crossfadeCtxRef.current) {
-      activeGain.gain.setValueAtTime(volume / 100, crossfadeCtxRef.current.currentTime);
+    
+    // Set native active audio volume directly if not in active crossfade ramping
+    if (!volumeRamp1Ref.current && !volumeRamp2Ref.current) {
+      const activeAudio = getActiveAudio();
+      if (activeAudio) {
+          activeAudio.volume = volume / 100;
+      }
+      const inactiveAudio = getInactiveAudio();
+      if (inactiveAudio) {
+          inactiveAudio.volume = 0;
+      }
     }
     
     if (!p || !playerReadyRef.current) return;
@@ -1465,7 +1466,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
             if (activeAudio.paused) {
                 userIntentRef.current = "playing";
                 try { audioCtxRef.current?.resume(); } catch {}
-                try { crossfadeCtxRef.current?.resume(); } catch {}
                 activeAudio.play().catch(() => {});
                 setIsPlaying(true);
                 if (silentAudioRef.current?.paused) silentAudioRef.current.play().catch(() => {});
@@ -1521,7 +1521,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (isUsingNativeAudio) {
         const activeAudio = getActiveAudio();
         if (activeAudio) {
-            try { crossfadeCtxRef.current?.resume(); } catch {}
             activeAudio.play().catch(() => {});
             setIsPlaying(true);
             return;
@@ -1926,6 +1925,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     selectedPlaylist,
     palette,
     liveMetadata,
+    isJamActive,
+    setIsJamActive,
     setIsPlaying,
     setCurrentTimeSec,
     setCurrentSong,
@@ -1974,7 +1975,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     knowLoading, likedSongs, likedLibraryTracks, songIsInLikedLibrary, resolveLikedLibraryRateVideoId, upNextQueue, playedHistory, aiLoading, 
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
-    setIsPlaying, setQueueSongs, setPreviousQueue, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata
+    setIsPlaying, setQueueSongs, setPreviousQueue, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata,
+    isJamActive
   ]);
 
   return (

@@ -24,6 +24,7 @@ import { VideoQuality, AudioQuality, DefaultPlayMode } from "@/types/settings";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { MusicArtwork } from "./MusicArtwork";
 import { useDashboard } from "@/context/DashboardContext";
+import { useJam } from "@/context/JamContext";
 
 interface SettingsRowProps {
   icon: React.ReactNode;
@@ -95,6 +96,8 @@ export function Settings() {
   const { settings, updateSetting } = useSettings();
   const { data: session, status } = useSession();
   const { isRightSidebarOpen } = useDashboard();
+  const { jamState } = useJam();
+  const isJamActive = !!jamState?.roomId;
 
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -197,16 +200,17 @@ export function Settings() {
             <SettingsRow 
               icon={<MoveHorizontal size={20} />} 
               label="Crossfade Songs" 
-              description={`${settings.crossfade} seconds`}
+              description={isJamActive ? "Disabled during Jam sessions" : `${settings.crossfade} seconds`}
             >
               <input 
                 type="range" 
                 min="0" 
                 max="12" 
                 step="1"
-                value={settings.crossfade}
+                value={isJamActive ? 0 : settings.crossfade}
+                disabled={isJamActive}
                 onChange={(e) => updateSetting("crossfade", parseInt(e.target.value))}
-                className="w-32 h-1 bg-white/10 rounded-full cursor-pointer accent-[var(--art-accent,#FA243C)]"
+                className={`w-32 h-1 bg-white/10 rounded-full accent-[var(--art-accent,#FA243C)] ${isJamActive ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
               />
             </SettingsRow>
 

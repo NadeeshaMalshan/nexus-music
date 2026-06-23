@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { extractDominantColor } from "../../lib/colorExtractor";
+import { extractFeaturedArtists } from "../../lib/metadata";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles, UserRound, Video, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles, UserRound, Video, ChevronLeft, ChevronRight, MoreVertical, Radio, ArrowLeft, ArrowRight, User as UserIcon, ListMusic, Disc, Mic2, FileAudio, ExternalLink, RefreshCw, Flame, Crown, Headphones, Users, Search as SearchIcon } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { type Song } from "./types";
@@ -548,10 +550,12 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
         type: "ALBUM"
       };
     }
+    const { displayTitle, displayArtist } = extractFeaturedArtists(item.title, item.author);
+    
     return {
       id: item.videoId || `search-${idx}`,
-      title: item.title,
-      artist: item.author,
+      title: displayTitle,
+      artist: displayArtist,
       artwork: item.thumbnail,
       duration: item.duration,
       color: songColors[item.videoId] || "var(--art-accent, #FA243C)",

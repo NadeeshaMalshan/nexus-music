@@ -1579,29 +1579,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const handleAudioErrorFallback = useCallback((audioEl: HTMLAudioElement, songId?: string) => {
     if (!songId) return;
-    const currentSrc = audioEl.src;
-    // Prevent infinite fallback loop
-    if (currentSrc.includes("/api/audio/stream")) {
-        console.warn("[Audio] Proxy fallback also failed for:", songId);
-        onNext(); // Skip to next song if proxy also fails
-        return;
-    }
     
-    console.warn(`[Audio] Stream failed/stalled for ${songId}. Falling back to proxy...`);
-    const fallbackUrl = `/api/audio/stream?videoId=${songId}`;
-    directUrlCacheRef.current[songId] = fallbackUrl;
+    console.warn(`[Audio] Stream failed/stalled for ${songId}. Switching to Video Mode as fallback...`);
     
-    // Save current time to resume
-    const timeToResume = audioEl.currentTime;
+    // Clear the failing source to prevent further errors
+    try { audioEl.pause(); audioEl.src = ""; } catch {}
     
-    audioEl.src = fallbackUrl;
-    audioEl.load();
-    audioEl.currentTime = timeToResume;
+    // Switch to video mode to use the YouTube Iframe API natively
+    setViewMode("video");
+    setIsExpandedPlayerOpen(true);
     
-    if (userIntentRef.current === "playing") {
-        audioEl.play().catch(e => console.warn("Fallback play error:", e));
-    }
-  }, [onNext]);
+    // The existing useEffects will automatically sync the YouTube player and start playback
+    // since viewMode is now "video" and userIntent is "playing".
+  }, [setViewMode, setIsExpandedPlayerOpen]);
 
 
   const onSeek = useCallback((nextTimeSec: number) => {

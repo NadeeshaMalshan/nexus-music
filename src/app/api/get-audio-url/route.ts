@@ -34,15 +34,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ url: proxyUrl, source: "proxy" });
   }
 
-  // If the URL is a direct googlevideo CDN url, it is IP-locked to Vercel's IP.
-  // The client's browser will fail to stream it (plays 1 sec then 403 Forbidden).
-  // So we must force these to use the proxy.
-  if (url.includes("googlevideo.com")) {
-    const proxyUrl = `/api/audio/stream?videoId=${videoId}`;
-    console.log(`[get-audio-url] googlevideo URL detected, forcing proxy: ${proxyUrl}`);
-    return NextResponse.json({ url: proxyUrl, source: "proxy_forced" });
-  }
-
   console.log(`[get-audio-url] OK (len ${url.length})`);
   return NextResponse.json({ url });
 }

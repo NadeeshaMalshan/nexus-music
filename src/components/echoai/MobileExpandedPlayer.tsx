@@ -54,7 +54,7 @@ export function MobileExpandedPlayer({
   onArtistClick,
   isOpen,
 }: ExpandedPlayerProps) {
-  const { palette, resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
+  const { palette, resolveLikedLibraryRateVideoId, liveMetadata, isUsingNativeAudio } = useDashboard();
   const { settings } = useSettings();
   const { jamState } = useJam();
   const [jamWarning, setJamWarning] = useState<string | null>(null);
@@ -354,7 +354,7 @@ export function MobileExpandedPlayer({
 
   useEffect(() => {
     const p = ytPlayerInstance.current;
-    if ((viewMode === "video" || currentSong.isLive) && p) {
+    if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && p) {
       const state = p.getPlayerState?.();
       if (isPlaying) {
         if (state !== 1 && state !== 3) p.playVideo();
@@ -362,13 +362,13 @@ export function MobileExpandedPlayer({
         if (state !== 2 && state !== 5) p.pauseVideo();
       }
     }
-  }, [isPlaying, viewMode, currentSong.isLive, currentSong.id]);
+  }, [isPlaying, viewMode, currentSong.isLive, currentSong.id, isUsingNativeAudio]);
 
   useEffect(() => {
-    if ((viewMode === "video" || currentSong.isLive) && ytPlayerInstance.current) {
+    if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && ytPlayerInstance.current) {
       try { ytPlayerInstance.current.setVolume(volume); } catch { /* ignore */ }
     }
-  }, [volume, viewMode, currentSong.isLive]);
+  }, [volume, viewMode, currentSong.isLive, isUsingNativeAudio]);
 
   const youtubeOpts = {
     height: '100%',
@@ -660,7 +660,7 @@ export function MobileExpandedPlayer({
            When activeTab === 'controls', this container is positioned/sized based on viewMode.
            When activeTab !== 'controls', we hide it but keep it playing (z-index 0, opacity 0).
         */}
-        {(viewMode === "video" || isReallyLive) && (
+        {(viewMode === "video" || isReallyLive || !isUsingNativeAudio) && (
           <div 
             className={`absolute transition-all duration-700 pointer-events-none ${
               activeTab === "controls" 

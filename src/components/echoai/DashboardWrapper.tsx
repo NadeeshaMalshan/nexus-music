@@ -54,6 +54,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     rightSidebarMode,
     setRightSidebarMode,
     liveMetadata,
+    isUsingNativeAudio,
   } = useDashboard();
 
   const themeColor = palette.accent;
@@ -192,7 +193,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         iframe is never destroyed and background audio continues even when minimised.
         In music mode it only mounts when actually open (background player handles audio).
       */}
-      {mergedCurrentSong && (isExpandedPlayerOpen || viewMode === "video" || mergedCurrentSong.isLive) && (
+      {mergedCurrentSong && (isExpandedPlayerOpen || viewMode === "video" || mergedCurrentSong.isLive || !isUsingNativeAudio) && (
         <div
           className="fixed z-50 transition-none"
           style={

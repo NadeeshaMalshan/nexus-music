@@ -1303,6 +1303,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const silenceHidden =
         viewMode === "video" ||
         isUsingNativeAudio ||
+        !isUsingNativeAudio ||
         !!currentSong?.isLive ||
         (isReallyLivePlayback && isExpandedPlayerOpen);
 
@@ -1898,13 +1899,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setPreviousQueue,
     previousQueue,
     rightSidebarMode,
+    isUsingNativeAudio,
   }), [
     audioData, queueSongs, previousQueue, currentSong, isPlaying, currentTimeSec, 
     durationSec, volume, lyricsData, lyricsLoading, knowFacts, 
     knowLoading, likedSongs, likedLibraryTracks, songIsInLikedLibrary, resolveLikedLibraryRateVideoId, upNextQueue, playedHistory, aiLoading, 
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
-    setIsPlaying, setQueueSongs, setPreviousQueue, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata
+    setIsPlaying, setQueueSongs, setPreviousQueue, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata, isUsingNativeAudio
   ]);
 
   return (

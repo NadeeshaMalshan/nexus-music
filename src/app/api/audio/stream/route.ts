@@ -80,11 +80,13 @@ export async function GET(req: NextRequest) {
         );
       }
 
+      const cookieRaw = process.env.YOUTUBE_COOKIE?.trim();
       const upstream = await fetch(direct, {
         headers: {
           "User-Agent": CHROME_UA,
           Referer: "https://www.youtube.com/",
           Origin: "https://www.youtube.com",
+          ...(cookieRaw ? { Cookie: cookieRaw } : {}),
           ...(rangeHeader ? { Range: rangeHeader } : {}),
         },
       });

@@ -55,10 +55,19 @@ export function FloatingPlayer({
   const { resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const isIdle = !currentSong;
   
+  const rawTitle = liveMetadata?.title || currentSong?.title || "Nexus Music";
+  const featMatch = rawTitle.match(/\b(?:feat\.|ft\.|featuring)\s+([^)\]]+)/i);
+  const featured = featMatch ? featMatch[1].trim() : "";
+  const cleanTitle = rawTitle.replace(/\s*[([].*?[)\]]\s*/g, '').trim();
+  const baseArtist = liveMetadata?.artist || currentSong?.artist || "Ready to stream";
+  const fullArtist = featured && !baseArtist.toLowerCase().includes(featured.toLowerCase()) 
+    ? `${baseArtist} & ${featured}` 
+    : baseArtist;
+
   const displaySong = {
     id: currentSong?.id || "idle",
-    title: liveMetadata?.title || currentSong?.title || "Nexus Music",
-    artist: liveMetadata?.artist || currentSong?.artist || "Ready to stream",
+    title: cleanTitle,
+    artist: fullArtist,
     artwork: liveMetadata?.artwork || currentSong?.artwork || null,
     duration: currentSong?.duration || "0:00",
     color: currentSong?.color || "#FA243C",
@@ -142,24 +151,35 @@ export function FloatingPlayer({
                     text={displaySong.title} 
                     className="text-[16px] font-black text-white tracking-tighter leading-none mb-1" 
                   />
-                  <button
-                    onClick={(e) => {
-                      if (!isIdle && onArtistClick) {
-                        e.stopPropagation();
-                        onArtistClick(displaySong.artist);
-                      }
+                  <div 
+                    className="w-full text-left overflow-x-auto no-scrollbar custom-scrollbar"
+                    style={{
+                      maskImage: 'linear-gradient(to right, black 85%, transparent)',
+                      WebkitMaskImage: 'linear-gradient(to right, black 85%, transparent)'
                     }}
-                    className={`w-full text-left ${
-                      !isIdle && onArtistClick
-                        ? "cursor-pointer"
-                        : "cursor-default"
-                    }`}
                   >
-                    <MarqueeText 
-                      text={displaySong.artist} 
-                      className="text-[11px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors leading-none"
-                    />
-                  </button>
+                    <div className="text-[11px] font-black uppercase tracking-widest text-white/40 leading-none whitespace-nowrap min-w-max pb-1">
+                      {displaySong.artist.split(/(,\s*|\s*&\s*|\s+feat\.\s+|\s+featuring\s+)/i).map((part, i) => {
+                         if (part.match(/^(,\s*|\s*&\s*|\s+feat\.\s+|\s+featuring\s+)$/i)) {
+                            return <span key={i} className="whitespace-pre">{part}</span>;
+                         }
+                         return (
+                            <span 
+                              key={i} 
+                              className={(!isIdle && onArtistClick) ? "hover:text-white cursor-pointer transition-colors" : ""}
+                              onClick={(e) => {
+                                if (!isIdle && onArtistClick) {
+                                  e.stopPropagation();
+                                  onArtistClick(part.trim());
+                                }
+                              }}
+                            >
+                              {part}
+                            </span>
+                         );
+                      })}
+                    </div>
+                  </div>
                </div>
             </div>
 

@@ -621,7 +621,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                 e.preventDefault();
                 void runSearch();
               }}
-              className="relative flex items-center w-full rounded-2xl bg-black/40 border border-white/10 px-4 md:px-8 py-5 md:py-7 focus-within:border-white shadow-2xl backdrop-blur-3xl transition-colors duration-300"
+              className="relative flex items-center w-full rounded-2xl bg-black/20 hover:bg-white/5 border border-white/10 px-4 md:px-8 py-5 md:py-7 focus-within:bg-black/40 focus-within:border-white/30 shadow-2xl backdrop-blur-md transition-colors duration-300"
             >
               <Search className="w-6 h-6 md:w-8 md:h-8 text-white/40 mr-4 md:mr-6" />
               <input
@@ -675,10 +675,10 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
 
                       void runSearch(q, cat);
                     }}
-                    className={`px-6 py-3 rounded-xl border text-[13px] font-black tracking-wide capitalize transition-all ${
+                    className={`px-6 py-3 rounded-full border text-[13px] font-bold tracking-wide capitalize transition-all backdrop-blur-md ${
                       activeCategory === cat 
-                      ? "bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.4)]" 
-                      : "bg-transparent text-white/50 border-white/10 hover:border-white/40 hover:text-white"
+                      ? "bg-white/10 text-white border-white/30 shadow-lg" 
+                      : "bg-transparent text-white/50 border-white/10 hover:border-white/30 hover:bg-white/5 hover:text-white"
                     }`}
                   >
                     {cat}
@@ -838,7 +838,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                   <m.div
                     initial={false}
                     animate={{ opacity: 1, x: 0 }}
-                    className="group flex cursor-pointer items-center justify-between p-3 px-4 md:rounded-xl bg-black/20 hover:bg-white/10 border border-white/5 hover:translate-x-2 transition-all duration-300 animate-gpu shadow-lg"
+                    className="group flex cursor-pointer items-center justify-between p-3 px-4 rounded-2xl bg-black/20 hover:bg-white/10 backdrop-blur-md border border-white/10 hover:translate-x-2 transition-all duration-300 animate-gpu shadow-lg"
                     onClick={() => {
                       // For Artist category → navigate to artist page
                       if (song.type === "ARTIST") {

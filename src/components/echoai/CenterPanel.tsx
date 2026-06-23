@@ -914,7 +914,7 @@ export function CenterPanel(props: CenterPanelProps) {
                       <div className="flex-1 flex items-center justify-start max-w-2xl lg:pr-8">
                         <h1 className="text-[36px] sm:text-[52px] lg:text-[64px] font-black tracking-tighter text-white leading-[1.05] drop-shadow-xl">
                           {currentSong ? (
-                            <>More songs like <br/><span className="text-white/60">{currentSong.title}</span></>
+                            <>More songs like <br/><span className="text-white/60">{currentSong.title.replace(/\s*[([].*?[)\]]\s*/g, '').trim()}</span></>
                           ) : "Recommended for you"}
                         </h1>
                       </div>

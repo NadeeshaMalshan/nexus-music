@@ -101,6 +101,15 @@ export function MobileExpandedPlayer({
   // Mobile specific: Immersive means when we are NOT in the "controls" tab
   const isImmersive = useMemo(() => activeTab !== "controls", [activeTab]);
 
+  const rawTitle = liveMetadata?.title || currentSong.title || "Nexus Music";
+  const featMatch = rawTitle.match(/\b(?:feat\.|ft\.|featuring)\s+([^)\]]+)/i);
+  const featured = featMatch ? featMatch[1].trim() : "";
+  const displayTitle = rawTitle.replace(/\s*[([].*?[)\]]\s*/g, '').trim();
+  const baseArtist = liveMetadata?.artist || currentSong.artist || "Ready to stream";
+  const displayArtist = featured && !baseArtist.toLowerCase().includes(featured.toLowerCase()) 
+    ? `${baseArtist} & ${featured}` 
+    : baseArtist;
+
   useEffect(() => {
     const resetTimer = () => {
       setIsControlsVisible(true);
@@ -637,13 +646,28 @@ export function MobileExpandedPlayer({
                   <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={16} />
                 </m.div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="truncate text-base font-black text-white">{liveMetadata?.title || currentSong.title}</h2>
-                  <button
-                    onClick={() => onArtistClick?.(liveMetadata?.artist || currentSong.artist)}
-                    className="truncate text-xs font-bold text-white/50 active:text-white transition-colors text-left"
-                  >
-                    {liveMetadata?.artist || currentSong.artist}
-                  </button>
+                  <h2 className="truncate text-base font-black text-white">{displayTitle}</h2>
+                  <div className="truncate text-xs font-bold text-white/50 text-left">
+                    {displayArtist.split(/(,\s*|\s*&\s*|\s+feat\.\s+|\s+featuring\s+)/i).map((part, i) => {
+                       if (part.match(/^(,\s*|\s*&\s*|\s+feat\.\s+|\s+featuring\s+)$/i)) {
+                          return <span key={i} className="whitespace-pre">{part}</span>;
+                       }
+                       return (
+                          <span 
+                            key={i} 
+                            className={onArtistClick ? "active:text-white cursor-pointer transition-colors" : ""}
+                            onClick={(e) => {
+                              if (onArtistClick) {
+                                e.stopPropagation();
+                                onArtistClick(part.trim());
+                              }
+                            }}
+                          >
+                            {part}
+                          </span>
+                       );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
@@ -781,18 +805,38 @@ export function MobileExpandedPlayer({
                       </m.div>
                     )}
                     <MarqueeText
-                      text={liveMetadata?.title || currentSong.title}
+                      text={displayTitle}
                       className="text-[28px] leading-none font-black text-white tracking-tight mb-1"
                     />
-                    <button
-                      onClick={() => onArtistClick?.(liveMetadata?.artist || currentSong.artist)}
-                      className="w-full text-left mt-1.5"
+                    <div 
+                      className="w-full text-left mt-1.5 overflow-x-auto no-scrollbar custom-scrollbar"
+                      style={{
+                        maskImage: 'linear-gradient(to right, black 85%, transparent)',
+                        WebkitMaskImage: 'linear-gradient(to right, black 85%, transparent)'
+                      }}
                     >
-                      <MarqueeText
-                        text={liveMetadata?.artist || currentSong.artist}
-                        className="text-[19px] font-bold text-white/40 active:text-white/70 transition-colors"
-                      />
-                    </button>
+                      <div className="text-[19px] font-bold text-white/40 transition-colors whitespace-nowrap min-w-max pb-1">
+                        {displayArtist.split(/(,\s*|\s*&\s*|\s+feat\.\s+|\s+featuring\s+)/i).map((part, i) => {
+                           if (part.match(/^(,\s*|\s*&\s*|\s+feat\.\s+|\s+featuring\s+)$/i)) {
+                              return <span key={i} className="whitespace-pre">{part}</span>;
+                           }
+                           return (
+                              <span 
+                                key={i} 
+                                className={onArtistClick ? "active:text-white/70 hover:text-white cursor-pointer transition-colors" : ""}
+                                onClick={(e) => {
+                                  if (onArtistClick) {
+                                    e.stopPropagation();
+                                    onArtistClick(part.trim());
+                                  }
+                                }}
+                              >
+                                {part}
+                              </span>
+                           );
+                        })}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex shrink-0 bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-2xl">
                     <button

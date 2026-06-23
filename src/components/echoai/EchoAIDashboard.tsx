@@ -1,5 +1,5 @@
 "use client";
-
+import React, { Suspense } from "react";
 import { useDashboard } from "@/context/DashboardContext";
 import { CenterPanel } from "./CenterPanel";
 import { SearchPage } from "./SearchPage";
@@ -50,13 +50,15 @@ export function EchoAIDashboard() {
           transition={MOTION_CONFIG.transition}
           className="flex-1 h-full flex flex-col"
         >
-          <SearchPage
-            onClose={() => router.push("/")}
-            onSongSelect={onSongClick}
-            onAddToQueue={onAddToQueue}
-            onPlayNext={onPlayNext}
-            onNavigateArtist={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
-          />
+          <Suspense fallback={<div className="flex-1 bg-transparent" />}>
+            <SearchPage
+              onClose={() => router.push("/")}
+              onSongSelect={onSongClick}
+              onAddToQueue={onAddToQueue}
+              onPlayNext={onPlayNext}
+              onNavigateArtist={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
+            />
+          </Suspense>
         </m.div>
       ) : activeView === "artist" && artistNameFromUrl ? (
         <m.div

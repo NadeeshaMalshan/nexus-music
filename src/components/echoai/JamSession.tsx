@@ -164,7 +164,7 @@ export function JamSession() {
   }
 
   return (
-    <div className="w-full h-full flex flex-col justify-center px-4 py-12">
+    <div className="w-full h-full flex flex-col justify-start px-4 pt-16 pb-12">
       <AnimatePresence mode="wait">
       {showJoinInput ? (
         <motion.div 

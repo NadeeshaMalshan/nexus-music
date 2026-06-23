@@ -7,6 +7,7 @@ import { ArtistPage } from "./ArtistPage";
 import { usePathname, useRouter } from "next/navigation";
 import { m, AnimatePresence } from "motion/react";
 import { FADE_IN_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
+import { Suspense } from "react";
 
 export function EchoAIDashboard() {
   const pathname = usePathname();
@@ -44,19 +45,21 @@ export function EchoAIDashboard() {
       {activeView === "explore" ? (
         <m.div
           key="explore-view"
-          initial={{ opacity: 0, scale: 1.02 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
           transition={MOTION_CONFIG.transition}
           className="flex-1 h-full flex flex-col"
         >
-          <SearchPage
-            onClose={() => router.push("/")}
-            onSongSelect={onSongClick}
-            onAddToQueue={onAddToQueue}
-            onPlayNext={onPlayNext}
-            onNavigateArtist={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
-          />
+          <Suspense fallback={<div className="flex-1 h-full flex items-center justify-center text-white/50">Loading explore...</div>}>
+            <SearchPage
+              onClose={() => router.push("/")}
+              onSongSelect={onSongClick}
+              onAddToQueue={onAddToQueue}
+              onPlayNext={onPlayNext}
+              onNavigateArtist={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
+            />
+          </Suspense>
         </m.div>
       ) : activeView === "artist" && artistNameFromUrl ? (
         <m.div

@@ -61,6 +61,7 @@ type LyricsPayload = {
 
 type DashboardContextType = {
   // Player State
+  isUsingNativeAudio: boolean;
   audioData: AudioPayload | null;
   queueSongs: Song[];
   currentSong: Song | null;

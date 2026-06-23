@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, Suspense } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles, UserRound, Video, ChevronLeft, ChevronRight } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
@@ -131,7 +131,7 @@ function isActuallyLiveStream(item: any): boolean {
   return false;
 }
 
-function SearchPageInner({ onClose, onSongSelect, onQueueReplace, onAddToQueue, onPlayNext, onNavigateArtist }: SearchPageProps) {
+export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue, onPlayNext, onNavigateArtist }: SearchPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("Top");
   const [isListening, setIsListening] = useState(false);
@@ -1000,13 +1000,5 @@ function SearchPageInner({ onClose, onSongSelect, onQueueReplace, onAddToQueue, 
         )}
       </div>
     </m.div>
-  );
-}
-
-export function SearchPage(props: SearchPageProps) {
-  return (
-    <Suspense fallback={null}>
-      <SearchPageInner {...props} />
-    </Suspense>
   );
 }

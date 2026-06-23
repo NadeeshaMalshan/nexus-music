@@ -605,7 +605,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
       console.log(`[DashboardContext] Loading direct URL for: ${currentSong.id}`);
       try {
-        const response = await fetch(`/api/get-audio-url?videoId=${currentSong.id}&isLive=${currentSong.isLive || ""}`, {
+        const response = await fetch(`/api/get-audio-url?videoId=${currentSong.id}&isLive=${currentSong.isLive || ""}&title=${encodeURIComponent(currentSong.title)}&artist=${encodeURIComponent(currentSong.artist)}`, {
           signal: controller.signal,
           cache: "no-store",
         });
@@ -1577,23 +1577,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   onNextRef.current = onNext;
 
-  const handleAudioErrorFallback = useCallback((audioEl: HTMLAudioElement, songId?: string) => {
-    if (!songId) return;
-    
-    console.warn(`[Audio] Stream failed/stalled for ${songId}. Switching to Video Mode as fallback...`);
-    
-    // Clear the failing source to prevent further errors
-    try { audioEl.pause(); audioEl.src = ""; } catch {}
-    
-    // Switch to video mode to use the YouTube Iframe API natively
-    setViewMode("video");
-    setIsExpandedPlayerOpen(true);
-    
-    // The existing useEffects will automatically sync the YouTube player and start playback
-    // since viewMode is now "video" and userIntent is "playing".
-  }, [setViewMode, setIsExpandedPlayerOpen]);
-
-
   const onSeek = useCallback((nextTimeSec: number) => {
     if (!Number.isFinite(nextTimeSec)) return;
     
@@ -1936,37 +1919,17 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
             if (userIntentRef.current === "paused") setIsPlaying(false);
         }}
         onEnded={() => {
-          const audio = nativeAudioRef.current;
-          if (audio && currentSongRef.current) {
-             const duration = audio.duration;
-             if (Number.isFinite(duration) && audio.currentTime < duration - 2) {
-                 // Premature end! Stream was cut off.
-                 handleAudioErrorFallback(audio, currentSongRef.current.id);
-                 return;
-             }
-          }
           // If crossfade didn't handle the transition, do it now
           if (!crossfadeActiveRef.current) onNext();
         }}
-        onError={(e) => {
-          console.warn("Primary audio element error:", e);
-          if (nativeAudioRef.current && currentSongRef.current) {
-             handleAudioErrorFallback(nativeAudioRef.current, currentSongRef.current.id);
-          }
-        }}
+        onError={(e) => console.warn("Primary audio element error:", e)}
       />
       {/* Secondary Audio Element for Gapless/Crossfade pre-buffering */}
       <audio
         ref={nextNativeAudioRef}
         style={{ display: "none" }}
         preload="auto"
-        onError={(e) => {
-           console.warn("Secondary audio element error:", e);
-           const songId = upNextQueueRef.current[0]?.id;
-           if (nextNativeAudioRef.current && songId) {
-               handleAudioErrorFallback(nextNativeAudioRef.current, songId);
-           }
-        }}
+        onError={(e) => console.warn("Secondary audio element error:", e)}
       />
     </DashboardContext.Provider>
   );

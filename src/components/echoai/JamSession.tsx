@@ -164,7 +164,7 @@ export function JamSession() {
   }
 
   return (
-    <div className="w-full flex flex-col px-2 py-6">
+    <div className="w-full h-full flex flex-col justify-center px-4 py-12">
       <AnimatePresence mode="wait">
       {showJoinInput ? (
         <motion.div 
@@ -228,14 +228,14 @@ export function JamSession() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="flex flex-col gap-6"
+            className="flex flex-col gap-12"
         >
             <div>
-                <h2 className="text-[38px] font-black tracking-tighter text-white leading-tight">Shared<br/>Listening.</h2>
-                <p className="text-white/40 text-sm mt-3 font-medium max-w-[220px]">Sync perfectly in real-time across any device.</p>
+                <h2 className="text-5xl font-black tracking-tighter text-white leading-tight">Shared<br/>Listening.</h2>
+                <p className="text-white/40 text-sm mt-4 font-medium max-w-[200px]">Sync perfectly in real-time across any device.</p>
             </div>
 
-            <div className="flex flex-col gap-4 mt-4">
+            <div className="flex flex-col gap-4 mt-8">
                 <button
                     onClick={() => session ? createJam() : null}
                     disabled={!session}

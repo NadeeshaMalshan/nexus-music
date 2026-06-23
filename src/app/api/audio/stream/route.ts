@@ -5,7 +5,7 @@ import { Readable } from "stream";
 import { getYoutubeDirectAudioUrl, getYoutubeInfoWithRetry, getYtdlSharedOptions } from "@/lib/youtubeDirectAudioUrl";
 
 export const runtime = "nodejs";
-export const maxDuration = 300; // 5 minutes - needed for Vercel Pro/streaming
+export const maxDuration = 60;
 
 const CHROME_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -69,24 +69,17 @@ export async function GET(req: NextRequest) {
       headers: responseHeaders,
     });
   } catch (e1) {
-    console.warn("[audio/stream] ytdl download failed, trying direct URL proxy:", e1);
+    console.warn("[audio/stream] ytdl download failed, proxying direct URL:", e1);
 
     try {
       const direct = await getYoutubeDirectAudioUrl(videoId);
-      if (!direct) {
-        return new Response(
-          JSON.stringify({ error: "Streaming unavailable", detail: "All methods failed" }),
-          { status: 502, headers: { "Content-Type": "application/json" } }
-        );
-      }
+      if (!direct) throw e1;
 
-      const cookieRaw = process.env.YOUTUBE_COOKIE?.trim();
       const upstream = await fetch(direct, {
         headers: {
           "User-Agent": CHROME_UA,
           Referer: "https://www.youtube.com/",
           Origin: "https://www.youtube.com",
-          ...(cookieRaw ? { Cookie: cookieRaw } : {}),
           ...(rangeHeader ? { Range: rangeHeader } : {}),
         },
       });
@@ -108,10 +101,6 @@ export async function GET(req: NextRequest) {
       responseHeaders.set("Cache-Control", "public, max-age=300");
       const ar = upstream.headers.get("accept-ranges");
       if (ar) responseHeaders.set("Accept-Ranges", ar);
-      const cl = upstream.headers.get("content-length");
-      if (cl) responseHeaders.set("Content-Length", cl);
-      const cr = upstream.headers.get("content-range");
-      if (cr) responseHeaders.set("Content-Range", cr);
 
       return new Response(upstream.body, {
         status: upstream.status,

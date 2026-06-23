@@ -4,16 +4,11 @@ import { getYoutubeDirectAudioUrl } from "@/lib/youtubeDirectAudioUrl";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 30;
 
 /**
  * Returns a direct CDN URL for clients that need a string (e.g. some web players).
- * Extraction uses ytdl-core, then play-dl, then Piped API — see `getYoutubeDirectAudioUrl`.
- *
- * On serverless (Vercel) environments ytdl-core often fails due to IP blocks from YouTube.
- * In that case the Piped API returns a googlevideo URL which can be served directly
- * as browsers can play them. We return it as-is and also expose a /api/audio/proxy
- * fallback endpoint for cases where direct CDN serving fails.
+ * Extraction uses ytdl-core, then play-dl — see `getYoutubeDirectAudioUrl`.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -24,14 +19,33 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid or missing videoId" }, { status: 400 });
   }
 
+  const title = searchParams.get("title");
+  const artist = searchParams.get("artist");
+
   console.log(`[get-audio-url] videoId: ${videoId}, isLive: ${isLive}`);
-  const url = await getYoutubeDirectAudioUrl(videoId, isLive);
+  let url = await getYoutubeDirectAudioUrl(videoId, isLive);
+
+  // Vercel Block Fallback
+  if (!url && title && artist && !isLive) {
+    try {
+      console.log(`[get-audio-url] Blocked. Falling back to Topic for: ${title} - ${artist}`);
+      const { searchSongsRobust } = await import("@/lib/ytmSearchService");
+      const searchResults = await searchSongsRobust(`${title} ${artist} Topic`);
+      const topicVideo = searchResults.find((r: any) => r.youtubeId && r.youtubeId !== videoId);
+      if (topicVideo?.youtubeId) {
+        console.log(`[get-audio-url] Found Topic fallback videoId: ${topicVideo.youtubeId}`);
+        url = await getYoutubeDirectAudioUrl(topicVideo.youtubeId, false);
+      }
+    } catch (e) {
+      console.error("[get-audio-url] Topic fallback failed", e);
+    }
+  }
 
   if (!url) {
-    // Final fallback: return proxy URL which will stream via server
-    const proxyUrl = `/api/audio/stream?videoId=${videoId}`;
-    console.log(`[get-audio-url] All extraction methods failed, returning proxy: ${proxyUrl}`);
-    return NextResponse.json({ url: proxyUrl, source: "proxy" });
+    return NextResponse.json(
+      { error: "Failed to extract audio URL", details: "ytdl and play-dl both failed" },
+      { status: 500 }
+    );
   }
 
   console.log(`[get-audio-url] OK (len ${url.length})`);

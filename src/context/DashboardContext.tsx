@@ -1577,6 +1577,33 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   onNextRef.current = onNext;
 
+  const handleAudioErrorFallback = useCallback((audioEl: HTMLAudioElement, songId?: string) => {
+    if (!songId) return;
+    const currentSrc = audioEl.src;
+    // Prevent infinite fallback loop
+    if (currentSrc.includes("/api/audio/stream")) {
+        console.warn("[Audio] Proxy fallback also failed for:", songId);
+        onNext(); // Skip to next song if proxy also fails
+        return;
+    }
+    
+    console.warn(`[Audio] Stream failed/stalled for ${songId}. Falling back to proxy...`);
+    const fallbackUrl = `/api/audio/stream?videoId=${songId}`;
+    directUrlCacheRef.current[songId] = fallbackUrl;
+    
+    // Save current time to resume
+    const timeToResume = audioEl.currentTime;
+    
+    audioEl.src = fallbackUrl;
+    audioEl.load();
+    audioEl.currentTime = timeToResume;
+    
+    if (userIntentRef.current === "playing") {
+        audioEl.play().catch(e => console.warn("Fallback play error:", e));
+    }
+  }, [onNext]);
+
+
   const onSeek = useCallback((nextTimeSec: number) => {
     if (!Number.isFinite(nextTimeSec)) return;
     
@@ -1919,17 +1946,37 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
             if (userIntentRef.current === "paused") setIsPlaying(false);
         }}
         onEnded={() => {
+          const audio = nativeAudioRef.current;
+          if (audio && currentSongRef.current) {
+             const duration = audio.duration;
+             if (Number.isFinite(duration) && audio.currentTime < duration - 2) {
+                 // Premature end! Stream was cut off.
+                 handleAudioErrorFallback(audio, currentSongRef.current.id);
+                 return;
+             }
+          }
           // If crossfade didn't handle the transition, do it now
           if (!crossfadeActiveRef.current) onNext();
         }}
-        onError={(e) => console.warn("Primary audio element error:", e)}
+        onError={(e) => {
+          console.warn("Primary audio element error:", e);
+          if (nativeAudioRef.current && currentSongRef.current) {
+             handleAudioErrorFallback(nativeAudioRef.current, currentSongRef.current.id);
+          }
+        }}
       />
       {/* Secondary Audio Element for Gapless/Crossfade pre-buffering */}
       <audio
         ref={nextNativeAudioRef}
         style={{ display: "none" }}
         preload="auto"
-        onError={(e) => console.warn("Secondary audio element error:", e)}
+        onError={(e) => {
+           console.warn("Secondary audio element error:", e);
+           const songId = upNextQueueRef.current[0]?.id;
+           if (nextNativeAudioRef.current && songId) {
+               handleAudioErrorFallback(nextNativeAudioRef.current, songId);
+           }
+        }}
       />
     </DashboardContext.Provider>
   );

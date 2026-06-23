@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
   experimental: {
     webpackBuildWorker: true,
   },
+  // Ensure native Node.js modules used by ytdl-core work correctly on Vercel
+  serverExternalPackages: ["@distube/ytdl-core", "play-dl", "ytmusic-api"],
   images: {
     unoptimized: true,
     remotePatterns: [

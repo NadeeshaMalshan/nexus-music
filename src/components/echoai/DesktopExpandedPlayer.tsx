@@ -516,7 +516,15 @@ export function DesktopExpandedPlayer({
           <SkipBack size={isCompact ? 32 : 42} fill="currentColor" strokeWidth={0} />
         </button>
         <button 
-          onClick={onTogglePlay}
+          onClick={() => {
+            if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && ytPlayerInstance.current) {
+              try {
+                if (!isPlaying) ytPlayerInstance.current.playVideo();
+                else ytPlayerInstance.current.pauseVideo();
+              } catch {}
+            }
+            onTogglePlay();
+          }}
           className={`flex ${isCompact ? "h-16 w-16" : "h-20 w-20"} items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-white hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer shadow-lg`}
         >
           {isPlaying ? (
@@ -676,11 +684,16 @@ export function DesktopExpandedPlayer({
                   className="h-full w-full origin-center pointer-events-none select-none" 
                 />
 
-                {/* Interaction Blocker - Prevents YT internal UI from showing while allowing custom play/pause */}
                 <div 
                   className="absolute inset-0 z-10 cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
+                    if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && ytPlayerInstance.current) {
+                      try {
+                        if (!isPlaying) ytPlayerInstance.current.playVideo();
+                        else ytPlayerInstance.current.pauseVideo();
+                      } catch {}
+                    }
                     onTogglePlay();
                   }}
                 />

@@ -468,7 +468,15 @@ export function MobileExpandedPlayer({
         </m.button>
         <m.button 
           whileTap={{ scale: 0.9 }}
-          onClick={onTogglePlay}
+          onClick={() => {
+            if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && ytPlayerInstance.current) {
+              try {
+                if (!isPlaying) ytPlayerInstance.current.playVideo();
+                else ytPlayerInstance.current.pauseVideo();
+              } catch {}
+            }
+            onTogglePlay();
+          }}
           className="flex h-24 w-24 items-center justify-center text-white active:scale-95 transition-transform"
         >
           {isPlaying ? <Pause size={72} fill="white" strokeWidth={0} /> : <Play size={72} fill="white" strokeWidth={0} className="ml-2" />}
@@ -725,6 +733,12 @@ export function MobileExpandedPlayer({
                     className="absolute inset-0 z-30 pointer-events-auto"
                     onClick={(e) => {
                       e.stopPropagation();
+                      if ((viewMode === "video" || currentSong.isLive || !isUsingNativeAudio) && ytPlayerInstance.current) {
+                        try {
+                          if (!isPlaying) ytPlayerInstance.current.playVideo();
+                          else ytPlayerInstance.current.pauseVideo();
+                        } catch {}
+                      }
                       onTogglePlay();
                     }}
                   />

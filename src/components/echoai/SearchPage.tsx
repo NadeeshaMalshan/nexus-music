@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles, UserRound, Video, ChevronLeft, ChevronRight } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
@@ -43,6 +44,8 @@ const formatCount = (count: string | number) => {
 
 function CategoryShelf({ shelf, isRightSidebarOpen }: { shelf: any, isRightSidebarOpen: boolean }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const { setSelectedPlaylist } = useDashboard();
 
   const scroll = (dir: "left" | "right") => {
     if (!scrollRef.current) return;
@@ -81,9 +84,16 @@ function CategoryShelf({ shelf, isRightSidebarOpen }: { shelf: any, isRightSideb
           <div key={j} className="w-[160px] md:w-[200px] shrink-0 group cursor-pointer" onClick={() => {
             if (item.playlistId) {
               if (item.subtitle.toLowerCase().includes("album")) {
-                window.location.href = `/album/${item.playlistId}`;
+                router.push(`/album/${item.playlistId}`);
               } else {
-                window.location.href = `/playlists/${item.playlistId}`;
+                setSelectedPlaylist({
+                  id: item.playlistId,
+                  title: item.title,
+                  description: item.subtitle || "",
+                  thumbnailUrl: item.thumbnail || "",
+                  itemCount: 0
+                });
+                router.push(`/playlists/${item.playlistId}`);
               }
             }
           }}>
@@ -111,6 +121,14 @@ function CategoryShelf({ shelf, isRightSidebarOpen }: { shelf: any, isRightSideb
       </div>
     </div>
   );
+}
+
+function isActuallyLiveStream(item: any): boolean {
+  if (item.isLive) return true;
+  if (item.fromLiveShelf) return true;
+  if (!item.duration) return false;
+  if (item.duration === "LIVE" || item.duration === "0:00") return true;
+  return false;
 }
 
 export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue, onPlayNext, onNavigateArtist }: SearchPageProps) {
@@ -354,12 +372,79 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
         };
         setResultsByCategory(byCat);
 
-        setSearchResults([
-          ...(artists || []).slice(0, 2),
-          ...(songs || []).slice(0, 6),
-          ...(live || []).slice(0, 4).map((l) => ({ ...l, isLive: true })),
-          ...(videos || []).slice(0, 4).map((v) => ({ ...v, fromVideosShelf: true })),
-        ]);
+        const queryLower = finalQuery.toLowerCase();
+        let prioritizedResults: SearchItem[] = [];
+        
+        // Keep only actual live streams
+        const actualLiveOnly = (live || []).filter(isActuallyLiveStream);
+
+        if (queryLower.includes("playlist") || queryLower.includes("mix")) {
+          prioritizedResults = [
+            ...(playlists || []).slice(0, 5),
+            ...(songs || []).slice(0, 3),
+            ...(artists || []).slice(0, 1),
+            ...(albums || []).slice(0, 1),
+            ...(actualLiveOnly).slice(0, 1).map((l) => ({ ...l, fromLiveShelf: true })),
+            ...(videos || []).slice(0, 1).map((v) => ({ ...v, fromVideosShelf: true })),
+          ];
+        } else if (queryLower.includes("album")) {
+          prioritizedResults = [
+            ...(albums || []).slice(0, 5),
+            ...(songs || []).slice(0, 3),
+            ...(artists || []).slice(0, 1),
+            ...(playlists || []).slice(0, 1),
+            ...(actualLiveOnly).slice(0, 1).map((l) => ({ ...l, fromLiveShelf: true })),
+            ...(videos || []).slice(0, 1).map((v) => ({ ...v, fromVideosShelf: true })),
+          ];
+        } else if (queryLower.includes("video") || queryLower.includes("music video") || queryLower.includes("mv")) {
+          prioritizedResults = [
+            ...(videos || []).slice(0, 5).map((v) => ({ ...v, fromVideosShelf: true })),
+            ...(actualLiveOnly).slice(0, 2).map((l) => ({ ...l, fromLiveShelf: true })),
+            ...(songs || []).slice(0, 3),
+            ...(artists || []).slice(0, 1),
+            ...(albums || []).slice(0, 1),
+            ...(playlists || []).slice(0, 1),
+          ];
+        } else if (queryLower.includes("live") || queryLower.includes("concert")) {
+          prioritizedResults = [
+            ...(actualLiveOnly).slice(0, 5).map((l) => ({ ...l, fromLiveShelf: true })),
+            ...(videos || []).slice(0, 2).map((v) => ({ ...v, fromVideosShelf: true })),
+            ...(songs || []).slice(0, 3),
+            ...(artists || []).slice(0, 1),
+            ...(albums || []).slice(0, 1),
+            ...(playlists || []).slice(0, 1),
+          ];
+        } else if (queryLower.includes("artist") || queryLower.includes("singer") || queryLower.includes("band")) {
+          prioritizedResults = [
+            ...(artists || []).slice(0, 4),
+            ...(songs || []).slice(0, 4),
+            ...(albums || []).slice(0, 1),
+            ...(playlists || []).slice(0, 1),
+            ...(actualLiveOnly).slice(0, 1).map((l) => ({ ...l, fromLiveShelf: true })),
+            ...(videos || []).slice(0, 1).map((v) => ({ ...v, fromVideosShelf: true })),
+          ];
+        } else if (queryLower.includes("song") || queryLower.includes("track")) {
+          prioritizedResults = [
+            ...(songs || []).slice(0, 8),
+            ...(artists || []).slice(0, 1),
+            ...(albums || []).slice(0, 1),
+            ...(playlists || []).slice(0, 1),
+            ...(actualLiveOnly).slice(0, 1).map((l) => ({ ...l, fromLiveShelf: true })),
+            ...(videos || []).slice(0, 1).map((v) => ({ ...v, fromVideosShelf: true })),
+          ];
+        } else {
+          // Default: Interleave everything including albums and playlists
+          prioritizedResults = [
+            ...(artists || []).slice(0, 2),
+            ...(songs || []).slice(0, 5),
+            ...(albums || []).slice(0, 2),
+            ...(playlists || []).slice(0, 2),
+            ...(actualLiveOnly).slice(0, 2).map((l) => ({ ...l, fromLiveShelf: true })),
+            ...(videos || []).slice(0, 2).map((v) => ({ ...v, fromVideosShelf: true })),
+          ];
+        }
+
+        setSearchResults(prioritizedResults);
       } else {
         const typeMap: Record<string, string> = {
           Songs: "songs",
@@ -373,8 +458,13 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
         const results = await fetchType(typeMap[cat] || "songs");
         if (runId !== searchRunIdRef.current) return;
 
+        let finalResults = results;
+        if (cat === "Live") {
+          finalResults = results.filter(isActuallyLiveStream);
+        }
+
         setResultsByCategory(prev => ({ ...prev, [cat]: results }));
-        setSearchResults(results);
+        setSearchResults(finalResults);
       }
     } catch (error) {
       console.error("Search failed:", error);
@@ -392,15 +482,16 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
     }
   }, [activeCategory, runSearch, searchQuery]);
 
-  // Handle initial query from URL (?q=) — watch URLs play via playFromWatchUrl inside runSearch
+  // Handle query from URL (?q=) — watch URLs play via playFromWatchUrl inside runSearch
+  const searchParams = useSearchParams();
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const q = urlParams.get("q");
+    const q = searchParams.get("q");
     if (!q) return;
     setSearchQuery(q);
+    setSelectedCategoryTitle(null);
+    setSelectedCategoryData([]);
     void runSearch(q);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- apply ?q= once on mount only
-  }, []);
+  }, [searchParams, runSearch]);
 
   useEffect(() => {
     if (searchTimeoutRef.current) {
@@ -464,11 +555,11 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
       artwork: item.thumbnail,
       duration: item.duration,
       color: songColors[item.videoId] || "var(--art-accent, #FA243C)",
-      type: activeCategory === "Videos" ? "VIDEO" : (activeCategory === "Live" || item.isLive ? "VIDEO" : "SONG"),
+      type: activeCategory === "Videos" ? "VIDEO" : (activeCategory === "Live" || item.isLive || item.fromLiveShelf ? "VIDEO" : "SONG"),
       views: item.views,
-      isLive: item.isLive || activeCategory === "Live",
+      isLive: isActuallyLiveStream(item),
       isDirectLink: true,
-      preferVideoPlayback: activeCategory === "Videos" || activeCategory === "Live" || (activeCategory === "Top" && !!item.fromVideosShelf) || item.isLive || (item.duration === "LIVE"),
+      preferVideoPlayback: activeCategory === "Videos" || activeCategory === "Live" || (activeCategory === "Top" && (!!item.fromVideosShelf || !!item.fromLiveShelf)) || item.isLive || (item.duration === "LIVE"),
     };
   });
 
@@ -505,95 +596,99 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
       className="flex-1 h-full overflow-y-auto bg-transparent relative custom-scrollbar flex flex-col animate-gpu"
     >
       <div className="flex w-full flex-col px-6 py-10 md:px-12 md:py-12 pb-48 text-left">
-        <div className={`transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-          isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
-        }`}>
-        <div className="flex items-center justify-between mb-8 md:mb-12">
-          <h1 className="text-[56px] md:text-[80px] lg:text-[100px] font-black text-white tracking-tighter leading-none drop-shadow-2xl">Search</h1>
-          <button
-            onClick={onClose}
-            className="md:hidden font-bold text-lg px-4 py-2 bg-white/5 rounded-full"
-            style={{ color: 'var(--art-accent, #FA243C)' }}
-          >
-            Done
-          </button>
-        </div>
-
-        <m.div 
-          initial={false}
-          animate={{ y: 0, opacity: 1 }} 
-          className="mb-8 w-full max-w-4xl animate-gpu"
-        >
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void runSearch();
-            }}
-            className="relative flex items-center w-full rounded-2xl bg-black/40 border border-white/10 px-4 md:px-8 py-5 md:py-7 focus-within:border-white shadow-2xl backdrop-blur-3xl transition-colors duration-300"
-          >
-            <Search className="w-6 h-6 md:w-8 md:h-8 text-white/40 mr-4 md:mr-6" />
-            <input
-              type="text"
-              placeholder="Artists, Songs, Lyrics..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-transparent text-xl md:text-3xl font-black text-white placeholder:text-white/20 focus:outline-none tracking-tight"
-              autoFocus
-            />
-            {searchQuery && (
-               <button type="button" onClick={() => setSearchQuery("")} className="text-white/20 hover:text-white p-1 mr-2">
-                 <X className="w-5 h-5 md:w-6 md:h-6" />
-               </button>
-            )}
-            <button 
-              type="button" 
-              onClick={handleMusicIdentifier}
-              className={`p-2.5 rounded-full ${isListening ? "text-white animate-pulse" : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"}`}
-              style={{ backgroundColor: isListening ? 'var(--art-accent, #FA243C)' : undefined }}
+        {!selectedCategoryTitle && (
+          <div className={`transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+          }`}>
+          <div className="flex items-center justify-between mb-8 md:mb-12">
+            <h1 className="text-[56px] md:text-[80px] lg:text-[100px] font-black text-white tracking-tighter leading-none drop-shadow-2xl">Explore</h1>
+            <button
+              onClick={onClose}
+              className="md:hidden font-bold text-lg px-4 py-2 bg-white/5 rounded-full"
+              style={{ color: 'var(--art-accent, #FA243C)' }}
             >
-              <Mic className="w-5 h-5 md:w-6 md:h-6" />
+              Done
             </button>
-          </form>
-
-          {/* Categories */}
-          <div className="flex gap-2.5 mt-8 overflow-x-auto no-scrollbar pb-2">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => {
-                  setActiveCategory(cat);
-                  const q = searchQuery.trim();
-                  if (!q) return;
-
-                  // Instantly show cached results from the last dynamic run
-                  if (cat === "Top") {
-                    if (resultsByCategory.Songs || resultsByCategory.Videos || resultsByCategory.Artists) {
-                      setSearchResults([
-                        ...(resultsByCategory.Artists || []).slice(0, 2),
-                        ...(resultsByCategory.Songs || []).slice(0, 6),
-                        ...(resultsByCategory.Videos || []).slice(0, 4).map((v) => ({ ...v, fromVideosShelf: true })),
-                      ]);
-                      return;
-                    }
-                  } else if (resultsByCategory[cat]) {
-                    setSearchResults(resultsByCategory[cat]);
-                    return;
-                  }
-
-                  void runSearch(q, cat);
-                }}
-                className={`px-6 py-3 rounded-xl border text-[13px] font-black tracking-wide capitalize transition-all ${
-                  activeCategory === cat 
-                  ? "bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.4)]" 
-                  : "bg-transparent text-white/50 border-white/10 hover:border-white/40 hover:text-white"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
           </div>
-        </m.div>
-        </div>
+
+          <m.div 
+            initial={false}
+            animate={{ y: 0, opacity: 1 }} 
+            className="mb-8 w-full max-w-4xl animate-gpu"
+          >
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void runSearch();
+              }}
+              className="relative flex items-center w-full rounded-2xl bg-black/40 border border-white/10 px-4 md:px-8 py-5 md:py-7 focus-within:border-white shadow-2xl backdrop-blur-3xl transition-colors duration-300"
+            >
+              <Search className="w-6 h-6 md:w-8 md:h-8 text-white/40 mr-4 md:mr-6" />
+              <input
+                type="text"
+                placeholder="Artists, Songs, Lyrics..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent text-xl md:text-3xl font-black text-white placeholder:text-white/20 focus:outline-none tracking-tight"
+                autoFocus
+              />
+              {searchQuery && (
+                 <button type="button" onClick={() => setSearchQuery("")} className="text-white/20 hover:text-white p-1 mr-2">
+                   <X className="w-5 h-5 md:w-6 md:h-6" />
+                 </button>
+              )}
+              <button 
+                type="button" 
+                onClick={handleMusicIdentifier}
+                className={`p-2.5 rounded-full ${isListening ? "text-white animate-pulse" : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"}`}
+                style={{ backgroundColor: isListening ? 'var(--art-accent, #FA243C)' : undefined }}
+              >
+                <Mic className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
+            </form>
+
+            {/* Categories */}
+            {searchQuery.trim() && (
+              <div className="flex gap-2.5 mt-8 overflow-x-auto no-scrollbar pb-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setActiveCategory(cat);
+                      const q = searchQuery.trim();
+                      if (!q) return;
+
+                      // Instantly show cached results from the last dynamic run
+                      if (cat === "Top") {
+                        if (resultsByCategory.Songs || resultsByCategory.Videos || resultsByCategory.Artists) {
+                          setSearchResults([
+                            ...(resultsByCategory.Artists || []).slice(0, 2),
+                            ...(resultsByCategory.Songs || []).slice(0, 6),
+                            ...(resultsByCategory.Videos || []).slice(0, 4).map((v) => ({ ...v, fromVideosShelf: true })),
+                          ]);
+                          return;
+                        }
+                      } else if (resultsByCategory[cat]) {
+                        setSearchResults(resultsByCategory[cat]);
+                        return;
+                      }
+
+                      void runSearch(q, cat);
+                    }}
+                    className={`px-6 py-3 rounded-xl border text-[13px] font-black tracking-wide capitalize transition-all ${
+                      activeCategory === cat 
+                      ? "bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.4)]" 
+                      : "bg-transparent text-white/50 border-white/10 hover:border-white/40 hover:text-white"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+          </m.div>
+          </div>
+        )}
 
         {selectedCategoryTitle && !searchQuery && !identifiedSong ? (
           <div className="w-full py-8 animate-gpu flex flex-col gap-12">

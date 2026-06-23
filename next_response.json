@@ -1,6 +1,6 @@
 {
   "responseContext": {
-    "visitorData": "Cgt2MmhsLUJ4SVJzRSjnmubRBjIKCgJMSxIEGgAgZA%3D%3D",
+    "visitorData": "CgtyeVJIdkoxaTh2MCifm-bRBjIKCgJMSxIEGgAgWg%3D%3D",
     "serviceTrackingParams": [
       {
         "service": "CSI",
@@ -19,7 +19,7 @@
           },
           {
             "key": "GetWatchPage_rid",
-            "value": "0x98556d4036b4988b"
+            "value": "0x7732620e5545e4a1"
           }
         ]
       },
@@ -46,7 +46,7 @@
         ]
       }
     ],
-    "responseId": "IhMIz6m778qblQMVgYmsAh3IhzEE"
+    "responseId": "IhMIlcqHisublQMVaabYBR1mUybq"
   },
   "contents": {
     "singleColumnMusicWatchNextResultsRenderer": {
@@ -90,7 +90,7 @@
                                 ]
                               },
                               "navigationEndpoint": {
-                                "clickTrackingParams": "CAUQ0-cHGAAiEwjPqbvvypuVAxWBiawCHciHMQTKAQQPiEPa",
+                                "clickTrackingParams": "CAUQ0-cHGAAiEwiVyoeKy5uVAxVpptgFHWZTJurKAQQZfwbs",
                                 "modalEndpoint": {
                                   "modal": {
                                     "modalWithTitleAndButtonRenderer": {
@@ -120,12 +120,12 @@
                                             ]
                                           },
                                           "navigationEndpoint": {
-                                            "clickTrackingParams": "CAYQ8FsiEwjPqbvvypuVAxWBiawCHciHMQTKAQQPiEPa",
+                                            "clickTrackingParams": "CAYQ8FsiEwiVyoeKy5uVAxVpptgFHWZTJurKAQQZfwbs",
                                             "signInEndpoint": {
                                               "hack": true
                                             }
                                           },
-                                          "trackingParams": "CAYQ8FsiEwjPqbvvypuVAxWBiawCHciHMQQ="
+                                          "trackingParams": "CAYQ8FsiEwiVyoeKy5uVAxVpptgFHWZTJuo="
                                         }
                                       }
                                     }
@@ -133,7 +133,7 @@
                                 },
                                 "saveQueueToPlaylistCommand": {}
                               },
-                              "trackingParams": "CAUQ0-cHGAAiEwjPqbvvypuVAxWBiawCHciHMQQ=",
+                              "trackingParams": "CAUQ0-cHGAAiEwiVyoeKy5uVAxVpptgFHWZTJuo=",
                               "icon": {
                                 "iconType": "ADD_TO_PLAYLIST"
                               },
@@ -147,25 +147,25 @@
                             }
                           }
                         ],
-                        "trackingParams": "CAQQ0ecHIhMIz6m778qblQMVgYmsAh3IhzEE"
+                        "trackingParams": "CAQQ0ecHIhMIlcqHisublQMVaabYBR1mUybq"
                       }
                     }
                   }
                 },
-                "trackingParams": "CAMQn7QFGAAiEwjPqbvvypuVAxWBiawCHciHMQQ="
+                "trackingParams": "CAMQn7QFGAAiEwiVyoeKy5uVAxVpptgFHWZTJuo="
               }
             },
             {
               "tabRenderer": {
                 "title": "Lyrics",
-                "trackingParams": "CAIQk80FGAEiEwjPqbvvypuVAxWBiawCHciHMQQ=",
+                "trackingParams": "CAIQk80FGAEiEwiVyoeKy5uVAxVpptgFHWZTJuo=",
                 "unselectable": true
               }
             },
             {
               "tabRenderer": {
                 "title": "Related",
-                "trackingParams": "CAEQlc0FGAIiEwjPqbvvypuVAxWBiawCHciHMQQ=",
+                "trackingParams": "CAEQlc0FGAIiEwiVyoeKy5uVAxVpptgFHWZTJuo=",
                 "unselectable": true
               }
             }
@@ -174,6 +174,6 @@
       }
     }
   },
-  "trackingParams": "CAAQg2ciEwjPqbvvypuVAxWBiawCHciHMQTKAQQPiEPa",
-  "queueContextParams": "CAEaMVJEQU1QTFJEQ0xBSzV1eV9rUDNpUjlZcFkyWjZLelVfd0o0VTFOMWwxMTF1SjUtRzQg9fu878qblQNCK1JEQ0xBSzV1eV9rUDNpUjlZcFkyWjZLelVfd0o0VTFOMWwxMTF1SjUtRzRaBAgAEAF4AQ=="
+  "trackingParams": "CAAQg2ciEwiVyoeKy5uVAxVpptgFHWZTJurKAQQZfwbs",
+  "queueContextParams": "CAEaMVJEQU1QTFJEQ0xBSzV1eV9rUDNpUjlZcFkyWjZLelVfd0o0VTFOMWwxMTF1SjUtRzQg3p-JisublQNCK1JEQ0xBSzV1eV9rUDNpUjlZcFkyWjZLelVfd0o0VTFOMWwxMTF1SjUtRzRaBAgAEAF4AQ=="
 }

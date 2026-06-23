@@ -47,8 +47,8 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
            const musicData = await musicMetaRes.json();
            meta = {
              id: playlist.id,
-             title: musicData.name || musicData.title || meta.title,
-             description: musicData.description || meta.description,
+             title: musicData.name || musicData.title || (meta.title && meta.title !== "Loading..." ? meta.title : "Radio Mix"),
+             description: musicData.description || (meta.description ? meta.description : "Endless radio mix based on your selection."),
              thumbnailUrl: musicData.thumbnails?.[musicData.thumbnails.length - 1]?.url || meta.thumbnailUrl,
              itemCount: musicData.songs?.length || 0
            };

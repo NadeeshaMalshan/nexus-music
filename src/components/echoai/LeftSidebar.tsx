@@ -118,6 +118,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
   const navigationItems = [
     { id: "home", icon: Home, label: "Home", href: "/" },
     { id: "library", icon: ListMusic, label: "Library", href: "/library" },
+    { id: "explore", icon: Compass, label: "Explore", href: "/explore" },
     { id: "settings", icon: Settings, label: "Settings", href: "/settings" },
   ];
 
@@ -186,7 +187,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                   {searchQuery && (
                     <div className="px-2 mb-4">
                       <button 
-                        onClick={() => { router.push(`/search?q=${encodeURIComponent(searchQuery)}`); setIsSearchFocused(false); }}
+                        onClick={() => { router.push(`/explore?q=${encodeURIComponent(searchQuery)}`); setIsSearchFocused(false); }}
                         className="w-full flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-white/5 text-white transition-colors group"
                       >
                         <div className="flex items-center gap-4">
@@ -418,7 +419,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
       >
         {[
           { id: "home", icon: Home, label: "Home", href: "/" },
-          { id: "search", icon: Search, label: "Search", href: "/search" },
+          { id: "explore", icon: Compass, label: "Explore", href: "/explore" },
           { id: "library", icon: ListMusic, label: "Library", href: "/library" },
           { id: "settings", icon: Settings, label: "Settings", href: "/settings" },
         ].map((item) => {

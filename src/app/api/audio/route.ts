@@ -58,11 +58,27 @@ export async function GET(request: Request) {
   }
 
   try {
+    const isLive = searchParams.get("isLive") === "true";
+
     let videoId: string | undefined = directVideoId;
     let trackName = passedTitle || query || "YouTube Video";
     let artist = passedArtist || "Unknown Artist";
     let thumbnailUrl = directVideoId ? youtubeHqThumbnail(directVideoId) : "";
     let musicVideoId = directVideoId;
+
+    if (isLive && directVideoId) {
+      const finalVideoId = directVideoId;
+      const thumbnail = upgradeThumbnail(thumbnailUrl, finalVideoId);
+      return NextResponse.json({
+        audioUrl: `https://www.youtube.com/watch?v=${finalVideoId}`,
+        trackName,
+        artist: artist.replace(/\s*-\s*Topic\s*$/i, ""),
+        coverArt: thumbnail,
+        videoId: finalVideoId,
+        musicVideoId: finalVideoId,
+        source: "youtube.com",
+      });
+    }
 
     if (isVideo && directVideoId) {
        // For standard videos, we prioritize the passed metadata (from YouTube oembed)

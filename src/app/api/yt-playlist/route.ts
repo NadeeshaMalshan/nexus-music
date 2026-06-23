@@ -47,6 +47,58 @@ export async function GET(request: Request) {
        });
     }
 
+    // ─── Case 2: Radio Mix (ID starts with RD) ──────────────────────────────
+    if (id.startsWith("RD")) {
+      // Use internal youtubei next endpoint for radio mixes
+      const res = await (api as any).client.post("https://music.youtube.com/youtubei/v1/next", {
+        context: {
+          client: {
+            clientName: "WEB_REMIX",
+            clientVersion: "1.20240416.01.00",
+            hl: "en",
+            gl: "US",
+          },
+        },
+        playlistId: id,
+      });
+
+      const contents = res.data?.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.musicQueueRenderer?.content?.playlistPanelRenderer;
+      
+      if (!contents) {
+        return NextResponse.json({ error: "Radio Mix not found" }, { status: 404 });
+      }
+
+      const title = contents.title;
+      const songs = (contents.contents || []).map((item: any) => {
+        const r = item.playlistPanelVideoRenderer;
+        if (!r) return null;
+        
+        const songTitle = r.title?.runs?.[0]?.text;
+        const artist = r.longBylineText?.runs?.map((run: any) => run.text).join('') || "YouTube Music";
+        const videoId = r.videoId;
+        const thumbnails = r.thumbnail?.thumbnails || [];
+        const artwork = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].url : "";
+        const duration = r.lengthText?.runs?.[0]?.text || "0:00";
+
+        return {
+          id: videoId,
+          title: songTitle,
+          artist,
+          artwork,
+          duration,
+          videoId
+        };
+      }).filter(Boolean);
+
+      return NextResponse.json({
+        id: id,
+        name: title && title !== "Radio Mix" ? title : undefined,
+        description: undefined, // Let the frontend keep its original description
+        thumbnails: [{ url: songs[0]?.artwork || "" }],
+        songs
+      });
+    }
+
     // ─── Case 2: Standard Playlist ──────────────────────────────────────────
     const playlist = await api.getPlaylist(id);
 

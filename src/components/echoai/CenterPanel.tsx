@@ -382,6 +382,24 @@ export function CenterPanel(props: CenterPanelProps) {
   const [artistRecsLoading, setArtistRecsLoading] = useState(false);
   const [likedTracks, setLikedTracks] = useState<SearchItem[]>([]);
   const [likedTracksLoading, setLikedTracksLoading] = useState(false);
+  const [artistImageBg, setArtistImageBg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!currentSong?.artist) {
+      setArtistImageBg(null);
+      return;
+    }
+    let active = true;
+    fetch(`/api/artist?name=${encodeURIComponent(currentSong.artist)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (active && data.image) {
+          setArtistImageBg(data.image);
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [currentSong?.artist]);
 
   const [videoSeed, setVideoSeed] = useState("Trending Hits");
   const [audioSeed, setAudioSeed] = useState("Lofi Beats");
@@ -884,7 +902,7 @@ export function CenterPanel(props: CenterPanelProps) {
                   <section className={`relative rounded-[32px] overflow-hidden mb-12 flex flex-col lg:flex-row border border-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.5)] group transition-[margin-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:mr-[380px]" : "lg:mr-0"}`}>
                     <div className="absolute inset-0 z-0">
                       <img 
-                        src={currentSong?.artwork || (forYouTracks[0]?.artwork)} 
+                        src={artistImageBg || currentSong?.artwork || (forYouTracks[0]?.artwork)} 
                         alt="Background" 
                         className="w-full h-full object-cover opacity-40 mix-blend-screen scale-105 group-hover:scale-100 transition-transform duration-[2s] ease-out"
                       />
@@ -1079,7 +1097,7 @@ export function CenterPanel(props: CenterPanelProps) {
                       {playlists.map((playlist) => (
                         <div
                           key={playlist.id}
-                          onClick={() => onPlaylistClick?.(playlist)}
+                          onClick={() => router.push(`/playlists/${playlist.id}`)}
                           className="w-[200px] shrink-0 cursor-pointer group flex flex-col"
                         >
                           <div className="relative aspect-square rounded-[20px] overflow-hidden bg-[#161618] shadow-2xl transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]">

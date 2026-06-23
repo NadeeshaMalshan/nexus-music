@@ -1,6 +1,76 @@
 import { NextResponse } from "next/server";
 import { searchSongsRobust } from "@/lib/ytmSearchService";
 import { fetchYoutubeDataApiWithKeyRotation } from "@/lib/youtubeDataApiFetch";
+import https from "https";
+
+function fetchHtmlForceIpv4(urlStr: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = new URL(urlStr);
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname + url.search,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+      },
+      family: 4, // Force IPv4 to avoid IPv6 connection timeout on Windows
+      timeout: 8000,
+    };
+
+    const req = https.get(options, (res) => {
+      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        resolve(fetchHtmlForceIpv4(res.headers.location));
+        return;
+      }
+      
+      let data = "";
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+      res.on("end", () => {
+        resolve(data);
+      });
+    });
+
+    req.on("error", (err) => {
+      reject(err);
+    });
+
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("Request timeout"));
+    });
+  });
+}
+
+function checkIfVideoIsLive(video: any): boolean {
+  if (!video) return false;
+
+  // 1. Check badges
+  if (video.badges) {
+    const hasLiveBadge = video.badges.some((b: any) => {
+      const style = b.metadataBadgeRenderer?.style;
+      const label = b.metadataBadgeRenderer?.label || b.metadataBadgeRenderer?.label?.runs?.[0]?.text;
+      return style === "BADGE_STYLE_TYPE_LIVE_NOW" || String(label).toLowerCase() === "live";
+    });
+    if (hasLiveBadge) return true;
+  }
+  
+  // 2. Check thumbnail overlays
+  if (video.thumbnailOverlays) {
+    const hasLiveOverlay = video.thumbnailOverlays.some((o: any) => {
+      const style = o.thumbnailOverlayTimeStatusRenderer?.style;
+      const text = o.thumbnailOverlayTimeStatusRenderer?.text?.runs?.[0]?.text || o.thumbnailOverlayTimeStatusRenderer?.text?.simpleText;
+      return style === "LIVE" || String(text).toLowerCase() === "live";
+    });
+    if (hasLiveOverlay) return true;
+  }
+
+  // 3. Check duration text
+  const durationText = video.lengthText?.simpleText || video.lengthText?.runs?.[0]?.text;
+  if (durationText === "LIVE" || durationText === "0:00") return true;
+
+  return false;
+}
 
 type SearchItem = {
   videoId: string;
@@ -132,16 +202,188 @@ export async function GET(request: Request) {
       return NextResponse.json({ items: albums, source: "music.youtube.com" as const });
     }
 
-    if (type === "videos" || type === "musicVideos" || type === "live") {
+    if (type === "live") {
       let finalItems: any[] = [];
+      let ytSearchSuccess = false;
 
-      if (type === "live") {
-        // YouTube Music catalog only (node-youtube-music / music.youtube.com).
-        // Do not use youtube.com Data API live search — matches "live" in the YTM index.
-        finalItems = await searchYouTubeMusic(q);
-      } else {
-        finalItems = await searchYouTubeMusicVideos(q);
+      try {
+        const { getServerSession } = await import("next-auth/next");
+        const { authOptions } = await import("@/lib/auth");
+        const session = await getServerSession(authOptions);
+
+        const headers: Record<string, string> = {};
+        if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
+
+        // 1. Try search API with category 10 (Music)
+        let searchRes = await fetchYoutubeDataApiWithKeyRotation(
+          (apiKey) => {
+            const url = new URL("https://www.googleapis.com/youtube/v3/search");
+            url.searchParams.set("part", "snippet");
+            url.searchParams.set("q", q);
+            url.searchParams.set("type", "video");
+            url.searchParams.set("eventType", "live");
+            url.searchParams.set("videoCategoryId", "10");
+            url.searchParams.set("maxResults", "12");
+            if (apiKey) url.searchParams.set("key", apiKey);
+            return url.toString();
+          },
+          { headers }
+        );
+
+        let searchItems = [];
+        if (searchRes.ok) {
+          ytSearchSuccess = true;
+          const searchData = await searchRes.json();
+          searchItems = searchData.items || [];
+        }
+
+        // 2. Try search API without category 10 if we got nothing (and first request was OK)
+        if (ytSearchSuccess && searchItems.length === 0) {
+          const searchResNoCat = await fetchYoutubeDataApiWithKeyRotation(
+            (apiKey) => {
+              const url = new URL("https://www.googleapis.com/youtube/v3/search");
+              url.searchParams.set("part", "snippet");
+              url.searchParams.set("q", q);
+              url.searchParams.set("type", "video");
+              url.searchParams.set("eventType", "live");
+              url.searchParams.set("maxResults", "12");
+              if (apiKey) url.searchParams.set("key", apiKey);
+              return url.toString();
+            },
+            { headers }
+          );
+          if (searchResNoCat.ok) {
+            const dataNoCat = await searchResNoCat.json();
+            searchItems = dataNoCat.items || [];
+          }
+        }
+
+        const videoIds = searchItems.map((item: any) => item.id?.videoId).filter(Boolean);
+        if (videoIds.length > 0 && ytSearchSuccess) {
+          const { parseISO8601Duration } = await import("@/lib/youtubeData");
+          // Batch fetch detailed video object
+          const detailsRes = await fetchYoutubeDataApiWithKeyRotation(
+            (apiKey) => {
+              const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+              url.searchParams.set("part", "snippet,contentDetails,statistics");
+              url.searchParams.set("id", videoIds.join(","));
+              if (apiKey) url.searchParams.set("key", apiKey);
+              return url.toString();
+            },
+            { headers }
+          );
+
+          if (detailsRes.ok) {
+            const detailsData = await detailsRes.json();
+            const detailsItems = detailsData.items || [];
+
+            finalItems = detailsItems.map((item: any) => {
+              const id = item.id;
+              const title = item.snippet?.title || "Unknown Title";
+              const author = (item.snippet?.channelTitle || "Unknown Artist").replace(/\s*-\s*Topic$/, "");
+
+              let duration = "LIVE";
+              const ytDuration = item.contentDetails?.duration;
+              if (ytDuration) {
+                if (ytDuration === "PT0S" || ytDuration === "P0D" || ytDuration === "PT0H0M0S") {
+                  duration = "LIVE";
+                } else {
+                  duration = parseISO8601Duration(ytDuration);
+                }
+              }
+
+              const thumbnail = item.snippet?.thumbnails?.maxres?.url ||
+                                item.snippet?.thumbnails?.high?.url ||
+                                item.snippet?.thumbnails?.medium?.url ||
+                                youtubeHqThumbnail(id);
+
+              return {
+                videoId: id,
+                title,
+                author,
+                duration,
+                thumbnail,
+                views: item.statistics?.viewCount || "0",
+                isLive: true,
+              };
+            });
+          } else {
+            ytSearchSuccess = false;
+          }
+        }
+      } catch (err) {
+        console.warn("[Search API] YouTube Data API live search failed, falling back to YTM scraper:", err);
+        ytSearchSuccess = false;
       }
+
+      if (!ytSearchSuccess) {
+        // Fallback 1: Scrape standard YouTube search page with the "Live" filter
+        let scrapedItems: any[] = [];
+        try {
+          const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=EgJAAQ%253D%253D`;
+          const html = await fetchHtmlForceIpv4(url);
+            const match = html.match(/(?:var\s+)?ytInitialData\s*=\s*({.+?});/);
+            if (match) {
+              const data = JSON.parse(match[1]);
+              const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents
+                || data.contents?.twoColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents;
+
+              if (contents) {
+                for (const content of contents) {
+                  const itemSection = content.itemSectionRenderer;
+                  if (!itemSection?.contents) continue;
+                  for (const item of itemSection.contents) {
+                    const video = item.videoRenderer;
+                    if (!video) continue;
+                    const videoId = video.videoId;
+                    const title = video.title?.runs?.[0]?.text || "Unknown Stream";
+                    const author = video.ownerText?.runs?.[0]?.text || "Unknown Channel";
+                    const duration = video.lengthText?.simpleText || "LIVE";
+                    const thumbnail = video.thumbnail?.thumbnails?.[0]?.url || youtubeHqThumbnail(videoId);
+                    const isLive = checkIfVideoIsLive(video);
+
+                    if (isLive) {
+                      scrapedItems.push({
+                        videoId,
+                        title,
+                        author,
+                        duration: "LIVE",
+                        thumbnail,
+                        isLive: true
+                      });
+                    }
+                  }
+                }
+              }
+            }
+        } catch (err) {
+          console.warn("[Search API] YouTube Web live scraping failed:", err);
+        }
+
+        if (scrapedItems.length > 0) {
+          return NextResponse.json({
+            items: scrapedItems.slice(0, 12),
+            source: "youtube.com",
+          });
+        }
+
+        // Fallback 2: YTM Scraper search as last resort
+        const liveQuery = q.toLowerCase().includes("live") ? q : `${q} live`;
+        finalItems = await searchYouTubeMusicVideos(liveQuery);
+        finalItems = finalItems.map((item) => ({
+          ...item,
+          isLive: item.duration === "0:00" || item.duration === "LIVE",
+        }));
+      }
+
+      return NextResponse.json({
+        items: finalItems.slice(0, 12),
+        source: ytSearchSuccess ? "youtube.googleapis.com" : "music.youtube.com",
+      });
+    }
+
+    if (type === "videos" || type === "musicVideos") {
+      let finalItems = await searchYouTubeMusicVideos(q);
 
       // Batch fetch view counts for videos
       const ids = finalItems.map((i) => i.videoId).filter(Boolean);

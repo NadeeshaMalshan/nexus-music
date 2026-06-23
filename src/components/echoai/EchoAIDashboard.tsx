@@ -41,9 +41,9 @@ export function EchoAIDashboard() {
 
   return (
     <AnimatePresence mode="wait">
-      {activeView === "search" ? (
+      {activeView === "explore" ? (
         <m.div
-          key="search-view"
+          key="explore-view"
           initial={{ opacity: 0, scale: 1.02 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
@@ -89,7 +89,9 @@ export function EchoAIDashboard() {
             selectedPlaylist={selectedPlaylist}
             accentColor={palette.accent}
             onSongClick={onSongClick}
-            onPlaylistClick={(playlist) => router.push(`/playlists/${playlist.id}`)}
+            onPlaylistClick={(playlist) => {
+              router.push(`/playlists/${playlist.id}`);
+            }}
             onQueueReplace={setQueueSongs}
             onAddToQueue={onAddToQueue}
             onPlayNext={onPlayNext}

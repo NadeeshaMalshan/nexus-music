@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { MusicArtwork } from "./MusicArtwork";
 import { 
   Play, Loader2, Music2, Heart, Plus, Sparkles, 
@@ -56,6 +57,7 @@ export function YouTubeLibrary({
   accentColor = "#FA233B",
 }: YouTubeLibraryProps) {
   const { data: session } = useSession();
+  const router = useRouter();
   const { isRightSidebarOpen } = useDashboard();
   const [activeTab, setActiveTab] = useState<LibraryTab>("playlists");
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,6 +83,17 @@ export function YouTubeLibrary({
       setError(null);
       try {
         const init = youtubeApiFetchInit(session.accessToken);
+        const dbRes = await fetch("/api/user/library", init);
+        if (dbRes.ok) {
+          const dbData = await dbRes.json();
+          if (Array.isArray(dbData.playlists) && dbData.playlists.length) {
+            setPlaylists(dbData.playlists);
+          }
+          if (Array.isArray(dbData.liked) && dbData.liked.length) {
+            setLikedSongs(dbData.liked);
+          }
+        }
+
         const [pRes, lRes, hRes] = await Promise.all([
           fetch("/api/youtube/playlists", init),
           fetch("/api/youtube/liked", init),
@@ -89,10 +102,11 @@ export function YouTubeLibrary({
 
         let quotaHit = false;
         let showedCache = false;
+        const playlistRows = pRes.ok ? await pRes.json() : [];
+        const likedRows = lRes.ok ? await lRes.json() : [];
 
         if (pRes.ok) {
-          const list = await pRes.json();
-          const arr = Array.isArray(list) ? list : [];
+          const arr = Array.isArray(playlistRows) ? playlistRows : [];
           setPlaylists(arr);
           writeLibraryCache("playlists", arr);
         } else {
@@ -112,8 +126,7 @@ export function YouTubeLibrary({
         }
 
         if (lRes.ok) {
-          const tracks = await lRes.json();
-          const arr = Array.isArray(tracks) ? tracks : [];
+          const arr = Array.isArray(likedRows) ? likedRows : [];
           setLikedSongs(arr);
           writeLibraryCache("liked", arr);
         } else {
@@ -165,16 +178,26 @@ export function YouTubeLibrary({
             setHistoryFeedMeta(null);
           }
         }
-
         if (quotaHit) {
           setError(
             showedCache
               ? "YouTube Data API quota exceeded for today. Showing the last synced library from this browser until the quota resets."
-              : "YouTube Data API quota exceeded for today. Playlists and likes can’t load until the quota resets (usually midnight Pacific Time), or increase quota in Google Cloud Console."
+              : "YouTube Data API quota exceeded for today. Playlists and likes can't load until the quota resets (usually midnight Pacific Time), or increase quota in Google Cloud Console."
           );
+        } else if (pRes.ok || lRes.ok) {
+          await fetch("/api/user/library", {
+            ...init,
+            method: "POST",
+            headers: {
+              ...(init.headers || {}),
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              playlists: Array.isArray(playlistRows) ? playlistRows : [],
+              liked: Array.isArray(likedRows) ? likedRows : [],
+            }),
+          });
         }
-      } catch {
-        setError("Failed to sync library data.");
       } finally {
         setLoading(false);
       }
@@ -195,7 +218,7 @@ export function YouTubeLibrary({
   const historySubtitle = useMemo(() => {
     if (!historyFeedMeta) return null;
     if (historyFeedMeta.source === "youtube.ytm_browse") return "YouTube Music history";
-    if (historyFeedMeta.source === "youtube.mixed") return "YouTube Music history · merged with channel activity";
+    if (historyFeedMeta.source === "youtube.mixed") return "YouTube Music history - merged with channel activity";
     return "Recent music activity on your channel";
   }, [historyFeedMeta]);
 
@@ -326,6 +349,13 @@ export function YouTubeLibrary({
               </div>
 
               <div className="flex items-center gap-4 w-full sm:w-auto">
+                 <button
+                    type="button"
+                    onClick={() => router.push("/stats")}
+                    className="sm:hidden inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.22em] text-white/80"
+                 >
+                    Session
+                 </button>
                  <div className="relative flex-1 sm:w-64 group/search">
                     <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-white/20 group-focus-within/search:text-white/50 transition-colors w-4 h-4" />
                     <input 
@@ -517,3 +547,5 @@ export function YouTubeLibrary({
     </div>
   );
 }
+
+

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
 import YouTube from "react-youtube";
-import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus, PlaySquare, Users, Maximize } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus, PlaySquare, Maximize } from "lucide-react";
 import { m, AnimatePresence, Reorder, useDragControls } from "motion/react";
 import { APPLE_EASE, SLIDE_UP_VARIANTS, EXPO_OUT, MOTION_CONFIG, APPLE_LYRICS_TRANSITION } from "@/lib/animations";
 import { type Song, type ExpandedPlayerProps } from "./types";
@@ -421,16 +421,9 @@ export function MobileExpandedPlayer({
       >
         <ListMusic size={24} />
       </button>
-      <button
-        type="button"
-        onClick={() => setActiveTab(activeTab === "jam" ? "controls" : "jam")}
-        className={`p-3 rounded-xl transition-all ${activeTab === "jam" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}
-      >
-        <Users size={24} />
-      </button>
-      <button
-        type="button"
-        onClick={() => setActiveTab(activeTab === "ai" ? "controls" : "ai")}
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === "ai" ? "controls" : "ai")}
         className={`p-3 rounded-xl transition-all ${activeTab === "ai" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}
       >
         <BookOpen size={24} />

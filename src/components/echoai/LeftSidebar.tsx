@@ -15,6 +15,21 @@ import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { CreatePlaylistModal, AiPlaylistModal } from "./LibraryModals";
 import { parseYouTubeWatchUrl, songFromYouTubeVideoId } from "@/lib/parseYouTubeUrl";
 
+type UserSearchItem = {
+  name?: string;
+  email?: string;
+  avatarUrl?: string;
+  image?: string;
+  thumbnail?: string;
+};
+
+function looksLikePersonQuery(query: string): boolean {
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed) return false;
+  const musicHints = ["artist", "song", "track", "album", "playlist", "mix", "video", "live", "concert", "remix", "band", "singer", "dj"];
+  if (musicHints.some((hint) => trimmed.includes(hint))) return false;
+  return trimmed.split(/\s+/).length >= 2;
+}
 const formatCount = (count: string | number) => {
   const num = typeof count === "string" ? parseInt(count) : count;
   if (!num) return "0";
@@ -93,13 +108,32 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
 
     setSearchLoading(true);
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSearchResults(data.items.slice(0, 8));
+      const [musicRes, userRes] = await Promise.all([
+        fetch(`/api/search?q=${encodeURIComponent(q)}`),
+        fetch(`/api/user/search?q=${encodeURIComponent(q)}`),
+      ]);
+
+      const musicItems = musicRes.ok ? ((await musicRes.json()).items || []).slice(0, 8) : [];
+      const userItems = userRes.ok
+        ? (await userRes.json()).slice(0, 5).map((user: UserSearchItem) => ({
+            type: "USER",
+            id: user.email || user.name,
+            name: user.name || user.email,
+            title: user.name || user.email,
+            author: user.email || "",
+            thumbnail: user.avatarUrl || user.image || user.thumbnail || "",
+            user,
+          }))
+        : [];
+
+      if (looksLikePersonQuery(trimmed)) {
+        setSearchResults(userItems);
+      } else {
+        setSearchResults([...musicItems, ...userItems]);
       }
     } catch (err) {
       console.error("Sidebar search error:", err);
+      setSearchResults([]);
     } finally {
       setSearchLoading(false);
     }
@@ -207,6 +241,11 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                     <div 
                       key={`${item.type ?? "r"}-${item.videoId || item.id}-${idx}`}
                       onClick={() => {
+                        if (item.type === "USER") {
+                          router.push(`/stats?user=${encodeURIComponent(item.user?.email || item.user?.name || item.email || item.name || "")}`);
+                          setIsSearchFocused(false);
+                          return;
+                        }
                         if (item.type === "ARTIST") {
                           router.push(`/artist/${encodeURIComponent(item.name)}`);
                           setIsSearchFocused(false);
@@ -451,3 +490,6 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
     </>
   );
 }
+
+
+

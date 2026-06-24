@@ -33,6 +33,30 @@ type SearchItem = {
   fromVideosShelf?: boolean;
 };
 
+type UserSearchItem = {
+  name?: string;
+  email?: string;
+  avatarUrl?: string;
+  image?: string;
+  thumbnail?: string;
+};
+
+type SearchResultItem = SearchItem | (UserSearchItem & {
+  type: "USER";
+  id: string;
+  title: string;
+  author: string;
+  thumbnail: string;
+  user: UserSearchItem;
+});
+
+function looksLikePersonQuery(query: string): boolean {
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed) return false;
+  const musicHints = ["artist", "song", "track", "album", "playlist", "mix", "video", "live", "concert", "remix", "band", "singer", "dj"];
+  if (musicHints.some((hint) => trimmed.includes(hint))) return false;
+  return trimmed.split(/\s+/).length >= 2;
+}
 const formatCount = (count: string | number) => {
   const num = typeof count === "string" ? parseInt(count) : count;
   if (!num) return "0";
@@ -142,7 +166,8 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const [selectedCategoryTitle, setSelectedCategoryTitle] = useState<string | null>(null);
   const [selectedCategoryData, setSelectedCategoryData] = useState<any[]>([]);
   const [categoryLoading, setCategoryLoading] = useState(false);
-  const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
+  const [userResults, setUserResults] = useState<UserSearchItem[]>([]);
   const [resultsByCategory, setResultsByCategory] = useState<Record<string, SearchItem[]>>({});
   const [songColors, setSongColors] = useState<Record<string, string>>({});
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -160,7 +185,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   onSongSelectRef.current = onSongSelect;
 
   // Category list
-  const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Playlists", "Remixes"];
+const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Playlists", "Users", "Remixes"];
 
   const searchAccentColor = "var(--art-accent, #FA243C)";
 
@@ -380,12 +405,15 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
         setResultsByCategory(byCat);
 
         const queryLower = finalQuery.toLowerCase();
+        const preferUsers = looksLikePersonQuery(finalQuery);
         let prioritizedResults: SearchItem[] = [];
         
         // Keep only actual live streams
         const actualLiveOnly = (live || []).filter(isActuallyLiveStream);
 
-        if (queryLower.includes("playlist") || queryLower.includes("mix")) {
+        if (preferUsers) {
+          prioritizedResults = [];
+        } else if (queryLower.includes("playlist") || queryLower.includes("mix")) {
           prioritizedResults = [
             ...(playlists || []).slice(0, 5),
             ...(songs || []).slice(0, 3),
@@ -452,6 +480,14 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
         }
 
         setSearchResults(prioritizedResults);
+        const userRes = await fetch(`/api/user/search?q=${encodeURIComponent(finalQuery)}`, { cache: "no-store" });
+        if (userRes.ok) {
+          const users = (await userRes.json()) as UserSearchItem[];
+          if (runId !== searchRunIdRef.current) return;
+          setUserResults(users.slice(0, 5));
+        } else {
+          setUserResults([]);
+        }
       } else {
         const typeMap: Record<string, string> = {
           Songs: "songs",
@@ -460,18 +496,49 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
           Artists: "artists",
           Albums: "albums",
           Playlists: "playlists",
+          Users: "users",
           Remixes: "songs",
         };
+        if (cat === "Users") {
+          const userRes = await fetch(`/api/user/search?q=${encodeURIComponent(finalQuery)}`, { cache: "no-store" });
+          if (runId !== searchRunIdRef.current) return;
+          const users = userRes.ok ? (await userRes.json()) as UserSearchItem[] : [];
+          setResultsByCategory(prev => ({ ...prev, [cat]: users as any[] }));
+          setSearchResults(users.map((user, idx) => ({
+            type: "USER",
+            id: user.email || user.name || `user-${idx}`,
+            name: user.name || user.email,
+            title: user.name || user.email,
+            author: user.email || "",
+            thumbnail: user.avatarUrl || user.image || user.thumbnail || "",
+            user,
+          })));
+          setSearchLoading(false);
+          return;
+        }
+
         const results = await fetchType(typeMap[cat] || "songs");
         if (runId !== searchRunIdRef.current) return;
 
         let finalResults = results;
+        const preferUsers = looksLikePersonQuery(finalQuery);
+        if (preferUsers) {
+          finalResults = [];
+        }
         if (cat === "Live") {
           finalResults = results.filter(isActuallyLiveStream);
         }
 
         setResultsByCategory(prev => ({ ...prev, [cat]: results }));
         setSearchResults(finalResults);
+        const userRes = await fetch(`/api/user/search?q=${encodeURIComponent(finalQuery)}`, { cache: "no-store" });
+        if (userRes.ok) {
+          const users = (await userRes.json()) as UserSearchItem[];
+          if (runId !== searchRunIdRef.current) return;
+          setUserResults(users.slice(0, 5));
+        } else {
+          setUserResults([]);
+        }
       }
     } catch (error) {
       console.error("Search failed:", error);
@@ -520,8 +587,20 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
     };
   }, [searchQuery, runSearch]);
 
-  const mappedSongs: any[] = searchResults.map((item: any, idx) => {
+  const mappedSongs: any[] = searchResults.map((item: SearchResultItem, idx) => {
     // Standardize to a common UI item shape
+    if (item.type === "USER") {
+      return {
+        id: item.id || `user-${idx}`,
+        title: item.title || item.name || "User",
+        artist: item.author || "User",
+        artwork: item.thumbnail,
+        duration: "",
+        color: "var(--art-accent, #FA243C)",
+        type: "USER",
+        user: item.user,
+      };
+    }
     if (item.type === "ARTIST") {
        return {
          id: item.id || `artist-${idx}`,
@@ -675,6 +754,18 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                           ]);
                           return;
                         }
+                      } else if (cat === "Users") {
+                        const rawUsers = (resultsByCategory.Users || []) as UserSearchItem[];
+                        setSearchResults(rawUsers.map((user, idx) => ({
+                          type: "USER",
+                          id: user.email || user.name || `user-${idx}`,
+                          name: user.name || user.email,
+                          title: user.name || user.email,
+                          author: user.email || "",
+                          thumbnail: user.avatarUrl || user.image || user.thumbnail || "",
+                          user,
+                        })));
+                        return;
                       } else if (resultsByCategory[cat]) {
                         setSearchResults(resultsByCategory[cat]);
                         return;
@@ -847,17 +938,14 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                     animate={{ opacity: 1, x: 0 }}
                     className="group flex cursor-pointer items-center justify-between p-3 px-4 rounded-2xl bg-black/20 hover:bg-white/10 backdrop-blur-md border border-white/10 hover:translate-x-2 transition-all duration-300 animate-gpu shadow-lg"
                     onClick={() => {
-                      // For Artist category → navigate to artist page
                       if (song.type === "ARTIST") {
                         onNavigateArtist?.(song.title);
                         return;
                       }
-                      // For Playlist category → navigate to playlist page
                       if (song.type === "PLAYLIST") {
                         window.location.href = `/playlists/${song.id}`;
                         return;
                       }
-                      // For Albums → navigate to album page
                       if (song.type === "ALBUM") {
                         window.location.href = `/album/${song.id}`;
                         return;
@@ -866,8 +954,6 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                         const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
                         const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
                         onSongSelect({ ...song, artwork: highResArtwork, color: dynamicColor });
-
-                        // Close search after starting playback
                         onClose();
                       })();
                     }}
@@ -882,121 +968,31 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
                           rounded={song.type === "ARTIST" ? "full" : "xl"}
                           className="h-full w-full"
                         />
-                        {/* Music video badge on thumbnail */}
-                        {song.preferVideoPlayback && (
-                          <div className="absolute bottom-1 right-1 flex items-center gap-0.5 bg-black/70 rounded-md px-1 py-0.5 pointer-events-none">
-                            <Video size={9} className="text-white/90" />
-                            <span className="text-[8px] font-black text-white/90 uppercase tracking-wider leading-none">MV</span>
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center">
-                           <Play fill="white" className="text-white w-6 h-6 ml-1" />
-                        </div>
                       </div>
                       <div className="flex flex-col flex-1 min-w-0 pr-4">
                         <p className="truncate text-[20px] font-black text-white leading-none mb-2 tracking-tight">{song.title}</p>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-2 min-w-0">
-                          {song.isLive || song.duration === "LIVE" ? (
-                            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider leading-none px-1.5 py-0.5 rounded-md border"
-                              style={{ color: '#ffffff', borderColor: '#ff000066', background: '#ff0000cc' }}>
-                              LIVE
-                            </span>
-                          ) : song.preferVideoPlayback && (
-                            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider leading-none px-1.5 py-0.5 rounded-md border"
-                              style={{ color: 'var(--art-accent,#FA243C)', borderColor: 'var(--art-accent,#FA243C)44', background: 'var(--art-accent,#FA243C)18' }}>
-                              <Video size={9} />MV
-                            </span>
-                          )}
-                          <p 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onNavigateArtist?.(song.artist);
-                            }}
-                            className="truncate text-[12px] font-black uppercase tracking-widest text-white/40 hover:text-white cursor-pointer transition-colors"
-                          >
-                            {song.artist}
-                          </p>
-                          </div>
-                          {(!song.type || song.type === "SONG") && song.views && (
-                            <>
-                              <span className="text-white/10 text-[10px]">•</span>
-                              <span className="text-[12px] font-bold text-white/20 uppercase tracking-widest leading-none">
-                                {formatCount(song.views)}
+                            {song.isLive || song.duration === "LIVE" ? (
+                              <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider leading-none px-1.5 py-0.5 rounded-md border" style={{ color: '#ffffff', borderColor: '#ff000066', background: '#ff0000cc' }}>
+                                LIVE
                               </span>
-                            </>
-                          )}
+                            ) : song.preferVideoPlayback && (
+                              <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider leading-none px-1.5 py-0.5 rounded-md border" style={{ color: 'var(--art-accent,#FA243C)', borderColor: 'var(--art-accent,#FA243C)44', background: 'var(--art-accent,#FA243C)18' }}>
+                                <Video size={9} />MV
+                              </span>
+                            )}
+                            <p onClick={(e) => { e.stopPropagation(); onNavigateArtist?.(song.artist); }} className="truncate text-[12px] font-black uppercase tracking-widest text-white/40 hover:text-white cursor-pointer transition-colors">
+                              {song.artist}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-4 relative">
-                      <div className="hidden items-center gap-2 lg:flex opacity-0 group-hover:opacity-100">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void (async () => {
-                              const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
-                              const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
-                              onPlayNext?.({ ...song, artwork: highResArtwork, color: dynamicColor });
-                            })();
-                          }}
-                          className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white outline-hidden"
-                          title="Play Next"
-                        >
-                          <PlaySquare size={20} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void (async () => {
-                              const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
-                              const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
-                              onAddToQueue?.({ ...song, artwork: highResArtwork, color: dynamicColor });
-                            })();
-                          }}
-                          className="p-2.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white outline-hidden"
-                          title="Add to Queue"
-                        >
-                          <ListPlus size={20} />
-                        </button>
-                      </div>
-                      <span className="text-[15px] font-bold text-white/20">{song.duration}</span>
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setOpenMenuId(song.id === openMenuId ? null : song.id); 
-                        }} 
-                        className={`text-white/20 hover:text-white p-2 rounded-full ${openMenuId === song.id ? "bg-white/10 text-white" : "hover:bg-white/10"}`}
-                      >
-                         <MoreHorizontal size={20} />
-                      </button>
-
-                      {/* Explicit Menu Portal/Replacement */}
-                      <SongMenu
-                        song={song}
-                        isOpen={openMenuId === song.id}
-                        onClose={() => setOpenMenuId(null)}
-                        onAddToQueue={() => {
-                           const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
-                           onAddToQueue?.({ ...song, artwork: highResArtwork });
-                        }}
-                        onPlayNext={() => {
-                           const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
-                           onPlayNext?.({ ...song, artwork: highResArtwork });
-                        }}
-                        onLike={() => {
-                          const liked = songIsInLikedLibrary(song);
-                          if (liked) void onRateSong?.(resolveLikedLibraryRateVideoId(song), "none");
-                          else void onRateSong?.(song.id, "like", { title: song.title, artist: song.artist });
-                        }}
-                        isLiked={songIsInLikedLibrary(song)}
-                      />
                     </div>
                   </m.div>
                 </SwipeableSongRow>
               ))}
             </div>
-            
             {!searchLoading && mappedSongs.length === 0 && (
               <div className="py-24 text-center">
                 <p className="text-[20px] font-bold text-white/60">No Results Found</p>
@@ -1009,3 +1005,10 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
     </m.div>
   );
 }
+
+
+
+
+
+
+

@@ -384,6 +384,8 @@ export function CenterPanel(props: CenterPanelProps) {
   const [likedTracks, setLikedTracks] = useState<SearchItem[]>([]);
   const [likedTracksLoading, setLikedTracksLoading] = useState(false);
   const [artistImageBg, setArtistImageBg] = useState<string | null>(null);
+  const [friendsActivity, setFriendsActivity] = useState<{ user: { name: string; email: string; image?: string }; isOnline: boolean; status: { song?: { id: string; title: string; artist: string; artwork?: string } } | null; lastSong: { id: string; title: string; artist: string; artwork?: string } | null }[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
 
   useEffect(() => {
     if (!currentSong?.artist) {
@@ -401,6 +403,28 @@ export function CenterPanel(props: CenterPanelProps) {
       .catch(() => {});
     return () => { active = false; };
   }, [currentSong?.artist]);
+
+  const fetchFriendsActivity = useCallback(async () => {
+    if (!session?.user) return;
+    setFriendsLoading(true);
+    try {
+      const res = await fetch("/api/user/status");
+      if (res.ok) {
+        const data = await res.json();
+        setFriendsActivity(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch friends activity:", err);
+    } finally {
+      setFriendsLoading(false);
+    }
+  }, [session?.user]);
+
+  useEffect(() => {
+    void fetchFriendsActivity();
+    const interval = window.setInterval(() => { void fetchFriendsActivity(); }, 30_000);
+    return () => window.clearInterval(interval);
+  }, [fetchFriendsActivity]);
 
   const [videoSeed, setVideoSeed] = useState("Trending Hits");
   const [audioSeed, setAudioSeed] = useState("Lofi Beats");
@@ -1109,6 +1133,40 @@ export function CenterPanel(props: CenterPanelProps) {
                       ))
                     )}
                   </Shelf>
+
+                  {session && friendsActivity.length > 0 && (
+                    <Shelf title="Your friends activity" subtitle="See what your friends are jamming to" onRefresh={fetchFriendsActivity} loading={friendsLoading}>
+                      {friendsActivity.map((friend, i) => {
+                        const displaySong = friend.isOnline ? friend.status?.song : friend.lastSong;
+                        return (
+                          <div key={friend.user.email || i} className="w-[200px] shrink-0 bg-white/5 rounded-3xl p-5 flex flex-col items-center border border-white/5 shadow-md hover:bg-white/10 transition-all duration-300">
+                            <div className="relative mb-4 mt-2">
+                              {friend.user.image ? (
+                                <img src={friend.user.image} alt={friend.user.name} className="w-[72px] h-[72px] rounded-full object-cover bg-white/10 ring-4 ring-white/5" />
+                              ) : (
+                                <div className="w-[72px] h-[72px] rounded-full bg-white/10 ring-4 ring-white/5 flex items-center justify-center text-white/40 text-2xl font-black">
+                                  {friend.user.name?.charAt(0)?.toUpperCase() || "?"}
+                                </div>
+                              )}
+                              <div className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-[#161618] ${friend.isOnline ? 'bg-green-500' : 'bg-zinc-500'}`} />
+                            </div>
+                            <h3 className="text-white font-bold text-[16px] tracking-tight text-center">{friend.user.name}</h3>
+                            {displaySong ? (
+                              <div className="mt-3 w-full bg-black/40 rounded-xl p-3 flex flex-col items-center">
+                                <p className="text-[10px] text-white/50 font-bold uppercase tracking-wider mb-1">{friend.isOnline ? 'Listening to' : 'Last played'}</p>
+                                <p className="text-white text-[13px] font-semibold truncate w-full text-center">{displaySong.title}</p>
+                                <p className="text-white/40 text-[11px] truncate w-full text-center">{displaySong.artist}</p>
+                              </div>
+                            ) : (
+                              <div className="mt-3 w-full bg-black/40 rounded-xl p-3 flex flex-col items-center">
+                                <p className="text-[10px] text-white/30 font-bold uppercase tracking-wider">No recent activity</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </Shelf>
+                  )}
 
                   {session && (
                     <Shelf title="Your Playlists" onRefresh={fetchPlaylists} loading={playlistsLoading}>

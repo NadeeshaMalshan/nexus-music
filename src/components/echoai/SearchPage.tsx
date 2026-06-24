@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles, UserRound, Video, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Mic, X, Play, Clock, ListPlus, PlaySquare, MoreHorizontal, Sparkles, UserRound, Video, ChevronLeft, ChevronRight, Users, ArrowLeft } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { type Song } from "./types";
@@ -9,6 +9,7 @@ import { SongMenu } from "./SongMenu";
 import { useDashboard } from "@/context/DashboardContext";
 import { parseYouTubeWatchUrl, songFromYouTubeVideoId } from "@/lib/parseYouTubeUrl";
 import { MusicArtwork } from "./MusicArtwork";
+import { JamSession } from "./JamSession";
 
 interface SearchPageProps {
   onClose: () => void;
@@ -31,6 +32,8 @@ type SearchItem = {
   views?: string;
   /** Mixed into Top results: play as music video in expanded player */
   fromVideosShelf?: boolean;
+  isLive?: boolean;
+  fromLiveShelf?: boolean;
 };
 
 type UserSearchItem = {
@@ -161,6 +164,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const [isListening, setIsListening] = useState(false);
   const [identifiedSong, setIdentifiedSong] = useState<string | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [showJamView, setShowJamView] = useState(false);
   const [exploreSections, setExploreSections] = useState<any[]>([]);
   const [exploreLoading, setExploreLoading] = useState(true);
   const [selectedCategoryTitle, setSelectedCategoryTitle] = useState<string | null>(null);
@@ -171,7 +175,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const [resultsByCategory, setResultsByCategory] = useState<Record<string, SearchItem[]>>({});
   const [songColors, setSongColors] = useState<Record<string, string>>({});
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const { songIsInLikedLibrary, resolveLikedLibraryRateVideoId, onRateSong, isRightSidebarOpen } = useDashboard();
+  const { songIsInLikedLibrary, resolveLikedLibraryRateVideoId, onRateSong, isRightSidebarOpen, setIsRightSidebarOpen, setRightSidebarMode } = useDashboard();
   const searchTimeoutRef = useRef<number | null>(null);
   const searchRunIdRef = useRef(0);
   const searchQueryRef = useRef(searchQuery);
@@ -507,8 +511,8 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
           setSearchResults(users.map((user, idx) => ({
             type: "USER",
             id: user.email || user.name || `user-${idx}`,
-            name: user.name || user.email,
-            title: user.name || user.email,
+            name: user.name || user.email || "",
+            title: user.name || user.email || "",
             author: user.email || "",
             thumbnail: user.avatarUrl || user.image || user.thumbnail || "",
             user,
@@ -654,7 +658,7 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
     async function hydrateSongColors() {
       const updates: Record<string, string> = {};
       for (const item of searchResults) {
-        const id = item.videoId;
+        const id = "videoId" in item ? item.videoId : item.id;
         if (!id || songColors[id]) continue;
         const extracted = await extractDominantColor(item.thumbnail);
         if (extracted) {
@@ -682,6 +686,20 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
       className="flex-1 h-full overflow-y-auto bg-transparent relative custom-scrollbar flex flex-col animate-gpu"
     >
       <div className="flex w-full flex-col px-6 py-10 md:px-12 md:py-12 pb-48 text-left">
+        {showJamView ? (
+          <div className="flex flex-col h-full min-h-[60vh]">
+            <button
+              type="button"
+              onClick={() => setShowJamView(false)}
+              className="mb-6 flex items-center gap-2 self-start text-[11px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-colors"
+            >
+              <ArrowLeft size={14} />
+              Back to Explore
+            </button>
+            <JamSession />
+          </div>
+        ) : (
+        <>
         {!selectedCategoryTitle && (
           <div className={`transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
             isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
@@ -759,8 +777,8 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                         setSearchResults(rawUsers.map((user, idx) => ({
                           type: "USER",
                           id: user.email || user.name || `user-${idx}`,
-                          name: user.name || user.email,
-                          title: user.name || user.email,
+                          name: user.name || user.email || "",
+                          title: user.name || user.email || "",
                           author: user.email || "",
                           thumbnail: user.avatarUrl || user.image || user.thumbnail || "",
                           user,
@@ -839,7 +857,27 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                  </div>
                ))
              ) : (
-               exploreSections.map((section) => (
+               <>
+                 <div className="w-full mb-8">
+                   <button
+                     onClick={() => {
+                       setShowJamView(true);
+                     }}
+                     className="w-full flex items-center p-6 aspect-[2.5/1] md:aspect-[5/1] rounded-2xl relative shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden bg-white group"
+                   >
+                     <div className="absolute inset-0 bg-gradient-to-br from-white via-[#f0f0f0] to-[#e0e0e0] z-0" />
+                     <div className="relative z-10 text-left flex flex-row items-center w-full justify-between">
+                       <div className="flex-1">
+                         <h3 className="text-[24px] md:text-[28px] font-black tracking-tighter text-black leading-tight mb-1">Create a Jam</h3>
+                         <p className="text-[13px] md:text-[15px] font-bold text-black/60">Host or join a synced session</p>
+                       </div>
+                       <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-xl shrink-0 group-hover:scale-110 transition-transform">
+                         <Users size={20} className="text-white" />
+                       </div>
+                     </div>
+                   </button>
+                 </div>
+                 {exploreSections.map((section) => (
                  <div key={section.title} className="w-full">
                    <h2 className="text-[24px] md:text-[32px] font-black text-white tracking-tighter leading-none mb-6">{section.title}</h2>
                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
@@ -874,7 +912,8 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                      ))}
                    </div>
                  </div>
-               ))
+               ))}
+               </>
              )}
           </m.div>
         ) : null}
@@ -1000,6 +1039,8 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
               </div>
             )}
           </m.div>
+        )}
+        </>
         )}
       </div>
     </m.div>

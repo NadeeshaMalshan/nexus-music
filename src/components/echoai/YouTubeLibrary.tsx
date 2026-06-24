@@ -349,13 +349,6 @@ export function YouTubeLibrary({
               </div>
 
               <div className="flex items-center gap-4 w-full sm:w-auto">
-                 <button
-                    type="button"
-                    onClick={() => router.push("/stats")}
-                    className="sm:hidden inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.22em] text-white/80"
-                 >
-                    Session
-                 </button>
                  <div className="relative flex-1 sm:w-64 group/search">
                     <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-white/20 group-focus-within/search:text-white/50 transition-colors w-4 h-4" />
                     <input 

@@ -18,13 +18,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing socket_id or channel_name" }, { status: 400 });
     }
 
-    // Ensure users can only subscribe to their own private-user-[emailHash] channel
-    // and the general private-global-activity channel
-    if (channelName.startsWith("private-user-")) {
+    // Ensure users can only subscribe to their own private-user-[emailHash],
+    // presence-user-[emailHash], and the general private-global-activity channel
+    if (channelName.startsWith("private-user-") || channelName.startsWith("presence-user-")) {
       const emailHash = Buffer.from(session.user.email).toString('base64').replace(/[^a-zA-Z0-9]/g, '');
-      const expectedChannel = `private-user-${emailHash}`;
-      if (channelName !== expectedChannel) {
+      const expectedPrivateChannel = `private-user-${emailHash}`;
+      const expectedPresenceChannel = `presence-user-${emailHash}`;
+      
+      if (channelName !== expectedPrivateChannel && channelName !== expectedPresenceChannel) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      if (channelName.startsWith("presence-")) {
+        const presenceData = {
+          user_id: `${session.user.email}-${Math.random().toString(36).substring(2, 10)}`, // unique per connection
+          user_info: {
+            email: session.user.email,
+          }
+        };
+        const authResponse = pusherServer.authorizeChannel(socketId, channelName, presenceData);
+        return NextResponse.json(authResponse);
       }
     } else if (channelName !== "private-global-activity") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

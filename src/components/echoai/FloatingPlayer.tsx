@@ -1,6 +1,7 @@
 "use client";
 
-import { Play, Pause, SkipBack, SkipForward, Maximize2, Heart, ListMusic, Volume2, Users, Mic2 } from "lucide-react";
+import React, { useState } from "react";
+import { Play, Pause, SkipBack, SkipForward, Maximize2, Heart, ListMusic, Volume2, Users, Mic2, ChevronDown } from "lucide-react";
 import { type Song } from "./types";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { m, AnimatePresence } from "motion/react";
@@ -55,7 +56,8 @@ export function FloatingPlayer({
   onSeek,
 }: FloatingPlayerProps) {
   const { resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
-  const { crossDeviceState } = useDeviceSync();
+  const { crossDeviceState, activeDeviceCount } = useDeviceSync();
+  const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
   const isIdle = !currentSong;
   
   const displaySong = {
@@ -72,26 +74,76 @@ export function FloatingPlayer({
   const isReallyLive = currentSong?.isLive || displaySong.duration === "LIVE" || !!liveMetadata || safeDuration > 43200 || (!isIdle && isPlaying && safeDuration === 0);
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
   return (
-    <>
-      {/* Cross-Device Playback Indicator */}
+    <div className="relative w-full max-w-[800px] mx-auto mb-24 md:mb-10 lg:mb-12 flex flex-col items-center justify-end pointer-events-none">
+      {/* Device Control Popup */}
       <AnimatePresence>
-        {crossDeviceState && (
+        {isDeviceMenuOpen && crossDeviceState && (
           <m.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="mb-3 bg-white/10 backdrop-blur-md border border-white/10 px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2 max-w-[90vw] pointer-events-auto"
+            className="absolute bottom-[80px] left-4 md:left-6 w-[280px] bg-[#1a1a1a] rounded-xl shadow-2xl border border-white/10 p-4 pointer-events-auto z-50 flex flex-col gap-4"
           >
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" style={{ backgroundColor: 'var(--art-accent, #22c55e)' }} />
-            <span className="text-[11px] font-semibold text-white/80 whitespace-nowrap overflow-hidden text-ellipsis">
-              Listening on <span className="text-white">{crossDeviceState.deviceName}</span>: {crossDeviceState.song?.title}
+            <div className="flex flex-col gap-2">
+              <span className="text-white font-bold text-sm">{crossDeviceState.deviceName}</span>
+              <div className="flex gap-3 items-center">
+                <div className="w-10 h-10 rounded overflow-hidden shrink-0">
+                  <MusicArtwork src={crossDeviceState.song?.artwork} alt="artwork" iconSize={16} rounded="none" className="w-full h-full" />
+                </div>
+                <div className="flex flex-col overflow-hidden">
+                  <span className="text-white text-xs font-semibold truncate">{crossDeviceState.song?.title}</span>
+                  <span className="text-white/60 text-[10px] uppercase tracking-wider font-bold truncate">{crossDeviceState.song?.artist}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <span className="text-white/80 text-xs font-semibold">Actions</span>
+              <div className="flex flex-col gap-2">
+                {[
+                  "Play individually",
+                  `Play on ${crossDeviceState.deviceName}`,
+                  "Play on your device",
+                  "Play simultaneously"
+                ].map((action, i) => (
+                  <label key={i} className="flex items-center gap-3 cursor-pointer group">
+                    <div className="w-4 h-4 rounded-full border border-white/40 group-hover:border-white flex items-center justify-center shrink-0">
+                      {i === 0 && <div className="w-2 h-2 rounded-full bg-[var(--art-accent,#1db954)]" />}
+                    </div>
+                    <span className={`text-xs font-semibold ${i === 0 ? "text-white" : "text-white/60 group-hover:text-white"}`}>{action}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cross-Device Playback Indicator */}
+      <AnimatePresence>
+        {crossDeviceState && (
+          <m.div
+            onClick={() => setIsDeviceMenuOpen(!isDeviceMenuOpen)}
+            initial={{ height: 0, opacity: 0, y: 10 }}
+            animate={{ height: 26, opacity: 1, y: 0 }}
+            exit={{ height: 0, opacity: 0, y: 10 }}
+            className="w-[98%] max-w-[780px] text-white overflow-hidden rounded-t-xl -mb-2 pb-2 px-6 flex justify-between items-center pointer-events-auto z-0 cursor-pointer hover:brightness-110 transition-all"
+            style={{ backgroundColor: 'var(--art-accent, #1db954)' }}
+          >
+            <span className="text-[11px] font-bold tracking-wide">
+              {activeDeviceCount > 2 ? `Active in ${activeDeviceCount - 1} devices` : `Active in ${crossDeviceState.deviceName}`}
             </span>
+            {activeDeviceCount <= 2 && (
+              <span className="text-[11px] font-semibold opacity-75 max-w-[40%] truncate">
+                {crossDeviceState.song?.title}
+              </span>
+            )}
           </m.div>
         )}
       </AnimatePresence>
 
       <m.div 
-        className="group relative flex h-[76px] w-full max-w-[800px] items-center justify-between gap-6 border border-white/10 px-6 shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden mx-auto mb-24 md:mb-10 lg:mb-12 pointer-events-auto bg-[#0a0a0a]/90 backdrop-blur-2xl"
+        className="group relative flex h-[76px] w-full items-center justify-between gap-6 border border-white/10 px-6 shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden pointer-events-auto bg-[#0a0a0a]/90 backdrop-blur-2xl z-10"
       >
           
           {/* Left Section: Playback Controls */}
@@ -289,6 +341,6 @@ export function FloatingPlayer({
             </div>
           )}
       </m.div>
-    </>
+    </div>
   );
 }

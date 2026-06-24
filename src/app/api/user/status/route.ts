@@ -226,10 +226,10 @@ export async function POST(request: Request) {
 
     // 2. To cross-device listener
     if (isPlaying) {
-      await pusherServer.trigger(`private-user-${emailHash}`, "cross-device-play", {
+      await pusherServer.trigger(`presence-user-${emailHash}`, "cross-device-play", {
         deviceName,
         deviceId,
-        song: songPayload
+        song: songPayload,
       }).catch(console.error);
     }
 

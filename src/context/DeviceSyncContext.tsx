@@ -20,6 +20,7 @@ type CrossDevicePlayUpdate = {
 interface DeviceSyncContextType {
   lastFriendActivity: FriendActivityUpdate | null;
   crossDeviceState: CrossDevicePlayUpdate | null;
+  activeDeviceCount: number;
   clearCrossDeviceState: () => void;
 }
 
@@ -31,6 +32,7 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
   
   const [lastFriendActivity, setLastFriendActivity] = useState<FriendActivityUpdate | null>(null);
   const [crossDeviceState, setCrossDeviceState] = useState<CrossDevicePlayUpdate | null>(null);
+  const [activeDeviceCount, setActiveDeviceCount] = useState<number>(1);
 
   useEffect(() => {
     if (!session?.user?.email) return;
@@ -58,10 +60,22 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
       }
     });
 
-    // 2. Subscribe to Cross-Device Sync (Own Account)
+    // 2. Subscribe to Cross-Device Sync (Own Account) using presence
     const emailHash = btoa(session.user.email).replace(/[^a-zA-Z0-9]/g, '');
-    const userChannel = pusher.subscribe(`private-user-${emailHash}`);
+    const userChannel = pusher.subscribe(`presence-user-${emailHash}`);
     
+    // Track active connection count
+    userChannel.bind("pusher:subscription_succeeded", (members: any) => {
+      setActiveDeviceCount(members.count);
+    });
+    userChannel.bind("pusher:member_added", () => {
+      // The `userChannel.members.count` holds the updated count
+      setActiveDeviceCount((userChannel as any).members.count);
+    });
+    userChannel.bind("pusher:member_removed", () => {
+      setActiveDeviceCount((userChannel as any).members.count);
+    });
+
     // We generate a local device ID to ignore our own events
     const localDeviceId = typeof window !== 'undefined' ? (window.localStorage.getItem('nexus_device_id') || Math.random().toString(36).substring(2)) : "unknown";
     if (typeof window !== 'undefined' && !window.localStorage.getItem('nexus_device_id')) {
@@ -78,7 +92,7 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
 
     return () => {
       pusher.unsubscribe("private-global-activity");
-      pusher.unsubscribe(`private-user-${emailHash}`);
+      pusher.unsubscribe(`presence-user-${emailHash}`);
       pusher.disconnect();
     };
   }, [session?.user?.email]);
@@ -88,8 +102,9 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
   const value = useMemo(() => ({
     lastFriendActivity,
     crossDeviceState,
+    activeDeviceCount,
     clearCrossDeviceState
-  }), [lastFriendActivity, crossDeviceState]);
+  }), [lastFriendActivity, crossDeviceState, activeDeviceCount]);
 
   return (
     <DeviceSyncContext.Provider value={value}>
@@ -102,7 +117,7 @@ export function useDeviceSync() {
   const context = useContext(DeviceSyncContext);
   if (!context) {
     // If wrapped correctly, this shouldn't happen, but provide fallback for safety
-    return { lastFriendActivity: null, crossDeviceState: null, clearCrossDeviceState: () => {} };
+    return { lastFriendActivity: null, crossDeviceState: null, activeDeviceCount: 1, clearCrossDeviceState: () => {} };
   }
   return context;
 }

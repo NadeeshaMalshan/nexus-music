@@ -3,23 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { fetchGoogleUserEmail } from "@/lib/googleUserFromAccessToken";
 import redis from "@/lib/redis";
-
-const LIBRARY_KEY_PREFIX = "user:library";
-
-function bearerToken(request: Request): string | null {
-  const h = request.headers.get("authorization") || request.headers.get("Authorization");
-  const m = h?.match(/^Bearer\s+(.+)$/i);
-  return m?.[1]?.trim() || null;
-}
-
-async function resolveUserEmail(request: Request): Promise<string | null> {
-  const session = await getServerSession(authOptions);
-  if (session?.user?.email) return session.user.email;
-
-  const token = bearerToken(request);
-  if (!token) return null;
-  return fetchGoogleUserEmail(token);
-}
+import { resolveUserEmail, mergeUserLibraryData, LIBRARY_KEY_PREFIX } from "@/lib/userLibrary";
 
 export async function GET(request: Request) {
   const email = await resolveUserEmail(request);
@@ -59,11 +43,7 @@ export async function POST(request: Request) {
     const playlists = Array.isArray(body?.playlists) ? body.playlists : [];
     const liked = Array.isArray(body?.liked) ? body.liked : [];
 
-    await Promise.all([
-      redis.set(`${LIBRARY_KEY_PREFIX}:playlists:${email}`, JSON.stringify(playlists)),
-      redis.set(`${LIBRARY_KEY_PREFIX}:liked:${email}`, JSON.stringify(liked)),
-      redis.set(`${LIBRARY_KEY_PREFIX}:synced_at:${email}`, String(Date.now())),
-    ]);
+    await mergeUserLibraryData(email, playlists, liked);
 
     return NextResponse.json({ success: true, playlists: playlists.length, liked: liked.length });
   } catch (error) {

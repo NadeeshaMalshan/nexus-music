@@ -1839,7 +1839,16 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         youtubeApiFetchInit(session?.accessToken, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ videoId: targetId, rating }),
+          body: JSON.stringify({ 
+            videoId: targetId, 
+            rating,
+            track: rating === "like" && finalMeta ? {
+              videoId: targetId,
+              title: finalMeta.title,
+              artist: finalMeta.artist,
+              thumbnailUrl: currentSong?.id === songId ? currentSong?.artwork : ""
+            } : undefined
+          }),
         })
       );
       if (!res.ok) throw new Error("Failed to rate song");

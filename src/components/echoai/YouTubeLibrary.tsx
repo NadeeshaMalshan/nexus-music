@@ -83,6 +83,10 @@ export function YouTubeLibrary({
       setError(null);
       try {
         const init = youtubeApiFetchInit(session.accessToken);
+        
+        // Sync any pending offline actions first
+        await fetch("/api/user/sync-pending", { ...init, method: "POST" }).catch(() => {});
+
         const dbRes = await fetch("/api/user/library", init);
         if (dbRes.ok) {
           const dbData = await dbRes.json();

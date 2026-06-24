@@ -1318,30 +1318,29 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         const activeAudio = getActiveAudio();
         const inactiveAudio = getInactiveAudio();
 
-        // If crossfade just completed and the next audio was pre-buffered,
+        // If crossfade is in progress and the next audio was pre-buffered,
         // swap: promote inactiveAudio to active (it's already playing)
+        // but let the volume ramps continue so the overlap sounds smooth.
         if (crossfadeActiveRef.current && inactiveAudio && nextAudioPreloadedUrlRef.current) {
-          // Cancel active ramps
-          cancelAllVolumeRamps();
-
-          // Pause and clear the old track
-          if (activeAudio) {
-            try {
-              activeAudio.pause();
-              activeAudio.src = "";
-            } catch {}
-          }
-
-          // Promote inactive audio to active
+          // Promote inactive audio to active (it's already playing via crossfade)
+          const oldPlayerIndex = activePlayerIndex.current;
           activePlayerIndex.current = activePlayerIndex.current === 1 ? 2 : 1;
 
-          // Ensure volume is set to normal user-controlled level on the promoted player
-          const promotedAudio = getActiveAudio();
-          if (promotedAudio) {
-            promotedAudio.volume = volumeRef.current / 100;
+          // DON'T cancel ramps or snap volumes — let the crossfade finish naturally.
+          // Schedule cleanup of the old (now demoted) audio after remaining ramp time.
+          const oldAudio = oldPlayerIndex === 1 ? audio1Ref.current : audio2Ref.current;
+          if (oldAudio) {
+            const cleanupDelay = Math.max(300, (settingsRef.current.crossfade || 1) * 1000);
+            setTimeout(() => {
+              try {
+                cancelVolumeRamp(oldPlayerIndex);
+                oldAudio.pause();
+                oldAudio.src = "";
+              } catch {}
+            }, cleanupDelay);
           }
 
-          // Reset crossfade state
+          // Reset crossfade state (but ramps keep running)
           crossfadeActiveRef.current = false;
           nextAudioPreloadedUrlRef.current = null;
           return; // Don't re-assign src, it's already playing

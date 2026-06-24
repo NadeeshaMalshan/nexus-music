@@ -37,6 +37,7 @@ export const viewport = {
 };
 
 import { JamProvider } from "@/context/JamContext";
+import { DeviceSyncProvider } from "@/context/DeviceSyncContext";
 
 export default function RootLayout({
   children,
@@ -53,7 +54,9 @@ export default function RootLayout({
           <SettingsProvider>
             <DashboardProvider>
               <JamProvider>
-                <DashboardWrapper>{children}</DashboardWrapper>
+                <DeviceSyncProvider>
+                  <DashboardWrapper>{children}</DashboardWrapper>
+                </DeviceSyncProvider>
               </JamProvider>
             </DashboardProvider>
           </SettingsProvider>

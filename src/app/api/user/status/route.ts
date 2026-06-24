@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { fetchGoogleUserEmail } from "@/lib/googleUserFromAccessToken";
 import redis from "@/lib/redis";
+import pusherServer from "@/lib/pusherServer";
 
 const USER_DIRECTORY_KEY = "users:directory";
 const ONLINE_WINDOW_MS = 5 * 60 * 1000;
@@ -11,6 +12,25 @@ function bearerToken(request: Request): string | null {
   const h = request.headers.get("authorization") || request.headers.get("Authorization");
   const m = h?.match(/^Bearer\s+(.+)$/i);
   return m?.[1]?.trim() || null;
+}
+
+function getDeviceName(userAgent: string | null) {
+  if (!userAgent) return "Unknown Device";
+  let os = "Unknown OS";
+  let browser = "Unknown Browser";
+
+  if (userAgent.includes("Win")) os = "Windows";
+  else if (userAgent.includes("Mac")) os = "Mac";
+  else if (userAgent.includes("Android")) os = "Android";
+  else if (userAgent.includes("iPhone")) os = "iPhone";
+  else if (userAgent.includes("Linux")) os = "Linux";
+
+  if (userAgent.includes("Firefox")) browser = "Firefox";
+  else if (userAgent.includes("Edg")) browser = "Edge";
+  else if (userAgent.includes("Chrome")) browser = "Chrome";
+  else if (userAgent.includes("Safari") && !userAgent.includes("Chrome")) browser = "Safari";
+
+  return `${os} ${browser}`;
 }
 
 async function resolveUserEmail(request: Request): Promise<string | null> {
@@ -149,6 +169,14 @@ export async function POST(request: Request) {
         }
       }
       await redis.del(statusKey);
+      
+      // Trigger clear event
+      await pusherServer.trigger("private-global-activity", "status-update", {
+        email,
+        isPlaying: false,
+        song: null
+      }).catch(console.error);
+
       return NextResponse.json({ success: true });
     }
 
@@ -181,6 +209,29 @@ export async function POST(request: Request) {
 
     await redis.set(statusKey, JSON.stringify(statusPayload), { ex: 3600 });
     await redis.set(lastActivityKey, JSON.stringify(lastActivityPayload));
+
+    // Trigger Pusher Events
+    const emailHash = Buffer.from(email).toString('base64').replace(/[^a-zA-Z0-9]/g, '');
+    const userAgent = request.headers.get("user-agent");
+    const deviceName = getDeviceName(userAgent);
+    const deviceId = body.deviceId || "unknown"; // If client sends one
+
+    // 1. To friends
+    await pusherServer.trigger("private-global-activity", "status-update", {
+      email,
+      isPlaying: !!isPlaying,
+      song: songPayload,
+      timestamp: now,
+    }).catch(console.error);
+
+    // 2. To cross-device listener
+    if (isPlaying) {
+      await pusherServer.trigger(`private-user-${emailHash}`, "cross-device-play", {
+        deviceName,
+        deviceId,
+        song: songPayload
+      }).catch(console.error);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

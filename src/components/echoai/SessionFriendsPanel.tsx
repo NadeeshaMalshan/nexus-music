@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Loader2, Play, Volume2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useDashboard } from "@/context/DashboardContext";
+import { useDeviceSync } from "@/context/DeviceSyncContext";
 import { MusicArtwork } from "./MusicArtwork";
 import { JamSession } from "./JamSession";
 
@@ -31,6 +32,30 @@ export function SessionFriendsPanel({ accentColor, className = "" }: SessionFrie
   const [view, setView] = useState<"friends" | "jam">("friends");
   const [friends, setFriends] = useState<FriendActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const { lastFriendActivity } = useDeviceSync();
+
+  useEffect(() => {
+    if (lastFriendActivity) {
+      setFriends(prev => {
+        const idx = prev.findIndex(f => f.user.email === lastFriendActivity.email);
+        if (idx === -1) return prev; // Not in our following list
+        const next = [...prev];
+        next[idx] = {
+          ...next[idx],
+          isOnline: lastFriendActivity.isPlaying,
+          status: lastFriendActivity.isPlaying ? { song: lastFriendActivity.song, isPlaying: true } : null,
+          lastSong: lastFriendActivity.song || next[idx].lastSong,
+          lastOnline: lastFriendActivity.timestamp,
+          lastOnlineLabel: "Just now"
+        };
+        // Re-sort: online first, then by lastOnline
+        return next.sort((a, b) => {
+          if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1;
+          return (b.lastOnline || 0) - (a.lastOnline || 0);
+        });
+      });
+    }
+  }, [lastFriendActivity]);
 
   const fetchFriends = useCallback(async () => {
     if (!session?.user) {

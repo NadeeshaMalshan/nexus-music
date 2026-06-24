@@ -7,6 +7,7 @@ import { m, AnimatePresence } from "motion/react";
 import { MusicArtwork } from "./MusicArtwork";
 import { APPLE_EASE, SLIDE_UP_VARIANTS } from "@/lib/animations";
 import { useDashboard } from "@/context/DashboardContext";
+import { useDeviceSync } from "@/context/DeviceSyncContext";
 import { MarqueeText } from "./MarqueeText";
 import { ArtistLinks } from "./ArtistLinks";
 
@@ -54,6 +55,7 @@ export function FloatingPlayer({
   onSeek,
 }: FloatingPlayerProps) {
   const { resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
+  const { crossDeviceState } = useDeviceSync();
   const isIdle = !currentSong;
   
   const displaySong = {
@@ -70,204 +72,223 @@ export function FloatingPlayer({
   const isReallyLive = currentSong?.isLive || displaySong.duration === "LIVE" || !!liveMetadata || safeDuration > 43200 || (!isIdle && isPlaying && safeDuration === 0);
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
   return (
-    <m.div 
-      className="group relative flex h-[76px] w-full max-w-[800px] items-center justify-between gap-6 border border-white/10 px-6 shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden mx-auto mb-24 md:mb-10 lg:mb-12 pointer-events-auto bg-[#0a0a0a]/90 backdrop-blur-2xl"
-    >
-        
-        {/* Left Section: Playback Controls */}
-        <div className={`flex items-center gap-3 md:gap-5 shrink-0 ${isIdle ? 'opacity-40 grayscale' : ''}`}>
-          <button 
-            onClick={onPrev} 
-            disabled={isIdle}
-            className="text-white/40 hover:text-white disabled:cursor-not-allowed"
+    <>
+      {/* Cross-Device Playback Indicator */}
+      <AnimatePresence>
+        {crossDeviceState && (
+          <m.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className="mb-3 bg-white/10 backdrop-blur-md border border-white/10 px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2 max-w-[90vw] pointer-events-auto"
           >
-            <SkipBack className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" strokeWidth={0} />
-          </button>
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" style={{ backgroundColor: 'var(--art-accent, #22c55e)' }} />
+            <span className="text-[11px] font-semibold text-white/80 whitespace-nowrap overflow-hidden text-ellipsis">
+              Listening on <span className="text-white">{crossDeviceState.deviceName}</span>: {crossDeviceState.song?.title}
+            </span>
+          </m.div>
+        )}
+      </AnimatePresence>
+
+      <m.div 
+        className="group relative flex h-[76px] w-full max-w-[800px] items-center justify-between gap-6 border border-white/10 px-6 shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden mx-auto mb-24 md:mb-10 lg:mb-12 pointer-events-auto bg-[#0a0a0a]/90 backdrop-blur-2xl"
+      >
           
-          <button
-            onClick={onTogglePlay}
-            disabled={isIdle}
-            className="text-white hover:scale-105 active:scale-95 transition-transform disabled:cursor-not-allowed"
-            style={{ color: isIdle ? 'white' : 'var(--art-accent, white)' }}
-          >
-            {isPlaying ? (
-              <Pause className="w-8 h-8" fill="currentColor" strokeWidth={0} />
-            ) : (
-              <Play className="w-8 h-8" fill="currentColor" strokeWidth={0} />
-            )}
-          </button>
-          
-          <button 
-            onClick={onNext} 
-            disabled={isIdle}
-            className="text-white/40 hover:text-white disabled:cursor-not-allowed"
-          >
-            <SkipForward className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" strokeWidth={0} />
-          </button>
-        </div>
-
-        {/* Center Section: Compact Dynamic Track Component */}
-        <m.div 
-          layout
-          className="flex-1 min-w-0 max-w-[400px]"
-        >
-          <div 
-            onClick={!isIdle ? onExpand : undefined}
-            className={`relative flex items-center gap-4 bg-white/5 rounded-xl p-1.5 pr-6 border border-transparent overflow-hidden ${
-              !isIdle 
-                ? "cursor-pointer group/card hover:bg-white/10 hover:border-white/10 transition-all duration-300" 
-                : "cursor-default opacity-80"
-            }`}
-          >
-            {/* Artwork Wrapper */}
-            <div className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-lg shadow-md border border-white/5 ${!isIdle ? 'group-hover/card:scale-[1.02] transition-transform' : ''}`}>
-               <MusicArtwork src={displaySong.artwork} alt={displaySong.title} iconSize={20} rounded="none" className="w-full h-full" />
-               {!isIdle && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                    <Maximize2 size={16} className="text-white" />
-                 </div>
-               )}
-               {isIdle && (
-                 <m.div 
-                   animate={{ opacity: [0.1, 0.2, 0.1] }}
-                   transition={{ duration: 3, repeat: Infinity, ease: APPLE_EASE }}
-                   className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent"
-                 />
-               )}
-            </div>
-
-            {/* Scrolling Song Info */}
-            <div className="min-w-[120px] flex-1 overflow-hidden">
-               <div className="flex flex-col justify-center h-full">
-                  <MarqueeText 
-                    text={displaySong.title} 
-                    className="text-[16px] font-black text-white tracking-tighter leading-none mb-1" 
-                  />
-                  <div
-                    className={`w-full text-left truncate ${
-                      !isIdle && onArtistClick
-                        ? "cursor-pointer"
-                        : "cursor-default"
-                    }`}
-                  >
-                    <ArtistLinks
-                      artist={displaySong.artist}
-                      onArtistClick={!isIdle ? onArtistClick : undefined}
-                      className="text-[11px] font-black uppercase tracking-widest text-white/40 leading-none"
-                    />
-                  </div>
-               </div>
-            </div>
-
-          </div>
-        </m.div>
-
-        {/* Right Section: Interactive Controls */}
-        <div className="flex items-center gap-3 md:gap-6 shrink-0">
-          {isLoggedIn && !isIdle && (
-            <button
-              onClick={() => {
-                if (isLiked) void onRateSong(resolveLikedLibraryRateVideoId(displaySong as Song), "none");
-                else void onRateSong(displaySong.id, "like", { title: displaySong.title, artist: displaySong.artist });
-              }}
-              className=""
+          {/* Left Section: Playback Controls */}
+          <div className={`flex items-center gap-3 md:gap-5 shrink-0 ${isIdle ? 'opacity-40 grayscale' : ''}`}>
+            <button 
+              onClick={onPrev} 
+              disabled={isIdle}
+              className="text-white/40 hover:text-white disabled:cursor-not-allowed"
             >
-              <Heart
-                size={20}
-                fill={isLiked ? "var(--art-accent, #FA243C)" : "none"}
-                stroke={isLiked ? "var(--art-accent, #FA243C)" : "currentColor"}
-                className={isLiked ? "" : "text-white/30 hover:text-white"}
-              />
+              <SkipBack className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" strokeWidth={0} />
             </button>
-          )}
-          {/* Functional Volume Slider */}
-          <div className="hidden items-center gap-2 lg:flex group/vol relative">
-            <div className="w-0 overflow-hidden group-hover/vol:w-24 group-hover/vol:mr-3">
-               <input 
-                 type="range"
-                 min="0"
-                 max="100"
-                 step="1"
-                 value={volume}
-                 onChange={(e) => onVolumeChange(parseInt(e.target.value))}
-                 className="w-full h-1 appearance-none bg-white/10 rounded-full outline-none cursor-pointer accent-white"
-                 style={{ accentColor: 'var(--art-accent, white)' }}
-               />
-            </div>
-            <Volume2 size={20} className="text-white/30 group-hover/vol:text-white" />
+            
+            <button
+              onClick={onTogglePlay}
+              disabled={isIdle}
+              className="text-white hover:scale-105 active:scale-95 transition-transform disabled:cursor-not-allowed"
+              style={{ color: isIdle ? 'white' : 'var(--art-accent, white)' }}
+            >
+              {isPlaying ? (
+                <Pause className="w-8 h-8" fill="currentColor" strokeWidth={0} />
+              ) : (
+                <Play className="w-8 h-8" fill="currentColor" strokeWidth={0} />
+              )}
+            </button>
+            
+            <button 
+              onClick={onNext} 
+              disabled={isIdle}
+              className="text-white/40 hover:text-white disabled:cursor-not-allowed"
+            >
+              <SkipForward className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" strokeWidth={0} />
+            </button>
+          </div>
 
+          {/* Center Section: Compact Dynamic Track Component */}
+          <m.div 
+            layout
+            className="flex-1 min-w-0 max-w-[400px]"
+          >
+            <div 
+              onClick={!isIdle ? onExpand : undefined}
+              className={`relative flex items-center gap-4 bg-white/5 rounded-xl p-1.5 pr-6 border border-transparent overflow-hidden ${
+                !isIdle 
+                  ? "cursor-pointer group/card hover:bg-white/10 hover:border-white/10 transition-all duration-300" 
+                  : "cursor-default opacity-80"
+              }`}
+            >
+              {/* Artwork Wrapper */}
+              <div className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-lg shadow-md border border-white/5 ${!isIdle ? 'group-hover/card:scale-[1.02] transition-transform' : ''}`}>
+                 <MusicArtwork src={displaySong.artwork} alt={displaySong.title} iconSize={20} rounded="none" className="w-full h-full" />
+                 {!isIdle && (
+                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                      <Maximize2 size={16} className="text-white" />
+                   </div>
+                 )}
+                 {isIdle && (
+                   <m.div 
+                     animate={{ opacity: [0.1, 0.2, 0.1] }}
+                     transition={{ duration: 3, repeat: Infinity, ease: APPLE_EASE }}
+                     className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent"
+                   />
+                 )}
+              </div>
+
+              {/* Scrolling Song Info */}
+              <div className="min-w-[120px] flex-1 overflow-hidden">
+                 <div className="flex flex-col justify-center h-full">
+                    <MarqueeText 
+                      text={displaySong.title} 
+                      className="text-[16px] font-black text-white tracking-tighter leading-none mb-1" 
+                    />
+                    <div
+                      className={`w-full text-left truncate ${
+                        !isIdle && onArtistClick
+                          ? "cursor-pointer"
+                          : "cursor-default"
+                      }`}
+                    >
+                      <ArtistLinks
+                        artist={displaySong.artist}
+                        onArtistClick={!isIdle ? onArtistClick : undefined}
+                        className="text-[11px] font-black uppercase tracking-widest text-white/40 leading-none"
+                      />
+                    </div>
+                 </div>
+              </div>
+
+            </div>
+          </m.div>
+
+          {/* Right Section: Interactive Controls */}
+          <div className="flex items-center gap-3 md:gap-6 shrink-0">
+            {isLoggedIn && !isIdle && (
+              <button
+                onClick={() => {
+                  if (isLiked) void onRateSong(resolveLikedLibraryRateVideoId(displaySong as Song), "none");
+                  else void onRateSong(displaySong.id, "like", { title: displaySong.title, artist: displaySong.artist });
+                }}
+                className=""
+              >
+                <Heart
+                  size={20}
+                  fill={isLiked ? "var(--art-accent, #FA243C)" : "none"}
+                  stroke={isLiked ? "var(--art-accent, #FA243C)" : "currentColor"}
+                  className={isLiked ? "" : "text-white/30 hover:text-white"}
+                />
+              </button>
+            )}
+            {/* Functional Volume Slider */}
+            <div className="hidden items-center gap-2 lg:flex group/vol relative">
+              <div className="w-0 overflow-hidden group-hover/vol:w-24 group-hover/vol:mr-3">
+                 <input 
+                   type="range"
+                   min="0"
+                   max="100"
+                   step="1"
+                   value={volume}
+                   onChange={(e) => onVolumeChange(parseInt(e.target.value))}
+                   className="w-full h-1 appearance-none bg-white/10 rounded-full outline-none cursor-pointer accent-white"
+                   style={{ accentColor: 'var(--art-accent, white)' }}
+                 />
+              </div>
+              <Volume2 size={20} className="text-white/30 group-hover/vol:text-white" />
+
+              
+            </div>
+
+            <div className="h-6 w-px bg-white/10 mx-1 hidden md:block" />
+
+            <button 
+              onClick={() => {
+                if (rightSidebarMode === "lyrics" && isRightSidebarOpen) {
+                   onToggleRightSidebar?.();
+                } else {
+                   onSetRightSidebarMode?.("lyrics");
+                   if (!isRightSidebarOpen) onToggleRightSidebar?.();
+                }
+              }}
+              className="hidden md:block transition-all transform hover:scale-110 active:scale-90"
+              style={{ color: (isRightSidebarOpen && rightSidebarMode === "lyrics") ? 'var(--art-accent, #FA243C)' : undefined }}
+            >
+               <Mic2 size={20} className={(!isRightSidebarOpen || rightSidebarMode !== "lyrics") ? "text-white/40 hover:text-white" : ""} />
+            </button>
+
+            <button 
+              onClick={() => {
+                if (rightSidebarMode === "jam" && isRightSidebarOpen) {
+                   onToggleRightSidebar?.();
+                } else {
+                   onSetRightSidebarMode?.("jam");
+                   if (!isRightSidebarOpen) onToggleRightSidebar?.();
+                }
+              }}
+              className="hidden md:block transition-all transform hover:scale-110 active:scale-90"
+              style={{ color: (isRightSidebarOpen && rightSidebarMode === "jam") ? 'var(--art-accent, #FA243C)' : undefined }}
+            >
+               <Users size={22} strokeWidth={2.5} className={(!isRightSidebarOpen || rightSidebarMode !== "jam") ? "text-white/40 hover:text-white" : ""} />
+            </button>
+
+            <button 
+              onClick={() => {
+                if (rightSidebarMode === "queue" && isRightSidebarOpen) {
+                   onToggleRightSidebar?.();
+                } else {
+                   onSetRightSidebarMode?.("queue");
+                   if (!isRightSidebarOpen) onToggleRightSidebar?.();
+                }
+              }}
+              className="hidden md:block transition-all transform hover:scale-110 active:scale-90"
+              style={{ color: (isRightSidebarOpen && rightSidebarMode === "queue") ? 'var(--art-accent, #FA243C)' : undefined }}
+            >
+               <ListMusic size={24} strokeWidth={2.5} className={(!isRightSidebarOpen || rightSidebarMode !== "queue") ? "text-white/40 hover:text-white" : ""} />
+            </button>
+            
+            
             
           </div>
 
-          <div className="h-6 w-px bg-white/10 mx-1 hidden md:block" />
-
-          <button 
-            onClick={() => {
-              if (rightSidebarMode === "lyrics" && isRightSidebarOpen) {
-                 onToggleRightSidebar?.();
-              } else {
-                 onSetRightSidebarMode?.("lyrics");
-                 if (!isRightSidebarOpen) onToggleRightSidebar?.();
-              }
-            }}
-            className="hidden md:block transition-all transform hover:scale-110 active:scale-90"
-            style={{ color: (isRightSidebarOpen && rightSidebarMode === "lyrics") ? 'var(--art-accent, #FA243C)' : undefined }}
-          >
-             <Mic2 size={20} className={(!isRightSidebarOpen || rightSidebarMode !== "lyrics") ? "text-white/40 hover:text-white" : ""} />
-          </button>
-
-          <button 
-            onClick={() => {
-              if (rightSidebarMode === "jam" && isRightSidebarOpen) {
-                 onToggleRightSidebar?.();
-              } else {
-                 onSetRightSidebarMode?.("jam");
-                 if (!isRightSidebarOpen) onToggleRightSidebar?.();
-              }
-            }}
-            className="hidden md:block transition-all transform hover:scale-110 active:scale-90"
-            style={{ color: (isRightSidebarOpen && rightSidebarMode === "jam") ? 'var(--art-accent, #FA243C)' : undefined }}
-          >
-             <Users size={22} strokeWidth={2.5} className={(!isRightSidebarOpen || rightSidebarMode !== "jam") ? "text-white/40 hover:text-white" : ""} />
-          </button>
-
-          <button 
-            onClick={() => {
-              if (rightSidebarMode === "queue" && isRightSidebarOpen) {
-                 onToggleRightSidebar?.();
-              } else {
-                 onSetRightSidebarMode?.("queue");
-                 if (!isRightSidebarOpen) onToggleRightSidebar?.();
-              }
-            }}
-            className="hidden md:block transition-all transform hover:scale-110 active:scale-90"
-            style={{ color: (isRightSidebarOpen && rightSidebarMode === "queue") ? 'var(--art-accent, #FA243C)' : undefined }}
-          >
-             <ListMusic size={24} strokeWidth={2.5} className={(!isRightSidebarOpen || rightSidebarMode !== "queue") ? "text-white/40 hover:text-white" : ""} />
-          </button>
-          
-          
-          
-        </div>
-
-        {/* Interactive Linear Progress Indicator (Outer Bottom Edge) */}
-        {!isReallyLive && (
-          <div className="absolute bottom-0 left-0 right-0 h-3 group/seek flex items-end overflow-hidden z-20">
-            <input
-              type="range"
-              min={0}
-              max={safeDuration || 100}
-              value={currentTimeSec || 0}
-              onChange={(e) => {
-                if (onSeek) onSeek(parseFloat(e.target.value));
-              }}
-              className="w-full h-[3px] appearance-none bg-white/5 cursor-pointer hover:h-[5px] transition-[height] m-0 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-0 [&::-webkit-slider-thumb]:h-0 [&::-moz-range-thumb]:w-0 [&::-moz-range-thumb]:h-0 [&::-moz-range-thumb]:border-0"
-              style={{
-                background: `linear-gradient(to right, var(--art-accent, #FA243C) ${progress}%, transparent ${progress}%)`,
-              }}
-            />
-          </div>
-        )}
-    </m.div>
+          {/* Interactive Linear Progress Indicator (Outer Bottom Edge) */}
+          {!isReallyLive && (
+            <div className="absolute bottom-0 left-0 right-0 h-3 group/seek flex items-end overflow-hidden z-20">
+              <input
+                type="range"
+                min={0}
+                max={safeDuration || 100}
+                value={currentTimeSec || 0}
+                onChange={(e) => {
+                  if (onSeek) onSeek(parseFloat(e.target.value));
+                }}
+                className="w-full h-[3px] appearance-none bg-white/5 cursor-pointer hover:h-[5px] transition-[height] m-0 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-0 [&::-webkit-slider-thumb]:h-0 [&::-moz-range-thumb]:w-0 [&::-moz-range-thumb]:h-0 [&::-moz-range-thumb]:border-0"
+                style={{
+                  background: `linear-gradient(to right, var(--art-accent, #FA243C) ${progress}%, transparent ${progress}%)`,
+                }}
+              />
+            </div>
+          )}
+      </m.div>
+    </>
   );
 }

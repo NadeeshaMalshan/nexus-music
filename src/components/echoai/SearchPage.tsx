@@ -861,7 +861,13 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                  <div className="w-full mb-8">
                    <button
                      onClick={() => {
-                       setShowJamView(true);
+                       if (window.innerWidth >= 1024) {
+                         setRightSidebarMode("jam");
+                         setIsRightSidebarOpen(true);
+                         onClose();
+                       } else {
+                         setShowJamView(true);
+                       }
                      }}
                      className="w-full flex items-center p-6 aspect-[2.5/1] md:aspect-[5/1] rounded-2xl relative shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden bg-white group"
                    >

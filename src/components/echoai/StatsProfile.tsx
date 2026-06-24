@@ -18,7 +18,8 @@ import {
   X,
   Volume2,
   Calendar,
-  Share2
+  Share2,
+  Check
 } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { useSession } from "next-auth/react";
@@ -67,6 +68,7 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
   const [showWrappedModal, setShowWrappedModal] = useState(false);
   const [wrappedSlideIndex, setWrappedSlideIndex] = useState(0);
   const [artistImages, setArtistImages] = useState<Record<string, string>>({});
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Fetch target profile details
   const fetchProfile = useCallback(async () => {
@@ -198,7 +200,8 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
     if (!profileData?.user?.email) return;
     const url = `${window.location.origin}/stats?user=${encodeURIComponent(profileData.user.email)}`;
     navigator.clipboard.writeText(url).then(() => {
-      alert("Profile link copied to clipboard!");
+      setToastMessage("Profile link copied to clipboard!");
+      setTimeout(() => setToastMessage(null), 3000);
     }).catch(() => {});
   };
 
@@ -236,16 +239,15 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
 
   if (loading) {
     return (
-      <div className="flex-1 h-full flex flex-col items-center justify-center bg-transparent">
+      <div className={`flex-1 h-full flex flex-col items-center justify-center bg-transparent transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"}`}>
         <Loader2 size={48} className="animate-spin text-white/50" style={{ color: accentColor }} />
-        <p className="text-zinc-500 text-[15px] font-semibold mt-4">Loading your music metrics...</p>
       </div>
     );
   }
 
   if (!profileData) {
     return (
-      <div className="flex-1 h-full flex flex-col items-center justify-center p-6 text-center">
+      <div className={`flex-1 h-full flex flex-col items-center justify-center p-6 text-center transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"}`}>
         <p className="text-white/40 text-[16px] font-bold">Failed to load profile. Please try again later.</p>
         <button onClick={fetchProfile} className="mt-4 px-6 py-2.5 rounded-full bg-white/10 text-white font-bold hover:bg-white/20 transition-all">
           Retry
@@ -274,11 +276,22 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
   const isSelf = !targetEmail || targetEmail.toLowerCase() === session?.user?.email?.toLowerCase();
 
   return (
-    <div className={`flex-1 h-full overflow-y-auto no-scrollbar pt-8 pb-32 px-6 md:px-10 lg:px-16 space-y-12 transition-[margin-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-      isRightSidebarOpen ? "lg:mr-[380px]" : "lg:mr-0"
-    }`}>
+    <div className="flex-1 h-full overflow-y-auto no-scrollbar pt-8 pb-32 px-6 md:px-10 lg:px-16 space-y-12">
+      <AnimatePresence>
+        {toastMessage && (
+          <m.div 
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-full bg-white text-black font-bold text-[14px] shadow-2xl flex items-center gap-2"
+          >
+            <Check size={18} className="text-green-600" />
+            {toastMessage}
+          </m.div>
+        )}
+      </AnimatePresence>
       {/* Top Header */}
-      <div className="flex items-center gap-4 z-40 relative">
+      <div className={`flex items-center gap-4 z-40 relative transition-[margin-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:mr-[380px]" : "lg:mr-0"}`}>
         {!isSelf && (
           <button 
             onClick={() => router.push("/stats")}
@@ -294,7 +307,7 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
 
       {/* Main Profile Info Card */}
       <section 
-        className="relative rounded-[32px] overflow-hidden bg-[#121214]/65 backdrop-blur-2xl p-8 sm:p-10"
+        className={`relative rounded-[32px] overflow-hidden bg-[#121214]/65 backdrop-blur-2xl p-8 sm:p-10 transition-[margin-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:mr-[380px]" : "lg:mr-0"}`}
       >
         <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 z-10 relative">
           <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-6">
@@ -431,7 +444,7 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
         <m.section 
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="relative rounded-[32px] overflow-hidden border border-white/10 p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 cursor-pointer hover:border-white/20 transition-all group"
+          className={`relative rounded-[32px] overflow-hidden border border-white/10 p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 cursor-pointer hover:border-white/20 transition-all group ${isRightSidebarOpen ? "lg:mr-[380px]" : "lg:mr-0"}`}
           onClick={() => {
             setWrappedSlideIndex(0);
             setShowWrappedModal(true);
@@ -472,7 +485,7 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
       )}
 
       {/* Main stats cards layout grid */}
-      <section className="space-y-4">
+      <section className={`space-y-4 transition-[margin-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:mr-[380px]" : "lg:mr-0"}`}>
         <p className="text-[12px] font-black uppercase tracking-[0.22em] text-white/30">Last 30 days</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {[
@@ -519,7 +532,7 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
       </section>
 
       {/* Top Songs vertical track list */}
-      <section className="text-left space-y-6">
+      <section className={`text-left space-y-6 transition-[margin-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:mr-[380px]" : "lg:mr-0"}`}>
         <div>
           <h3 className="text-[24px] font-black text-white tracking-tight">Top Songs</h3>
           <p className="text-[13px] text-zinc-500 font-medium">Your absolute chart-toppers on Nexus</p>
@@ -601,7 +614,7 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
 
       {/* Recent Plays carousel shelf */}
       <section className="text-left space-y-6 relative group/shelf">
-        <div className="flex items-center justify-between">
+        <div className={`flex items-center justify-between transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"}`}>
           <div>
             <h3 className="text-[24px] font-black text-white tracking-tight">Recent Plays</h3>
             <p className="text-[13px] text-zinc-500 font-medium font-medium">Revisit your recent listening sessions</p>
@@ -642,13 +655,16 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
                 <p className="text-[13px] text-white/40 truncate font-semibold leading-tight mt-0.5">{song.artist}</p>
               </div>
             ))}
+            {isRightSidebarOpen && (
+              <div className="hidden lg:block w-[380px] shrink-0 pointer-events-none" />
+            )}
           </div>
         )}
       </section>
 
       {/* Top Creators horizontal carousel */}
       <section className="text-left space-y-6 relative group/shelf">
-        <div className="flex items-center justify-between">
+        <div className={`flex items-center justify-between transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"}`}>
           <div>
             <h3 className="text-[24px] font-black text-white tracking-tight">Top Creators</h3>
             <p className="text-[13px] text-zinc-500 font-medium">The artists that accompanied you the most</p>
@@ -694,6 +710,9 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
                 <span className="text-[11px] font-black text-white/25 uppercase tracking-tight mt-0.5">{artist.playCount} plays</span>
               </div>
             ))}
+            {isRightSidebarOpen && (
+              <div className="hidden lg:block w-[380px] shrink-0 pointer-events-none" />
+            )}
           </div>
         )}
       </section>

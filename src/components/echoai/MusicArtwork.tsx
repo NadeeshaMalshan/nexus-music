@@ -76,11 +76,6 @@ export function MusicArtwork({
       {variant === "artist" ? (
         <div className="relative z-20 flex flex-col items-center justify-center">
           <UserRound size={Math.max(22, Math.round(iconSize * 1.12))} className="text-white/40" strokeWidth={1.75} />
-          <Music
-            size={Math.max(14, Math.round(iconSize * 0.4))}
-            className="-mt-0.5 text-white/32"
-            strokeWidth={2.25}
-          />
         </div>
       ) : (
         <div className="relative z-20 flex items-center justify-center drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">

@@ -90,9 +90,8 @@ export function Shelf(props: {
 
   return (
     <section className="relative group/shelf">
-      <div className={`mb-6 flex items-center justify-between px-1 transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-        isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
-      }`}>
+      <div className={`mb-6 flex items-center justify-between px-1 transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+        }`}>
         <div>
           <h2 className="text-[28px] font-black text-white tracking-tight leading-none">{title}</h2>
           {subtitle && <p className="text-[14px] text-zinc-500 mt-2 font-medium">{subtitle}</p>}
@@ -100,22 +99,22 @@ export function Shelf(props: {
         <div className="flex items-center gap-4">
           {onRefresh && (
             <button
-               onClick={onRefresh}
-               disabled={loading}
-               className="text-white/40 hover:text-white transition-colors"
+              onClick={onRefresh}
+              disabled={loading}
+              className="text-white/40 hover:text-white transition-colors"
             >
-               <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+              <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
             </button>
           )}
           <div className="flex items-center gap-5">
-            <button 
+            <button
               onClick={() => scroll("left")}
               className="text-white/40 hover:text-white transition-all hover:scale-110 active:scale-90"
               aria-label="Scroll left"
             >
               <ChevronLeft size={24} strokeWidth={2.5} />
             </button>
-            <button 
+            <button
               onClick={() => scroll("right")}
               className="text-white/40 hover:text-white transition-all hover:scale-110 active:scale-90"
               aria-label="Scroll right"
@@ -126,7 +125,7 @@ export function Shelf(props: {
         </div>
       </div>
 
-      <div 
+      <div
         ref={scrollRef}
         className="flex items-start gap-x-8 overflow-x-auto no-scrollbar scroll-smooth px-1 pb-4"
       >
@@ -170,55 +169,55 @@ function ForYouCard(props: {
           className="transition-transform duration-700 group-hover:scale-110"
           priority={priority}
         />
-        
+
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-4">
-           <div className="flex items-center gap-4">
-             <button
-               onClick={(e) => {
-                 e.stopPropagation();
-                 onPlayNext?.({
-                   id: track.id!,
-                   title: track.title,
-                   artist: track.artist,
-                   artwork: track.artwork || "",
-                   duration: track.duration || "",
-                   color: accentColor,
-                 });
-               }}
-               className="p-3 rounded-full bg-[#1c1c1e] hover:bg-white text-black transition-all hover:scale-110"
-               style={{ color: 'white' }}
-             >
-               <PlaySquare size={20} />
-             </button>
-             <button
-               onClick={(e) => {
-                 e.stopPropagation();
-                 onAddToQueue?.({
-                   id: track.id!,
-                   title: track.title,
-                   artist: track.artist,
-                   artwork: track.artwork || "",
-                   duration: track.duration || "",
-                   color: accentColor,
-                 });
-               }}
-               className="p-3 rounded-full bg-[#1c1c1e] hover:bg-white text-black transition-all hover:scale-110"
-               style={{ color: 'white' }}
-             >
-               <ListPlus size={20} />
-             </button>
-           </div>
-           
-           <div 
-             onClick={onPlay}
-             className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-black shadow-2xl hover:scale-105 transition-transform"
-           >
-             {isPlaying ? (
-               <Loader2 size={32} className="animate-spin" />
-             ) : (
-               <Play size={32} fill="currentColor" className="ml-1" />
-             )}
-           </div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onPlayNext?.({
+                  id: track.id!,
+                  title: track.title,
+                  artist: track.artist,
+                  artwork: track.artwork || "",
+                  duration: track.duration || "",
+                  color: accentColor,
+                });
+              }}
+              className="p-3 rounded-full bg-[#1c1c1e] hover:bg-white text-black transition-all hover:scale-110"
+              style={{ color: 'white' }}
+            >
+              <PlaySquare size={20} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToQueue?.({
+                  id: track.id!,
+                  title: track.title,
+                  artist: track.artist,
+                  artwork: track.artwork || "",
+                  duration: track.duration || "",
+                  color: accentColor,
+                });
+              }}
+              className="p-3 rounded-full bg-[#1c1c1e] hover:bg-white text-black transition-all hover:scale-110"
+              style={{ color: 'white' }}
+            >
+              <ListPlus size={20} />
+            </button>
+          </div>
+
+          <div
+            onClick={onPlay}
+            className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-black shadow-2xl hover:scale-105 transition-transform"
+          >
+            {isPlaying ? (
+              <Loader2 size={32} className="animate-spin" />
+            ) : (
+              <Play size={32} fill="currentColor" className="ml-1" />
+            )}
+          </div>
         </div>
       </div>
 
@@ -226,7 +225,7 @@ function ForYouCard(props: {
         <h3 className="font-bold text-white text-[17px] tracking-tight line-clamp-2 leading-tight mb-1 h-[42px]">
           {track.title}
         </h3>
-        <p 
+        <p
           onClick={(e) => {
             e.stopPropagation();
             onNavigateArtist?.(track.artist);
@@ -277,11 +276,10 @@ function SearchCard(props: {
         {badge && (
           <div className="absolute top-4 left-4">
             <span
-              className={`px-3 py-1 rounded-full text-[11px] font-black tracking-wider border ${
-                badge === "LIVE"
+              className={`px-3 py-1 rounded-full text-[11px] font-black tracking-wider border ${badge === "LIVE"
                   ? "bg-red-500/15 border-red-400/30 text-red-200"
                   : "bg-[#1c1c1e] border-white/15 text-white/70"
-              }`}
+                }`}
             >
               {badge}
             </span>
@@ -360,7 +358,7 @@ export function CenterPanel(props: CenterPanelProps) {
     onPlayPlaylist,
     onNavigateArtist,
   } = props;
-  
+
   const pathname = usePathname();
   const router = useRouter();
   const segments = pathname.split("/").filter(Boolean);
@@ -400,7 +398,7 @@ export function CenterPanel(props: CenterPanelProps) {
           setArtistImageBg(data.image);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => { active = false; };
   }, [currentSong?.artist]);
 
@@ -524,7 +522,7 @@ export function CenterPanel(props: CenterPanelProps) {
       const res = await fetch("/api/recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           // This row should feel like a radio: re-seed per song
           recentTrackId: currentSongId || (playedHistory && playedHistory.length > 0 ? playedHistory[0].id : null),
           userHistory: sessionHistoryStrings.slice(0, 15)
@@ -802,53 +800,53 @@ export function CenterPanel(props: CenterPanelProps) {
       <div className="flex-1 h-full min-h-0 flex flex-col">
         <AnimatePresence mode="wait">
           {activeView === "playlist-detail" && (
-            <m.div 
-              key="playlist-detail" 
+            <m.div
+              key="playlist-detail"
               className="flex-1 h-full min-h-0 flex flex-col overflow-hidden"
               {...FADE_IN_VARIANTS}
             >
-                <PlaylistDetail
-                  playlist={selectedPlaylist || { id: segments[1], title: "Loading...", itemCount: 0, thumbnailUrl: "", description: "" }}
-                  accentColor={accentColor}
-                  onSongClick={onSongClick || (() => {})}
-                  onQueueReplace={onQueueReplace || (() => {})}
-                  onAddToQueue={onAddToQueue}
-                  onPlayNext={onPlayNext}
-                  onPlayPlaylist={onPlayPlaylist}
-                  currentSongId={currentSongId}
-                  onNavigateArtist={onNavigateArtist}
-                  onBack={() => router.back()}
-                />
+              <PlaylistDetail
+                playlist={selectedPlaylist || { id: segments[1], title: "Loading...", itemCount: 0, thumbnailUrl: "", description: "" }}
+                accentColor={accentColor}
+                onSongClick={onSongClick || (() => { })}
+                onQueueReplace={onQueueReplace || (() => { })}
+                onAddToQueue={onAddToQueue}
+                onPlayNext={onPlayNext}
+                onPlayPlaylist={onPlayPlaylist}
+                currentSongId={currentSongId}
+                onNavigateArtist={onNavigateArtist}
+                onBack={() => router.back()}
+              />
             </m.div>
           )}
 
           {activeView === "album" && (
-            <m.div 
-              key="album-detail" 
+            <m.div
+              key="album-detail"
               className="flex-1 h-full min-h-0 flex flex-col overflow-hidden"
               {...FADE_IN_VARIANTS}
             >
-                <AlbumDetail
-                  albumId={segments[1]}
-                  onBack={() => router.back()}
-                  accentColor={accentColor}
-                  onSongClick={onSongClick || (() => {})}
-                  onQueueReplace={onQueueReplace || (() => {})}
-                  onAddToQueue={onAddToQueue}
-                  onPlayNext={onPlayNext}
-                  onPlayPlaylist={onPlayPlaylist}
-                  currentSongId={currentSongId}
-                  onNavigateArtist={onNavigateArtist}
-                />
+              <AlbumDetail
+                albumId={segments[1]}
+                onBack={() => router.back()}
+                accentColor={accentColor}
+                onSongClick={onSongClick || (() => { })}
+                onQueueReplace={onQueueReplace || (() => { })}
+                onAddToQueue={onAddToQueue}
+                onPlayNext={onPlayNext}
+                onPlayPlaylist={onPlayPlaylist}
+                currentSongId={currentSongId}
+                onNavigateArtist={onNavigateArtist}
+              />
             </m.div>
           )}
 
           {activeView === "library" && (
-            <m.div 
-               key="library" 
-               className="flex-1 h-full min-h-0 flex flex-col overflow-y-auto custom-scrollbar"
-               initial={false}
-               animate={{ opacity: 1, y: 0 }}
+            <m.div
+              key="library"
+              className="flex-1 h-full min-h-0 flex flex-col overflow-y-auto custom-scrollbar"
+              initial={false}
+              animate={{ opacity: 1, y: 0 }}
             >
               <YouTubeLibrary
                 onPlaylistClick={onPlaylistClick}
@@ -863,8 +861,8 @@ export function CenterPanel(props: CenterPanelProps) {
           )}
 
           {activeView === "settings" && (
-            <m.div 
-              key="settings" 
+            <m.div
+              key="settings"
               className="flex-1 h-full min-h-0 flex flex-col overflow-hidden"
               {...FADE_IN_VARIANTS}
             >
@@ -873,15 +871,14 @@ export function CenterPanel(props: CenterPanelProps) {
           )}
 
           {activeView === "stats" && (
-            <m.div 
-              key="stats" 
+            <m.div
+              key="stats"
               className="flex-1 h-full min-h-0 flex flex-col overflow-hidden"
               {...FADE_IN_VARIANTS}
             >
               <Suspense fallback={
-                <div className="flex-1 h-full flex flex-col items-center justify-center bg-transparent">
+                <div className={`flex-1 h-full flex flex-col items-center justify-center bg-transparent transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"}`}>
                   <Loader2 size={48} className="animate-spin text-white/50 animate-pulse" style={{ color: accentColor }} />
-                  <p className="text-zinc-500 text-[15px] font-semibold mt-4">Loading your music metrics...</p>
                 </div>
               }>
                 <StatsProfile accentColor={accentColor} />
@@ -905,7 +902,7 @@ export function CenterPanel(props: CenterPanelProps) {
                     transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                     className="flex flex-col items-start"
                   >
-                    <div 
+                    <div
                       className="w-14 h-14 rounded-full flex items-center justify-center mb-5 border border-white/5 bg-white/[0.02]"
                       style={{
                         boxShadow: "inset 0 0 12px rgba(255,255,255,0.05), 0 15px 30px rgba(0,0,0,0.4)"
@@ -943,9 +940,9 @@ export function CenterPanel(props: CenterPanelProps) {
                 <>
                   <section className={`relative rounded-[32px] overflow-hidden mb-12 flex flex-col lg:flex-row border border-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.5)] group transition-[margin-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:mr-[380px]" : "lg:mr-0"}`}>
                     <div className="absolute inset-0 z-0">
-                      <img 
-                        src={artistImageBg || currentSong?.artwork || (forYouTracks[0]?.artwork)} 
-                        alt="Background" 
+                      <img
+                        src={artistImageBg || currentSong?.artwork || (forYouTracks[0]?.artwork)}
+                        alt="Background"
                         className="w-full h-full object-cover opacity-40 mix-blend-screen scale-105 group-hover:scale-100 transition-transform duration-[2s] ease-out"
                       />
                       <div className="absolute inset-0 bg-gradient-to-r from-[#0d0d0d]/90 via-[#0d0d0d]/60 to-[#0d0d0d]/90"></div>
@@ -956,39 +953,39 @@ export function CenterPanel(props: CenterPanelProps) {
                       <div className="flex-1 flex items-center justify-start max-w-2xl lg:pr-8">
                         <h1 className="text-[36px] sm:text-[52px] lg:text-[64px] font-black tracking-tighter text-white leading-[1.05] drop-shadow-xl">
                           {currentSong ? (
-                            <>More songs like <br/><span className="text-white/60">{currentSong.title.replace(/\s*[([].*?[)\]]\s*/g, '').trim()}</span></>
+                            <>More songs like <br /><span className="text-white/60">{currentSong.title.replace(/\s*[([].*?[)\]]\s*/g, '').trim()}</span></>
                           ) : "Recommended for you"}
                         </h1>
                       </div>
 
                       <div className="w-full lg:w-[420px] mt-8 lg:mt-0 flex flex-col gap-3 justify-center">
                         {forYouLoading ? (
-                           Array.from({ length: 3 }).map((_, i) => (
-                              <div key={i} className="w-full h-24 bg-white/5 animate-pulse" />
-                           ))
+                          Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="w-full h-24 bg-white/5 animate-pulse" />
+                          ))
                         ) : (
-                           forYouTracks.slice(0, 3).map((track, i) => (
-                              <div 
-                                key={i} 
-                                onClick={() => handlePlayForYou(track)}
-                                className="group/item flex items-center gap-5 bg-black/20 hover:bg-white/10 backdrop-blur-md border border-white/10 p-3 rounded-2xl cursor-pointer transition-all duration-300 hover:translate-x-2"
-                              >
-                                <div className="w-[72px] h-[72px] shrink-0 bg-black overflow-hidden rounded-xl relative shadow-lg">
-                                  <MusicArtwork src={track.artwork} alt={track.title} rounded="none" className="w-full h-full" />
-                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/item:opacity-100 flex items-center justify-center transition-opacity duration-300">
-                                    {forYouPlayingId === track.id ? (
-                                      <Loader2 size={24} className="animate-spin text-white" />
-                                    ) : (
-                                      <Play size={24} fill="white" className="text-white ml-1" />
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex-1 min-w-0 pr-2">
-                                  <p className="text-white font-black text-[18px] truncate tracking-tight mb-0.5">{track.title}</p>
-                                  <p className="text-white/50 font-bold text-[13px] truncate tracking-wide uppercase">{track.artist}</p>
+                          forYouTracks.slice(0, 3).map((track, i) => (
+                            <div
+                              key={i}
+                              onClick={() => handlePlayForYou(track)}
+                              className="group/item flex items-center gap-5 bg-black/20 hover:bg-white/10 backdrop-blur-md border border-white/10 p-3 rounded-2xl cursor-pointer transition-all duration-300 hover:translate-x-2"
+                            >
+                              <div className="w-[72px] h-[72px] shrink-0 bg-black overflow-hidden rounded-xl relative shadow-lg">
+                                <MusicArtwork src={track.artwork} alt={track.title} rounded="none" className="w-full h-full" />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/item:opacity-100 flex items-center justify-center transition-opacity duration-300">
+                                  {forYouPlayingId === track.id ? (
+                                    <Loader2 size={24} className="animate-spin text-white" />
+                                  ) : (
+                                    <Play size={24} fill="white" className="text-white ml-1" />
+                                  )}
                                 </div>
                               </div>
-                           ))
+                              <div className="flex-1 min-w-0 pr-2">
+                                <p className="text-white font-black text-[18px] truncate tracking-tight mb-0.5">{track.title}</p>
+                                <p className="text-white/50 font-bold text-[13px] truncate tracking-wide uppercase">{track.artist}</p>
+                              </div>
+                            </div>
+                          ))
                         )}
                       </div>
                     </div>
@@ -1135,7 +1132,7 @@ export function CenterPanel(props: CenterPanelProps) {
                   </Shelf>
 
                   {session && friendsActivity.length > 0 && (
-                    <Shelf title="Your friends activity" subtitle="See what your friends are jamming to" onRefresh={fetchFriendsActivity} loading={friendsLoading}>
+                    <Shelf title="Your friends activity" subtitle="See what your friends are listening to" onRefresh={fetchFriendsActivity} loading={friendsLoading}>
                       {friendsActivity.map((friend, i) => {
                         const displaySong = friend.isOnline ? friend.status?.song : friend.lastSong;
                         return (

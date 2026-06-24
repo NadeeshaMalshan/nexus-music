@@ -58,6 +58,9 @@ export function FloatingPlayer({
   const { resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const { crossDeviceState, activeDeviceCount } = useDeviceSync();
   const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<string>(
+    typeof window !== 'undefined' ? (window.localStorage.getItem('crossDeviceAction') || "Play individually") : "Play individually"
+  );
   const isIdle = !currentSong;
   
   const displaySong = {
@@ -106,11 +109,20 @@ export function FloatingPlayer({
                   "Play on your device",
                   "Play simultaneously"
                 ].map((action, i) => (
-                  <label key={i} className="flex items-center gap-3 cursor-pointer group">
+                  <label 
+                    key={i} 
+                    className="flex items-center gap-3 cursor-pointer group"
+                    onClick={() => {
+                      setSelectedAction(action);
+                      if (typeof window !== 'undefined') {
+                        window.localStorage.setItem('crossDeviceAction', action);
+                      }
+                    }}
+                  >
                     <div className="w-4 h-4 rounded-full border border-white/40 group-hover:border-white flex items-center justify-center shrink-0">
-                      {i === 0 && <div className="w-2 h-2 rounded-full bg-[var(--art-accent,#1db954)]" />}
+                      {selectedAction === action && <div className="w-2 h-2 rounded-full bg-[var(--art-accent,#1db954)]" />}
                     </div>
-                    <span className={`text-xs font-semibold ${i === 0 ? "text-white" : "text-white/60 group-hover:text-white"}`}>{action}</span>
+                    <span className={`text-xs font-semibold ${selectedAction === action ? "text-white" : "text-white/60 group-hover:text-white"}`}>{action}</span>
                   </label>
                 ))}
               </div>
@@ -127,7 +139,7 @@ export function FloatingPlayer({
             initial={{ height: 0, opacity: 0, y: 10 }}
             animate={{ height: 26, opacity: 1, y: 0 }}
             exit={{ height: 0, opacity: 0, y: 10 }}
-            className="w-[98%] max-w-[780px] text-white overflow-hidden rounded-t-xl -mb-2 pb-2 px-6 flex justify-between items-center pointer-events-auto z-0 cursor-pointer hover:brightness-110 transition-all"
+            className="w-[98%] max-w-[780px] text-black overflow-hidden rounded-t-xl -mb-2 pb-2 px-6 flex justify-between items-center pointer-events-auto z-0 cursor-pointer hover:brightness-110 transition-all"
             style={{ backgroundColor: 'var(--art-accent, #1db954)' }}
           >
             <span className="text-[11px] font-bold tracking-wide">

@@ -504,6 +504,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({
             song: currentSong,
             isPlaying: isPlaying,
+            deviceId: window.localStorage.getItem('nexus_device_id') || "unknown"
           }),
         });
       } catch (err) {
@@ -529,7 +530,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       fetch("/api/user/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "clear" }),
+        body: JSON.stringify({ 
+          action: "clear",
+          deviceId: window.localStorage.getItem('nexus_device_id') || "unknown"
+        }),
         keepalive: true,
       }).catch(() => {});
     };
@@ -1127,7 +1131,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
               // Apply Volume & Quality
               // Crossfade Logic: Ramp down volume if near the end
               const currentSec = player.getCurrentTime() || 0;
-              const crossfadeSec = isJamActive ? 0 : settingsRef.current.crossfade;
+              const isSimultaneous = typeof window !== 'undefined' && window.localStorage.getItem('crossDeviceAction') === 'Play simultaneously';
+              const crossfadeSec = (isJamActive || isSimultaneous) ? 0 : settingsRef.current.crossfade;
               if (duration > 0 && crossfadeSec > 0 && currentSec >= (duration - crossfadeSec)) {
                   const remaining = duration - currentSec;
                   const ratio = Math.max(0, remaining / crossfadeSec);
@@ -1185,7 +1190,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 if (Number.isFinite(duration) && duration > 0) {
                   setDurationSec(duration);
                   
-                  const crossfadeSec = isJamActive ? 0 : settingsRef.current.crossfade;
+                  const isSimultaneous = typeof window !== 'undefined' && window.localStorage.getItem('crossDeviceAction') === 'Play simultaneously';
+                  const crossfadeSec = (isJamActive || isSimultaneous) ? 0 : settingsRef.current.crossfade;
                   const gapless = settingsRef.current.gaplessPlayback;
 
                   // === GAPLESS PRE-BUFFER ===

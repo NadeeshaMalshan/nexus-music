@@ -14,7 +14,8 @@ type FriendActivityUpdate = {
 type CrossDevicePlayUpdate = {
   deviceName: string;
   deviceId: string;
-  song: any;
+  isPlaying?: boolean;
+  song?: any;
 };
 
 interface DeviceSyncContextType {
@@ -84,9 +85,11 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
 
     userChannel.bind("cross-device-play", (data: CrossDevicePlayUpdate) => {
       if (data.deviceId !== localDeviceId) {
-        setCrossDeviceState(data);
-        // Auto-clear indicator after a while or when we start playing locally
-        setTimeout(() => setCrossDeviceState(null), 10000);
+        if (data.isPlaying === false) {
+          setCrossDeviceState(null);
+        } else {
+          setCrossDeviceState(data);
+        }
       }
     });
 

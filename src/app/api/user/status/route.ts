@@ -177,6 +177,13 @@ export async function POST(request: Request) {
         song: null
       }).catch(console.error);
 
+      // Trigger cross-device clear
+      const emailHash = Buffer.from(email).toString('base64').replace(/[^a-zA-Z0-9]/g, '');
+      await pusherServer.trigger(`presence-user-${emailHash}`, "cross-device-play", {
+        deviceId: body.deviceId || "unknown",
+        isPlaying: false,
+      }).catch(console.error);
+
       return NextResponse.json({ success: true });
     }
 
@@ -225,13 +232,12 @@ export async function POST(request: Request) {
     }).catch(console.error);
 
     // 2. To cross-device listener
-    if (isPlaying) {
-      await pusherServer.trigger(`presence-user-${emailHash}`, "cross-device-play", {
-        deviceName,
-        deviceId,
-        song: songPayload,
-      }).catch(console.error);
-    }
+    await pusherServer.trigger(`presence-user-${emailHash}`, "cross-device-play", {
+      deviceName,
+      deviceId,
+      isPlaying: !!isPlaying,
+      song: songPayload,
+    }).catch(console.error);
 
     return NextResponse.json({ success: true });
   } catch (error) {

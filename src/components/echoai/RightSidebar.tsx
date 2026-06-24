@@ -4,7 +4,7 @@ import { type Song } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { motion, Reorder, AnimatePresence } from "motion/react";
-import { JamSession } from "./JamSession";
+import { SessionFriendsPanel } from "./SessionFriendsPanel";
 import { MusicArtwork } from "./MusicArtwork";
 
 
@@ -274,8 +274,8 @@ export function RightSidebar({
                 </div>
               </div>
             ) : activeTab === "jam" ? (
-              <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
-                 <JamSession />
+              <div className="flex flex-1 flex-col overflow-hidden px-6 py-6">
+                 <SessionFriendsPanel accentColor={accentColor} className="h-full" />
               </div>
             ) : (
               <div className="flex h-full w-full flex-col relative">

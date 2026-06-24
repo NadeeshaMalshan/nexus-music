@@ -34,25 +34,147 @@ function getWrappedYear(date: Date): number {
   return year;
 }
 
+function coerceDisplayString(value: unknown, fallback = "Unknown"): string {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed && trimmed !== "[object Object]" ? trimmed : fallback;
+  }
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    if (typeof obj.name === "string" && obj.name.trim()) return obj.name.trim();
+    if (typeof obj.title === "string" && obj.title.trim()) return obj.title.trim();
+  }
+  return fallback;
+}
+
+function parseStoredSong(member: unknown, score: number) {
+  let parsed: Record<string, unknown> | null = null;
+
+  if (member && typeof member === "object") {
+    parsed = member as Record<string, unknown>;
+  } else if (typeof member === "string") {
+    if (member === "[object Object]") return null;
+    try {
+      const value = JSON.parse(member);
+      parsed = value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+    } catch {
+      return {
+        id: member,
+        title: member,
+        artist: "Unknown Artist",
+        artwork: "",
+        duration: "0:00",
+        playCount: score,
+      };
+    }
+  }
+
+  if (!parsed) return null;
+
+  const id = String(parsed.id ?? "").trim();
+  const title = coerceDisplayString(parsed.title, "Unknown Title");
+  const artist = coerceDisplayString(parsed.artist, "Unknown Artist");
+
+  if (!id || title === "[object Object]" || artist === "[object Object]") return null;
+
+  return {
+    id,
+    title,
+    artist,
+    artwork: typeof parsed.artwork === "string" ? parsed.artwork : "",
+    duration: typeof parsed.duration === "string" ? parsed.duration : "0:00",
+    playCount: score,
+  };
+}
+
+type StoredSong = NonNullable<ReturnType<typeof parseStoredSong>>;
+
+function dedupeRecentSongs(songs: StoredSong[], limit = 20): Omit<StoredSong, "playCount">[] {
+  const seen = new Set<string>();
+  const result: Omit<StoredSong, "playCount">[] = [];
+
+  for (const song of songs) {
+    if (!song.id || seen.has(song.id)) continue;
+    seen.add(song.id);
+    const { playCount: _playCount, ...rest } = song;
+    result.push(rest);
+    if (result.length >= limit) break;
+  }
+
+  return result;
+}
+
+async function removeSongIdFromRecentList(recentKey: string, songId: string) {
+  if (!redis) return;
+
+  const rawRecent = (await redis.lrange(recentKey, 0, -1)) || [];
+  const kept: string[] = [];
+
+  for (const item of rawRecent) {
+    const parsed = parseStoredSong(item, 0);
+    if (parsed?.id === songId) continue;
+    kept.push(typeof item === "string" ? item : JSON.stringify(item));
+  }
+
+  await redis.del(recentKey);
+  if (kept.length > 0) {
+    await redis.rpush(recentKey, ...kept);
+  }
+}
+
+async function resolveUsersFromEmails(emails: string[]) {
+  if (!redis || emails.length === 0) return [];
+
+  return Promise.all(
+    emails.map(async (email) => {
+      const dirVal = await redis!.hget(USER_DIRECTORY_KEY, email);
+      return dirVal
+        ? (typeof dirVal === "string" ? JSON.parse(dirVal) : dirVal)
+        : { name: email.split("@")[0], email, image: "" };
+    })
+  );
+}
+
+function parseFollowingArtists(raw: unknown[]): { channelId: string; name: string; thumbnail: string }[] {
+  const artists: { channelId: string; name: string; thumbnail: string }[] = [];
+
+  for (const item of raw) {
+    try {
+      const parsed = typeof item === "string" ? JSON.parse(item) : item;
+      if (parsed?.channelId && parsed?.name) {
+        artists.push({
+          channelId: String(parsed.channelId),
+          name: String(parsed.name),
+          thumbnail: typeof parsed.thumbnail === "string" ? parsed.thumbnail : "",
+        });
+      }
+    } catch {
+      /* skip invalid entries */
+    }
+  }
+
+  return artists.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 // Parses Upstash Redis zrange results withScores robustly
-function parseZRangeResults(raw: any[]): { member: string; score: number }[] {
-  const results: { member: string; score: number }[] = [];
+function parseZRangeResults(raw: any[]): { member: unknown; score: number }[] {
+  const results: { member: unknown; score: number }[] = [];
   if (!Array.isArray(raw) || raw.length === 0) return results;
 
   if (typeof raw[0] === "object" && raw[0] !== null && "member" in raw[0]) {
     for (const item of raw) {
-      results.push({ member: String(item.member), score: Number(item.score || 0) });
+      results.push({ member: item.member, score: Number(item.score || 0) });
     }
   } else if (Array.isArray(raw[0])) {
     for (const pair of raw) {
-      results.push({ member: String(pair[0]), score: Number(pair[1] || 0) });
+      results.push({ member: pair[0], score: Number(pair[1] || 0) });
     }
   } else {
     for (let i = 0; i < raw.length; i += 2) {
       const member = raw[i];
       const score = raw[i + 1];
       if (member !== undefined && score !== undefined) {
-        results.push({ member: String(member), score: Number(score || 0) });
+        results.push({ member, score: Number(score || 0) });
       }
     }
   }
@@ -86,37 +208,45 @@ export async function GET(request: Request) {
     const songsDiscovered = await redis.scard(`user:discovered_songs:${targetEmail}`);
     const artistsDiscovered = await redis.scard(`user:discovered_artists:${targetEmail}`);
 
-    // Fetch recent played
-    const rawRecent = await redis.lrange(`user:recent:${targetEmail}`, 0, 19);
-    const recentPlayed = (rawRecent || []).map((item) => {
-      try {
-        return typeof item === "string" ? JSON.parse(item) : item;
-      } catch {
-        return null;
-      }
-    }).filter(Boolean);
+    // Fetch recent played (unique by song id, most recent first)
+    const rawRecent = await redis.lrange(`user:recent:${targetEmail}`, 0, -1);
+    const recentPlayed = dedupeRecentSongs(
+      (rawRecent || [])
+        .map((item) => parseStoredSong(item, 0))
+        .filter((song): song is StoredSong => song !== null)
+    );
 
-    // Fetch top songs
-    const rawTopSongs = await redis.zrange(`user:top_songs:${targetEmail}`, 0, 9, { rev: true, withScores: true });
-    const topSongs = parseZRangeResults(rawTopSongs).map((item) => {
-      try {
-        const songObj = JSON.parse(item.member);
-        return { ...songObj, playCount: item.score };
-      } catch {
-        return { title: item.member, playCount: item.score };
-      }
-    });
+    // Fetch top songs (limit 5)
+    const rawTopSongs = await redis.zrange(`user:top_songs:${targetEmail}`, 0, 4, { rev: true, withScores: true });
+    const topSongs = parseZRangeResults(rawTopSongs)
+      .map((item) => parseStoredSong(item.member, item.score))
+      .filter(Boolean);
 
     // Fetch top artists
     const rawTopArtists = await redis.zrange(`user:top_artists:${targetEmail}`, 0, 9, { rev: true, withScores: true });
-    const topArtists = parseZRangeResults(rawTopArtists).map((item) => ({
-      name: item.member,
-      playCount: item.score,
-    }));
+    const topArtists = parseZRangeResults(rawTopArtists)
+      .map((item) => ({
+        name: coerceDisplayString(item.member, ""),
+        playCount: item.score,
+      }))
+      .filter((artist) => artist.name);
 
     // Follower / Following info
-    const followersCount = await redis.scard(`user:followers:${targetEmail}`);
-    const followingCount = await redis.scard(`user:following:${targetEmail}`);
+    const followerEmails = (await redis.smembers(`user:followers:${targetEmail}`)) || [];
+    const followingUserEmails = (await redis.smembers(`user:following:${targetEmail}`)) || [];
+    const rawFollowingArtists = (await redis.smembers(`user:following_artists:${targetEmail}`)) || [];
+
+    const followersCount = followerEmails.length;
+    const followingUsersCount = followingUserEmails.length;
+    const followingArtistsCount = rawFollowingArtists.length;
+    const followingCount = followingUsersCount + followingArtistsCount;
+
+    const [followers, followingUsers, followingArtists] = await Promise.all([
+      resolveUsersFromEmails(followerEmails),
+      resolveUsersFromEmails(followingUserEmails),
+      Promise.resolve(parseFollowingArtists(rawFollowingArtists)),
+    ]);
+
     const isFollowing = viewerEmail !== targetEmail
       ? await redis.sismember(`user:followers:${targetEmail}`, viewerEmail) === 1
       : false;
@@ -142,20 +272,17 @@ export async function GET(request: Request) {
     let wrappedData = null;
     if (activeWrappedYear !== null) {
       const rawWrappedSongs = await redis.zrange(`user:wrapped:songs:${targetEmail}:${activeWrappedYear}`, 0, 4, { rev: true, withScores: true });
-      const wrappedSongs = parseZRangeResults(rawWrappedSongs).map((item) => {
-        try {
-          const songObj = JSON.parse(item.member);
-          return { ...songObj, playCount: item.score };
-        } catch {
-          return { title: item.member, playCount: item.score };
-        }
-      });
+      const wrappedSongs = parseZRangeResults(rawWrappedSongs)
+        .map((item) => parseStoredSong(item.member, item.score))
+        .filter(Boolean);
 
       const rawWrappedArtists = await redis.zrange(`user:wrapped:artists:${targetEmail}:${activeWrappedYear}`, 0, 4, { rev: true, withScores: true });
-      const wrappedArtists = parseZRangeResults(rawWrappedArtists).map((item) => ({
-        name: item.member,
-        playCount: item.score,
-      }));
+      const wrappedArtists = parseZRangeResults(rawWrappedArtists)
+        .map((item) => ({
+          name: coerceDisplayString(item.member, ""),
+          playCount: item.score,
+        }))
+        .filter((artist) => artist.name);
 
       const rawWrappedTime = await redis.hget(`user:wrapped:stats:${targetEmail}:${activeWrappedYear}`, "listeningTime");
       const wrappedListeningTime = Number(rawWrappedTime || 0);
@@ -178,6 +305,11 @@ export async function GET(request: Request) {
       topArtists,
       followersCount,
       followingCount,
+      followingUsersCount,
+      followingArtistsCount,
+      followers,
+      followingUsers,
+      followingArtists,
       isFollowing,
       liveStatus,
       wrappedData,
@@ -211,30 +343,32 @@ export async function POST(request: Request) {
     await redis.hincrby(`user:stats:${email}`, "listeningTime", seconds);
 
     // Normalize song object for de-duplication in sorted sets
+    const artistName = coerceDisplayString(song.artist, "");
     const normalizedSong = {
-      id: song.id,
-      title: song.title,
-      artist: song.artist,
-      artwork: song.artwork || "",
-      duration: song.duration || "0:00",
+      id: String(song.id),
+      title: coerceDisplayString(song.title, "Unknown Title"),
+      artist: artistName || "Unknown Artist",
+      artwork: typeof song.artwork === "string" ? song.artwork : "",
+      duration: typeof song.duration === "string" ? song.duration : "0:00",
     };
     const songStr = JSON.stringify(normalizedSong);
 
     // 3. Increment play counts
     await redis.zincrby(`user:top_songs:${email}`, 1, songStr);
-    if (song.artist) {
-      await redis.zincrby(`user:top_artists:${email}`, 1, song.artist);
+    if (artistName) {
+      await redis.zincrby(`user:top_artists:${email}`, 1, artistName);
     }
 
     // 4. Record unique plays (discovered metrics)
     await redis.sadd(`user:discovered_songs:${email}`, song.id);
-    if (song.artist) {
-      await redis.sadd(`user:discovered_artists:${email}`, song.artist);
+    if (artistName) {
+      await redis.sadd(`user:discovered_artists:${email}`, artistName);
     }
 
-    // 5. Update Recent Plays list (de-duped)
+    // 5. Update Recent Plays list (de-duped by song id)
     const recentKey = `user:recent:${email}`;
-    await redis.lrem(recentKey, 0, songStr);
+    const songId = String(song.id);
+    await removeSongIdFromRecentList(recentKey, songId);
     await redis.lpush(recentKey, songStr);
     await redis.ltrim(recentKey, 0, 49); // Keep last 50
 

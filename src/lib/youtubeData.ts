@@ -590,20 +590,59 @@ export async function searchOfficialChannel(accessToken: string, query: string) 
 }
 
 export async function fetchSubscribedChannels(accessToken: string, maxResults = 10): Promise<string[]> {
-  const response = await fetch(
-    `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=${maxResults}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
+  const channels = await fetchAllSubscribedChannels(accessToken, maxResults);
+  return channels.map((c) => c.name);
+}
 
-  if (!response.ok) {
-    console.error("fetchSubscribedChannels failed", await response.text());
-    return [];
+export type SubscribedChannel = {
+  channelId: string;
+  name: string;
+  thumbnail: string;
+};
+
+export async function fetchAllSubscribedChannels(
+  accessToken: string,
+  maxResults = 200
+): Promise<SubscribedChannel[]> {
+  const channels: SubscribedChannel[] = [];
+  let pageToken: string | undefined;
+
+  for (let page = 0; page < 10 && channels.length < maxResults; page++) {
+    const url = new URL("https://www.googleapis.com/youtube/v3/subscriptions");
+    url.searchParams.set("part", "snippet");
+    url.searchParams.set("mine", "true");
+    url.searchParams.set("maxResults", "50");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+    const response = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!response.ok) {
+      console.error("fetchAllSubscribedChannels failed", await response.text());
+      break;
+    }
+
+    const data = await response.json();
+    for (const item of data.items || []) {
+      const snippet = item.snippet;
+      const channelId = snippet?.resourceId?.channelId;
+      if (!channelId) continue;
+      channels.push({
+        channelId,
+        name: snippet.title || "Unknown Artist",
+        thumbnail:
+          snippet.thumbnails?.high?.url ||
+          snippet.thumbnails?.medium?.url ||
+          snippet.thumbnails?.default?.url ||
+          "",
+      });
+      if (channels.length >= maxResults) break;
+    }
+
+    pageToken = data.nextPageToken;
+    if (!pageToken) break;
   }
 
-  const data = await response.json();
-  return (data.items || []).map((item: any) => item.snippet.title);
+  return channels;
 }

@@ -1,5 +1,5 @@
 "use client";
-import React, { Suspense } from "react";
+import React, { Suspense, useCallback } from "react";
 import { useDashboard } from "@/context/DashboardContext";
 import { CenterPanel } from "./CenterPanel";
 import { SearchPage } from "./SearchPage";
@@ -22,6 +22,14 @@ export function EchoAIDashboard() {
     selectedPlaylist,
     palette,
   } = useDashboard();
+
+  const handleCloseSearch = useCallback(() => {
+    router.push("/");
+  }, [router]);
+
+  const handleNavigateArtist = useCallback((name: string) => {
+    router.push(`/artist/${encodeURIComponent(name)}`);
+  }, [router]);
 
   // Determine active view based on pathname
   let activeView = "home";
@@ -52,11 +60,11 @@ export function EchoAIDashboard() {
         >
           <Suspense fallback={<div className="flex-1 bg-transparent" />}>
             <SearchPage
-              onClose={() => router.push("/")}
+              onClose={handleCloseSearch}
               onSongSelect={onSongClick}
               onAddToQueue={onAddToQueue}
               onPlayNext={onPlayNext}
-              onNavigateArtist={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
+              onNavigateArtist={handleNavigateArtist}
             />
           </Suspense>
         </m.div>

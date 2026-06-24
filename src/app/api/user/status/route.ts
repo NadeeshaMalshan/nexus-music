@@ -4,6 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { fetchGoogleUserEmail } from "@/lib/googleUserFromAccessToken";
 import redis from "@/lib/redis";
 
+const USER_DIRECTORY_KEY = "users:directory";
+const ONLINE_WINDOW_MS = 5 * 60 * 1000;
+
 function bearerToken(request: Request): string | null {
   const h = request.headers.get("authorization") || request.headers.get("Authorization");
   const m = h?.match(/^Bearer\s+(.+)$/i);
@@ -17,6 +20,15 @@ async function resolveUserEmail(request: Request): Promise<string | null> {
   const token = bearerToken(request);
   if (!token) return null;
   return fetchGoogleUserEmail(token);
+}
+
+function formatLastOnline(timestamp: number): string {
+  const diff = Date.now() - timestamp;
+  if (diff < 60_000) return "Just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)}d ago`;
+  return new Date(timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export async function GET(request: Request) {
@@ -40,35 +52,59 @@ export async function GET(request: Request) {
     const statuses = await Promise.all(
       followedEmails.map(async (fEmail) => {
         try {
-          const rawStatus = await r.get(`user:status:${fEmail}`);
-          const dirVal = await r.hget("users:directory", fEmail);
+          const [rawStatus, rawLastActivity, dirVal] = await Promise.all([
+            r.get(`user:status:${fEmail}`),
+            r.get(`user:last_activity:${fEmail}`),
+            r.hget(USER_DIRECTORY_KEY, fEmail),
+          ]);
+
           const details = dirVal
             ? (typeof dirVal === "string" ? JSON.parse(dirVal) : dirVal)
             : { name: fEmail.split("@")[0], email: fEmail, image: "" };
 
-          const status = rawStatus
+          const liveStatus = rawStatus
             ? (typeof rawStatus === "string" ? JSON.parse(rawStatus) : rawStatus)
             : null;
 
+          const lastActivity = rawLastActivity
+            ? (typeof rawLastActivity === "string" ? JSON.parse(rawLastActivity) : rawLastActivity)
+            : null;
+
+          const liveTimestamp = liveStatus?.timestamp || 0;
+          const isRecentlyLive = liveTimestamp > 0 && Date.now() - liveTimestamp < ONLINE_WINDOW_MS;
+          const isOnline = !!(liveStatus?.isPlaying && isRecentlyLive);
+
+          const activitySource = isOnline
+            ? liveStatus
+            : lastActivity || (liveStatus && !liveStatus.isPlaying ? liveStatus : null);
+
+          const lastOnline = activitySource?.lastOnline || activitySource?.timestamp || null;
+
           return {
             user: details,
-            status,
+            isOnline,
+            status: isOnline ? liveStatus : null,
+            lastSong: activitySource?.song || null,
+            lastOnline,
+            lastOnlineLabel: lastOnline ? formatLastOnline(lastOnline) : null,
           };
         } catch (e) {
           console.error(`Failed to load status/details for ${fEmail}:`, e);
           return {
             user: { name: fEmail.split("@")[0], email: fEmail, image: "" },
+            isOnline: false,
             status: null,
+            lastSong: null,
+            lastOnline: null,
+            lastOnlineLabel: null,
           };
         }
       })
     );
 
-    // Sort active users first
     statuses.sort((a, b) => {
-      const aActive = a.status?.isPlaying ? 1 : 0;
-      const bActive = b.status?.isPlaying ? 1 : 0;
-      return bActive - aActive;
+      if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1;
+      return (b.lastOnline || 0) - (a.lastOnline || 0);
     });
 
     return NextResponse.json(statuses);
@@ -91,8 +127,27 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const statusKey = `user:status:${email}`;
+    const lastActivityKey = `user:last_activity:${email}`;
 
     if (body.action === "clear") {
+      const rawExisting = await redis.get(statusKey);
+      if (rawExisting) {
+        try {
+          const existing = typeof rawExisting === "string" ? JSON.parse(rawExisting) : rawExisting;
+          if (existing?.song) {
+            await redis.set(
+              lastActivityKey,
+              JSON.stringify({
+                song: existing.song,
+                isPlaying: false,
+                lastOnline: Date.now(),
+              })
+            );
+          }
+        } catch {
+          /* ignore parse errors */
+        }
+      }
       await redis.del(statusKey);
       return NextResponse.json({ success: true });
     }
@@ -102,20 +157,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing song details" }, { status: 400 });
     }
 
-    const statusPayload = {
-      song: {
-        id: song.id,
-        title: song.title,
-        artist: song.artist,
-        artwork: song.artwork || "",
-        duration: song.duration || "0:00",
-      },
-      isPlaying: !!isPlaying,
-      timestamp: Date.now(),
+    const now = Date.now();
+    const songPayload = {
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      artwork: song.artwork || "",
+      duration: song.duration || "0:00",
     };
 
-    // Update status in Redis with 1 hour safeguard TTL
+    const statusPayload = {
+      song: songPayload,
+      isPlaying: !!isPlaying,
+      timestamp: now,
+      lastOnline: now,
+    };
+
+    const lastActivityPayload = {
+      song: songPayload,
+      isPlaying: !!isPlaying,
+      lastOnline: now,
+    };
+
     await redis.set(statusKey, JSON.stringify(statusPayload), { ex: 3600 });
+    await redis.set(lastActivityKey, JSON.stringify(lastActivityPayload));
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -484,6 +484,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("nexus_history", JSON.stringify(playedHistory));
   }, [playedHistory]);
 
+  // Sync YouTube artist subscriptions into following list (once per day)
+  useEffect(() => {
+    if (!session?.accessToken || !session?.user?.email) return;
+    fetch("/api/user/subscriptions/sync", { method: "POST" }).catch(() => {});
+  }, [session?.accessToken, session?.user?.email]);
+
   // Synchronize playing status to backend on change (event-driven)
   useEffect(() => {
     if (!currentSong || !session?.user?.email) return;

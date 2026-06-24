@@ -8,7 +8,7 @@ import { APPLE_EASE, SLIDE_UP_VARIANTS, EXPO_OUT, MOTION_CONFIG, APPLE_LYRICS_TR
 import { type Song, type ExpandedPlayerProps } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
-import { JamSession } from "./JamSession";
+import { SessionFriendsPanel } from "./SessionFriendsPanel";
 import { MusicArtwork } from "./MusicArtwork";
 import { useSettings } from "@/context/SettingsContext";
 import { useJam } from "@/context/JamContext";
@@ -1060,8 +1060,8 @@ export function MobileExpandedPlayer({
               </AnimatePresence>
 
               {activeTab === "jam" && (
-                <div className="flex-1 overflow-y-auto px-4 pt-12 pb-56 custom-scrollbar swipe-up">
-                  <JamSession />
+                <div className="flex-1 overflow-hidden px-4 pt-8 pb-56 swipe-up">
+                  <SessionFriendsPanel className="h-full" />
                 </div>
               )}
             </m.div>

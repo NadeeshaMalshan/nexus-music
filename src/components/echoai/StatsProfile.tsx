@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { 
   Play, 
   Pause, 
   Clock, 
   Music, 
   Users, 
-  Search, 
   UserPlus, 
   UserMinus, 
   ChevronLeft, 
@@ -63,17 +62,11 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
   // State
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [liveFollowing, setLiveFollowing] = useState<any[]>([]);
-  const [liveFollowingLoading, setLiveFollowingLoading] = useState(false);
+  const [socialModal, setSocialModal] = useState<"followers" | "following" | null>(null);
   const [showWrappedModal, setShowWrappedModal] = useState(false);
   const [wrappedSlideIndex, setWrappedSlideIndex] = useState(0);
-
-  const searchTimeoutRef = useRef<number | null>(null);
+  const [artistImages, setArtistImages] = useState<Record<string, string>>({});
 
   // Fetch target profile details
   const fetchProfile = useCallback(async () => {
@@ -94,27 +87,68 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
     }
   }, [targetEmail]);
 
-  // Fetch following users' activity
-  const fetchFollowingActivity = useCallback(async () => {
-    if (targetEmail) return; // Only load following activity for self profile
-    setLiveFollowingLoading(true);
-    try {
-      const res = await fetch("/api/user/status");
-      if (res.ok) {
-        const data = await res.json();
-        setLiveFollowing(data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch friend activity:", err);
-    } finally {
-      setLiveFollowingLoading(false);
-    }
-  }, [targetEmail]);
-
   useEffect(() => {
     fetchProfile();
-    fetchFollowingActivity();
-  }, [fetchProfile, fetchFollowingActivity]);
+  }, [fetchProfile]);
+
+  useEffect(() => {
+    if (!profileData) {
+      setArtistImages({});
+      return;
+    }
+
+    const names = new Set<string>();
+    for (const artist of profileData.topArtists || []) {
+      const name = typeof artist?.name === "string" ? artist.name.trim() : "";
+      if (name) names.add(name);
+    }
+    for (const artist of profileData.wrappedData?.topArtists || []) {
+      const name = typeof artist?.name === "string" ? artist.name.trim() : "";
+      if (name) names.add(name);
+    }
+
+    if (names.size === 0) {
+      setArtistImages({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadArtistImages = async () => {
+      const entries = await Promise.all(
+        Array.from(names).map(async (name) => {
+          try {
+            const res = await fetch(`/api/search?q=${encodeURIComponent(name)}&type=artists`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            const items = data.items || [];
+            const normalized = name.toLowerCase();
+            const match =
+              items.find((a: { name?: string }) => a.name?.toLowerCase() === normalized) ||
+              items.find((a: { name?: string }) => a.name?.toLowerCase().includes(normalized)) ||
+              items[0];
+            const thumbnail = match?.thumbnail;
+            return thumbnail ? ([name, thumbnail] as const) : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      if (cancelled) return;
+
+      const next: Record<string, string> = {};
+      for (const entry of entries) {
+        if (entry) next[entry[0]] = entry[1];
+      }
+      setArtistImages(next);
+    };
+
+    void loadArtistImages();
+    return () => {
+      cancelled = true;
+    };
+  }, [profileData]);
 
   // Handle follow / unfollow actions
   const handleFollowAction = async () => {
@@ -160,42 +194,6 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
     }
   };
 
-  // Perform user search
-  const performSearch = useCallback(async (q: string) => {
-    if (!q.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    setSearchLoading(true);
-    try {
-      const res = await fetch(`/api/user/search?q=${encodeURIComponent(q)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSearchResults(data);
-      }
-    } catch (err) {
-      console.error("User search failed:", err);
-    } finally {
-      setSearchLoading(false);
-    }
-  }, []);
-
-  // Debounced search trigger
-  useEffect(() => {
-    if (searchTimeoutRef.current) window.clearTimeout(searchTimeoutRef.current);
-    if (!searchQuery) {
-      setSearchResults([]);
-      return;
-    }
-    searchTimeoutRef.current = window.setTimeout(() => {
-      performSearch(searchQuery);
-    }, 300);
-
-    return () => {
-      if (searchTimeoutRef.current) window.clearTimeout(searchTimeoutRef.current);
-    };
-  }, [searchQuery, performSearch]);
-
   const copyProfileLink = () => {
     if (!profileData?.user?.email) return;
     const url = `${window.location.origin}/stats?user=${encodeURIComponent(profileData.user.email)}`;
@@ -204,12 +202,13 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
     }).catch(() => {});
   };
 
-  // Render a horizontal carousel scroll container
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-  const scroll = (dir: "left" | "right") => {
-    if (!scrollRef.current) return;
+  // Horizontal carousel scroll containers
+  const recentScrollRef = React.useRef<HTMLDivElement>(null);
+  const artistsScrollRef = React.useRef<HTMLDivElement>(null);
+  const scrollCarousel = (ref: React.RefObject<HTMLDivElement | null>, dir: "left" | "right") => {
+    if (!ref.current) return;
     const amt = dir === "left" ? -500 : 500;
-    scrollRef.current.scrollBy({ left: amt, behavior: "smooth" });
+    ref.current.scrollBy({ left: amt, behavior: "smooth" });
   };
 
   const handleTuneIn = (status: any) => {
@@ -224,6 +223,16 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
       isDirectLink: true
     });
   };
+
+  const uniqueRecentPlays = React.useMemo(() => {
+    const seen = new Set<string>();
+    return (profileData?.recentPlayed || []).filter((song: { id?: string }) => {
+      const id = song?.id;
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }, [profileData?.recentPlayed]);
 
   if (loading) {
     return (
@@ -250,11 +259,13 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
     listeningTime,
     songsDiscovered,
     artistsDiscovered,
-    recentPlayed,
     topSongs,
     topArtists,
     followersCount,
     followingCount,
+    followingUsers = [],
+    followingArtists = [],
+    followers = [],
     isFollowing,
     liveStatus,
     wrappedData
@@ -266,89 +277,24 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
     <div className={`flex-1 h-full overflow-y-auto no-scrollbar pt-8 pb-32 px-6 md:px-10 lg:px-16 space-y-12 transition-[margin-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
       isRightSidebarOpen ? "lg:mr-[380px]" : "lg:mr-0"
     }`}>
-      {/* Top Header: Search and Back buttons */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 z-40 relative">
-        <div className="flex items-center gap-4">
-          {!isSelf && (
-            <button 
-              onClick={() => router.push("/stats")}
-              className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-all active:scale-95 border border-white/5"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          <h1 className="text-[28px] font-black text-white tracking-tight leading-none">
-            {isSelf ? "Your Dashboard" : `${user.name}'s Profile`}
-          </h1>
-        </div>
-
-        {/* Search Bar */}
-        {isSelf && (
-          <div className="relative w-full sm:w-[320px]">
-            <div className="flex items-center rounded-2xl bg-white/5 border border-white/5 px-4 py-2.5 focus-within:bg-white/10 focus-within:border-white/10 transition-all">
-              <Search size={18} className="text-white/25 mr-2 shrink-0" />
-              <input 
-                type="text"
-                placeholder="Search profiles by name..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setShowSearchDropdown(true);
-                }}
-                onFocus={() => setShowSearchDropdown(true)}
-                className="bg-transparent w-full focus:outline-hidden text-[14px] text-white placeholder-white/20 font-medium"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="text-white/40 hover:text-white transition-colors">
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-
-            {/* Search Dropdown */}
-            <AnimatePresence>
-              {showSearchDropdown && searchResults.length > 0 && (
-                <>
-                  <div className="fixed inset-0 z-30" onClick={() => setShowSearchDropdown(false)} />
-                  <m.div 
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-[#161618] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-40 overflow-hidden max-h-[280px] overflow-y-auto"
-                  >
-                    {searchResults.map((res: any, idx) => (
-                      <div
-                        key={`search-res-${idx}`}
-                        onClick={() => {
-                          router.push(`/stats?user=${encodeURIComponent(res.email)}`);
-                          setSearchQuery("");
-                          setShowSearchDropdown(false);
-                        }}
-                        className="flex items-center gap-3.5 px-4 py-3 hover:bg-white/5 cursor-pointer border-b border-white/[0.03] last:border-b-0 transition-colors"
-                      >
-                        <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-white/10">
-                          <MusicArtwork src={res.image} alt={res.name} variant="artist" rounded="full" className="w-full h-full" iconSize={16} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[14px] font-bold text-white truncate">{res.name}</p>
-                          <p className="text-[12px] text-white/30 truncate">{res.email}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </m.div>
-                </>
-              )}
-            </AnimatePresence>
-          </div>
+      {/* Top Header */}
+      <div className="flex items-center gap-4 z-40 relative">
+        {!isSelf && (
+          <button 
+            onClick={() => router.push("/stats")}
+            className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-all active:scale-95 border border-white/5"
+          >
+            <ArrowLeft size={20} />
+          </button>
         )}
+        <h1 className="text-[28px] font-black text-white tracking-tight leading-none">
+          {isSelf ? "Your Dashboard" : `${user.name}'s Profile`}
+        </h1>
       </div>
 
       {/* Main Profile Info Card */}
       <section 
-        className="relative rounded-[32px] overflow-hidden border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.4)] bg-[#121214]/65 backdrop-blur-2xl p-8 sm:p-10"
-        style={{
-          boxShadow: `inset 0 0 40px rgba(255,255,255,0.01), 0 30px 80px -20px ${accentColor}12`
-        }}
+        className="relative rounded-[32px] overflow-hidden bg-[#121214]/65 backdrop-blur-2xl p-8 sm:p-10"
       >
         <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 z-10 relative">
           <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-6">
@@ -372,24 +318,29 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
                   <h2 className="text-[32px] sm:text-[40px] font-black tracking-tight text-white leading-none">
                     {user.name}
                   </h2>
-                  <span className="px-3 py-1 rounded-full text-[11px] font-black tracking-wider border border-white/10 bg-white/5 text-white/50 uppercase leading-none">
-                    {isSelf ? "Creator" : "Vibeseeker"}
-                  </span>
                 </div>
                 <p className="text-[14px] text-white/35 font-medium">{user.email}</p>
               </div>
 
               {/* Relationship statistics counts */}
               <div className="flex items-center justify-center sm:justify-start gap-6 pt-1">
-                <div>
+                <button
+                  type="button"
+                  onClick={() => setSocialModal("followers")}
+                  className="text-left transition-opacity hover:opacity-80"
+                >
                   <span className="text-[18px] font-black text-white">{followersCount}</span>
                   <span className="text-[13px] font-bold text-white/30 ml-1.5 tracking-tight">followers</span>
-                </div>
+                </button>
                 <div className="w-[1px] h-3 bg-white/10" />
-                <div>
+                <button
+                  type="button"
+                  onClick={() => setSocialModal("following")}
+                  className="text-left transition-opacity hover:opacity-80"
+                >
                   <span className="text-[18px] font-black text-white">{followingCount}</span>
                   <span className="text-[13px] font-bold text-white/30 ml-1.5 tracking-tight">following</span>
-                </div>
+                </button>
               </div>
             </div>
           </div>
@@ -521,7 +472,9 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
       )}
 
       {/* Main stats cards layout grid */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <section className="space-y-4">
+        <p className="text-[12px] font-black uppercase tracking-[0.22em] text-white/30">Last 30 days</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {[
           { 
             label: "Listening Time", 
@@ -546,10 +499,10 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
           return (
             <div 
               key={`stats-card-${idx}`}
-              className="group relative rounded-3xl p-6 sm:p-7 bg-[#161618]/30 border border-white/5 hover:border-white/10 transition-all hover:-translate-y-1 shadow-md text-left"
+              className="relative rounded-3xl p-6 sm:p-7 bg-[#161618]/30 text-left"
             >
               <div 
-                className="w-11 h-11 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center mb-6 group-hover:bg-white/10 transition-all"
+                className="w-11 h-11 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center mb-6"
                 style={{ color: accentColor }}
               >
                 <Icon size={20} />
@@ -562,6 +515,7 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
             </div>
           );
         })}
+        </div>
       </section>
 
       {/* Top Songs vertical track list */}
@@ -578,7 +532,7 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
           </div>
         ) : (
           <div className="space-y-1 border border-white/5 rounded-3xl overflow-hidden bg-[#121214]/30 p-2">
-            {topSongs.map((track: any, idx: number) => {
+            {topSongs.slice(0, 5).map((track: any, idx: number) => {
               const rank = String(idx + 1).padStart(2, "0");
               const isLiked = likedSongs.has(track.id);
               const isCurrent = currentSong?.id === track.id;
@@ -586,7 +540,7 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
               return (
                 <div 
                   key={`top-song-${track.id}-${idx}`}
-                  onClick={() => onSongClick(track)}
+                  onClick={() => onSongClick({ ...track, color: accentColor })}
                   className={`group/row flex items-center justify-between gap-4 p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors ${
                     isCurrent ? "bg-white/[0.03]" : ""
                   }`}
@@ -652,25 +606,25 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
             <h3 className="text-[24px] font-black text-white tracking-tight">Recent Plays</h3>
             <p className="text-[13px] text-zinc-500 font-medium font-medium">Revisit your recent listening sessions</p>
           </div>
-          {recentPlayed.length > 5 && (
+          {uniqueRecentPlays.length > 5 && (
             <div className="flex items-center gap-4">
-              <button onClick={() => scroll("left")} className="text-white/40 hover:text-white transition-all"><ChevronLeft size={22} /></button>
-              <button onClick={() => scroll("right")} className="text-white/40 hover:text-white transition-all"><ChevronRight size={22} /></button>
+              <button onClick={() => scrollCarousel(recentScrollRef, "left")} className="text-white/40 hover:text-white transition-all"><ChevronLeft size={22} /></button>
+              <button onClick={() => scrollCarousel(recentScrollRef, "right")} className="text-white/40 hover:text-white transition-all"><ChevronRight size={22} /></button>
             </div>
           )}
         </div>
 
-        {recentPlayed.length === 0 ? (
+        {uniqueRecentPlays.length === 0 ? (
           <div className="rounded-3xl p-12 text-center border border-white/5 bg-[#161618]/15">
             <Clock size={32} className="mx-auto text-white/20 mb-3" />
             <p className="text-white/40 text-[15px] font-semibold">No recent play logs. Start listening now.</p>
           </div>
         ) : (
           <div 
-            ref={scrollRef}
+            ref={recentScrollRef}
             className="flex items-start gap-6 overflow-x-auto no-scrollbar scroll-smooth px-1 py-2"
           >
-            {recentPlayed.map((song: any, idx: number) => (
+            {uniqueRecentPlays.map((song: any, idx: number) => (
               <div 
                 key={`recent-play-${song.id}-${idx}`}
                 onClick={() => onSongClick(song)}
@@ -692,11 +646,19 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
         )}
       </section>
 
-      {/* Top Artists horizontal circles list */}
-      <section className="text-left space-y-6">
-        <div>
-          <h3 className="text-[24px] font-black text-white tracking-tight">Top Creators</h3>
-          <p className="text-[13px] text-zinc-500 font-medium">The artists that accompanied you the most</p>
+      {/* Top Creators horizontal carousel */}
+      <section className="text-left space-y-6 relative group/shelf">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-[24px] font-black text-white tracking-tight">Top Creators</h3>
+            <p className="text-[13px] text-zinc-500 font-medium">The artists that accompanied you the most</p>
+          </div>
+          {topArtists.length > 5 && (
+            <div className="flex items-center gap-4">
+              <button onClick={() => scrollCarousel(artistsScrollRef, "left")} className="text-white/40 hover:text-white transition-all"><ChevronLeft size={22} /></button>
+              <button onClick={() => scrollCarousel(artistsScrollRef, "right")} className="text-white/40 hover:text-white transition-all"><ChevronRight size={22} /></button>
+            </div>
+          )}
         </div>
 
         {topArtists.length === 0 ? (
@@ -705,23 +667,30 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
             <p className="text-white/40 text-[15px] font-semibold">No artist history available yet.</p>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-6 sm:gap-8">
+          <div
+            ref={artistsScrollRef}
+            className="flex items-start gap-6 overflow-x-auto no-scrollbar scroll-smooth px-1 py-2"
+          >
             {topArtists.map((artist: any, idx: number) => (
               <div 
                 key={`top-artist-${idx}`}
                 onClick={() => router.push(`/artist/${encodeURIComponent(artist.name)}`)}
-                className="group flex flex-col items-center text-center cursor-pointer max-w-[120px] sm:max-w-[130px] shrink-0"
+                className="group flex flex-col w-[160px] sm:w-[180px] shrink-0 cursor-pointer text-center"
               >
-                <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border border-white/10 shadow-md hover:border-white/30 transition-colors bg-[#121214]">
-                  {/* Generate simple colorized placeholder matching artist style */}
-                  <div className="absolute inset-0 flex items-center justify-center font-black text-[28px]" style={{ color: accentColor, backgroundColor: `${accentColor}08` }}>
-                    {artist.name.slice(0, 1).toUpperCase()}
-                  </div>
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <div className="relative aspect-square w-full rounded-full overflow-hidden border border-white/10 shadow-md hover:border-white/30 transition-colors bg-[#121214]">
+                  <MusicArtwork
+                    src={artistImages[artist.name]}
+                    alt={artist.name}
+                    variant="artist"
+                    rounded="full"
+                    className="w-full h-full group-hover:scale-105 transition-transform duration-500"
+                    iconSize={32}
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-full">
                     <span className="text-[11px] font-black tracking-wider text-white uppercase bg-black/60 px-2.5 py-1 rounded-full">View</span>
                   </div>
                 </div>
-                <h4 className="mt-3 font-bold text-white text-[14px] tracking-tight line-clamp-1 w-full px-1 group-hover:text-[var(--art-accent,#FA233B)] transition-colors">{artist.name}</h4>
+                <h4 className="mt-3 font-bold text-white text-[15px] tracking-tight line-clamp-2 px-1 group-hover:text-[var(--art-accent,#FA233B)] transition-colors">{artist.name}</h4>
                 <span className="text-[11px] font-black text-white/25 uppercase tracking-tight mt-0.5">{artist.playCount} plays</span>
               </div>
             ))}
@@ -729,96 +698,117 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
         )}
       </section>
 
-      {/* Friend Activity Live Panel (Only shown on self profile) */}
-      {isSelf && (
-        <section className="text-left space-y-6 pt-6 border-t border-white/5">
-          <div>
-            <h3 className="text-[24px] font-black text-white tracking-tight flex items-center gap-2.5">
-              Friend Activity
-              {liveFollowing.some(f => f.status?.isPlaying) && (
-                <span className="flex h-2.5 w-2.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </span>
-              )}
-            </h3>
-            <p className="text-[13px] text-zinc-500 font-medium">See what the people you follow are listening to right now</p>
-          </div>
-
-          {liveFollowingLoading ? (
-            <div className="flex justify-start py-6">
-              <Loader2 size={24} className="animate-spin text-white/40" />
-            </div>
-          ) : liveFollowing.length === 0 ? (
-            <div className="rounded-3xl p-10 text-center border border-white/5 bg-[#161618]/10 text-white/30 text-[14px] font-medium">
-              You are not following anyone yet, or they haven't logged any activity. Search profiles above to follow friends!
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {liveFollowing.map((friend: any, idx: number) => {
-                const isActive = friend.status?.isPlaying;
-                return (
-                  <div 
-                    key={`friend-act-${idx}`}
-                    className={`relative flex items-center justify-between gap-4 p-4 rounded-2xl border transition-all ${
-                      isActive 
-                        ? "bg-[#101012]/45 border-[#10b981]/20 shadow-[0_4px_20px_rgba(16,185,129,0.05)]" 
-                        : "bg-[#161618]/20 border-white/[0.03] opacity-65"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                      {/* Friend avatar */}
-                      <div 
-                        onClick={() => router.push(`/stats?user=${encodeURIComponent(friend.user.email)}`)}
-                        className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 cursor-pointer hover:ring-2 hover:ring-white/20 transition-all border border-white/10 shadow-sm"
-                      >
-                        <MusicArtwork src={friend.user.image} alt={friend.user.name} variant="artist" rounded="full" className="w-full h-full" iconSize={18} />
-                        {isActive && (
-                          <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[#121214] rounded-full" />
-                        )}
-                      </div>
-
-                      {/* Friend active track details */}
-                      <div className="min-w-0 text-left">
-                        <h4 
-                          onClick={() => router.push(`/stats?user=${encodeURIComponent(friend.user.email)}`)}
-                          className="text-[14px] font-black text-white hover:text-[var(--art-accent,#FA233B)] transition-colors truncate cursor-pointer leading-tight tracking-tight pr-1"
-                        >
-                          {friend.user.name}
-                        </h4>
-                        
-                        {isActive ? (
-                          <div className="min-w-0 mt-0.5">
-                            <p className="text-[12px] font-bold text-emerald-400 truncate leading-none mb-0.5">
-                              {friend.status.song.title}
-                            </p>
-                            <p className="text-[10px] text-white/35 truncate uppercase font-semibold leading-none">
-                              {friend.status.song.artist}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="text-[11px] text-white/20 font-semibold leading-none mt-1">Offline</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Tune in button */}
-                    {isActive && (
+      {/* Social list modal */}
+      <AnimatePresence>
+        {socialModal && (
+          <>
+            <m.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-90 bg-black/70"
+              onClick={() => setSocialModal(null)}
+            />
+            <m.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              className="fixed left-1/2 top-1/2 z-100 w-[min(92vw,420px)] max-h-[70vh] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl border border-white/10 bg-[#161618] shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
+                <h3 className="text-[18px] font-black text-white tracking-tight capitalize">{socialModal}</h3>
+                <button
+                  type="button"
+                  onClick={() => setSocialModal(null)}
+                  className="rounded-full p-2 text-white/40 hover:bg-white/5 hover:text-white transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="max-h-[calc(70vh-64px)] overflow-y-auto no-scrollbar p-3">
+                {socialModal === "followers" ? (
+                  followers.length === 0 ? (
+                    <p className="px-3 py-8 text-center text-[14px] font-semibold text-white/35">No followers yet.</p>
+                  ) : (
+                    followers.map((person: any) => (
                       <button
-                        onClick={() => handleTuneIn(friend.status)}
-                        className="p-2.5 rounded-xl bg-white/5 hover:bg-emerald-500/10 text-white/60 hover:text-emerald-400 hover:scale-105 active:scale-95 transition-all border border-white/5 hover:border-emerald-500/20"
-                        title={`Tune in to ${friend.user.name}`}
+                        key={person.email}
+                        type="button"
+                        onClick={() => {
+                          setSocialModal(null);
+                          router.push(`/stats?user=${encodeURIComponent(person.email)}`);
+                        }}
+                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left hover:bg-white/5 transition-colors"
                       >
-                        <Volume2 size={16} />
+                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10">
+                          <MusicArtwork src={person.image} alt={person.name} variant="artist" rounded="full" className="h-full w-full" iconSize={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-[14px] font-bold text-white">{person.name}</p>
+                          <p className="truncate text-[12px] text-white/35">{person.email}</p>
+                        </div>
                       </button>
+                    ))
+                  )
+                ) : followingUsers.length === 0 && followingArtists.length === 0 ? (
+                  <p className="px-3 py-8 text-center text-[14px] font-semibold text-white/35">Not following anyone yet.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {followingUsers.length > 0 && (
+                      <div>
+                        <p className="px-3 pb-2 text-[11px] font-black uppercase tracking-[0.2em] text-white/30">Users</p>
+                        {followingUsers.map((person: any) => (
+                          <button
+                            key={person.email}
+                            type="button"
+                            onClick={() => {
+                              setSocialModal(null);
+                              router.push(`/stats?user=${encodeURIComponent(person.email)}`);
+                            }}
+                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left hover:bg-white/5 transition-colors"
+                          >
+                            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10">
+                              <MusicArtwork src={person.image} alt={person.name} variant="artist" rounded="full" className="h-full w-full" iconSize={16} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-[14px] font-bold text-white">{person.name}</p>
+                              <p className="truncate text-[12px] text-white/35">{person.email}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {followingArtists.length > 0 && (
+                      <div>
+                        <p className="px-3 pb-2 text-[11px] font-black uppercase tracking-[0.2em] text-white/30">Artists</p>
+                        {followingArtists.map((artist: any) => (
+                          <button
+                            key={artist.channelId || artist.name}
+                            type="button"
+                            onClick={() => {
+                              setSocialModal(null);
+                              router.push(`/artist/${encodeURIComponent(artist.name)}`);
+                            }}
+                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left hover:bg-white/5 transition-colors"
+                          >
+                            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10">
+                              <MusicArtwork src={artist.thumbnail} alt={artist.name} variant="artist" rounded="full" className="h-full w-full" iconSize={16} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-[14px] font-bold text-white">{artist.name}</p>
+                              <p className="truncate text-[12px] text-white/35">YouTube Artist</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      )}
+                )}
+              </div>
+            </m.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Cinematic Wrapped Slideshow Modal */}
       <AnimatePresence>
@@ -954,8 +944,15 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
                             <div key={`wa-${aIdx}`} className="flex items-center justify-between bg-white/5 border border-white/5 p-3.5 rounded-2xl text-left">
                               <div className="flex items-center gap-4 min-w-0">
                                 <span className="text-[15px] font-black text-white/30 shrink-0 w-5 text-center">{aIdx + 1}</span>
-                                <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-[15px] font-bold border border-white/10" style={{ color: accentColor }}>
-                                  {art.name.slice(0, 1).toUpperCase()}
+                                <div className="w-9 h-9 shrink-0 rounded-full overflow-hidden border border-white/10">
+                                  <MusicArtwork
+                                    src={artistImages[art.name]}
+                                    alt={art.name}
+                                    variant="artist"
+                                    rounded="full"
+                                    className="w-full h-full"
+                                    iconSize={14}
+                                  />
                                 </div>
                                 <h4 className="text-[15px] font-bold text-white truncate leading-none">{art.name}</h4>
                               </div>

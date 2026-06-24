@@ -149,8 +149,15 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const { songIsInLikedLibrary, resolveLikedLibraryRateVideoId, onRateSong, isRightSidebarOpen } = useDashboard();
   const searchTimeoutRef = useRef<number | null>(null);
   const searchRunIdRef = useRef(0);
+  const searchQueryRef = useRef(searchQuery);
+  const onCloseRef = useRef(onClose);
+  const onSongSelectRef = useRef(onSongSelect);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  searchQueryRef.current = searchQuery;
+  onCloseRef.current = onClose;
+  onSongSelectRef.current = onSongSelect;
 
   // Category list
   const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Playlists", "Remixes"];
@@ -306,19 +313,19 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
       const shouldPreferVideo = !isMusic;
 
       const song = await songFromYouTubeVideoId(videoId, searchAccentColor, shouldPreferVideo, isLive);
-      onSongSelect(song);
-      onClose();
+      onSongSelectRef.current(song);
+      onCloseRef.current();
       setSearchResults([]);
       setResultsByCategory({});
       setSearchLoading(false);
       return true;
     },
-    [onSongSelect, onClose]
+    []
   );
 
 
   const runSearch = useCallback(async (queryOverride?: string, categoryOverride?: string) => {
-    const query = (queryOverride ?? searchQuery).trim();
+    const query = (queryOverride ?? searchQueryRef.current).trim();
     const cat = categoryOverride ?? activeCategory;
     if (!query) {
       setSearchResults([]);
@@ -473,14 +480,14 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
     } finally {
       setSearchLoading(false);
     }
-  }, [searchQuery, activeCategory, playFromWatchUrl]);
+  }, [activeCategory]);
 
-  // Listen for category changes and trigger search immediately
+  // Re-run search when category changes (query stays the same)
   useEffect(() => {
-    if (searchQuery.trim()) {
-        void runSearch();
+    if (searchQueryRef.current.trim()) {
+      void runSearch();
     }
-  }, [activeCategory, runSearch, searchQuery]);
+  }, [activeCategory, runSearch]);
 
   // Handle query from URL (?q=) — watch URLs play via playFromWatchUrl inside runSearch
   const searchParams = useSearchParams();

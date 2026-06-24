@@ -45,6 +45,10 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchTimeoutRef = useRef<number | null>(null);
+  const accentColorRef = useRef(accentColor);
+  const onSongClickRef = useRef(onSongClick);
+  accentColorRef.current = accentColor;
+  onSongClickRef.current = onSongClick;
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -79,8 +83,8 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
     const parsed = parseYouTubeWatchUrl(trimmed);
     if (parsed) {
       const { videoId, isMusic, isLive } = parsed;
-      const song = await songFromYouTubeVideoId(videoId, accentColor, !isMusic, isLive);
-      onSongClick(song);
+      const song = await songFromYouTubeVideoId(videoId, accentColorRef.current, !isMusic, isLive);
+      onSongClickRef.current(song);
       setSearchQuery("");
       setSearchResults([]);
       setIsSearchFocused(false);
@@ -99,7 +103,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
     } finally {
       setSearchLoading(false);
     }
-  }, [accentColor, onSongClick]);
+  }, []);
 
   useEffect(() => {
     if (searchTimeoutRef.current) window.clearTimeout(searchTimeoutRef.current);
@@ -421,6 +425,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
           { id: "home", icon: Home, label: "Home", href: "/" },
           { id: "explore", icon: Compass, label: "Explore", href: "/explore" },
           { id: "library", icon: ListMusic, label: "Library", href: "/library" },
+          { id: "stats", icon: User, label: "Profile", href: "/stats" },
           { id: "settings", icon: Settings, label: "Settings", href: "/settings" },
         ].map((item) => {
           const Icon = item.icon;

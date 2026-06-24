@@ -202,7 +202,8 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
 
   const copyProfileLink = () => {
     if (!profileData?.user?.email) return;
-    const url = `${window.location.origin}/stats?user=${encodeURIComponent(profileData.user.email)}`;
+    const username = profileData.user.email.split('@')[0];
+    const url = `${window.location.origin}/stats?user=${encodeURIComponent(username)}`;
     navigator.clipboard.writeText(url).then(() => {
       setToastMessage("Profile link copied to clipboard!");
       setTimeout(() => setToastMessage(null), 3000);

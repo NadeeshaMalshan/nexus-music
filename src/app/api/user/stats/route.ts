@@ -193,7 +193,17 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const targetEmail = searchParams.get("user") || viewerEmail;
+    let targetEmail = searchParams.get("user") || viewerEmail;
+
+    if (!targetEmail.includes("@")) {
+      const directory = await redis.hgetall(USER_DIRECTORY_KEY);
+      if (directory) {
+        const foundEmail = Object.keys(directory).find(email => email.startsWith(`${targetEmail}@`));
+        if (foundEmail) {
+          targetEmail = foundEmail;
+        }
+      }
+    }
 
     // Fetch user details from directory
     const dirVal = await redis.hget(USER_DIRECTORY_KEY, targetEmail);

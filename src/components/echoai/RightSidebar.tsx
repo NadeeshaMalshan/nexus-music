@@ -21,6 +21,7 @@ interface RightSidebarProps {
   aiInsights: string;
   accentColor: string;
   onSeek?: (time: number) => void;
+  currentSong?: Song | null;
   currentSongId?: string;
   aiLoading?: boolean;
   onRemoveFromUpNext?: (index: number) => void;
@@ -42,6 +43,7 @@ export function RightSidebar({
   // aiInsights omitted to avoid unused warning
   accentColor,
   onSeek,
+  currentSong,
   currentSongId,
   aiLoading,
   onRemoveFromUpNext,
@@ -180,6 +182,44 @@ export function RightSidebar({
                     )}
                   </div>
 
+                  {currentSong && (
+                    <div className="mb-6">
+                      <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.2em] mb-3 px-2">Now Playing</p>
+                      <div className="flex w-full cursor-pointer items-center gap-4 p-2 rounded-2xl transition-all duration-300 bg-white/[0.06] border border-white/10 backdrop-blur-md">
+                        <div className="flex items-center">
+                          <div className="relative shrink-0 w-12 h-12 bg-black/20 rounded-xl overflow-hidden border border-white/10 shadow-lg">
+                            <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={20} />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-100 backdrop-blur-[2px]">
+                              <AudioVisualizer active={true} barCount={4} color="var(--art-accent, #FA243C)" width="16px" />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1 pr-2">
+                          <div className="flex items-center gap-2">
+                            <p className="line-clamp-1 text-[15px] font-bold tracking-tight leading-tight text-white">{currentSong.title}</p>
+                          </div>
+                          <p 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onNavigateArtist?.(currentSong.artist);
+                            }}
+                            className="truncate text-[11px] font-medium text-white/60 hover:text-white transition-colors mt-1"
+                          >
+                            {currentSong.artist}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3 pr-2">
+                          <p className="text-[10px] font-black tracking-widest text-white/70">
+                            {currentSong.duration}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {upNextQueue.length > 0 && (
+                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.2em] mb-3 px-2">Up Next</p>
+                  )}
                   <Reorder.Group 
                     axis="y" 
                     values={upNextQueue} 

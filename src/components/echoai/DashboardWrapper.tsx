@@ -266,6 +266,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         mode={rightSidebarMode}
         onSongClick={onSongClick}
         upNextQueue={upNextQueue}
+        currentSong={currentSong}
         currentSongId={currentSong?.id}
         currentArtist={audioData?.artist || currentSong?.artist || "Unknown"}
         accentColor={themeColor}

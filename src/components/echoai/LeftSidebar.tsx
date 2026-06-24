@@ -242,7 +242,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                       key={`${item.type ?? "r"}-${item.videoId || item.id}-${idx}`}
                       onClick={() => {
                         if (item.type === "USER") {
-                          router.push(`/stats?user=${encodeURIComponent(item.user?.email || item.user?.name || item.email || item.name || "")}`);
+                          router.push(`/stats?user=${encodeURIComponent((item.user?.email || item.user?.name || item.email || item.name || "").split("@")[0])}`);
                           setIsSearchFocused(false);
                           return;
                         }

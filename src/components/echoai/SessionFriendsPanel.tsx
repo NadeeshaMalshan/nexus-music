@@ -123,7 +123,7 @@ export function SessionFriendsPanel({ accentColor, className = "" }: SessionFrie
                   <div className="flex items-start gap-3">
                     <button
                       type="button"
-                      onClick={() => router.push(`/stats?user=${encodeURIComponent(friend.user.email)}`)}
+                      onClick={() => router.push(`/stats?user=${encodeURIComponent(friend.user.email.split("@")[0])}`)}
                       className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border border-white/10"
                     >
                       <MusicArtwork
@@ -145,7 +145,7 @@ export function SessionFriendsPanel({ accentColor, className = "" }: SessionFrie
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => router.push(`/stats?user=${encodeURIComponent(friend.user.email)}`)}
+                          onClick={() => router.push(`/stats?user=${encodeURIComponent(friend.user.email.split("@")[0])}`)}
                           className="truncate text-[14px] font-bold text-white hover:text-[var(--art-accent,#FA233B)] transition-colors"
                         >
                           {friend.user.name}

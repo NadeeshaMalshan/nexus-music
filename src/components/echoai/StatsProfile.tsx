@@ -27,6 +27,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useDashboard } from "@/context/DashboardContext";
 import { MusicArtwork } from "./MusicArtwork";
 import { FADE_IN_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
+import { useArtworkColors } from "@/lib/useArtworkColors";
 
 // Format listening time seconds to readable string
 const formatListeningTime = (seconds: number) => {
@@ -69,6 +70,9 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
   const [wrappedSlideIndex, setWrappedSlideIndex] = useState(0);
   const [artistImages, setArtistImages] = useState<Record<string, string>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Get palette from user profile photo
+  const userPalette = useArtworkColors(profileData?.user?.image, accentColor);
 
   // Fetch target profile details
   const fetchProfile = useCallback(async () => {
@@ -307,7 +311,12 @@ export function StatsProfile({ accentColor }: StatsProfileProps) {
 
       {/* Main Profile Info Card */}
       <section 
-        className={`relative rounded-[32px] overflow-hidden bg-[#121214]/65 backdrop-blur-2xl p-8 sm:p-10 transition-[margin-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:mr-[380px]" : "lg:mr-0"}`}
+        className={`relative rounded-[32px] overflow-hidden backdrop-blur-2xl p-8 sm:p-10 transition-[margin-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:mr-[380px]" : "lg:mr-0"}`}
+        style={{
+          backgroundColor: "#101012",
+          backgroundImage: `radial-gradient(circle at 15% 50%, ${userPalette.primary}1A 0%, transparent 60%), radial-gradient(circle at 85% 30%, ${userPalette.secondary}12 0%, transparent 50%)`,
+          boxShadow: `0 20px 40px -15px ${userPalette.primary}15`
+        }}
       >
         <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 z-10 relative">
           <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-6">

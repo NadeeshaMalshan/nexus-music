@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Play, Pause, SkipBack, SkipForward, Maximize2, Heart, ListMusic, Volume2, Users, Mic2, ChevronDown } from "lucide-react";
 import { type Song } from "./types";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
@@ -56,12 +56,45 @@ export function FloatingPlayer({
   onSeek,
 }: FloatingPlayerProps) {
   const { resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
-  const { crossDeviceState, activeDeviceCount } = useDeviceSync();
+  const { crossDeviceState, activeDeviceCount, triggerDeviceControl } = useDeviceSync();
   const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<string>(
     typeof window !== 'undefined' ? (window.localStorage.getItem('crossDeviceAction') || "Play individually") : "Play individually"
   );
   const isIdle = !currentSong;
+
+  // Handle device control events from WebSocket
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleDeviceControl = (event: CustomEvent) => {
+      const { action, song } = event.detail;
+      
+      switch (action) {
+        case "play":
+          if (!isPlaying) onTogglePlay();
+          break;
+        case "pause":
+          if (isPlaying) onTogglePlay();
+          break;
+        case "skip":
+          onNext();
+          break;
+        case "transfer":
+          // Transfer playback to this device
+          if (song && selectedAction === "Play on your device") {
+            // This would trigger the actual transfer logic
+            console.log("Transferring playback to this device:", song);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('nexus-device-control', handleDeviceControl as EventListener);
+    return () => {
+      window.removeEventListener('nexus-device-control', handleDeviceControl as EventListener);
+    };
+  }, [isPlaying, onTogglePlay, onNext, selectedAction]);
   
   const displaySong = {
     id: currentSong?.id || "idle",
@@ -112,10 +145,21 @@ export function FloatingPlayer({
                   <label 
                     key={i} 
                     className="flex items-center gap-3 cursor-pointer group"
-                    onClick={() => {
+                    onClick={async () => {
                       setSelectedAction(action);
                       if (typeof window !== 'undefined') {
                         window.localStorage.setItem('crossDeviceAction', action);
+                      }
+                      // Trigger device control based on action
+                      if (action === "Play on your device") {
+                        await triggerDeviceControl("transfer", crossDeviceState.deviceId, crossDeviceState.song);
+                      } else if (action === "Play simultaneously") {
+                        await triggerDeviceControl("play", undefined, crossDeviceState.song);
+                      } else if (action === "Play individually") {
+                        await triggerDeviceControl("pause", crossDeviceState.deviceId);
+                      } else if (action.startsWith("Play on ")) {
+                        // Action for specific device (e.g., "Play on Windows Edge")
+                        await triggerDeviceControl("transfer", crossDeviceState.deviceId, crossDeviceState.song);
                       }
                     }}
                   >

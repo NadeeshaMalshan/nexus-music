@@ -55,7 +55,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
   const { setSelectedPlaylist, onSongClick, onAddToQueue, onPlayNext } = useDashboard();
   const [playlists, setPlaylists] = useState<YouTubePlaylist[]>([]);
   const [loading, setLoading] = useState(false);
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -117,14 +117,14 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
       const musicItems = musicRes.ok ? ((await musicRes.json()).items || []).slice(0, 8) : [];
       const userItems = userRes.ok
         ? (await userRes.json()).slice(0, 5).map((user: UserSearchItem) => ({
-            type: "USER",
-            id: user.email || user.name,
-            name: user.name || user.email,
-            title: user.name || user.email,
-            author: user.email || "",
-            thumbnail: user.avatarUrl || user.image || user.thumbnail || "",
-            user,
-          }))
+          type: "USER",
+          id: user.email || user.name,
+          name: user.name || user.email,
+          title: user.name || user.email,
+          author: user.email || "",
+          thumbnail: user.avatarUrl || user.image || user.thumbnail || "",
+          user,
+        }))
         : [];
 
       if (looksLikePersonQuery(trimmed)) {
@@ -164,19 +164,18 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
   const renderNavItem = (item: any) => {
     const Icon = item.icon;
     const isActive = activeView === item.id;
-    
+
     return (
       <Link
         key={item.id}
         href={item.href}
-        className={`flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 group ${
-          isActive
+        className={`flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 group ${isActive
             ? "bg-white/10 text-white shadow-[0_8px_32px_rgba(255,255,255,0.05)]"
             : "text-white/40 hover:bg-white/5 hover:text-white"
-        }`}
+          }`}
       >
-        <Icon 
-          size={22} 
+        <Icon
+          size={22}
           style={{ color: isActive ? accentColor : undefined }}
         />
         <span className={`text-[19px] font-black tracking-tight ${isActive ? "text-white" : "text-white/40 group-hover:text-white"}`}>
@@ -188,7 +187,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
 
   return (
     <>
-      <m.div 
+      <m.div
         className="hidden h-full w-[360px] shrink-0 flex-col px-6 py-10 overflow-hidden lg:flex relative border-r border-white/5 bg-[#0D0D0D]"
       >
         {/* Search Bar */}
@@ -197,7 +196,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
             <div className="pl-4 pr-2 text-white/20">
               <Search size={20} />
             </div>
-            <input 
+            <input
               type="text"
               placeholder="Search music, artists..."
               value={searchQuery}
@@ -215,7 +214,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
           {/* Search Dropdown */}
           <AnimatePresence>
             {(isSearchFocused && (searchQuery || searchResults.length > 0)) && (
-              <m.div 
+              <m.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -225,7 +224,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                 <div className="max-h-[70vh] overflow-y-auto no-scrollbar">
                   {searchQuery && (
                     <div className="px-2 mb-4">
-                      <button 
+                      <button
                         onClick={() => { router.push(`/explore?q=${encodeURIComponent(searchQuery)}`); setIsSearchFocused(false); }}
                         className="w-full flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-white/5 text-white transition-colors group"
                       >
@@ -239,7 +238,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                   )}
 
                   {searchResults.map((item, idx) => (
-                    <div 
+                    <div
                       key={`${item.type ?? "r"}-${item.videoId || item.id}-${idx}`}
                       onClick={() => {
                         if (item.type === "USER") {
@@ -253,9 +252,9 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                           return;
                         }
                         if (item.type === "PLAYLIST") {
-                           router.push(`/playlists/${item.id}`);
-                           setIsSearchFocused(false);
-                           return;
+                          router.push(`/playlists/${item.id}`);
+                          setIsSearchFocused(false);
+                          return;
                         }
                         onSongClick({
                           id: item.videoId,
@@ -286,20 +285,20 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                         <div className="flex-1 min-w-0 pr-2">
                           <h4 className="text-[15px] font-bold text-white truncate leading-tight mb-0.5">{item.title || item.name}</h4>
                           <div className="flex items-center gap-1.5 overflow-hidden">
-                             <p className="text-[12px] text-white/40 font-medium truncate shrink-0">
-                               {item.type === "ARTIST" ? "Artist" : item.type === "PLAYLIST" ? `Playlist · ${item.author}` : item.author}
-                             </p>
-                             {(!item.type || item.type === "SONG") && item.views && (
-                               <>
-                                 <span className="text-white/10 text-[8px]">•</span>
-                                 <span className="text-[10px] font-black text-white/20 uppercase tracking-tighter leading-none pt-0.5">
-                                   {formatCount(item.views)}
-                                 </span>
-                               </>
-                             )}
+                            <p className="text-[12px] text-white/40 font-medium truncate shrink-0">
+                              {item.type === "ARTIST" ? "Artist" : item.type === "PLAYLIST" ? `Playlist · ${item.author}` : item.author}
+                            </p>
+                            {(!item.type || item.type === "SONG") && item.views && (
+                              <>
+                                <span className="text-white/10 text-[8px]">•</span>
+                                <span className="text-[10px] font-black text-white/20 uppercase tracking-tighter leading-none pt-0.5">
+                                  {formatCount(item.views)}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
-                        
+
                         {/* Action Buttons (Only for songs) */}
                         {(!item.type || item.type === "SONG") && (
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -359,12 +358,12 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
           {/* Main Navigation */}
           <div className="space-y-4">
             <div className="flex items-center justify-between px-4 mb-6 gap-3">
-              <AppBrandMark size="lg" subtitle="AI Music Dashboard" />
+              <AppBrandMark size="lg" />
               <button className="p-2.5 rounded-full bg-white/5 text-white/40 hover:bg-white/10 hover:text-white shrink-0">
                 <MoreHorizontal size={22} />
               </button>
             </div>
-            
+
             <nav className="space-y-1">
               {navigationItems.map(renderNavItem)}
             </nav>
@@ -372,73 +371,73 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
 
           {/* Library Sub-Items - "Playlists" */}
           <div className="space-y-4">
-             <div className="flex items-center justify-between px-4">
-                <h3 className="text-[22px] font-black text-white/20 tracking-tight uppercase">Playlists</h3>
-                <ChevronDown size={20} className="text-white/10" />
-             </div>
-             <nav className="space-y-1">
-                {canManageYtLibrary && (
-                  <>
-                    <button 
-                      onClick={() => setIsCreateModalOpen(true)}
-                      className="flex items-center gap-4 px-4 py-3 text-white/40 hover:text-white transition-colors group w-full text-left"
-                    >
-                       <div 
-                         className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:text-white transition-all duration-300"
-                         style={{ ['--hover-bg' as any]: accentColor }}
-                       >
-                          <Plus size={18} className="group-hover:scale-110 transition-transform" />
-                          <style jsx>{`
-                            div:hover { background-color: var(--art-accent, #FA233B); }
-                          `}</style>
-                       </div>
-                       <span className="text-[16px] font-bold">Create Checklist</span>
-                    </button>
-
-                    <button 
-                      onClick={() => setIsAiModalOpen(true)}
-                      className="flex items-center gap-4 px-4 py-3 text-white/40 hover:text-white transition-colors group w-full text-left"
-                    >
-                       <div 
-                        className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:text-white transition-all duration-300"
-                        style={{ ['--hover-bg' as any]: accentColor }}
-                       >
-                          <Sparkles size={16} className="group-hover:scale-110 transition-transform" />
-                          <style jsx>{`
-                            div:hover { background-color: var(--art-accent, #FA233B); }
-                          `}</style>
-                       </div>
-                       <span className="text-[16px] font-bold">Generate a Playlist</span>
-                    </button>
-
-                    <div className="h-4" />
-                  </>
-                )}
-
-                {playlists.slice(0, 10).map((pl, plIdx) => (
-                  <Link
-                    key={`sidebar-pl-${plIdx}-${pl.id}`}
-                    href={`/playlists/${pl.id}`}
-                    onClick={() => setSelectedPlaylist(pl)}
-                    className={`flex items-center gap-4 rounded-2xl px-4 py-2.5 hover:bg-white/5 group ${pathname.includes(pl.id) ? "text-white" : "text-white/40"}`}
+            <div className="flex items-center justify-between px-4">
+              <h3 className="text-[22px] font-black text-white/20 tracking-tight uppercase">Playlists</h3>
+              <ChevronDown size={20} className="text-white/10" />
+            </div>
+            <nav className="space-y-1">
+              {canManageYtLibrary && (
+                <>
+                  <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-center gap-4 px-4 py-3 text-white/40 hover:text-white transition-colors group w-full text-left"
                   >
-                    <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity shadow-sm">
-                      <MusicArtwork
-                        src={pl.thumbnailUrl}
-                        alt={pl.title}
-                        iconSize={14}
-                        variant="track"
-                        rounded="md"
-                        className="h-full w-full"
-                      />
+                    <div
+                      className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:text-white transition-all duration-300"
+                      style={{ ['--hover-bg' as any]: accentColor }}
+                    >
+                      <Plus size={18} className="group-hover:scale-110 transition-transform" />
+                      <style jsx>{`
+                            div:hover { background-color: var(--art-accent, #FA233B); }
+                          `}</style>
                     </div>
-                    <span className="truncate text-[16px] font-bold tracking-tight">{pl.title}</span>
-                  </Link>
-                ))}
-             </nav>
+                    <span className="text-[16px] font-bold">Create Checklist</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsAiModalOpen(true)}
+                    className="flex items-center gap-4 px-4 py-3 text-white/40 hover:text-white transition-colors group w-full text-left"
+                  >
+                    <div
+                      className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:text-white transition-all duration-300"
+                      style={{ ['--hover-bg' as any]: accentColor }}
+                    >
+                      <Sparkles size={16} className="group-hover:scale-110 transition-transform" />
+                      <style jsx>{`
+                            div:hover { background-color: var(--art-accent, #FA233B); }
+                          `}</style>
+                    </div>
+                    <span className="text-[16px] font-bold">Generate a Playlist</span>
+                  </button>
+
+                  <div className="h-4" />
+                </>
+              )}
+
+              {playlists.slice(0, 10).map((pl, plIdx) => (
+                <Link
+                  key={`sidebar-pl-${plIdx}-${pl.id}`}
+                  href={`/playlists/${pl.id}`}
+                  onClick={() => setSelectedPlaylist(pl)}
+                  className={`flex items-center gap-4 rounded-2xl px-4 py-2.5 hover:bg-white/5 group ${pathname.includes(pl.id) ? "text-white" : "text-white/40"}`}
+                >
+                  <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-white/5 opacity-60 group-hover:opacity-100 transition-opacity shadow-sm">
+                    <MusicArtwork
+                      src={pl.thumbnailUrl}
+                      alt={pl.title}
+                      iconSize={14}
+                      variant="track"
+                      rounded="md"
+                      className="h-full w-full"
+                    />
+                  </div>
+                  <span className="truncate text-[16px] font-bold tracking-tight">{pl.title}</span>
+                </Link>
+              ))}
+            </nav>
           </div>
         </div>
-        
+
         <div className="mt-auto pt-6 border-t border-white/5">
           <SidebarAuth />
         </div>
@@ -452,12 +451,12 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
       )}
 
       {/* Mobile Optimized Nav */}
-      <m.div 
+      <m.div
         className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-white/5 lg:hidden pb-safe pb-2 pt-2 px-2"
-        animate={{ 
-          backgroundColor: accentColor 
-            ? `color-mix(in srgb, ${accentColor} 12%, #000000)` 
-            : "#000000" 
+        animate={{
+          backgroundColor: accentColor
+            ? `color-mix(in srgb, ${accentColor} 12%, #000000)`
+            : "#000000"
         }}
         transition={{ duration: 1 }}
       >
@@ -470,19 +469,18 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
         ].map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
-          
+
           return (
             <Link
               key={item.id}
               href={item.href}
-              className={`flex flex-1 flex-col items-center gap-1 py-2 ${
-                isActive ? "" : "text-zinc-500 hover:text-zinc-100"
-              }`}
+              className={`flex flex-1 flex-col items-center gap-1 py-2 ${isActive ? "" : "text-zinc-500 hover:text-zinc-100"
+                }`}
               style={{ color: isActive ? accentColor : undefined }}
             >
               <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
               <span className={`text-[10px] font-black uppercase tracking-tight truncate w-full text-center ${isActive ? "opacity-100" : "opacity-40"}`}>
-                 {item.label}
+                {item.label}
               </span>
             </Link>
           );

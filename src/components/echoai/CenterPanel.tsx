@@ -280,8 +280,8 @@ function SearchCard(props: {
           <div className="absolute top-4 left-4">
             <span
               className={`px-3 py-1 rounded-full text-[11px] font-black tracking-wider border ${badge === "LIVE"
-                  ? "bg-red-500/15 border-red-400/30 text-red-200"
-                  : "bg-[#1c1c1e] border-white/15 text-white/70"
+                ? "bg-red-500/15 border-red-400/30 text-red-200"
+                : "bg-[#1c1c1e] border-white/15 text-white/70"
                 }`}
             >
               {badge}
@@ -925,9 +925,7 @@ export function CenterPanel(props: CenterPanelProps) {
                     transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                     className="flex flex-col items-start"
                   >
-                    <div className="mb-5">
-                      <AppBrandMark size="lg" subtitle="AI Music Dashboard" />
-                    </div>
+
                     <h1 className="text-[34px] sm:text-[40px] font-black tracking-tight text-white leading-none mb-3">
                       Nexus Music
                     </h1>

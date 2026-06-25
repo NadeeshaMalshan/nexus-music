@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { m } from "motion/react";
 import { APPLE_EASE } from "@/lib/animations";
 import { 
@@ -309,6 +310,17 @@ export function Settings() {
 
         {/* ── Footer Info ───────────────────────────────────────────────────── */}
         <footer className="mt-20 text-center pb-12">
+          <div className="flex items-center justify-center gap-4 text-white/25 text-[13px] font-medium mb-6">
+            <Link href="/privacy" className="hover:text-white transition-colors">
+              Privacy Policy
+            </Link>
+            <span className="text-white/10" aria-hidden>
+              ·
+            </span>
+            <Link href="/terms" className="hover:text-white transition-colors">
+              Terms of Service
+            </Link>
+          </div>
           <div className="flex items-center justify-center gap-2 text-white/20 font-bold tracking-tight mb-2">
             <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center">
               <span className="text-[14px]">N</span>

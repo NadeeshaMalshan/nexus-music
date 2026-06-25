@@ -17,6 +17,8 @@ import { PlaylistDetail } from "./PlaylistDetail";
 import { AlbumDetail } from "./AlbumDetail";
 import { Settings } from "./Settings";
 import { StatsProfile } from "./StatsProfile";
+import { PrivacyPolicy } from "./PrivacyPolicy";
+import { TermsOfService } from "./TermsOfService";
 import { useRouter } from "next/navigation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -867,6 +869,26 @@ export function CenterPanel(props: CenterPanelProps) {
               {...FADE_IN_VARIANTS}
             >
               <Settings />
+            </m.div>
+          )}
+
+          {activeView === "privacy" && (
+            <m.div
+              key="privacy"
+              className="flex-1 h-full min-h-0 flex flex-col overflow-hidden"
+              {...FADE_IN_VARIANTS}
+            >
+              <PrivacyPolicy />
+            </m.div>
+          )}
+
+          {activeView === "terms" && (
+            <m.div
+              key="terms"
+              className="flex-1 h-full min-h-0 flex flex-col overflow-hidden"
+              {...FADE_IN_VARIANTS}
+            >
+              <TermsOfService />
             </m.div>
           )}
 

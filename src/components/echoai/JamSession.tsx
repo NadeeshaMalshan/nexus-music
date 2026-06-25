@@ -1,6 +1,7 @@
 "use client";
 
 import { useJam } from "@/context/JamContext";
+import { MAX_JAM_PARTICIPANTS } from "@/lib/jamConstants";
 import { LogOut, Link, Check, Share2, QrCode, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
@@ -13,7 +14,7 @@ const Avatar = ({ src, name }: { src: string | null; name: string }) => (
 
 export function JamSession() {
   const { data: session } = useSession();
-  const { jamState, createJam, joinJam, leaveJam } = useJam();
+  const { jamState, joinError, createJam, joinJam, leaveJam } = useJam();
   const [showJoinInput, setShowJoinInput] = useState(false);
   const [joinId, setJoinId] = useState("");
   const [userName, setUserName] = useState("");
@@ -90,7 +91,7 @@ export function JamSession() {
             {/* Listeners List */}
             <div className="flex flex-col gap-4 px-4 mb-16">
                 <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-white/30">
-                    {jamState.participants} Connected
+                    {jamState.participants}/{MAX_JAM_PARTICIPANTS} Connected
                 </p>
                 <div className="flex flex-col gap-6">
                     {jamState.listeners.map((listener, idx) => (
@@ -176,8 +177,12 @@ export function JamSession() {
         >
             <div>
                 <h2 className="text-3xl font-black tracking-tighter text-white truncate">Join Session</h2>
-                <p className="text-white/40 text-sm mt-1 font-medium truncate">Sync playback with a friend.</p>
+                <p className="text-white/40 text-sm mt-1 font-medium truncate">Sync playback with up to {MAX_JAM_PARTICIPANTS} people.</p>
             </div>
+
+          {joinError && (
+            <p className="text-red-400 text-sm font-medium">{joinError}</p>
+          )}
 
           <div className="flex flex-col gap-6 w-full">
              {!session && (
@@ -232,7 +237,7 @@ export function JamSession() {
         >
             <div>
                 <h2 className="text-5xl font-black tracking-tighter text-white leading-tight">Shared<br/>Listening.</h2>
-                <p className="text-white/40 text-sm mt-4 font-medium max-w-[200px]">Sync perfectly in real-time across any device.</p>
+                <p className="text-white/40 text-sm mt-4 font-medium max-w-[240px]">Sync perfectly in real-time with up to {MAX_JAM_PARTICIPANTS} listeners.</p>
             </div>
 
             <div className="flex flex-col gap-4 mt-8">

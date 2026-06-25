@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Pusher from "pusher";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { MAX_JAM_PARTICIPANTS } from "@/lib/jamConstants";
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID || "",
@@ -22,13 +23,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing socket_id or channel_name" }, { status: 400 });
     }
 
+    const isHost = request.headers.get("X-Jam-Host") === "true";
+
+    // Enforce participant cap for guests joining an existing room
+    if (!isHost && channelName.startsWith("presence-jam-")) {
+      try {
+        const channelInfo = await pusher.get({
+          path: `/channels/${encodeURIComponent(channelName)}`,
+          params: { info: "user_count" },
+        });
+        const rawBody = channelInfo.body;
+        const bodyText =
+          typeof rawBody === "string"
+            ? rawBody
+            : await new Response(rawBody as unknown as BodyInit).text();
+        const { user_count: userCount = 0 } = JSON.parse(bodyText);
+        if (userCount >= MAX_JAM_PARTICIPANTS) {
+          return NextResponse.json(
+            { error: "Room is full", code: "ROOM_FULL", max: MAX_JAM_PARTICIPANTS },
+            { status: 403 }
+          );
+        }
+      } catch {
+        // Room may not exist yet — allow the first guest through
+      }
+    }
+
     // Generate unique user data for Presence Channel
     // We add a random suffix to ensure multiple tabs/devices from the same account count as unique members
     const uniqueSuffix = Math.random().toString(36).substring(7);
     
     // Check for custom name in headers (passed when joining without login)
     const customName = request.headers.get("X-Jam-Name");
-    const isHost = request.headers.get("X-Jam-Host") === "true";
     const decodedName = customName ? decodeURIComponent(customName) : null;
     
     const userId = session?.user?.email ? `${session.user.email}-${uniqueSuffix}` : `anon-${uniqueSuffix}`;

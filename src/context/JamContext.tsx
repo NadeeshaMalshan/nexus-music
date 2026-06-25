@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 import { useDashboard } from "./DashboardContext";
 import { type Song } from "@/components/echoai/types";
 import Pusher, { PresenceChannel } from "pusher-js";
+import { MAX_JAM_PARTICIPANTS } from "@/lib/jamConstants";
 
 type Listener = {
   id: string;
@@ -21,6 +22,7 @@ type JamState = {
 
 type JamContextType = {
   jamState: JamState;
+  joinError: string | null;
   createJam: () => Promise<string>;
   joinJam: (roomId: string, name?: string) => Promise<void>;
   leaveJam: () => void;
@@ -44,6 +46,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     isHost: false,
     isJoining: false,
   });
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   const pusherRef = useRef<Pusher | null>(null);
   const channelRef = useRef<any>(null);
@@ -60,6 +63,8 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   const localActionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastBroadcastPosRef = useRef<number>(0);
   const lastUpdateRef = useRef<number>(Date.now());
+  const prevSongIdRef = useRef<string | null>(null);
+  const serverRelayEvents = new Set(["sync-play", "sync-song", "sync-queue", "join"]);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -87,7 +92,8 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
       
       const sent = channelRef.current.trigger(`client-sync-event`, eventData);
       
-      if (!sent) {
+      // Always relay critical state through the server so every participant receives it
+      if (!sent || serverRelayEvents.has(type)) {
         await fetch("/api/jam/trigger", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -147,6 +153,47 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
     };
     trySeekAndPlay();
   }, []);
+
+  const waitForSongAndPlay = useCallback((songId: string, startTime: number, attempt = 0) => {
+    const MAX_ATTEMPTS = 40;
+    const d = dashboardRef.current;
+
+    if (attempt >= MAX_ATTEMPTS) {
+      console.warn("[Jam] Timed out waiting for song to load:", songId);
+      return;
+    }
+
+    const targetVideoId = d.audioData?.videoId || songId;
+    const player = d.ytPlayerRef.current as any;
+
+    if (d.currentSong?.id !== songId) {
+      setTimeout(() => waitForSongAndPlay(songId, startTime, attempt + 1), 300);
+      return;
+    }
+
+    if (d.viewMode === "video" || d.currentSong?.isLive) {
+      d.setIsPlaying(true);
+      safePlay(startTime);
+      return;
+    }
+
+    if (!player) {
+      setTimeout(() => waitForSongAndPlay(songId, startTime, attempt + 1), 300);
+      return;
+    }
+
+    try {
+      const loadedId = player.getVideoData?.()?.video_id;
+      if (loadedId === targetVideoId || loadedId === songId) {
+        safePlay(startTime);
+        return;
+      }
+    } catch {
+      // Player not ready yet
+    }
+
+    setTimeout(() => waitForSongAndPlay(songId, startTime, attempt + 1), 300);
+  }, [safePlay]);
 
   const safePause = useCallback(() => {
     setSyncing(800); // Lock sync for 800ms on pause
@@ -272,18 +319,26 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
                 }
                 break;
             case "sync-play":
+                if (!currentState.isHost) {
+                    isInitialSyncCompletedRef.current = true;
+                }
+
                 const targetSongId = payload.song?.id;
-                // If song mismatch, sync song first (must use live state — handler closure is long-lived)
-                if (targetSongId && targetSongId !== d.currentSong?.id) {
+                const songChanged = targetSongId && targetSongId !== d.currentSong?.id;
+
+                if (songChanged) {
                     d.onSongClick(payload.song, false);
                 } else if (!targetSongId) {
                     d.setCurrentSong(null);
                 }
                 
                 if (payload.isPlaying) {
-                    // Latency compensation for start time
                     const seekTo = payload.currentTime ? (payload.currentTime + (adjustedLatency / 1000)) : 0;
-                    safePlay(seekTo);
+                    if (songChanged && targetSongId) {
+                        waitForSongAndPlay(targetSongId, seekTo);
+                    } else {
+                        safePlay(seekTo);
+                    }
                 } else {
                     safePause();
                 }
@@ -365,20 +420,36 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
         console.log(`[Jam] User Left. Total participants: ${channel.members?.count}`);
     });
 
-  }, [broadcast, safePlay, safePause, applySmoothSync]);
+    channel.bind("pusher:subscription_error", (status: { status?: number; error?: string }) => {
+        console.error("[Jam] Subscription failed:", status);
+        const isFull = status.status === 403;
+        setJoinError(
+            isFull
+                ? `This session is full (${MAX_JAM_PARTICIPANTS} listeners max).`
+                : "Could not join session. Check the code and try again."
+        );
+        pusher.unsubscribe(`presence-jam-${id}`);
+        pusher.disconnect();
+        channelRef.current = null;
+        setJamState({ roomId: null, participants: 0, listeners: [], isHost: false, isJoining: false });
+    });
+
+  }, [broadcast, safePlay, safePause, applySmoothSync, waitForSongAndPlay]);
 
   // Sync state hooks - Optimized to prevent flooding
   useEffect(() => {
     if (!jamState.roomId || !isInitialSyncCompletedRef.current) return;
     
-    // Broadcast major state changes immediately
-    if (!isSyncingRef.current) {
+    const songChanged = dashboard.currentSong?.id !== prevSongIdRef.current;
+    prevSongIdRef.current = dashboard.currentSong?.id ?? null;
+
+    if (!isSyncingRef.current || songChanged) {
         setIncomingLock(1500); 
         broadcast("sync-play", { 
             isPlaying: dashboard.isPlaying, 
             currentTime: dashboard.currentTimeSec,
             song: dashboard.currentSong 
-        });
+        }, songChanged);
         lastBroadcastPosRef.current = dashboard.currentTimeSec;
     }
   }, [dashboard.isPlaying, dashboard.currentSong?.id, jamState.roomId, broadcast]);
@@ -404,8 +475,9 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   }, [dashboard.currentTimeSec, dashboard.isPlaying, jamState.roomId, broadcast]);
 
   useEffect(() => {
-    if (!jamState.roomId || isSyncingRef.current || !dashboard.currentSong || !isInitialSyncCompletedRef.current) return;
-    broadcast("sync-song", { song: dashboard.currentSong });
+    if (!jamState.roomId || !dashboard.currentSong || !isInitialSyncCompletedRef.current) return;
+    if (isSyncingRef.current) return;
+    broadcast("sync-song", { song: dashboard.currentSong }, true);
   }, [dashboard.currentSong?.id, jamState.roomId, broadcast]);
 
   useEffect(() => {
@@ -432,24 +504,29 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   }, [jamState.isHost, jamState.roomId, dashboard.isPlaying, dashboard.currentTimeSec, broadcast]);
 
   const createJam = async () => {
+    setJoinError(null);
     const id = Math.random().toString(36).substring(2, 8).toUpperCase();
-    isInitialSyncCompletedRef.current = true; // Host is synced from start
+    isInitialSyncCompletedRef.current = true;
+    prevSongIdRef.current = dashboard.currentSong?.id ?? null;
     setJamState({ roomId: id, participants: 1, listeners: [], isHost: true, isJoining: false });
     connectToJam(id, undefined, true);
     return id;
   };
 
   const joinJam = async (id: string, name?: string) => {
-    isInitialSyncCompletedRef.current = false; // Reset handshake flag for Guest
+    setJoinError(null);
+    isInitialSyncCompletedRef.current = false;
+    prevSongIdRef.current = null;
     setJamState({ roomId: id, participants: 1, listeners: [], isHost: false, isJoining: true });
     connectToJam(id, name, false);
-    // Do NOT broadcast "join" immediately; we will trigger it in subscription_succeeded
     setJamState(prev => ({ ...prev, isJoining: false }));
   };
 
   const leaveJam = () => {
     const id = jamState.roomId;
     isInitialSyncCompletedRef.current = false;
+    prevSongIdRef.current = null;
+    setJoinError(null);
     if (pusherRef.current && id) {
         pusherRef.current.unsubscribe(`presence-jam-${id}`);
         pusherRef.current.disconnect();
@@ -458,7 +535,7 @@ export function JamProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <JamContext.Provider value={{ jamState, createJam, joinJam, leaveJam }}>
+    <JamContext.Provider value={{ jamState, joinError, createJam, joinJam, leaveJam }}>
       {children}
     </JamContext.Provider>
   );

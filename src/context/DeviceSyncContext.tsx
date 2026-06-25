@@ -18,11 +18,20 @@ type CrossDevicePlayUpdate = {
   song?: any;
 };
 
+type DeviceControlEvent = {
+  action: "play" | "pause" | "skip" | "transfer";
+  targetDeviceId: string | null;
+  sourceDeviceName: string;
+  song?: any | null;
+  timestamp: number;
+};
+
 interface DeviceSyncContextType {
   lastFriendActivity: FriendActivityUpdate | null;
   crossDeviceState: CrossDevicePlayUpdate | null;
   activeDeviceCount: number;
   clearCrossDeviceState: () => void;
+  triggerDeviceControl: (action: string, targetDeviceId?: string, song?: any) => Promise<void>;
 }
 
 const DeviceSyncContext = createContext<DeviceSyncContextType | null>(null);
@@ -93,6 +102,17 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
       }
     });
 
+    // 3. Listen for Device Control events
+    userChannel.bind("device-control", (data: DeviceControlEvent) => {
+      // Only process if this device is the target or if it's a broadcast action
+      if (!data.targetDeviceId || data.targetDeviceId === localDeviceId) {
+        // Dispatch custom event for components to listen to
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nexus-device-control', { detail: data }));
+        }
+      }
+    });
+
     return () => {
       pusher.unsubscribe("private-global-activity");
       pusher.unsubscribe(`presence-user-${emailHash}`);
@@ -102,11 +122,32 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
 
   const clearCrossDeviceState = () => setCrossDeviceState(null);
 
+  const triggerDeviceControl = async (action: string, targetDeviceId?: string, song?: any) => {
+    try {
+      const response = await fetch("/api/device/control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          targetDeviceId: targetDeviceId || null,
+          song,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to trigger device control");
+      }
+    } catch (error) {
+      console.error("Device control trigger failed:", error);
+    }
+  };
+
   const value = useMemo(() => ({
     lastFriendActivity,
     crossDeviceState,
     activeDeviceCount,
-    clearCrossDeviceState
+    clearCrossDeviceState,
+    triggerDeviceControl
   }), [lastFriendActivity, crossDeviceState, activeDeviceCount]);
 
   return (
@@ -120,7 +161,13 @@ export function useDeviceSync() {
   const context = useContext(DeviceSyncContext);
   if (!context) {
     // If wrapped correctly, this shouldn't happen, but provide fallback for safety
-    return { lastFriendActivity: null, crossDeviceState: null, activeDeviceCount: 1, clearCrossDeviceState: () => {} };
+    return { 
+      lastFriendActivity: null, 
+      crossDeviceState: null, 
+      activeDeviceCount: 1, 
+      clearCrossDeviceState: () => {},
+      triggerDeviceControl: async () => {}
+    };
   }
   return context;
 }

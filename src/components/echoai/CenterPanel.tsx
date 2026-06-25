@@ -768,7 +768,7 @@ export function CenterPanel(props: CenterPanelProps) {
     const seen = new Set<string>();
     const out: SearchItem[] = [];
     for (const s of playedHistory || []) {
-      if (!s?.id || seen.has(s.id)) continue;
+      if (!s?.id || seen.has(s.id) || s.id === currentSongId) continue;
       seen.add(s.id);
       out.push({
         videoId: s.id,
@@ -780,7 +780,7 @@ export function CenterPanel(props: CenterPanelProps) {
       if (out.length >= 14) break;
     }
     return out;
-  }, [playedHistory]);
+  }, [playedHistory, currentSongId]);
 
   const openPlaylistRec = useCallback(
     (p: PlaylistSearchItem) => {

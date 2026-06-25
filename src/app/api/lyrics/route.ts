@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { parseLrcContent } from "@/lib/lrc";
+import { Redis } from "@upstash/redis";
+
+const redis = Redis.fromEnv();
 
 // Performance hint for Next.js 16+
 export const dynamic = "force-dynamic";
@@ -317,6 +320,18 @@ export async function GET(request: Request) {
   const { track, artist } = cleanLyricsQuery(rawTrack, rawArtist);
   console.log(`[lyrics] Cleaned "${rawTrack}" by "${rawArtist}" -> "${track}" by "${artist}"`);
 
+  const cacheKey = `lyrics:${artist}:${track}`;
+
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      console.log(`[lyrics] Serving cached lyrics for "${track}" by "${artist}"`);
+      return NextResponse.json(cached);
+    }
+  } catch (error) {
+    console.error("[lyrics] Failed to read from Redis cache:", error);
+  }
+
   try {
     // Run all external sources concurrently for maximum responsiveness.
     const [lrcSearchSettled, lrcExactSettled, lyricsOvhSettled, geniusSettled] =
@@ -415,6 +430,15 @@ export async function GET(request: Request) {
         writers: geniusWriters,
       },
     };
+
+    // Cache the result asynchronously
+    try {
+      // Cache for 30 days if successful, or 1 day if not found
+      const ttl = lyricsContent ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
+      await redis.set(cacheKey, responsePayload, { ex: ttl });
+    } catch (error) {
+      console.error("[lyrics] Failed to write to Redis cache:", error);
+    }
 
     return NextResponse.json(responsePayload);
   } catch (error) {

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { X, Play, Sparkles, Trash2, GripVertical, Plus } from "lucide-react";
+import { X, Play, Sparkles, Trash2, GripVertical, Plus, Loader2 } from "lucide-react";
 import { type Song } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { AudioVisualizer } from "./AudioVisualizer";
@@ -174,18 +174,13 @@ export function RightSidebar({
                         </button>
                       )}
                     </div>
-                    {aiLoading && (
-                      <div className="flex items-center gap-2 text-[10px] font-black tracking-widest uppercase animate-pulse text-white/50">
-                        <Sparkles size={12} />
-                        <span>Curating</span>
-                      </div>
-                    )}
+                    {/* Removed small curating indicator */}
                   </div>
 
                   {currentSong && (
                     <div className="mb-6">
                       <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.2em] mb-3 px-2">Now Playing</p>
-                      <div className="flex w-full cursor-pointer items-center gap-4 p-2 rounded-2xl transition-all duration-300 bg-white/[0.06] border border-white/10 backdrop-blur-md">
+                      <div className="flex w-full cursor-pointer items-center gap-4 p-2 rounded-2xl transition-all duration-300 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
                         <div className="flex items-center">
                           <div className="relative shrink-0 w-12 h-12 bg-black/20 rounded-xl overflow-hidden border border-white/10 shadow-lg">
                             <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={20} />
@@ -196,20 +191,20 @@ export function RightSidebar({
                         </div>
                         <div className="min-w-0 flex-1 pr-2">
                           <div className="flex items-center gap-2">
-                            <p className="line-clamp-1 text-[15px] font-bold tracking-tight leading-tight text-white">{currentSong.title}</p>
+                            <p className="line-clamp-1 text-[15px] font-black tracking-tight leading-tight text-black">{currentSong.title}</p>
                           </div>
                           <p 
                             onClick={(e) => {
                               e.stopPropagation();
                               onNavigateArtist?.(currentSong.artist);
                             }}
-                            className="truncate text-[11px] font-medium text-white/60 hover:text-white transition-colors mt-1"
+                            className="truncate text-[11px] font-bold text-black/60 hover:text-black transition-colors mt-1"
                           >
                             {currentSong.artist}
                           </p>
                         </div>
                         <div className="flex items-center gap-3 pr-2">
-                          <p className="text-[10px] font-black tracking-widest text-white/70">
+                          <p className="text-[10px] font-black tracking-widest text-black/70">
                             {currentSong.duration}
                           </p>
                         </div>
@@ -298,11 +293,8 @@ export function RightSidebar({
                       })
                     ) : (
                       aiLoading ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
-                           <div className="w-10 h-10 rounded-full bg-white/[0.02] border border-white/5 flex items-center justify-center animate-pulse">
-                              <Sparkles size={16} className="text-white/20" />
-                           </div>
-                           <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.22em]">Curating Radio</p>
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                           <Loader2 size={24} className="text-white/30 animate-spin" />
                         </div>
                       ) : (
                         <div className="px-2 py-8 text-center">

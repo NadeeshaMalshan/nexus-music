@@ -490,6 +490,23 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     fetch("/api/user/subscriptions/sync", { method: "POST" }).catch(() => {});
   }, [session?.accessToken, session?.user?.email]);
 
+  // Fetch user's actual recent plays from DB on login
+  useEffect(() => {
+    if (!session?.user?.email) return;
+    fetch("/api/user/stats")
+      .then(res => res.json())
+      .then(data => {
+        if (data?.recentPlayed && Array.isArray(data.recentPlayed)) {
+          setPlayedHistory(prev => {
+            const localIds = new Set(prev.map(s => s.id));
+            const dbFiltered = data.recentPlayed.filter((s: Song) => !localIds.has(s.id));
+            return [...prev, ...dbFiltered].slice(0, 50);
+          });
+        }
+      })
+      .catch(err => console.error("Failed to load user recent plays:", err));
+  }, [session?.user?.email]);
+
   // Synchronize playing status to backend on change (event-driven)
   useEffect(() => {
     if (!currentSong || !session?.user?.email) return;

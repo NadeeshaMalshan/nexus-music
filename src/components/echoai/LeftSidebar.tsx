@@ -14,6 +14,7 @@ import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { CreatePlaylistModal, AiPlaylistModal } from "./LibraryModals";
 import { parseYouTubeWatchUrl, songFromYouTubeVideoId } from "@/lib/parseYouTubeUrl";
+import { AppBrandMark } from "./AppBrandMark";
 
 type UserSearchItem = {
   name?: string;
@@ -355,11 +356,11 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
         </div>
 
         <div className="flex-1 overflow-y-auto no-scrollbar space-y-12">
-          {/* Main Navigation - "Nexus" */}
+          {/* Main Navigation */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between px-4 mb-6">
-              <h2 className="text-[38px] font-black text-white tracking-tighter leading-none hover:text-[var(--art-accent,#FA243C)] cursor-default">Nexus</h2>
-              <button className="p-2.5 rounded-full bg-white/5 text-white/40 hover:bg-white/10 hover:text-white">
+            <div className="flex items-center justify-between px-4 mb-6 gap-3">
+              <AppBrandMark size="lg" subtitle="AI Music Dashboard" />
+              <button className="p-2.5 rounded-full bg-white/5 text-white/40 hover:bg-white/10 hover:text-white shrink-0">
                 <MoreHorizontal size={22} />
               </button>
             </div>

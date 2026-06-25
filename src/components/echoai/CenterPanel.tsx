@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, Suspense } from "react";
-import { Play, Loader2, Music, RefreshCw, ListPlus, PlaySquare, ChevronLeft, ChevronRight, LogIn } from "lucide-react";
+import { Play, Loader2, Music, RefreshCw, ListPlus, PlaySquare, ChevronLeft, ChevronRight } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, FADE_IN_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
 import { type Song } from "./types";
@@ -19,6 +19,7 @@ import { Settings } from "./Settings";
 import { StatsProfile } from "./StatsProfile";
 import { PrivacyPolicy } from "./PrivacyPolicy";
 import { TermsOfService } from "./TermsOfService";
+import { AppBrandMark } from "./AppBrandMark";
 import { useRouter } from "next/navigation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -924,16 +925,11 @@ export function CenterPanel(props: CenterPanelProps) {
                     transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                     className="flex flex-col items-start"
                   >
-                    <div
-                      className="w-14 h-14 rounded-full flex items-center justify-center mb-5 border border-white/5 bg-white/[0.02]"
-                      style={{
-                        boxShadow: "inset 0 0 12px rgba(255,255,255,0.05), 0 15px 30px rgba(0,0,0,0.4)"
-                      }}
-                    >
-                      <LogIn size={24} className="text-white/70" />
+                    <div className="mb-5">
+                      <AppBrandMark size="lg" subtitle="AI Music Dashboard" />
                     </div>
                     <h1 className="text-[34px] sm:text-[40px] font-black tracking-tight text-white leading-none mb-3">
-                      Listen to Nexus.
+                      Nexus Music
                     </h1>
                     <p className="text-[14px] sm:text-[15px] text-white/35 font-medium leading-relaxed max-w-md mb-6">
                       Sign in with Google to synchronize your YouTube library, unlock AI-driven recommendations, and control your playback queue.

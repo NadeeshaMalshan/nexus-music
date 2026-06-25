@@ -1801,8 +1801,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     [likedSongs, likedLibraryTracks],
   );
 
-  const onRateSong = useCallback(async (songId: string, rating: "like" | "none", meta?: { title: string; artist: string }) => {
-    if (!session?.user) return;
+  const onRateSong = useCallback(async (songId: string, rating: "like" | "none", meta?: { title: string; artist: string }): Promise<{ pendingSync?: boolean }> => {
+    if (!session?.user) return {};
     
     let targetId = (songId === currentSong?.id && audioData?.videoId) ? audioData.videoId : songId;
     let finalMeta = meta ?? (rating === "like" && songId === currentSong?.id && currentSong ? { title: currentSong.title, artist: currentSong.artist } : undefined);
@@ -1874,6 +1874,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         })
       );
       if (!res.ok) throw new Error("Failed to rate song");
+      const json = await res.json().catch(() => ({}));
+      return { pendingSync: json?.pendingSync === true };
     } catch (err) {
       setLikedSongs((prev) => {
         const next = new Set(prev);

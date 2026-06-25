@@ -71,6 +71,7 @@ export function DesktopExpandedPlayer({
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">(viewMode === "video" ? "controls" : "lyrics");
   const [isControlsVisible] = useState(true);
   const [liveLikeToast, setLiveLikeToast] = useState<{ title: string; artist: string; artwork?: string | null } | null>(null);
+  const [liveLikePendingSync, setLiveLikePendingSync] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
 
   const isMountedRef = useRef(false);
@@ -471,20 +472,23 @@ export function DesktopExpandedPlayer({
                 } else {
                   const liveTitle = liveMetadata?.title;
                   const liveArtist = liveMetadata?.artist;
-                  void onRateSong(
-                    currentSong.id,
-                    "like",
-                    liveTitle && liveArtist
-                      ? { title: liveTitle, artist: liveArtist }
-                      : { title: currentSong.title, artist: currentSong.artist }
-                  );
-                  if (currentSong.isLive && liveTitle && liveArtist) {
-                    setLiveLikeToast({
-                      title: liveTitle,
-                      artist: liveArtist,
-                      artwork: liveMetadata?.artwork ?? currentSong.artwork,
-                    });
-                  }
+                  void (async () => {
+                    const result = await onRateSong(
+                      currentSong.id,
+                      "like",
+                      liveTitle && liveArtist
+                        ? { title: liveTitle, artist: liveArtist }
+                        : { title: currentSong.title, artist: currentSong.artist }
+                    );
+                    if (currentSong.isLive && liveTitle && liveArtist) {
+                      setLiveLikePendingSync(result?.pendingSync === true);
+                      setLiveLikeToast({
+                        title: liveTitle,
+                        artist: liveArtist,
+                        artwork: liveMetadata?.artwork ?? currentSong.artwork,
+                      });
+                    }
+                  })();
                 }
               }}
               className="mt-1 rounded-full bg-white/5 p-2 hover:bg-white/10"
@@ -1002,6 +1006,7 @@ export function DesktopExpandedPlayer({
               title={liveLikeToast.title}
               artist={liveLikeToast.artist}
               artwork={liveLikeToast.artwork}
+              pendingSync={liveLikePendingSync}
               onDismiss={() => setLiveLikeToast(null)}
             />
           </div>

@@ -60,6 +60,7 @@ export function MobileExpandedPlayer({
   const { jamState } = useJam();
   const [jamWarning, setJamWarning] = useState<string | null>(null);
   const [liveLikeToast, setLiveLikeToast] = useState<{ title: string; artist: string; artwork?: string | null } | null>(null);
+  const [liveLikePendingSync, setLiveLikePendingSync] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
 
   const isMountedRef = useRef(false);
@@ -597,20 +598,23 @@ export function MobileExpandedPlayer({
                       } else {
                         const liveTitle = liveMetadata?.title;
                         const liveArtist = liveMetadata?.artist;
-                        void onRateSong(
-                          currentSong.id,
-                          "like",
-                          liveTitle && liveArtist
-                            ? { title: liveTitle, artist: liveArtist }
-                            : { title: currentSong.title, artist: currentSong.artist }
-                        );
-                        if (currentSong.isLive && liveTitle && liveArtist) {
-                          setLiveLikeToast({
-                            title: liveTitle,
-                            artist: liveArtist,
-                            artwork: liveMetadata?.artwork ?? currentSong.artwork,
-                          });
-                        }
+                        void (async () => {
+                          const result = await onRateSong(
+                            currentSong.id,
+                            "like",
+                            liveTitle && liveArtist
+                              ? { title: liveTitle, artist: liveArtist }
+                              : { title: currentSong.title, artist: currentSong.artist }
+                          );
+                          if (currentSong.isLive && liveTitle && liveArtist) {
+                            setLiveLikePendingSync(result?.pendingSync === true);
+                            setLiveLikeToast({
+                              title: liveTitle,
+                              artist: liveArtist,
+                              artwork: liveMetadata?.artwork ?? currentSong.artwork,
+                            });
+                          }
+                        })();
                       }
                     }}
                     className="p-2 rounded-full bg-white/5 backdrop-blur-md"
@@ -1092,6 +1096,7 @@ export function MobileExpandedPlayer({
               title={liveLikeToast.title}
               artist={liveLikeToast.artist}
               artwork={liveLikeToast.artwork}
+              pendingSync={liveLikePendingSync}
               onDismiss={() => setLiveLikeToast(null)}
             />
           </div>

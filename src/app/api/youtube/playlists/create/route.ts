@@ -57,41 +57,8 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Error creating playlist:", error);
 
-    // If quota exceeded or network error, apply locally and add to pending queue
-    if (email && redis) {
-      console.log("Saving playlist creation to pending sync queue...");
-      const tempPlaylistId = `local_pending_${Date.now()}`;
-
-      const playlistsKey = `${LIBRARY_KEY_PREFIX}:playlists:${email}`;
-      const existingPlaylistsStr = await redis.get(playlistsKey);
-      let existingPlaylists: any[] = [];
-      if (typeof existingPlaylistsStr === "string") {
-        try { existingPlaylists = JSON.parse(existingPlaylistsStr); } catch {}
-      } else if (Array.isArray(existingPlaylistsStr)) {
-        existingPlaylists = existingPlaylistsStr;
-      }
-
-      const newLocalPlaylist = {
-        id: tempPlaylistId,
-        title,
-        description: description || "",
-        thumbnailUrl: trackDetails?.[0]?.artwork || trackDetails?.[0]?.thumbnailUrl || "",
-        itemCount: videoIds?.length || 0,
-        pending: true
-      };
-
-      existingPlaylists.unshift(newLocalPlaylist);
-      await redis.set(playlistsKey, JSON.stringify(existingPlaylists));
-
-      await addPendingAction(email, {
-        type: "CREATE_PLAYLIST",
-        data: { tempPlaylistId, title, description, videoIds, trackDetails }
-      });
-
-      // Still return success to frontend to update UI optimistically
-      return NextResponse.json({ success: true, playlistId: tempPlaylistId, pendingSync: true });
-    }
-
-    return NextResponse.json({ error: "Failed to create playlist and add songs" }, { status: 500 });
+    // Do NOT save to pending queue or return success.
+    // Inform the user that the action failed due to rate limit or network error.
+    return NextResponse.json({ error: "Failed to create playlist. Please try again later." }, { status: 500 });
   }
 }

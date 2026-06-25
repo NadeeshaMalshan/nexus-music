@@ -47,37 +47,8 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("API Rate Video Error:", error);
 
-    // If quota exceeded or network error, apply locally and add to pending queue
-    if (email && redis && track) {
-      console.log("Saving action to pending sync queue...");
-      const likedKey = `${LIBRARY_KEY_PREFIX}:liked:${email}`;
-      const existingLikedStr = await redis.get(likedKey);
-      let existingLiked: any[] = [];
-      if (typeof existingLikedStr === "string") {
-        try { existingLiked = JSON.parse(existingLikedStr); } catch {}
-      } else if (Array.isArray(existingLikedStr)) {
-        existingLiked = existingLikedStr;
-      }
-
-      if (rating === "like") {
-        if (!existingLiked.find((s: any) => (s.videoId || s.id) === videoId)) {
-          existingLiked.push(track);
-          await redis.set(likedKey, JSON.stringify(existingLiked));
-        }
-      } else {
-        existingLiked = existingLiked.filter((s: any) => (s.videoId || s.id) !== videoId);
-        await redis.set(likedKey, JSON.stringify(existingLiked));
-      }
-
-      await addPendingAction(email, {
-        type: "LIKE_SONG",
-        data: { videoId, rating, track }
-      });
-
-      // Still return success to frontend to update UI optimistically
-      return NextResponse.json({ success: true, pendingSync: true });
-    }
-
-    return NextResponse.json({ error: "Failed to rate video" }, { status: 500 });
+    // Do NOT save to pending queue or return success.
+    // Inform the user that the action failed due to rate limit or network error.
+    return NextResponse.json({ error: "Failed to rate video. Please try again later." }, { status: 500 });
   }
 }

@@ -71,7 +71,6 @@ export function DesktopExpandedPlayer({
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">(viewMode === "video" ? "controls" : "lyrics");
   const [isControlsVisible] = useState(true);
   const [liveLikeToast, setLiveLikeToast] = useState<{ title: string; artist: string; artwork?: string | null } | null>(null);
-  const [liveLikePendingSync, setLiveLikePendingSync] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
 
   const isMountedRef = useRef(false);
@@ -480,14 +479,12 @@ export function DesktopExpandedPlayer({
                         ? { title: liveTitle, artist: liveArtist }
                         : { title: currentSong.title, artist: currentSong.artist }
                     );
-                    if (currentSong.isLive && liveTitle && liveArtist) {
-                      setLiveLikePendingSync(result?.pendingSync === true);
-                      setLiveLikeToast({
-                        title: liveTitle,
-                        artist: liveArtist,
-                        artwork: liveMetadata?.artwork ?? currentSong.artwork,
-                      });
-                    }
+                    // Always show success toast, never pending state
+                    setLiveLikeToast({
+                      title: liveTitle && liveArtist ? liveTitle : currentSong.title,
+                      artist: liveTitle && liveArtist ? liveArtist : currentSong.artist,
+                      artwork: liveMetadata?.artwork ?? currentSong.artwork,
+                    });
                   })();
                 }
               }}
@@ -1006,7 +1003,6 @@ export function DesktopExpandedPlayer({
               title={liveLikeToast.title}
               artist={liveLikeToast.artist}
               artwork={liveLikeToast.artwork}
-              pendingSync={liveLikePendingSync}
               onDismiss={() => setLiveLikeToast(null)}
             />
           </div>

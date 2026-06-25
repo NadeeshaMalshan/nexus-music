@@ -121,20 +121,20 @@ export function FloatingPlayer({
             className="absolute bottom-[80px] left-4 md:left-6 w-[280px] bg-[#1a1a1a] rounded-xl shadow-2xl border border-white/10 p-4 pointer-events-auto z-50 flex flex-col gap-4"
           >
             <div className="flex flex-col gap-2">
-              <span className="text-white font-bold text-sm">{crossDeviceState.deviceName}</span>
+              <span className="text-white font-bold text-base">{crossDeviceState.deviceName}</span>
               <div className="flex gap-3 items-center">
                 <div className="w-10 h-10 rounded overflow-hidden shrink-0">
                   <MusicArtwork src={crossDeviceState.song?.artwork} alt="artwork" iconSize={16} rounded="none" className="w-full h-full" />
                 </div>
                 <div className="flex flex-col overflow-hidden">
-                  <span className="text-white text-xs font-semibold truncate">{crossDeviceState.song?.title}</span>
-                  <span className="text-white/60 text-[10px] uppercase tracking-wider font-bold truncate">{crossDeviceState.song?.artist}</span>
+                  <span className="text-white text-sm font-semibold truncate">{crossDeviceState.song?.title}</span>
+                  <span className="text-white/60 text-sm uppercase tracking-wider font-bold truncate">{crossDeviceState.song?.artist}</span>
                 </div>
               </div>
             </div>
 
             <div className="flex flex-col gap-3">
-              <span className="text-white/80 text-xs font-semibold">Actions</span>
+              <span className="text-white/80 text-sm font-semibold">Actions</span>
               <div className="flex flex-col gap-2">
                 {[
                   "Play individually",
@@ -166,7 +166,7 @@ export function FloatingPlayer({
                     <div className="w-4 h-4 rounded-full border border-white/40 group-hover:border-white flex items-center justify-center shrink-0">
                       {selectedAction === action && <div className="w-2 h-2 rounded-full bg-[var(--art-accent,#1db954)]" />}
                     </div>
-                    <span className={`text-xs font-semibold ${selectedAction === action ? "text-white" : "text-white/60 group-hover:text-white"}`}>{action}</span>
+                    <span className={`text-sm font-semibold ${selectedAction === action ? "text-white" : "text-white/60 group-hover:text-white"}`}>{action}</span>
                   </label>
                 ))}
               </div>

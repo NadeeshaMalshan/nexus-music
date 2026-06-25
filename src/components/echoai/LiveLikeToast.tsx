@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Heart, CheckCircle2, CloudOff } from "lucide-react";
+import { Heart, CheckCircle2 } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { MusicArtwork } from "./MusicArtwork";
 
@@ -10,10 +10,9 @@ interface LiveLikeToastProps {
   artist: string;
   artwork?: string | null;
   onDismiss: () => void;
-  pendingSync?: boolean;
 }
 
-export function LiveLikeToast({ title, artist, artwork, onDismiss, pendingSync }: LiveLikeToastProps) {
+export function LiveLikeToast({ title, artist, artwork, onDismiss }: LiveLikeToastProps) {
   useEffect(() => {
     const t = setTimeout(onDismiss, 4000);
     return () => clearTimeout(t);
@@ -32,24 +31,15 @@ export function LiveLikeToast({ title, artist, artwork, onDismiss, pendingSync }
         <MusicArtwork src={artwork} alt={title} iconSize={18} variant="track" rounded="md" className="h-full w-full" />
         {/* Heart overlay */}
         <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-          <Heart size={14} fill={pendingSync ? "#888" : "var(--art-accent, #FA243C)"} color={pendingSync ? "#888" : "var(--art-accent, #FA243C)"} />
+          <Heart size={14} fill="var(--art-accent, #FA243C)" color="var(--art-accent, #FA243C)" />
         </div>
       </div>
 
       {/* Text */}
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 flex items-center gap-1">
-          {pendingSync ? (
-            <>
-              <CloudOff size={10} className="text-yellow-400" />
-              <span className="text-yellow-400">Saved offline · syncs later</span>
-            </>
-          ) : (
-            <>
-              <CheckCircle2 size={10} className="text-green-400" />
-              Saved to Liked Songs
-            </>
-          )}
+          <CheckCircle2 size={10} className="text-green-400" />
+          Saved to Liked Songs
         </p>
         <p className="truncate text-[13px] font-black text-white leading-tight">{title}</p>
         <p className="truncate text-[11px] text-white/50">{artist}</p>

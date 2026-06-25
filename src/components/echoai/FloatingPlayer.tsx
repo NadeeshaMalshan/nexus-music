@@ -21,7 +21,7 @@ interface FloatingPlayerProps {
   onPrev: () => void;
   currentTimeSec: number;
   durationSec: number;
-  onRateSong: (videoId: string, rating: "like" | "none", meta?: { title: string; artist: string }) => void | Promise<void>;
+  onRateSong: (videoId: string, rating: "like" | "none", meta?: { title: string; artist: string }) => void | Promise<{ pendingSync?: boolean }>;
   isLiked?: boolean;
   isLoggedIn?: boolean;
   onToggleRightSidebar?: () => void;

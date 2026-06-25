@@ -110,7 +110,7 @@ type DashboardContextType = {
   onSeek: (time: number) => void;
   onSongClick: (song: Song, reset?: boolean) => void;
   onPlayPlaylist: (songs: Song[], startIndex: number) => void;
-  onRateSong: (songId: string, rating: "like" | "none", meta?: { title: string; artist: string }) => Promise<void>;
+  onRateSong: (songId: string, rating: "like" | "none", meta?: { title: string; artist: string }) => Promise<{ pendingSync?: boolean }>;
   onRemoveFromQueue: (index: number) => void;
   onRemoveFromUpNext: (index: number) => void;
   onReorderQueue: (newQueue: Song[]) => void;
@@ -1896,6 +1896,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       if (rating === "like" && finalMeta) {
         setLikedLibraryTracks((prev) => prev.filter((t) => t.videoId !== targetId));
       }
+      return {};
     }
   }, [session?.user, session?.accessToken, currentSong, audioData, liveMetadata]);
 

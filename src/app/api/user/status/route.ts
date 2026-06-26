@@ -179,8 +179,11 @@ export async function POST(request: Request) {
 
       // Trigger cross-device clear
       const emailHash = Buffer.from(email).toString('base64').replace(/[^a-zA-Z0-9]/g, '');
+      const deviceId = body.deviceId || "unknown";
+      await redis.hdel(`user:devices:${emailHash}`, deviceId);
+
       await pusherServer.trigger(`presence-user-${emailHash}`, "cross-device-play", {
-        deviceId: body.deviceId || "unknown",
+        deviceId,
         isPlaying: false,
       }).catch(console.error);
 
@@ -217,11 +220,26 @@ export async function POST(request: Request) {
     await redis.set(statusKey, JSON.stringify(statusPayload), { ex: 3600 });
     await redis.set(lastActivityKey, JSON.stringify(lastActivityPayload));
 
-    // Trigger Pusher Events
     const emailHash = Buffer.from(email).toString('base64').replace(/[^a-zA-Z0-9]/g, '');
     const userAgent = request.headers.get("user-agent");
     const deviceName = getDeviceName(userAgent);
-    const deviceId = body.deviceId || "unknown"; // If client sends one
+    const deviceId = body.deviceId || "unknown";
+
+    const deviceState = {
+      deviceId,
+      deviceName,
+      syncMode: "standalone",
+      currentSong: songPayload,
+      isPlaying: !!isPlaying,
+      lastUpdated: now,
+      groupId: null,
+      targetDeviceId: null,
+      controllerDeviceId: null,
+    };
+
+    await redis.hset(`user:devices:${emailHash}`, {
+      [deviceId]: JSON.stringify(deviceState),
+    });
 
     // 1. To friends
     await pusherServer.trigger("private-global-activity", "status-update", {

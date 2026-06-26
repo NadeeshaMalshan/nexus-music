@@ -56,7 +56,7 @@ export function FloatingPlayer({
   onSeek,
 }: FloatingPlayerProps) {
   const { resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
-  const { crossDeviceState, activeDeviceCount, triggerDeviceControl } = useDeviceSync();
+  const { crossDeviceState, activeDeviceCount, activeDevices, localDeviceId, triggerDeviceControl } = useDeviceSync();
   const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<string>(
     typeof window !== 'undefined' ? (window.localStorage.getItem('crossDeviceAction') || "Play individually") : "Play individually"
@@ -113,63 +113,91 @@ export function FloatingPlayer({
     <div className="relative w-full max-w-[800px] mx-auto mb-24 md:mb-10 lg:mb-12 flex flex-col items-center justify-end pointer-events-none">
       {/* Device Control Popup */}
       <AnimatePresence>
-        {isDeviceMenuOpen && crossDeviceState && (
+        {isDeviceMenuOpen && (
           <m.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute bottom-[80px] left-4 md:left-6 w-[280px] bg-[#1a1a1a] rounded-xl shadow-2xl border border-white/10 p-4 pointer-events-auto z-50 flex flex-col gap-4"
+            className="absolute bottom-[100px] left-4 md:left-6 w-[320px] max-h-[420px] overflow-y-auto bg-[#1a1a1a] rounded-xl shadow-2xl border border-white/10 p-4 pointer-events-auto z-50 flex flex-col gap-4"
           >
-            <div className="flex flex-col gap-2">
-              <span className="text-white font-bold text-base">{crossDeviceState.deviceName}</span>
-              <div className="flex gap-3 items-center">
-                <div className="w-10 h-10 rounded overflow-hidden shrink-0">
-                  <MusicArtwork src={crossDeviceState.song?.artwork} alt="artwork" iconSize={16} rounded="none" className="w-full h-full" />
-                </div>
-                <div className="flex flex-col overflow-hidden">
-                  <span className="text-white text-sm font-semibold truncate">{crossDeviceState.song?.title}</span>
-                  <span className="text-white/60 text-sm uppercase tracking-wider font-bold truncate">{crossDeviceState.song?.artist}</span>
-                </div>
-              </div>
-            </div>
-
             <div className="flex flex-col gap-3">
-              <span className="text-white/80 text-sm font-semibold">Actions</span>
-              <div className="flex flex-col gap-2">
-                {[
-                  "Play individually",
-                  `Play on ${crossDeviceState.deviceName}`,
-                  "Play on your device",
-                  "Play simultaneously"
-                ].map((action, i) => (
-                  <label 
-                    key={i} 
-                    className="flex items-center gap-3 cursor-pointer group"
-                    onClick={async () => {
-                      setSelectedAction(action);
-                      if (typeof window !== 'undefined') {
-                        window.localStorage.setItem('crossDeviceAction', action);
-                      }
-                      // Trigger device control based on action
-                      if (action === "Play on your device") {
-                        await triggerDeviceControl("transfer", crossDeviceState.deviceId, crossDeviceState.song);
-                      } else if (action === "Play simultaneously") {
-                        await triggerDeviceControl("play", undefined, crossDeviceState.song);
-                      } else if (action === "Play individually") {
-                        await triggerDeviceControl("pause", crossDeviceState.deviceId);
-                      } else if (action.startsWith("Play on ")) {
-                        // Action for specific device (e.g., "Play on Windows Edge")
-                        await triggerDeviceControl("transfer", crossDeviceState.deviceId, crossDeviceState.song);
-                      }
-                    }}
-                  >
-                    <div className="w-4 h-4 rounded-full border border-white/40 group-hover:border-white flex items-center justify-center shrink-0">
-                      {selectedAction === action && <div className="w-2 h-2 rounded-full bg-[var(--art-accent,#1db954)]" />}
+              <span className="text-white/80 text-base font-semibold">Active Devices</span>
+              {activeDevices.length === 0 ? (
+                <div className="text-white/60 text-sm">No active devices found.</div>
+              ) : (
+                activeDevices.map((device) => {
+                  const isLocal = device.deviceId === localDeviceId;
+                  const header = isLocal ? `${device.deviceName} (This Device)` : device.deviceName;
+                  const song = device.currentSong;
+
+                  return (
+                    <div key={device.deviceId} className="rounded-2xl border border-white/10 p-3 bg-white/5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-white font-semibold text-sm leading-none">{header}</div>
+                          <div className="text-white/60 text-xs truncate">{device.syncMode === "party" ? "Group Play / Party Mode" : device.syncMode === "controller" ? "Remote Controller" : device.syncMode === "controlled" ? "Controlled Device" : "Play individually"}</div>
+                        </div>
+                        <div className="text-white/50 text-[11px] uppercase tracking-[.18em]">{device.isPlaying ? "Playing" : "Idle"}</div>
+                      </div>
+
+                      {song ? (
+                        <div className="mt-3 flex gap-3 items-center">
+                          <div className="w-10 h-10 rounded overflow-hidden bg-slate-900">
+                            <MusicArtwork src={song.artwork || undefined} alt={song.title} iconSize={14} rounded="none" className="w-full h-full" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-white text-sm font-semibold truncate">{song.title}</div>
+                            <div className="text-white/60 text-[11px] uppercase tracking-[.2em] truncate">{song.artist}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-white/60 text-sm">No track currently playing.</div>
+                      )}
+
+                      <div className="mt-4 flex flex-col gap-2">
+                        {[
+                          "Play individually",
+                          `Play on ${device.deviceName}`,
+                          "Play on your device",
+                          "Group Play / Party Mode",
+                        ].map((action) => {
+                          const isSelected = selectedAction === action;
+                          return (
+                            <button
+                              key={`${device.deviceId}-${action}`}
+                              type="button"
+                              className={`text-left rounded-xl px-3 py-2 border ${isSelected ? "border-white/70 bg-white/10" : "border-white/10 bg-white/5"} text-sm text-white transition hover:border-white/60`}
+                              onClick={async () => {
+                                const nextAction = action;
+                                setSelectedAction(nextAction);
+                                if (typeof window !== 'undefined') {
+                                  window.localStorage.setItem('crossDeviceAction', nextAction);
+                                }
+
+                                if (nextAction === "Play individually") {
+                                  await triggerDeviceControl({ action: "device:decouple", deviceId: device.deviceId });
+                                } else if (nextAction === `Play on ${device.deviceName}`) {
+                                  if (!isLocal) {
+                                    await triggerDeviceControl({ action: "device:control-target", controllerDeviceId: localDeviceId, targetDeviceId: device.deviceId });
+                                  }
+                                } else if (nextAction === "Play on your device") {
+                                  if (!isLocal) {
+                                    await triggerDeviceControl({ action: "device:pull-track", controllerDeviceId: localDeviceId, targetDeviceId: device.deviceId });
+                                  }
+                                } else if (nextAction === "Group Play / Party Mode") {
+                                  await triggerDeviceControl({ action: "session:sync-all", deviceIds: activeDevices.map((d) => d.deviceId) });
+                                }
+                              }}
+                            >
+                              {action}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <span className={`text-sm font-semibold ${selectedAction === action ? "text-white" : "text-white/60 group-hover:text-white"}`}>{action}</span>
-                  </label>
-                ))}
-              </div>
+                  );
+                })
+              )}
             </div>
           </m.div>
         )}
@@ -181,16 +209,16 @@ export function FloatingPlayer({
           <m.div
             onClick={() => setIsDeviceMenuOpen(!isDeviceMenuOpen)}
             initial={{ height: 0, opacity: 0, y: 10 }}
-            animate={{ height: 26, opacity: 1, y: 0 }}
+            animate={{ height: 28, opacity: 1, y: 0 }}
             exit={{ height: 0, opacity: 0, y: 10 }}
             className="w-[98%] max-w-[780px] text-black overflow-hidden rounded-t-xl -mb-2 pb-2 px-6 flex justify-between items-center pointer-events-auto z-0 cursor-pointer hover:brightness-110 transition-all"
             style={{ backgroundColor: 'var(--art-accent, #1db954)' }}
           >
-            <span className="text-[11px] font-bold tracking-wide">
+            <span className="text-base font-bold tracking-wide">
               {activeDeviceCount > 2 ? `Active in ${activeDeviceCount - 1} devices` : `Active in ${crossDeviceState.deviceName}`}
             </span>
             {activeDeviceCount <= 2 && (
-              <span className="text-[11px] font-semibold opacity-75 max-w-[40%] truncate">
+              <span className="text-base font-semibold opacity-75 max-w-[40%] truncate">
                 {crossDeviceState.song?.title}
               </span>
             )}

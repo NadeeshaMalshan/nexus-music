@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useMemo } from "react";
 import Pusher from "pusher-js";
 import { useSession } from "next-auth/react";
+import type { DeviceState, DeviceControlAction, DeviceControlPayload } from "@/types/deviceSync";
 
 type FriendActivityUpdate = {
   email: string;
@@ -19,10 +20,14 @@ type CrossDevicePlayUpdate = {
 };
 
 type DeviceControlEvent = {
-  action: "play" | "pause" | "skip" | "transfer";
-  targetDeviceId: string | null;
-  sourceDeviceName: string;
+  action: DeviceControlAction;
+  targetDeviceId?: string | null;
+  controllerDeviceId?: string | null;
+  sourceDeviceName?: string;
   song?: any | null;
+  seekTime?: number;
+  groupId?: string;
+  deviceIds?: string[];
   timestamp: number;
 };
 
@@ -30,8 +35,10 @@ interface DeviceSyncContextType {
   lastFriendActivity: FriendActivityUpdate | null;
   crossDeviceState: CrossDevicePlayUpdate | null;
   activeDeviceCount: number;
+  activeDevices: DeviceState[];
+  localDeviceId: string;
   clearCrossDeviceState: () => void;
-  triggerDeviceControl: (action: string, targetDeviceId?: string, song?: any) => Promise<void>;
+  triggerDeviceControl: (payload: DeviceControlPayload) => Promise<void>;
 }
 
 const DeviceSyncContext = createContext<DeviceSyncContextType | null>(null);
@@ -43,9 +50,34 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
   const [lastFriendActivity, setLastFriendActivity] = useState<FriendActivityUpdate | null>(null);
   const [crossDeviceState, setCrossDeviceState] = useState<CrossDevicePlayUpdate | null>(null);
   const [activeDeviceCount, setActiveDeviceCount] = useState<number>(1);
+  const [activeDevices, setActiveDevices] = useState<DeviceState[]>([]);
+  const [localDeviceId, setLocalDeviceId] = useState<string>("unknown");
+
+  const fetchActiveDevices = React.useCallback(async () => {
+    try {
+      const response = await fetch("/api/device/active");
+      if (!response.ok) return;
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setActiveDevices(data);
+      }
+    } catch (error) {
+      console.error("Failed to load active devices:", error);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!session?.user?.email) return;
+    if (typeof window === "undefined") return;
+    const storedDeviceId = window.localStorage.getItem("nexus_device_id");
+    const generatedId = storedDeviceId || Math.random().toString(36).substring(2);
+    if (!storedDeviceId) {
+      window.localStorage.setItem("nexus_device_id", generatedId);
+    }
+    setLocalDeviceId(generatedId);
+  }, []);
+
+  useEffect(() => {
+    if (!session?.user?.email || localDeviceId === "unknown") return;
 
     const PUSHER_KEY = process.env.NEXT_PUBLIC_PUSHER_KEY || "";
     const PUSHER_CLUSTER = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || "";
@@ -79,18 +111,11 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
       setActiveDeviceCount(members.count);
     });
     userChannel.bind("pusher:member_added", () => {
-      // The `userChannel.members.count` holds the updated count
       setActiveDeviceCount((userChannel as any).members.count);
     });
     userChannel.bind("pusher:member_removed", () => {
       setActiveDeviceCount((userChannel as any).members.count);
     });
-
-    // We generate a local device ID to ignore our own events
-    const localDeviceId = typeof window !== 'undefined' ? (window.localStorage.getItem('nexus_device_id') || Math.random().toString(36).substring(2)) : "unknown";
-    if (typeof window !== 'undefined' && !window.localStorage.getItem('nexus_device_id')) {
-        window.localStorage.setItem('nexus_device_id', localDeviceId);
-    }
 
     userChannel.bind("cross-device-play", (data: CrossDevicePlayUpdate) => {
       if (data.deviceId !== localDeviceId) {
@@ -100,38 +125,44 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
           setCrossDeviceState(data);
         }
       }
+      fetchActiveDevices();
     });
 
-    // 3. Listen for Device Control events
-    userChannel.bind("device-control", (data: DeviceControlEvent) => {
-      // Only process if this device is the target or if it's a broadcast action
+    const dispatchIfRelevant = (data: DeviceControlEvent) => {
       if (!data.targetDeviceId || data.targetDeviceId === localDeviceId) {
-        // Dispatch custom event for components to listen to
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('nexus-device-control', { detail: data }));
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("nexus-device-control", { detail: data }));
         }
       }
-    });
+      fetchActiveDevices();
+    };
+
+    userChannel.bind("device-control", dispatchIfRelevant);
+    userChannel.bind("player:play", dispatchIfRelevant);
+    userChannel.bind("player:pause", dispatchIfRelevant);
+    userChannel.bind("player:seek", dispatchIfRelevant);
+    userChannel.bind("device:decouple", dispatchIfRelevant);
+    userChannel.bind("device:control-target", dispatchIfRelevant);
+    userChannel.bind("device:pull-track", dispatchIfRelevant);
+    userChannel.bind("session:sync-all", dispatchIfRelevant);
+
+    fetchActiveDevices();
 
     return () => {
       pusher.unsubscribe("private-global-activity");
       pusher.unsubscribe(`presence-user-${emailHash}`);
       pusher.disconnect();
     };
-  }, [session?.user?.email]);
+  }, [session?.user?.email, localDeviceId, fetchActiveDevices]);
 
   const clearCrossDeviceState = () => setCrossDeviceState(null);
 
-  const triggerDeviceControl = async (action: string, targetDeviceId?: string, song?: any) => {
+  const triggerDeviceControl = async (payload: DeviceControlPayload) => {
     try {
       const response = await fetch("/api/device/control", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          targetDeviceId: targetDeviceId || null,
-          song,
-        }),
+        body: JSON.stringify(payload),
       });
       
       if (!response.ok) {
@@ -146,9 +177,11 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
     lastFriendActivity,
     crossDeviceState,
     activeDeviceCount,
+    activeDevices,
+    localDeviceId,
     clearCrossDeviceState,
-    triggerDeviceControl
-  }), [lastFriendActivity, crossDeviceState, activeDeviceCount]);
+    triggerDeviceControl,
+  }), [lastFriendActivity, crossDeviceState, activeDeviceCount, activeDevices, localDeviceId]);
 
   return (
     <DeviceSyncContext.Provider value={value}>
@@ -165,8 +198,10 @@ export function useDeviceSync() {
       lastFriendActivity: null, 
       crossDeviceState: null, 
       activeDeviceCount: 1, 
+      activeDevices: [],
+      localDeviceId: "unknown",
       clearCrossDeviceState: () => {},
-      triggerDeviceControl: async () => {}
+      triggerDeviceControl: async () => {},
     };
   }
   return context;

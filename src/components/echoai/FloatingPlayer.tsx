@@ -80,8 +80,7 @@ export function FloatingPlayer({
           break;
         case "transfer":
           // Transfer playback to this device
-          if (song && selectedAction === "Play on your device") {
-            // This would trigger the actual transfer logic
+          if (song) {
             console.log("Transferring playback to this device:", song);
           }
           break;
@@ -92,7 +91,7 @@ export function FloatingPlayer({
     return () => {
       window.removeEventListener('nexus-device-control', handleDeviceControl as EventListener);
     };
-  }, [isPlaying, onTogglePlay, onNext, selectedAction]);
+  }, [isPlaying, onTogglePlay, onNext]);
   
   const displaySong = {
     id: currentSong?.id || "idle",

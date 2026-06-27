@@ -76,3 +76,6 @@ build/
 
 # Target
 target/
+
+# Generated player script temp files
+*-player-script.js

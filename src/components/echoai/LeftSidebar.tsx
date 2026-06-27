@@ -15,6 +15,7 @@ import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { CreatePlaylistModal, AiPlaylistModal } from "./LibraryModals";
 import { parseYouTubeWatchUrl, songFromYouTubeVideoId } from "@/lib/parseYouTubeUrl";
 import { AppBrandMark } from "./AppBrandMark";
+import { useSearchSuggestions } from "@/lib/useSearchSuggestions";
 
 type UserSearchItem = {
   name?: string;
@@ -58,13 +59,12 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const searchTimeoutRef = useRef<number | null>(null);
-  const accentColorRef = useRef(accentColor);
-  const onSongClickRef = useRef(onSongClick);
-  accentColorRef.current = accentColor;
-  onSongClickRef.current = onSongClick;
+
+  const { textSuggestions, richResults, loading: suggestionsLoading, setOpen: setSuggestionsOpen } = useSearchSuggestions(searchQuery);
+
+  useEffect(() => {
+    setSuggestionsOpen(isSearchFocused);
+  }, [isSearchFocused, setSuggestionsOpen]);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -88,71 +88,6 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
     }
     if (session?.accessToken) loadPlaylists();
   }, [session?.accessToken]);
-
-  const performSearch = useCallback(async (q: string) => {
-    const trimmed = q.trim();
-    if (!trimmed) {
-      setSearchResults([]);
-      return;
-    }
-
-    const parsed = parseYouTubeWatchUrl(trimmed);
-    if (parsed) {
-      const { videoId, isMusic, isLive } = parsed;
-      const song = await songFromYouTubeVideoId(videoId, accentColorRef.current, !isMusic, isLive);
-      onSongClickRef.current(song);
-      setSearchQuery("");
-      setSearchResults([]);
-      setIsSearchFocused(false);
-      return;
-    }
-
-    setSearchLoading(true);
-    try {
-      const [musicRes, userRes] = await Promise.all([
-        fetch(`/api/search?q=${encodeURIComponent(q)}`),
-        fetch(`/api/user/search?q=${encodeURIComponent(q)}`),
-      ]);
-
-      const musicItems = musicRes.ok ? ((await musicRes.json()).items || []).slice(0, 8) : [];
-      const userItems = userRes.ok
-        ? (await userRes.json()).slice(0, 5).map((user: UserSearchItem) => ({
-          type: "USER",
-          id: user.email || user.name,
-          name: user.name || user.email,
-          title: user.name || user.email,
-          author: user.email || "",
-          thumbnail: user.avatarUrl || user.image || user.thumbnail || "",
-          user,
-        }))
-        : [];
-
-      if (looksLikePersonQuery(trimmed)) {
-        setSearchResults(userItems);
-      } else {
-        setSearchResults([...musicItems, ...userItems]);
-      }
-    } catch (err) {
-      console.error("Sidebar search error:", err);
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (searchTimeoutRef.current) window.clearTimeout(searchTimeoutRef.current);
-    if (!searchQuery) {
-      setSearchResults([]);
-      return;
-    }
-    searchTimeoutRef.current = window.setTimeout(() => {
-      performSearch(searchQuery);
-    }, 400);
-    return () => {
-      if (searchTimeoutRef.current) window.clearTimeout(searchTimeoutRef.current);
-    };
-  }, [searchQuery, performSearch]);
 
   const navigationItems = [
     { id: "home", icon: Home, label: "Home", href: "/" },
@@ -211,9 +146,8 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
             )}
           </div>
 
-          {/* Search Dropdown */}
           <AnimatePresence>
-            {(isSearchFocused && (searchQuery || searchResults.length > 0)) && (
+            {(isSearchFocused && (searchQuery || textSuggestions.length > 0 || richResults.length > 0)) && (
               <m.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -237,112 +171,90 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                     </div>
                   )}
 
-                  {searchResults.map((item, idx) => (
-                    <div
-                      key={`${item.type ?? "r"}-${item.videoId || item.id}-${idx}`}
-                      onClick={() => {
-                        if (item.type === "USER") {
-                          router.push(`/stats?user=${encodeURIComponent((item.user?.email || item.user?.name || item.email || item.name || "").split("@")[0])}`);
-                          setIsSearchFocused(false);
-                          return;
-                        }
-                        if (item.type === "ARTIST") {
-                          router.push(`/artist/${encodeURIComponent(item.name)}`);
-                          setIsSearchFocused(false);
-                          return;
-                        }
-                        if (item.type === "PLAYLIST") {
-                          router.push(`/playlists/${item.id}`);
-                          setIsSearchFocused(false);
-                          return;
-                        }
-                        onSongClick({
-                          id: item.videoId,
-                          title: item.title,
-                          artist: item.author,
-                          artwork: item.thumbnail,
-                          duration: item.duration,
-                          color: accentColor
-                        });
-                        setIsSearchFocused(false);
-                      }}
-                      className="px-2"
-                    >
-                      <div className="flex items-center gap-3.5 px-3 py-2.5 rounded-2xl hover:bg-white/5 transition-all cursor-pointer group">
-                        <div className={`relative w-11 h-11 ${item.type === "ARTIST" ? "rounded-full" : "rounded-lg"} overflow-hidden shrink-0 shadow-lg`}>
-                          <MusicArtwork
-                            src={item.thumbnail}
-                            alt={item.title || item.name || "Result"}
-                            iconSize={20}
-                            variant={item.type === "ARTIST" ? "artist" : "track"}
-                            rounded={item.type === "ARTIST" ? "full" : "md"}
-                            className="h-full w-full"
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                            <Play size={16} fill="white" className="text-white ml-0.5" />
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0 pr-2">
-                          <h4 className="text-[15px] font-bold text-white truncate leading-tight mb-0.5">{item.title || item.name}</h4>
-                          <div className="flex items-center gap-1.5 overflow-hidden">
-                            <p className="text-[12px] text-white/40 font-medium truncate shrink-0">
-                              {item.type === "ARTIST" ? "Artist" : item.type === "PLAYLIST" ? `Playlist · ${item.author}` : item.author}
-                            </p>
-                            {(!item.type || item.type === "SONG") && item.views && (
-                              <>
-                                <span className="text-white/10 text-[8px]">•</span>
-                                <span className="text-[10px] font-black text-white/20 uppercase tracking-tighter leading-none pt-0.5">
-                                  {formatCount(item.views)}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Action Buttons (Only for songs) */}
-                        {(!item.type || item.type === "SONG") && (
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onPlayNext?.({
-                                  id: item.videoId,
-                                  title: item.title,
-                                  artist: item.author,
-                                  artwork: item.thumbnail,
-                                  duration: item.duration,
-                                  color: accentColor
-                                });
-                              }}
-                              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
-                              title="Play Next"
-                            >
-                              <ArrowUpRight size={16} />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onAddToQueue?.({
-                                  id: item.videoId,
-                                  title: item.title,
-                                  artist: item.author,
-                                  artwork: item.thumbnail,
-                                  duration: item.duration,
-                                  color: accentColor
-                                });
-                              }}
-                              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
-                              title="Add to Queue"
-                            >
-                              <ListPlus size={16} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                  {/* Autocomplete suggestions */}
+                  {textSuggestions.length > 0 && (
+                    <div className="px-2 mb-3 border-b border-white/5 pb-2">
+                      {textSuggestions.map((suggestion, idx) => (
+                        <button
+                          key={`suggest-${idx}`}
+                          onClick={() => {
+                            setSearchQuery(suggestion);
+                            router.push(`/explore?q=${encodeURIComponent(suggestion)}`);
+                            setIsSearchFocused(false);
+                          }}
+                          className="w-full flex items-center gap-4 px-4 py-2 rounded-xl hover:bg-white/5 text-white transition-colors text-left"
+                        >
+                          <Search size={16} className="text-white/40 shrink-0" />
+                          <span className="text-[15px] font-medium truncate">{suggestion}</span>
+                        </button>
+                      ))}
                     </div>
-                  ))}
+                  )}
 
-                  {searchLoading && (
+                  {/* Rich suggestions (Songs / Artists / Albums / Playlists / Users) */}
+                  {richResults.length > 0 && (
+                    <div className="px-2 mb-3 border-b border-white/5 pb-2">
+                      <div className="px-4 text-[11px] font-black uppercase tracking-wider text-white/20 mb-2">Top Suggestions</div>
+                      {richResults.map((item, idx) => (
+                        <div
+                          key={`rich-suggest-${item.youtubeId}-${idx}`}
+                          onClick={() => {
+                            if (item.type === "artist") {
+                              router.push(`/artist/${encodeURIComponent(item.title)}`);
+                              setIsSearchFocused(false);
+                              return;
+                            }
+                            if (item.type === "album") {
+                              router.push(`/album/${item.youtubeId}`);
+                              setIsSearchFocused(false);
+                              return;
+                            }
+                            if (item.type === "playlist") {
+                              router.push(`/playlists/${item.youtubeId}`);
+                              setIsSearchFocused(false);
+                              return;
+                            }
+                            if (item.type === "user") {
+                              router.push(`/stats?user=${encodeURIComponent((item.user?.email || item.user?.name || "").split("@")[0])}`);
+                              setIsSearchFocused(false);
+                              return;
+                            }
+                            onSongClick({
+                              id: item.youtubeId,
+                              title: item.title,
+                              artist: item.artists.join(", "),
+                              artwork: item.thumbnailUrl,
+                              duration: "0:00",
+                              color: accentColor
+                            });
+                            setIsSearchFocused(false);
+                          }}
+                          className="px-1"
+                        >
+                          <div className="flex items-center gap-3.5 px-3 py-2 rounded-2xl hover:bg-white/5 transition-all cursor-pointer group">
+                            <div className={`relative w-10 h-10 ${(item.type === "artist" || item.type === "user") ? "rounded-full" : "rounded-lg"} overflow-hidden shrink-0 shadow-lg`}>
+                              <MusicArtwork
+                                src={item.thumbnailUrl}
+                                alt={item.title}
+                                iconSize={18}
+                                variant={(item.type === "artist" || item.type === "user") ? "artist" : "track"}
+                                rounded={(item.type === "artist" || item.type === "user") ? "full" : "md"}
+                                className="h-full w-full"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0 pr-2">
+                              <h4 className="text-[14px] font-bold text-white truncate leading-tight mb-0.5">{item.title}</h4>
+                              <p className="text-[11px] text-white/40 font-medium truncate capitalize">
+                                {item.type === "artist" ? "Artist" : item.type === "album" ? "Album" : item.type === "playlist" ? "Playlist" : item.type === "user" ? "User" : item.artists.join(", ")}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {suggestionsLoading && richResults.length === 0 && (
                     <div className="flex justify-center py-6">
                       <Loader2 size={24} className="animate-spin" style={{ color: accentColor }} />
                     </div>

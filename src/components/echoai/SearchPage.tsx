@@ -10,6 +10,7 @@ import { useDashboard } from "@/context/DashboardContext";
 import { parseYouTubeWatchUrl, songFromYouTubeVideoId } from "@/lib/parseYouTubeUrl";
 import { MusicArtwork } from "./MusicArtwork";
 import { JamSession } from "./JamSession";
+import { useSearchSuggestions } from "@/lib/useSearchSuggestions";
 
 interface SearchPageProps {
   onClose: () => void;
@@ -176,6 +177,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const [songColors, setSongColors] = useState<Record<string, string>>({});
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const { songIsInLikedLibrary, resolveLikedLibraryRateVideoId, onRateSong, isRightSidebarOpen, setIsRightSidebarOpen, setRightSidebarMode } = useDashboard();
+  const router = useRouter();
   const searchTimeoutRef = useRef<number | null>(null);
   const searchRunIdRef = useRef(0);
   const searchQueryRef = useRef(searchQuery);
@@ -183,6 +185,13 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const onSongSelectRef = useRef(onSongSelect);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const { textSuggestions, richResults, setOpen: setSuggestionsOpen } = useSearchSuggestions(searchQuery);
+
+  useEffect(() => {
+    setSuggestionsOpen(isInputFocused);
+  }, [isInputFocused, setSuggestionsOpen]);
 
   searchQueryRef.current = searchQuery;
   onCloseRef.current = onClose;
@@ -685,6 +694,12 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
       transition={MOTION_CONFIG.transition}
       className="flex-1 h-full overflow-y-auto bg-transparent relative custom-scrollbar flex flex-col animate-gpu"
     >
+      {isInputFocused && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-md" 
+          onClick={() => setIsInputFocused(false)} 
+        />
+      )}
       <div className="flex w-full flex-col px-6 py-10 md:px-12 md:py-12 pb-48 text-left">
         {showJamView ? (
           <div className="flex flex-col h-full min-h-[60vh]">
@@ -718,12 +733,13 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
           <m.div 
             initial={false}
             animate={{ y: 0, opacity: 1 }} 
-            className="mb-8 w-full max-w-4xl animate-gpu"
+            className="mb-8 w-full max-w-4xl animate-gpu relative z-50"
           >
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 void runSearch();
+                setIsInputFocused(false);
               }}
               className="relative flex items-center w-full rounded-2xl bg-black/20 hover:bg-white/5 border border-white/10 px-4 md:px-8 py-5 md:py-7 focus-within:bg-black/40 focus-within:border-white/30 shadow-2xl backdrop-blur-md transition-colors duration-300"
             >
@@ -733,6 +749,7 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                 placeholder="Artists, Songs, Lyrics..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsInputFocused(true)}
                 className="flex-1 bg-transparent text-xl md:text-3xl font-black text-white placeholder:text-white/20 focus:outline-none tracking-tight"
                 autoFocus
               />
@@ -750,6 +767,103 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                 <Mic className="w-5 h-5 md:w-6 md:h-6" />
               </button>
             </form>
+
+            {/* Search Suggestions Dropdown */}
+            <AnimatePresence>
+              {isInputFocused && searchQuery.trim() && (textSuggestions.length > 0 || richResults.length > 0) && (
+                <m.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={MOTION_CONFIG.transition}
+                  className="absolute left-0 right-0 mt-3 bg-[#1C1C1E] rounded-3xl overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] border border-white/10 z-50 py-4 max-h-[60vh] overflow-y-auto no-scrollbar animate-gpu"
+                >
+                  {/* Autocomplete suggestions */}
+                  {textSuggestions.map((suggestion, idx) => (
+                    <button
+                      key={`suggest-${idx}`}
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery(suggestion);
+                        void runSearch(suggestion);
+                        setIsInputFocused(false);
+                      }}
+                      className="w-full flex items-center gap-4 px-6 py-3 hover:bg-white/5 text-white transition-colors text-left"
+                    >
+                      <Search size={18} className="text-white/40 shrink-0" />
+                      <span className="text-[17px] font-bold truncate">{suggestion}</span>
+                    </button>
+                  ))}
+
+                  {/* Rich results (Songs / Videos / Artists / Albums / Playlists / Users) */}
+                  {richResults.length > 0 && (
+                    <div className="border-t border-white/5 mt-3 pt-3">
+                      <div className="px-6 text-[11px] font-black uppercase tracking-wider text-white/20 mb-2">Top Suggestions</div>
+                      {richResults.map((item, idx) => (
+                        <div
+                          key={`rich-suggest-${item.youtubeId}-${idx}`}
+                          onClick={() => {
+                            if (item.type === "artist") {
+                              if (onNavigateArtist) {
+                                onNavigateArtist(item.title);
+                              } else {
+                                router.push(`/artist/${encodeURIComponent(item.title)}`);
+                              }
+                              setIsInputFocused(false);
+                              return;
+                            }
+                            if (item.type === "album") {
+                              router.push(`/album/${item.youtubeId}`);
+                              setIsInputFocused(false);
+                              return;
+                            }
+                            if (item.type === "playlist") {
+                              router.push(`/playlists/${item.youtubeId}`);
+                              setIsInputFocused(false);
+                              return;
+                            }
+                            if (item.type === "user") {
+                              router.push(`/stats?user=${encodeURIComponent((item.user?.email || item.user?.name || "").split("@")[0])}`);
+                              setIsInputFocused(false);
+                              return;
+                            }
+                            onSongSelect({
+                              id: item.youtubeId,
+                              title: item.title,
+                              artist: item.artists.join(", "),
+                              artwork: item.thumbnailUrl,
+                              duration: "0:00",
+                              color: searchAccentColor
+                            });
+                            setIsInputFocused(false);
+                          }}
+                          className="px-2"
+                        >
+                          <div className="flex items-center gap-4 px-4 py-2.5 rounded-2xl hover:bg-white/5 transition-all cursor-pointer group">
+                            <div className={`relative w-12 h-12 ${(item.type === "artist" || item.type === "user") ? "rounded-full" : "rounded-lg"} overflow-hidden shrink-0 shadow-lg`}>
+                              <MusicArtwork
+                                src={item.thumbnailUrl}
+                                alt={item.title}
+                                iconSize={20}
+                                variant={(item.type === "artist" || item.type === "user") ? "artist" : "track"}
+                                rounded={(item.type === "artist" || item.type === "user") ? "full" : "md"}
+                                className="h-full w-full"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0 pr-2">
+                              <h4 className="text-[16px] font-bold text-white truncate leading-tight mb-0.5">{item.title}</h4>
+                              <p className="text-[12px] text-white/40 font-medium truncate capitalize">
+                                {item.type === "artist" ? "Artist" : item.type === "album" ? "Album" : item.type === "playlist" ? "Playlist" : item.type === "user" ? "User" : item.artists.join(", ")}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </m.div>
+              )}
+            </AnimatePresence>
 
             {/* Categories */}
             {searchQuery.trim() && (

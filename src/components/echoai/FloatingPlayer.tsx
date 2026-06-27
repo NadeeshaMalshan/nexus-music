@@ -55,33 +55,75 @@ export function FloatingPlayer({
   onArtistClick,
   onSeek,
 }: FloatingPlayerProps) {
-  const { resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
+  const {
+    resolveLikedLibraryRateVideoId,
+    liveMetadata,
+    onSongClick,
+    setQueueSongs,
+    setUpNextQueue,
+    setPreviousQueue,
+    setIsPlaying,
+    pauseBackgroundPlayer,
+    queueSongs,
+    upNextQueue,
+    previousQueue,
+  } = useDashboard();
   const { crossDeviceState, activeDeviceCount, activeDevices, localDeviceId, triggerDeviceControl } = useDeviceSync();
   const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
-  const [selectedActions, setSelectedActions] = useState<Record<string, string>>({});
-  const isIdle = !currentSong;
+  const [selectedAction, setSelectedAction] = useState<string>("Play individually");
+  const isIdle = !currentSong && !crossDeviceState?.song;
 
   // Handle device control events from WebSocket
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handleDeviceControl = (event: CustomEvent) => {
-      const { action, song } = event.detail;
+      const { action, song, seekTime, queueSongs: incomingQueue, upNextQueue: incomingUpNext, previousQueue: incomingPrev, targetDeviceId, controllerDeviceId } = event.detail;
+      
+      const isTarget = targetDeviceId === localDeviceId || action === "session:sync-all";
       
       switch (action) {
         case "play":
+        case "player:play":
           if (!isPlaying) onTogglePlay();
           break;
         case "pause":
+        case "player:pause":
           if (isPlaying) onTogglePlay();
           break;
         case "skip":
           onNext();
           break;
-        case "transfer":
-          // Transfer playback to this device
-          if (song) {
-            console.log("Transferring playback to this device:", song);
+        case "prev":
+          onPrev();
+          break;
+        case "player:seek":
+          if (typeof seekTime === "number" && onSeek) {
+            onSeek(seekTime);
+          }
+          break;
+        case "device:control-target":
+        case "device:pull-track":
+        case "session:sync-all":
+          if (isTarget) {
+            if (song) {
+              onSongClick(song, false);
+            }
+            if (typeof seekTime === "number" && onSeek) {
+              onSeek(seekTime);
+            }
+            if (Array.isArray(incomingQueue)) {
+              setQueueSongs(incomingQueue);
+            }
+            if (Array.isArray(incomingUpNext)) {
+              setUpNextQueue(incomingUpNext);
+            }
+            if (Array.isArray(incomingPrev)) {
+              setPreviousQueue(incomingPrev);
+            }
+          } else if (controllerDeviceId === localDeviceId) {
+            pauseBackgroundPlayer?.();
+            setIsPlaying?.(false);
           }
           break;
       }
@@ -91,22 +133,85 @@ export function FloatingPlayer({
     return () => {
       window.removeEventListener('nexus-device-control', handleDeviceControl as EventListener);
     };
-  }, [isPlaying, onTogglePlay, onNext]);
-  
+  }, [isPlaying, onTogglePlay, onNext, onPrev, onSeek, onSongClick, setQueueSongs, setUpNextQueue, setPreviousQueue, setIsPlaying, pauseBackgroundPlayer, localDeviceId]);
+
   const displaySong = {
-    id: currentSong?.id || "idle",
-    title: liveMetadata?.title || currentSong?.title || "Nexus Music",
-    artist: liveMetadata?.artist || currentSong?.artist || "Ready to stream",
-    artwork: liveMetadata?.artwork || currentSong?.artwork || null,
-    duration: currentSong?.duration || "0:00",
-    color: currentSong?.color || "#FA243C",
+    id: currentSong?.id || crossDeviceState?.song?.id || "idle",
+    title: liveMetadata?.title || currentSong?.title || crossDeviceState?.song?.title || "Nexus Music",
+    artist: liveMetadata?.artist || currentSong?.artist || crossDeviceState?.song?.artist || "Ready to stream",
+    artwork: liveMetadata?.artwork || currentSong?.artwork || crossDeviceState?.song?.artwork || null,
+    duration: currentSong?.duration || crossDeviceState?.song?.duration || "0:00",
+    color: currentSong?.color || crossDeviceState?.song?.color || "#FA243C",
   };
 
   const fallbackDuration = youtubeTimestampToSeconds(displaySong.duration) ?? 0;
   const safeDuration = durationSec > 0 ? durationSec : fallbackDuration;
-  const isReallyLive = currentSong?.isLive || displaySong.duration === "LIVE" || !!liveMetadata || safeDuration > 43200 || (!isIdle && isPlaying && safeDuration === 0);
+  const isReallyLive = currentSong?.isLive || displaySong.duration === "LIVE" || !!liveMetadata || safeDuration > 43200 || (!isIdle && (crossDeviceState ? (crossDeviceState.isPlaying ?? isPlaying) : isPlaying) && safeDuration === 0);
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
   const otherDevices = activeDevices.filter((device) => device.deviceId !== localDeviceId);
+
+  useEffect(() => {
+    if (crossDeviceState) {
+      const controlledDevice = otherDevices.find(d => d.deviceId === crossDeviceState.deviceId);
+      if (controlledDevice) {
+        setSelectedAction(`Play on ${controlledDevice.deviceName}`);
+        return;
+      }
+      if (crossDeviceState.deviceId === "party") {
+        setSelectedAction("Group Play / Party Mode");
+        return;
+      }
+    }
+    
+    const partyDevice = otherDevices.find(d => d.syncMode === "party");
+    if (partyDevice) {
+      setSelectedAction("Group Play / Party Mode");
+      return;
+    }
+    
+    const targetDevice = otherDevices.find(d => d.syncMode === "controlled" && d.controllerDeviceId === localDeviceId);
+    if (targetDevice) {
+      setSelectedAction(`Play on ${targetDevice.deviceName}`);
+      return;
+    }
+
+    setSelectedAction("Play individually");
+  }, [otherDevices, crossDeviceState, localDeviceId]);
+
+  const activeIsPlaying = crossDeviceState ? (crossDeviceState.isPlaying ?? isPlaying) : isPlaying;
+
+  const handlePlayToggle = async () => {
+    if (crossDeviceState) {
+      await triggerDeviceControl({
+        action: activeIsPlaying ? "pause" : "play",
+        targetDeviceId: crossDeviceState.deviceId
+      });
+    } else {
+      onTogglePlay();
+    }
+  };
+
+  const handleNext = async () => {
+    if (crossDeviceState) {
+      await triggerDeviceControl({
+        action: "skip",
+        targetDeviceId: crossDeviceState.deviceId
+      });
+    } else {
+      onNext();
+    }
+  };
+
+  const handlePrev = async () => {
+    if (crossDeviceState) {
+      await triggerDeviceControl({
+        action: "prev",
+        targetDeviceId: crossDeviceState.deviceId
+      });
+    } else {
+      onPrev();
+    }
+  };
 
   return (
     <div className="relative w-full max-w-[800px] mx-auto mb-24 md:mb-10 lg:mb-12 flex flex-col items-center justify-end pointer-events-none">
@@ -132,74 +237,104 @@ export function FloatingPlayer({
                 No other active devices in your ecosystem.
               </div>
             ) : (
-              otherDevices.map((device) => {
-                const song = device.currentSong;
-                const selectedAction = selectedActions[device.deviceId] || "Play individually";
-                const actionItems = [
-                  "Play individually",
-                  `Play on ${device.deviceName}`,
-                  "Play on your device",
-                  "Group Play / Party Mode",
-                ];
-
-                return (
-                  <div key={device.deviceId} className="rounded-3xl border border-white/10 bg-white/5 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-white font-semibold text-sm truncate">{device.deviceName}</div>
-                        <div className="text-white/50 text-[11px] uppercase tracking-[.2em] mt-1">
-                          {device.syncMode === "party" ? "Party Mode" : device.syncMode === "controller" ? "Remote Controller" : device.syncMode === "controlled" ? "Controlled Device" : "Standalone"}
+              <>
+                {/* Songs playing on other devices at the top */}
+                <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-1">
+                  {otherDevices.map((device) => {
+                    const song = device.currentSong;
+                    return (
+                      <div key={device.deviceId} className="rounded-2xl border border-white/10 bg-white/5 p-2 flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl overflow-hidden bg-slate-900 shrink-0">
+                          <MusicArtwork src={song?.artwork || undefined} alt={song?.title || device.deviceName} iconSize={12} rounded="none" className="w-full h-full" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-white font-semibold text-xs truncate">{song?.title || "No song playing"}</div>
+                          <div className="text-white/60 text-[10px] uppercase tracking-wider truncate">{song?.artist || "Waiting for playback"}</div>
+                          <div className="text-[9px] text-white/40 mt-0.5 truncate">{device.deviceName} • {device.isPlaying ? "PLAYING" : "IDLE"}</div>
                         </div>
                       </div>
-                      <div className="text-[11px] uppercase tracking-[.25em] text-white/50">{device.isPlaying ? "PLAYING" : "IDLE"}</div>
-                    </div>
+                    );
+                  })}
+                </div>
 
-                    <div className="mt-3 flex gap-3 items-center">
-                      <div className="h-14 w-14 rounded-2xl overflow-hidden bg-slate-900">
-                        <MusicArtwork src={song?.artwork || undefined} alt={song?.title || device.deviceName} iconSize={16} rounded="none" className="w-full h-full" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-white font-semibold text-sm truncate">{song?.title || "No song playing"}</div>
-                        <div className="text-white/60 text-[11px] uppercase tracking-[.15em] truncate">{song?.artist || "Waiting for playback"}</div>
-                      </div>
-                    </div>
+                {/* Unified action menu at the bottom */}
+                <div className="border-t border-white/10 pt-3 space-y-2">
+                  <div className="text-white/40 text-[10px] uppercase tracking-[.2em] font-semibold mb-1 pl-1">Actions</div>
+                  {[
+                    "Play individually",
+                    ...otherDevices.map((d) => `Play on ${d.deviceName}`),
+                    "Play on your device",
+                    "Group Play / Party Mode"
+                  ].map((actionText) => {
+                    const isChecked = selectedAction === actionText;
+                    return (
+                      <label
+                        key={actionText}
+                        className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#141414] px-3 py-2 cursor-pointer transition hover:border-white/30"
+                      >
+                        <input
+                          type="radio"
+                          name="device-ecosystem-action"
+                          value={actionText}
+                          checked={isChecked}
+                          onChange={async () => {
+                            setSelectedAction(actionText);
+                            if (typeof window !== 'undefined') {
+                              window.localStorage.setItem('crossDeviceAction', actionText);
+                            }
 
-                    <div className="mt-4 space-y-2">
-                      {actionItems.map((action) => (
-                        <label
-                          key={`${device.deviceId}-${action}`}
-                          className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#141414] px-3 py-3 cursor-pointer transition hover:border-white/30"
-                        >
-                          <input
-                            type="radio"
-                            name={`device-action-${device.deviceId}`}
-                            value={action}
-                            checked={selectedAction === action}
-                            onChange={async () => {
-                              setSelectedActions((prev) => ({ ...prev, [device.deviceId]: action }));
-                              if (typeof window !== 'undefined') {
-                                window.localStorage.setItem('crossDeviceAction', action);
+                            if (actionText === "Play individually") {
+                              for (const d of otherDevices) {
+                                await triggerDeviceControl({ action: "device:decouple", deviceId: d.deviceId });
                               }
-
-                              if (action === "Play individually") {
-                                await triggerDeviceControl({ action: "device:decouple", deviceId: device.deviceId });
-                              } else if (action === `Play on ${device.deviceName}`) {
-                                await triggerDeviceControl({ action: "device:control-target", controllerDeviceId: localDeviceId, targetDeviceId: device.deviceId });
-                              } else if (action === "Play on your device") {
-                                await triggerDeviceControl({ action: "device:pull-track", controllerDeviceId: localDeviceId, targetDeviceId: device.deviceId });
-                              } else if (action === "Group Play / Party Mode") {
-                                await triggerDeviceControl({ action: "session:sync-all", deviceIds: otherDevices.map((d) => d.deviceId) });
+                            } else if (actionText.startsWith("Play on ")) {
+                              const deviceNamePart = actionText.replace("Play on ", "");
+                              const targetDevice = otherDevices.find((d) => d.deviceName === deviceNamePart);
+                              if (targetDevice) {
+                                await triggerDeviceControl({
+                                  action: "device:control-target",
+                                  controllerDeviceId: localDeviceId,
+                                  targetDeviceId: targetDevice.deviceId,
+                                  song: currentSong,
+                                  seekTime: currentTimeSec,
+                                  queueSongs,
+                                  upNextQueue,
+                                  previousQueue
+                                });
                               }
-                            }}
-                            className="accent-[var(--art-accent,#1db954)]"
-                          />
-                          <span className="text-sm text-white">{action}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })
+                            } else if (actionText === "Play on your device") {
+                              const targetDevice = otherDevices.find((d) => d.currentSong) || otherDevices[0];
+                              if (targetDevice) {
+                                await triggerDeviceControl({
+                                  action: "device:pull-track",
+                                  controllerDeviceId: localDeviceId,
+                                  targetDeviceId: targetDevice.deviceId,
+                                  seekTime: currentTimeSec,
+                                  queueSongs,
+                                  upNextQueue,
+                                  previousQueue
+                                });
+                              }
+                            } else if (actionText === "Group Play / Party Mode") {
+                              await triggerDeviceControl({
+                                action: "session:sync-all",
+                                deviceIds: otherDevices.map((d) => d.deviceId),
+                                song: currentSong,
+                                seekTime: currentTimeSec,
+                                queueSongs,
+                                upNextQueue,
+                                previousQueue
+                              });
+                            }
+                          }}
+                          className="accent-[var(--art-accent,#1db954)]"
+                        />
+                        <span className="text-xs text-white">{actionText}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </m.div>
         )}
@@ -235,7 +370,7 @@ export function FloatingPlayer({
           {/* Left Section: Playback Controls */}
           <div className={`flex items-center gap-3 md:gap-5 shrink-0 ${isIdle ? 'opacity-40 grayscale' : ''}`}>
             <button 
-              onClick={onPrev} 
+              onClick={handlePrev} 
               disabled={isIdle}
               className="text-white/40 hover:text-white disabled:cursor-not-allowed"
             >
@@ -243,12 +378,12 @@ export function FloatingPlayer({
             </button>
             
             <button
-              onClick={onTogglePlay}
+              onClick={handlePlayToggle}
               disabled={isIdle}
               className="text-white hover:scale-105 active:scale-95 transition-transform disabled:cursor-not-allowed"
               style={{ color: isIdle ? 'white' : 'var(--art-accent, white)' }}
             >
-              {isPlaying ? (
+              {activeIsPlaying ? (
                 <Pause className="w-8 h-8" fill="currentColor" strokeWidth={0} />
               ) : (
                 <Play className="w-8 h-8" fill="currentColor" strokeWidth={0} />
@@ -256,7 +391,7 @@ export function FloatingPlayer({
             </button>
             
             <button 
-              onClick={onNext} 
+              onClick={handleNext} 
               disabled={isIdle}
               className="text-white/40 hover:text-white disabled:cursor-not-allowed"
             >
@@ -417,7 +552,7 @@ export function FloatingPlayer({
                 max={safeDuration || 100}
                 value={currentTimeSec || 0}
                 onChange={(e) => {
-                  if (onSeek) onSeek(parseFloat(e.target.value));
+                  handleSeek(parseFloat(e.target.value));
                 }}
                 className="w-full h-[3px] appearance-none bg-white/5 cursor-pointer hover:h-[5px] transition-[height] m-0 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-0 [&::-webkit-slider-thumb]:h-0 [&::-moz-range-thumb]:w-0 [&::-moz-range-thumb]:h-0 [&::-moz-range-thumb]:border-0"
                 style={{

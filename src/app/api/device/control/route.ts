@@ -72,6 +72,10 @@ export async function POST(request: Request) {
       controllerDeviceId,
       deviceIds,
       song,
+      seekTime,
+      queueSongs,
+      upNextQueue,
+      previousQueue,
     } = body;
 
     const emailHash = Buffer.from(session.user.email).toString("base64").replace(/[^a-zA-Z0-9]/g, "");
@@ -152,6 +156,8 @@ export async function POST(request: Request) {
         controllerDeviceId,
         targetDeviceId: null,
         groupId: null,
+        currentSong: song || null,
+        isPlaying: true,
         lastUpdated: timestamp,
       };
 
@@ -160,6 +166,11 @@ export async function POST(request: Request) {
       await broadcast("device:control-target", {
         controllerDeviceId,
         targetDeviceId,
+        song,
+        seekTime,
+        queueSongs,
+        upNextQueue,
+        previousQueue,
       });
 
       return NextResponse.json({ success: true, updatedController, updatedTarget });
@@ -205,10 +216,18 @@ export async function POST(request: Request) {
         controllerDeviceId,
         targetDeviceId,
         song: targetState.currentSong,
+        seekTime,
+        queueSongs,
+        upNextQueue,
+        previousQueue,
       });
       await broadcast("player:play", {
         targetDeviceId: controllerDeviceId,
         song: targetState.currentSong,
+        seekTime,
+        queueSongs,
+        upNextQueue,
+        previousQueue,
       });
 
       return NextResponse.json({ success: true, updatedController, updatedTarget });
@@ -234,6 +253,8 @@ export async function POST(request: Request) {
           groupId,
           controllerDeviceId: null,
           targetDeviceId: null,
+          currentSong: song || null,
+          isPlaying: true,
           lastUpdated: timestamp,
         };
         return upsertDeviceState(emailHash, id, updated);
@@ -243,20 +264,31 @@ export async function POST(request: Request) {
       await broadcast("session:sync-all", {
         groupId,
         deviceIds: activeDeviceIds,
+        song,
+        seekTime,
+        queueSongs,
+        upNextQueue,
+        previousQueue,
       });
-
       return NextResponse.json({ success: true, groupId, deviceIds: activeDeviceIds });
     }
 
-    const legacyActions = ["play", "pause", "skip", "transfer"];
-    if (legacyActions.includes(action)) {
+    const broadcastActions = [
+      "play", "pause", "skip", "transfer",
+      "player:play", "player:pause", "player:seek"
+    ];
+    if (broadcastActions.includes(action)) {
       const payload = {
         action,
         targetDeviceId: targetDeviceId || null,
         song: song || null,
+        seekTime: typeof seekTime === "number" ? seekTime : null,
+        queueSongs: queueSongs || null,
+        upNextQueue: upNextQueue || null,
+        previousQueue: previousQueue || null,
         sourceDeviceName: deviceName,
       };
-      await broadcast("device-control", payload);
+      await broadcast(action.includes(":") ? action : "device-control", payload);
       return NextResponse.json({ success: true, payload });
     }
 

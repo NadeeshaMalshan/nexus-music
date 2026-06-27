@@ -274,7 +274,7 @@ export async function POST(request: Request) {
     }
 
     const broadcastActions = [
-      "play", "pause", "skip", "transfer",
+      "play", "pause", "skip", "prev", "transfer",
       "player:play", "player:pause", "player:seek"
     ];
     if (broadcastActions.includes(action)) {

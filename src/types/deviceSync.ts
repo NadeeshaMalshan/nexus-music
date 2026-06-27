@@ -28,6 +28,7 @@ export type DeviceControlAction =
   | "play"
   | "pause"
   | "skip"
+  | "prev"
   | "transfer";
 
 export interface DeviceControlPayload {

@@ -213,6 +213,18 @@ export function FloatingPlayer({
     }
   };
 
+  const handleSeek = async (time: number) => {
+    if (crossDeviceState) {
+      await triggerDeviceControl({
+        action: "player:seek",
+        targetDeviceId: crossDeviceState.deviceId,
+        seekTime: time
+      });
+    } else if (onSeek) {
+      onSeek(time);
+    }
+  };
+
   return (
     <div className="relative w-full max-w-[800px] mx-auto mb-24 md:mb-10 lg:mb-12 flex flex-col items-center justify-end pointer-events-none">
       {/* Device Control Popup */}

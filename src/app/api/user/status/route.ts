@@ -222,7 +222,7 @@ export async function POST(request: Request) {
 
     const emailHash = Buffer.from(email).toString('base64').replace(/[^a-zA-Z0-9]/g, '');
     const userAgent = request.headers.get("user-agent");
-    const deviceName = getDeviceName(userAgent);
+    const deviceName = body.deviceName || getDeviceName(userAgent);
     const deviceId = body.deviceId || "unknown";
 
     const deviceState = {

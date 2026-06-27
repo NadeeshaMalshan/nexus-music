@@ -521,7 +521,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({
             song: currentSong,
             isPlaying: isPlaying,
-            deviceId: window.localStorage.getItem('nexus_device_id') || "unknown"
+            deviceId: window.localStorage.getItem('nexus_device_id') || "unknown",
+            deviceName: window.localStorage.getItem('nexus_device_name') || undefined,
           }),
         });
       } catch (err) {
@@ -549,7 +550,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           action: "clear",
-          deviceId: window.localStorage.getItem('nexus_device_id') || "unknown"
+          deviceId: window.localStorage.getItem('nexus_device_id') || "unknown",
+          deviceName: window.localStorage.getItem('nexus_device_name') || undefined,
         }),
         keepalive: true,
       }).catch(() => {});

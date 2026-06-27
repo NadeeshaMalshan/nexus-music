@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ListPlus, PlaySquare, Heart, Share2, MoreHorizontal } from "lucide-react";
+import { ListPlus, PlaySquare, Heart, Share2, MoreHorizontal, Info } from "lucide-react";
 import { type Song } from "./types";
 import { MusicArtwork } from "./MusicArtwork";
 
@@ -14,6 +14,7 @@ interface SongMenuProps {
   onPlayNext: () => void;
   onLike: () => void;
   isLiked?: boolean;
+  onViewInfo?: () => void;
 }
 
 export function SongMenu({ 
@@ -23,7 +24,8 @@ export function SongMenu({
   onAddToQueue, 
   onPlayNext, 
   onLike,
-  isLiked = false
+  isLiked = false,
+  onViewInfo
 }: SongMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -43,6 +45,7 @@ export function SongMenu({
     { label: "Play Next", icon: PlaySquare, onClick: onPlayNext },
     { label: "Add to Queue", icon: ListPlus, onClick: onAddToQueue },
     { label: isLiked ? "Unlike" : "Love", icon: Heart, onClick: onLike, active: isLiked, activeColor: "var(--art-accent, #FA243C)" },
+    ...(onViewInfo ? [{ label: "View Song Info", icon: Info, onClick: onViewInfo }] : []),
     { label: "Share", icon: Share2, onClick: () => {
          navigator.clipboard.writeText(`https://music.youtube.com/watch?v=${song.id}`);
          onClose();

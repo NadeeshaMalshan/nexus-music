@@ -26,11 +26,7 @@ type UserSearchItem = {
 };
 
 function looksLikePersonQuery(query: string): boolean {
-  const trimmed = query.trim().toLowerCase();
-  if (!trimmed) return false;
-  const musicHints = ["artist", "song", "track", "album", "playlist", "mix", "video", "live", "concert", "remix", "band", "singer", "dj"];
-  if (musicHints.some((hint) => trimmed.includes(hint))) return false;
-  return trimmed.split(/\s+/).length >= 2;
+  return false;
 }
 const formatCount = (count: string | number) => {
   const num = typeof count === "string" ? parseInt(count) : count;

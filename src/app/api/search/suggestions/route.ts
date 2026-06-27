@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getYTMusic } from "@/lib/ytmClient";
+import redis from "@/lib/redis";
 
 export async function GET(request: Request) {
   try {
@@ -12,8 +13,8 @@ export async function GET(request: Request) {
 
     const ytmusic = await getYTMusic();
 
-    // Fetch text suggestions, search results, and users concurrently
-    const [suggestions, searchResults, userResults] = await Promise.all([
+    // Fetch text suggestions and search results concurrently
+    const [suggestions, searchResults, userDirectory] = await Promise.all([
       ytmusic.getSearchSuggestions(q).catch((err) => {
         console.error("[Suggestions API] getSearchSuggestions failed:", err);
         return [] as string[];
@@ -22,23 +23,32 @@ export async function GET(request: Request) {
         console.error("[Suggestions API] search failed:", err);
         return [] as any[];
       }),
-      fetch(`${new URL(request.url).origin}/api/user/search?q=${encodeURIComponent(q)}`)
-        .then((r) => (r.ok ? r.json() : []))
-        .catch(() => []),
+      redis ? redis.hgetall("users:directory").catch(() => null) : null,
     ]);
 
     const richResults: any[] = [];
+    const queryLower = q.toLowerCase();
 
-    // Add matching users
-    for (const user of (userResults || [])) {
-      richResults.push({
-        youtubeId: user.email || user.name || "",
-        title: user.name || user.email || "",
-        artists: ["User"],
-        thumbnailUrl: user.avatarUrl || user.image || user.thumbnail || "",
-        type: "user",
-        user,
-      });
+    // Add matching users directly from Redis directory
+    if (userDirectory) {
+      for (const [email, rawVal] of Object.entries(userDirectory)) {
+        try {
+          const user = typeof rawVal === "string" ? JSON.parse(rawVal) : rawVal;
+          const name = (user.name || "").toLowerCase();
+          const userEmail = (user.email || email).toLowerCase();
+
+          if (name.includes(queryLower) || userEmail.includes(queryLower)) {
+            richResults.push({
+              youtubeId: user.email || user.name || "",
+              title: user.name || user.email || "",
+              artists: ["User"],
+              thumbnailUrl: user.avatarUrl || user.image || user.thumbnail || "",
+              type: "user",
+              user,
+            });
+          }
+        } catch {}
+      }
     }
 
     // Add songs, videos, artists, albums, playlists

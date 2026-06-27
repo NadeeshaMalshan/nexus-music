@@ -55,11 +55,7 @@ type SearchResultItem = SearchItem | (UserSearchItem & {
 });
 
 function looksLikePersonQuery(query: string): boolean {
-  const trimmed = query.trim().toLowerCase();
-  if (!trimmed) return false;
-  const musicHints = ["artist", "song", "track", "album", "playlist", "mix", "video", "live", "concert", "remix", "band", "singer", "dj"];
-  if (musicHints.some((hint) => trimmed.includes(hint))) return false;
-  return trimmed.split(/\s+/).length >= 2;
+  return false;
 }
 const formatCount = (count: string | number) => {
   const num = typeof count === "string" ? parseInt(count) : count;
@@ -176,6 +172,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const [resultsByCategory, setResultsByCategory] = useState<Record<string, SearchItem[]>>({});
   const [songColors, setSongColors] = useState<Record<string, string>>({});
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [infoSong, setInfoSong] = useState<Song | null>(null);
   const { songIsInLikedLibrary, resolveLikedLibraryRateVideoId, onRateSong, isRightSidebarOpen, setIsRightSidebarOpen, setRightSidebarMode } = useDashboard();
   const router = useRouter();
   const searchTimeoutRef = useRef<number | null>(null);
@@ -396,13 +393,16 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
       };
 
       if (cat === "Top") {
-        const [songs, videos, artists, albums, playlists, live] = await Promise.all([
+        const [songs, videos, artists, albums, playlists, live, users] = await Promise.all([
           fetchType("songs"),
           fetchType("videos"),
           fetchType("artists"),
           fetchType("albums"),
           fetchType("playlists"),
           fetchType("live"),
+          fetch(`/api/user/search?q=${encodeURIComponent(finalQuery)}`, { cache: "no-store" })
+            .then((r) => (r.ok ? r.json() : []))
+            .catch(() => []),
         ]);
 
         if (runId !== searchRunIdRef.current) return;
@@ -418,15 +418,23 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
         setResultsByCategory(byCat);
 
         const queryLower = finalQuery.toLowerCase();
-        const preferUsers = looksLikePersonQuery(finalQuery);
         let prioritizedResults: SearchItem[] = [];
         
         // Keep only actual live streams
         const actualLiveOnly = (live || []).filter(isActuallyLiveStream);
 
-        if (preferUsers) {
-          prioritizedResults = [];
-        } else if (queryLower.includes("playlist") || queryLower.includes("mix")) {
+        const userItems = (users || []).map((user: any, idx: number) => ({
+          type: "USER",
+          id: user.email || user.name || `user-${idx}`,
+          name: user.name || user.email || "",
+          title: user.name || user.email || "",
+          author: user.email || "",
+          thumbnail: user.avatarUrl || user.image || user.thumbnail || "",
+          user,
+        }));
+        setUserResults(users.slice(0, 5));
+
+        if (queryLower.includes("playlist") || queryLower.includes("mix")) {
           prioritizedResults = [
             ...(playlists || []).slice(0, 5),
             ...(songs || []).slice(0, 3),
@@ -481,10 +489,11 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
             ...(videos || []).slice(0, 1).map((v) => ({ ...v, fromVideosShelf: true })),
           ];
         } else {
-          // Default: Interleave everything including albums and playlists
+          // Default: Interleave everything including albums, playlists, and users
           prioritizedResults = [
             ...(artists || []).slice(0, 2),
             ...(songs || []).slice(0, 5),
+            ...userItems.slice(0, 2),
             ...(albums || []).slice(0, 2),
             ...(playlists || []).slice(0, 2),
             ...(actualLiveOnly).slice(0, 2).map((l) => ({ ...l, fromLiveShelf: true })),
@@ -493,14 +502,6 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
         }
 
         setSearchResults(prioritizedResults);
-        const userRes = await fetch(`/api/user/search?q=${encodeURIComponent(finalQuery)}`, { cache: "no-store" });
-        if (userRes.ok) {
-          const users = (await userRes.json()) as UserSearchItem[];
-          if (runId !== searchRunIdRef.current) return;
-          setUserResults(users.slice(0, 5));
-        } else {
-          setUserResults([]);
-        }
       } else {
         const typeMap: Record<string, string> = {
           Songs: "songs",
@@ -538,8 +539,9 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
         if (preferUsers) {
           finalResults = [];
         }
+        // Live results are already filtered by the API query type
         if (cat === "Live") {
-          finalResults = results.filter(isActuallyLiveStream);
+          finalResults = results;
         }
 
         setResultsByCategory(prev => ({ ...prev, [cat]: results }));
@@ -562,43 +564,25 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
     }
   }, [activeCategory]);
 
-  // Re-run search when category changes (query stays the same)
-  useEffect(() => {
-    if (searchQueryRef.current.trim()) {
-      void runSearch();
-    }
-  }, [activeCategory, runSearch]);
-
   // Handle query from URL (?q=) — watch URLs play via playFromWatchUrl inside runSearch
   const searchParams = useSearchParams();
   useEffect(() => {
     const q = searchParams.get("q");
     if (!q) return;
     setSearchQuery(q);
+    setActiveCategory("Top");
     setSelectedCategoryTitle(null);
     setSelectedCategoryData([]);
-    void runSearch(q);
+    void runSearch(q, "Top");
   }, [searchParams, runSearch]);
 
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      window.clearTimeout(searchTimeoutRef.current);
-    }
     if (!searchQuery.trim()) {
       setSearchResults([]);
-      setSearchLoading(false);
-      return;
+      setUserResults([]);
+      setResultsByCategory({});
     }
-    searchTimeoutRef.current = window.setTimeout(() => {
-      void runSearch(searchQuery);
-    }, 350);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        window.clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchQuery, runSearch]);
+  }, [searchQuery]);
 
   const mappedSongs: any[] = searchResults.map((item: SearchResultItem, idx) => {
     // Standardize to a common UI item shape
@@ -696,7 +680,7 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
     >
       {isInputFocused && (
         <div 
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-md" 
+          className="fixed inset-0 z-40 bg-transparent" 
           onClick={() => setIsInputFocused(false)} 
         />
       )}
@@ -720,7 +704,7 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
             isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
           }`}>
           <div className="flex items-center justify-between mb-8 md:mb-12">
-            <h1 className="text-[56px] md:text-[80px] lg:text-[100px] font-black text-white tracking-tighter leading-none drop-shadow-2xl">Explore</h1>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter leading-none drop-shadow-2xl">Explore</h1>
             <button
               onClick={onClose}
               className="md:hidden font-bold text-lg px-4 py-2 bg-white/5 rounded-full"
@@ -738,7 +722,8 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                void runSearch();
+                setActiveCategory("Top");
+                void runSearch(searchQuery, "Top");
                 setIsInputFocused(false);
               }}
               className="relative flex items-center w-full rounded-2xl bg-black/20 hover:bg-white/5 border border-white/10 px-4 md:px-8 py-5 md:py-7 focus-within:bg-black/40 focus-within:border-white/30 shadow-2xl backdrop-blur-md transition-colors duration-300"
@@ -785,7 +770,8 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                       type="button"
                       onClick={() => {
                         setSearchQuery(suggestion);
-                        void runSearch(suggestion);
+                        setActiveCategory("Top");
+                        void runSearch(suggestion, "Top");
                         setIsInputFocused(false);
                       }}
                       className="w-full flex items-center gap-4 px-6 py-3 hover:bg-white/5 text-white transition-colors text-left"
@@ -1165,6 +1151,11 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                   <m.div
                     initial={false}
                     animate={{ opacity: 1, x: 0 }}
+                    onContextMenu={(e) => {
+                      if (song.type === "ARTIST" || song.type === "USER") return;
+                      e.preventDefault();
+                      setOpenMenuId(song.id);
+                    }}
                     className="group flex cursor-pointer items-center justify-between p-3 px-4 rounded-2xl bg-black/20 hover:bg-white/10 backdrop-blur-md border border-white/10 hover:translate-x-2 transition-all duration-300 animate-gpu shadow-lg"
                     onClick={() => {
                       if (song.type === "ARTIST") {
@@ -1218,6 +1209,46 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                         </div>
                       </div>
                     </div>
+
+                    {/* 3-dot Menu Button */}
+                    {song.type !== "ARTIST" && song.type !== "USER" && song.type !== "ALBUM" && song.type !== "PLAYLIST" && (
+                      <div className="relative shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(openMenuId === song.id ? null : song.id);
+                          }}
+                          className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                        >
+                          <MoreHorizontal size={20} />
+                        </button>
+                        
+                        {openMenuId === song.id && (
+                          <SongMenu
+                            song={song}
+                            isOpen={openMenuId === song.id}
+                            onClose={() => setOpenMenuId(null)}
+                            onAddToQueue={() => {
+                              onAddToQueue?.(song);
+                              setOpenMenuId(null);
+                            }}
+                            onPlayNext={() => {
+                              onPlayNext?.(song);
+                              setOpenMenuId(null);
+                            }}
+                            onLike={() => {
+                              onRateSong?.(song.id, songIsInLikedLibrary(song.id) ? "none" : "like");
+                              setOpenMenuId(null);
+                            }}
+                            isLiked={songIsInLikedLibrary(song.id)}
+                            onViewInfo={() => {
+                              setInfoSong(song);
+                              setOpenMenuId(null);
+                            }}
+                          />
+                        )}
+                      </div>
+                    )}
                   </m.div>
                 </SwipeableSongRow>
               ))}
@@ -1232,6 +1263,67 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
         )}
         </>
         )}
+      {/* View Song Info Modal */}
+      <AnimatePresence>
+        {infoSong && (
+          <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <m.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setInfoSong(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            {/* Content Card */}
+            <m.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-[#1C1C1E] p-6 shadow-2xl text-left z-10"
+            >
+              <h3 className="text-2xl font-black text-white mb-6">Song Information</h3>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 shadow-lg">
+                  <MusicArtwork src={infoSong.artwork} alt={infoSong.title} iconSize={24} variant="track" rounded="xl" className="h-full w-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-lg font-black text-white truncate">{infoSong.title}</h4>
+                  <p className="text-sm font-bold text-white/50 truncate mt-0.5">{infoSong.artist}</p>
+                </div>
+              </div>
+              <div className="space-y-3.5 text-sm font-bold border-t border-white/5 pt-4">
+                <div className="flex justify-between">
+                  <span className="text-white/40">Video ID</span>
+                  <span className="font-mono text-white/80 select-all">{infoSong.id}</span>
+                </div>
+                {infoSong.duration && (
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Duration</span>
+                    <span className="text-white/80">{infoSong.duration}</span>
+                  </div>
+                )}
+                {(infoSong as any).views && (
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Views</span>
+                    <span className="text-white/80">{formatCount((infoSong as any).views)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-white/40">Play Mode</span>
+                  <span className="text-white/80">{infoSong.preferVideoPlayback ? "Video Mode (MV)" : "Audio Mode"}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setInfoSong(null)}
+                className="mt-8 w-full py-3.5 rounded-2xl bg-white text-black font-black hover:scale-[1.02] active:scale-95 transition-transform"
+              >
+                Close
+              </button>
+            </m.div>
+          </div>
+        )}
+      </AnimatePresence>
       </div>
     </m.div>
   );

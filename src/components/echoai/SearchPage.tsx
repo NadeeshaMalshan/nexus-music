@@ -833,7 +833,8 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                               artist: item.artists.join(", "),
                               artwork: item.thumbnailUrl,
                               duration: "0:00",
-                              color: searchAccentColor
+                              color: searchAccentColor,
+                              preferVideoPlayback: item.type === "video",
                             });
                             setIsInputFocused(false);
                           }}
@@ -864,6 +865,75 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                 </m.div>
               )}
             </AnimatePresence>
+
+            {/* Best Result Card */}
+            {activeCategory === "Top" && mappedSongs.length > 0 && !searchLoading && (
+              <div className="w-full mb-6 mt-6">
+                <div 
+                  onClick={() => {
+                    const song = mappedSongs[0];
+                    if (song.type === "ARTIST") {
+                      onNavigateArtist?.(song.title);
+                      return;
+                    }
+                    if (song.type === "PLAYLIST") {
+                      router.push(`/playlists/${song.id}`);
+                      return;
+                    }
+                    if (song.type === "ALBUM") {
+                      router.push(`/album/${song.id}`);
+                      return;
+                    }
+                    if (song.type === "USER") {
+                      router.push(`/stats?user=${encodeURIComponent((song.user?.email || song.user?.name || "").split("@")[0])}`);
+                      return;
+                    }
+                    // Play song
+                    void (async () => {
+                      const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
+                      const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
+                      onSongSelect({ ...song, artwork: highResArtwork, color: dynamicColor });
+                    })();
+                  }}
+                  className="group flex items-center justify-between p-6 rounded-3xl bg-black/20 hover:bg-white/5 border border-white/10 hover:border-white/20 transition-all duration-300 cursor-pointer shadow-2xl relative overflow-hidden backdrop-blur-md"
+                >
+                  <div className="flex items-center gap-6 flex-1 min-w-0">
+                    <div className={`relative h-24 w-24 md:h-32 md:w-32 shrink-0 overflow-hidden ${mappedSongs[0].type === "ARTIST" || mappedSongs[0].type === "USER" ? "rounded-full" : "rounded-2xl"} shadow-xl border border-white/10`}>
+                      <MusicArtwork
+                        src={mappedSongs[0].artwork?.replace(/([=|-][swh])\d+/g, "$1600") || mappedSongs[0].artwork}
+                        alt={mappedSongs[0].title}
+                        iconSize={36}
+                        variant={mappedSongs[0].type === "ARTIST" || mappedSongs[0].type === "USER" ? "artist" : "track"}
+                        rounded={mappedSongs[0].type === "ARTIST" || mappedSongs[0].type === "USER" ? "full" : "2xl"}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="flex flex-col min-w-0 pr-4">
+                      <h3 className="text-2xl md:text-4xl font-black text-white leading-tight tracking-tight mb-2 group-hover:text-white transition-colors">{mappedSongs[0].title}</h3>
+                      <p className="text-[14px] md:text-[16px] font-black uppercase tracking-widest text-white/40">
+                        {mappedSongs[0].type === "ARTIST" ? "Artist" : mappedSongs[0].type === "USER" ? "User" : mappedSongs[0].type === "ALBUM" ? "Album" : mappedSongs[0].type === "PLAYLIST" ? "Playlist" : mappedSongs[0].artist}
+                      </p>
+                    </div>
+                  </div>
+                  {(mappedSongs[0].type === "SONG" || mappedSongs[0].type === "VIDEO") && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const song = mappedSongs[0];
+                        void (async () => {
+                          const highResArtwork = song.artwork?.replace(/([=|-][swh])\d+/g, '$11200') || song.artwork;
+                          const dynamicColor = songColors[song.id] || (await extractDominantColor(song.artwork)) || song.color;
+                          onSongSelect({ ...song, artwork: highResArtwork, color: dynamicColor });
+                        })();
+                      }}
+                      className="h-14 w-14 rounded-full bg-white text-black flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-transform shrink-0"
+                    >
+                      <Play size={24} className="ml-1" fill="currentColor" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Categories */}
             {searchQuery.trim() && (
@@ -1072,7 +1142,7 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
               {searchLoading ? "Finding..." : activeCategory === "Top" ? "Top Results" : activeCategory}
             </h2>
             <div className="flex flex-col gap-2">
-              {mappedSongs.map((song, index) => (
+              {(activeCategory === "Top" ? mappedSongs.slice(1) : mappedSongs).map((song, index) => (
                 <SwipeableSongRow
                   key={song.id}
                   disableDrag={openMenuId === song.id}

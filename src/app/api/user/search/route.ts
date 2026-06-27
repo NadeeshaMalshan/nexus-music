@@ -51,10 +51,7 @@ export async function GET(request: Request) {
         const userEmail = (user.email || email).toLowerCase();
 
         if (name.includes(query) || userEmail.includes(query)) {
-          // Do not show the viewer in the search results
-          if (userEmail !== viewerEmail.toLowerCase()) {
-            results.push(user);
-          }
+          results.push(user);
         }
       } catch {}
     }

@@ -225,7 +225,8 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
                               artist: item.artists.join(", "),
                               artwork: item.thumbnailUrl,
                               duration: "0:00",
-                              color: accentColor
+                              color: accentColor,
+                              preferVideoPlayback: item.type === "video"
                             });
                             setIsSearchFocused(false);
                           }}

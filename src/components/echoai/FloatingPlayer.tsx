@@ -135,48 +135,46 @@ export function FloatingPlayer({
     };
   }, [isPlaying, onTogglePlay, onNext, onPrev, onSeek, onSongClick, setQueueSongs, setUpNextQueue, setPreviousQueue, setIsPlaying, pauseBackgroundPlayer, localDeviceId]);
 
+  const otherDevices = activeDevices.filter((device) => device.deviceId !== localDeviceId);
+  const localDevice = activeDevices.find(d => d.deviceId === localDeviceId);
+  const controlledTarget = localDevice?.syncMode === "controller" ? otherDevices.find(d => d.deviceId === localDevice.targetDeviceId) : null;
+  const remoteSong = controlledTarget?.currentSong || (localDevice?.syncMode === "controlled" ? crossDeviceState?.song : null);
+
   const displaySong = {
-    id: currentSong?.id || crossDeviceState?.song?.id || "idle",
-    title: liveMetadata?.title || currentSong?.title || crossDeviceState?.song?.title || "Nexus Music",
-    artist: liveMetadata?.artist || currentSong?.artist || crossDeviceState?.song?.artist || "Ready to stream",
-    artwork: liveMetadata?.artwork || currentSong?.artwork || crossDeviceState?.song?.artwork || null,
-    duration: currentSong?.duration || crossDeviceState?.song?.duration || "0:00",
-    color: currentSong?.color || crossDeviceState?.song?.color || "#FA243C",
+    id: currentSong?.id || remoteSong?.id || "idle",
+    title: liveMetadata?.title || currentSong?.title || remoteSong?.title || "Nexus Music",
+    artist: liveMetadata?.artist || currentSong?.artist || remoteSong?.artist || "Ready to stream",
+    artwork: liveMetadata?.artwork || currentSong?.artwork || remoteSong?.artwork || null,
+    duration: currentSong?.duration || remoteSong?.duration || "0:00",
+    color: currentSong?.color || remoteSong?.color || "#FA243C",
   };
 
   const fallbackDuration = youtubeTimestampToSeconds(displaySong.duration) ?? 0;
   const safeDuration = durationSec > 0 ? durationSec : fallbackDuration;
   const isReallyLive = currentSong?.isLive || displaySong.duration === "LIVE" || !!liveMetadata || safeDuration > 43200 || (!isIdle && (crossDeviceState ? (crossDeviceState.isPlaying ?? isPlaying) : isPlaying) && safeDuration === 0);
   const progress = safeDuration > 0 ? Math.min(100, (Math.max(0, currentTimeSec) / safeDuration) * 100) : 0;
-  const otherDevices = activeDevices.filter((device) => device.deviceId !== localDeviceId);
 
   useEffect(() => {
-    if (crossDeviceState) {
-      const controlledDevice = otherDevices.find(d => d.deviceId === crossDeviceState.deviceId);
-      if (controlledDevice) {
-        setSelectedAction(`Play on ${controlledDevice.deviceName}`);
+    if (localDevice) {
+      if (localDevice.syncMode === "controller" && localDevice.targetDeviceId) {
+        const target = otherDevices.find(d => d.deviceId === localDevice.targetDeviceId);
+        if (target) {
+          setSelectedAction(`Play on ${target.deviceName}`);
+          return;
+        }
+      }
+      if (localDevice.syncMode === "controlled") {
+        setSelectedAction("Play on your device");
         return;
       }
-      if (crossDeviceState.deviceId === "party") {
+      if (localDevice.syncMode === "party") {
         setSelectedAction("Group Play / Party Mode");
         return;
       }
     }
-    
-    const partyDevice = otherDevices.find(d => d.syncMode === "party");
-    if (partyDevice) {
-      setSelectedAction("Group Play / Party Mode");
-      return;
-    }
-    
-    const targetDevice = otherDevices.find(d => d.syncMode === "controlled" && d.controllerDeviceId === localDeviceId);
-    if (targetDevice) {
-      setSelectedAction(`Play on ${targetDevice.deviceName}`);
-      return;
-    }
 
     setSelectedAction("Play individually");
-  }, [otherDevices, crossDeviceState, localDeviceId]);
+  }, [otherDevices, localDevice]);
 
   const activeIsPlaying = crossDeviceState ? (crossDeviceState.isPlaying ?? isPlaying) : isPlaying;
 

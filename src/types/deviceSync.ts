@@ -40,6 +40,9 @@ export interface DeviceControlPayload {
   deviceIds?: string[];
   song?: DeviceSong | null;
   seekTime?: number;
+  queueSongs?: any[];
+  upNextQueue?: any[];
+  previousQueue?: any[];
 }
 
 export interface PlaybackAction {
@@ -50,5 +53,8 @@ export interface PlaybackAction {
   deviceIds?: string[];
   song?: DeviceSong | null;
   seekTime?: number;
+  queueSongs?: any[];
+  upNextQueue?: any[];
+  previousQueue?: any[];
   timestamp: number;
 }

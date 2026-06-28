@@ -71,7 +71,14 @@ export function FloatingPlayer({
   const { crossDeviceState, activeDeviceCount, activeDevices, localDeviceId, triggerDeviceControl } = useDeviceSync();
   const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<string>("Play individually");
-  const isIdle = !currentSong && !crossDeviceState?.song;
+
+  const otherDevices = activeDevices.filter((device) => device.deviceId !== localDeviceId);
+  const localDevice = activeDevices.find(d => d.deviceId === localDeviceId);
+  const controlledTarget = localDevice?.syncMode === "controller" ? otherDevices.find(d => d.deviceId === localDevice.targetDeviceId) : null;
+
+  const isLinked = localDevice && localDevice.syncMode !== "standalone";
+  const activeCrossDeviceState = isLinked ? crossDeviceState : null;
+  const isIdle = !currentSong && !activeCrossDeviceState?.song;
 
   // Handle device control events from WebSocket
   React.useEffect(() => {
@@ -85,20 +92,20 @@ export function FloatingPlayer({
       switch (action) {
         case "play":
         case "player:play":
-          if (!isPlaying) onTogglePlay();
+          if (isTarget && !isPlaying) onTogglePlay();
           break;
         case "pause":
         case "player:pause":
-          if (isPlaying) onTogglePlay();
+          if (isTarget && isPlaying) onTogglePlay();
           break;
         case "skip":
-          onNext();
+          if (isTarget) onNext();
           break;
         case "prev":
-          onPrev();
+          if (isTarget) onPrev();
           break;
         case "player:seek":
-          if (typeof seekTime === "number" && onSeek) {
+          if (isTarget && typeof seekTime === "number" && onSeek) {
             onSeek(seekTime);
           }
           break;
@@ -135,10 +142,7 @@ export function FloatingPlayer({
     };
   }, [isPlaying, onTogglePlay, onNext, onPrev, onSeek, onSongClick, setQueueSongs, setUpNextQueue, setPreviousQueue, setIsPlaying, pauseBackgroundPlayer, localDeviceId]);
 
-  const otherDevices = activeDevices.filter((device) => device.deviceId !== localDeviceId);
-  const localDevice = activeDevices.find(d => d.deviceId === localDeviceId);
-  const controlledTarget = localDevice?.syncMode === "controller" ? otherDevices.find(d => d.deviceId === localDevice.targetDeviceId) : null;
-  const remoteSong = controlledTarget?.currentSong || (localDevice?.syncMode === "controlled" ? crossDeviceState?.song : null);
+  const remoteSong = controlledTarget?.currentSong || (localDevice?.syncMode === "controlled" ? activeCrossDeviceState?.song : null);
 
   const displaySong = {
     id: currentSong?.id || remoteSong?.id || "idle",
@@ -176,13 +180,13 @@ export function FloatingPlayer({
     setSelectedAction("Play individually");
   }, [otherDevices, localDevice]);
 
-  const activeIsPlaying = crossDeviceState ? (crossDeviceState.isPlaying ?? isPlaying) : isPlaying;
+  const activeIsPlaying = activeCrossDeviceState ? (activeCrossDeviceState.isPlaying ?? isPlaying) : isPlaying;
 
   const handlePlayToggle = async () => {
-    if (crossDeviceState) {
+    if (activeCrossDeviceState) {
       await triggerDeviceControl({
         action: activeIsPlaying ? "pause" : "play",
-        targetDeviceId: crossDeviceState.deviceId
+        targetDeviceId: activeCrossDeviceState.deviceId
       });
     } else {
       onTogglePlay();
@@ -190,10 +194,10 @@ export function FloatingPlayer({
   };
 
   const handleNext = async () => {
-    if (crossDeviceState) {
+    if (activeCrossDeviceState) {
       await triggerDeviceControl({
         action: "skip",
-        targetDeviceId: crossDeviceState.deviceId
+        targetDeviceId: activeCrossDeviceState.deviceId
       });
     } else {
       onNext();
@@ -201,10 +205,10 @@ export function FloatingPlayer({
   };
 
   const handlePrev = async () => {
-    if (crossDeviceState) {
+    if (activeCrossDeviceState) {
       await triggerDeviceControl({
         action: "prev",
-        targetDeviceId: crossDeviceState.deviceId
+        targetDeviceId: activeCrossDeviceState.deviceId
       });
     } else {
       onPrev();
@@ -212,10 +216,10 @@ export function FloatingPlayer({
   };
 
   const handleSeek = async (time: number) => {
-    if (crossDeviceState) {
+    if (activeCrossDeviceState) {
       await triggerDeviceControl({
         action: "player:seek",
-        targetDeviceId: crossDeviceState.deviceId,
+        targetDeviceId: activeCrossDeviceState.deviceId,
         seekTime: time
       });
     } else if (onSeek) {
@@ -294,6 +298,7 @@ export function FloatingPlayer({
                             }
 
                             if (actionText === "Play individually") {
+                              await triggerDeviceControl({ action: "device:decouple", deviceId: localDeviceId });
                               for (const d of otherDevices) {
                                 await triggerDeviceControl({ action: "device:decouple", deviceId: d.deviceId });
                               }
@@ -352,7 +357,7 @@ export function FloatingPlayer({
 
       {/* Cross-Device Playback Indicator */}
       <AnimatePresence>
-        {crossDeviceState && (
+        {isLinked && localDevice && (
           <m.div
             onClick={() => setIsDeviceMenuOpen(!isDeviceMenuOpen)}
             initial={{ height: 0, opacity: 0, y: 10 }}
@@ -362,11 +367,14 @@ export function FloatingPlayer({
             style={{ backgroundColor: 'var(--art-accent, #1db954)' }}
           >
             <span className="text-base font-bold tracking-wide">
-              {activeDeviceCount > 2 ? `Active in ${activeDeviceCount - 1} devices` : `Active in ${crossDeviceState.deviceName}`}
+              {localDevice.syncMode === "controller"
+                ? (activeCrossDeviceState ? `Active on ${activeCrossDeviceState.deviceName}` : "Connecting to device...")
+                : `Controlled by ${otherDevices.find(d => d.deviceId === localDevice.controllerDeviceId)?.deviceName || "another device"}`
+              }
             </span>
-            {activeDeviceCount <= 2 && (
+            {localDevice.syncMode === "controller" && activeCrossDeviceState && (
               <span className="text-base font-semibold opacity-75 max-w-[40%] truncate">
-                {crossDeviceState.song?.title}
+                {activeCrossDeviceState.song?.title}
               </span>
             )}
           </m.div>

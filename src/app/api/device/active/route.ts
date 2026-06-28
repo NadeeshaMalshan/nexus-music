@@ -36,6 +36,7 @@ export async function GET(request: Request) {
         groupId: parsed.groupId || null,
         targetDeviceId: parsed.targetDeviceId || null,
         controllerDeviceId: parsed.controllerDeviceId || null,
+        seekTime: parsed.seekTime || 0,
       };
     });
 

@@ -235,6 +235,7 @@ export async function POST(request: Request) {
       groupId: null,
       targetDeviceId: null,
       controllerDeviceId: null,
+      seekTime: typeof body.seekTime === "number" ? body.seekTime : 0,
     };
 
     await redis.hset(`user:devices:${emailHash}`, {
@@ -255,6 +256,8 @@ export async function POST(request: Request) {
       deviceId,
       isPlaying: !!isPlaying,
       song: songPayload,
+      seekTime: typeof body.seekTime === "number" ? body.seekTime : 0,
+      timestamp: now,
     }).catch(console.error);
 
     return NextResponse.json({ success: true });

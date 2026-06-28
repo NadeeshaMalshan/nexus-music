@@ -52,6 +52,8 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
   const [activeDeviceCount, setActiveDeviceCount] = useState<number>(1);
   const [activeDevices, setActiveDevices] = useState<DeviceState[]>([]);
   const [localDeviceId, setLocalDeviceId] = useState<string>("unknown");
+  const [onlineDeviceIds, setOnlineDeviceIds] = useState<string[]>([]);
+  const [hasPresenceLoaded, setHasPresenceLoaded] = useState(false);
 
   const fetchActiveDevices = React.useCallback(async () => {
     try {
@@ -89,6 +91,9 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
       channelAuthorization: {
         endpoint: "/api/pusher/auth",
         transport: "ajax",
+        headers: {
+          "x-device-id": localDeviceId,
+        },
       },
     });
     pusherRef.current = pusher;
@@ -109,12 +114,28 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
     // Track active connection count
     userChannel.bind("pusher:subscription_succeeded", (members: any) => {
       setActiveDeviceCount(members.count);
+      const ids: string[] = [];
+      members.each((member: any) => {
+        if (member.id) ids.push(member.id);
+      });
+      setOnlineDeviceIds(ids);
+      setHasPresenceLoaded(true);
     });
-    userChannel.bind("pusher:member_added", () => {
+    userChannel.bind("pusher:member_added", (member: any) => {
       setActiveDeviceCount((userChannel as any).members.count);
+      const ids: string[] = [];
+      (userChannel as any).members.each((m: any) => {
+        if (m.id) ids.push(m.id);
+      });
+      setOnlineDeviceIds(ids);
     });
-    userChannel.bind("pusher:member_removed", () => {
+    userChannel.bind("pusher:member_removed", (member: any) => {
       setActiveDeviceCount((userChannel as any).members.count);
+      const ids: string[] = [];
+      (userChannel as any).members.each((m: any) => {
+        if (m.id) ids.push(m.id);
+      });
+      setOnlineDeviceIds(ids);
     });
 
     userChannel.bind("cross-device-play", (data: CrossDevicePlayUpdate) => {
@@ -129,7 +150,7 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
     });
 
     const dispatchIfRelevant = (data: DeviceControlEvent) => {
-      if (!data.targetDeviceId || data.targetDeviceId === localDeviceId) {
+      if (!data.targetDeviceId || data.targetDeviceId === localDeviceId || data.controllerDeviceId === localDeviceId) {
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("nexus-device-control", { detail: data }));
         }
@@ -173,15 +194,22 @@ export function DeviceSyncProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
+  const filteredActiveDevices = useMemo(() => {
+    if (!hasPresenceLoaded) return activeDevices;
+    return activeDevices.filter((device) => {
+      return device.deviceId === localDeviceId || onlineDeviceIds.includes(device.deviceId);
+    });
+  }, [activeDevices, localDeviceId, onlineDeviceIds, hasPresenceLoaded]);
+
   const value = useMemo(() => ({
     lastFriendActivity,
     crossDeviceState,
     activeDeviceCount,
-    activeDevices,
+    activeDevices: filteredActiveDevices,
     localDeviceId,
     clearCrossDeviceState,
     triggerDeviceControl,
-  }), [lastFriendActivity, crossDeviceState, activeDeviceCount, activeDevices, localDeviceId]);
+  }), [lastFriendActivity, crossDeviceState, activeDeviceCount, filteredActiveDevices, localDeviceId]);
 
   return (
     <DeviceSyncContext.Provider value={value}>

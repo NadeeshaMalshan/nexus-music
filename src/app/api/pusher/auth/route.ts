@@ -30,8 +30,9 @@ export async function POST(request: Request) {
       }
 
       if (channelName.startsWith("presence-")) {
+        const deviceId = request.headers.get("x-device-id") || body.get("device_id") as string || `unknown-${Math.random().toString(36).substring(2, 10)}`;
         const presenceData = {
-          user_id: `${session.user.email}-${Math.random().toString(36).substring(2, 10)}`, // unique per connection
+          user_id: deviceId, // unique per connection / device
           user_info: {
             email: session.user.email,
           }

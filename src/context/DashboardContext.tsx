@@ -10,6 +10,7 @@ import { readResponseJson } from "@/lib/readResponseJson";
 import { useArtworkColors } from "@/lib/useArtworkColors";
 import { useSettings } from "./SettingsContext";
 import { type LiveMetadata } from "@/lib/live-tracker";
+import { useDeviceSync } from "./DeviceSyncContext";
 
 type AudioPayload = {
   audioUrl: string;
@@ -147,6 +148,16 @@ const DashboardContext = createContext<DashboardContextType | undefined>(undefin
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const { settings } = useSettings();
+
+  const deviceSync = useDeviceSync();
+  const { localDeviceId, activeDevices, triggerDeviceControl } = deviceSync;
+
+  const localDevice = useMemo(() => activeDevices.find(d => d.deviceId === localDeviceId), [activeDevices, localDeviceId]);
+  const isControllerMode = localDevice?.syncMode === "controller";
+  const targetDevice = useMemo(() => isControllerMode && localDevice.targetDeviceId ? activeDevices.find(d => d.deviceId === localDevice.targetDeviceId) : null, [isControllerMode, localDevice, activeDevices]);
+
+  const isControllerModeRef = useRef(false);
+  isControllerModeRef.current = isControllerMode;
   
   const ytPlayerRef = useRef<{
     playVideo: () => void;
@@ -1120,6 +1131,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
             setIsPlayerReady(true);
             if (progressIntervalRef.current) window.clearInterval(progressIntervalRef.current);
             progressIntervalRef.current = window.setInterval(() => {
+              if (isControllerModeRef.current) return;
               const player = ytPlayerRef.current;
               if (!player || !playerReadyRef.current) return;
               // Expanded react-youtube owns time + audio in video mode
@@ -1194,6 +1206,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
             // Native Audio progress interval
             const nativeProgressInterval = window.setInterval(() => {
+              if (isControllerModeRef.current) return;
               const activeAudio = getActiveAudio();
               if (!isUsingNativeAudio || !activeAudio) return;
               
@@ -1523,15 +1536,83 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // Sync silent audio with playback state
   useEffect(() => {
+    if (isControllerMode) return;
     if (!silentAudioRef.current) return;
     if (isPlaying) {
       silentAudioRef.current.play().catch(() => {});
     } else {
       silentAudioRef.current.pause();
     }
-  }, [isPlaying]);
+  }, [isPlaying, isControllerMode]);
+
+  // Spotify-like progress estimation for remote playback
+  useEffect(() => {
+    if (!isControllerMode || !targetDevice) return;
+
+    const startSeek = targetDevice.seekTime || 0;
+    const startTimestamp = targetDevice.lastUpdated || Date.now();
+
+    if (!targetDevice.isPlaying) {
+      setCurrentTimeSec(startSeek);
+      return;
+    }
+
+    setCurrentTimeSec(startSeek);
+
+    const interval = window.setInterval(() => {
+      const elapsed = (Date.now() - startTimestamp) / 1000;
+      const targetDuration = targetDevice.currentSong?.duration ? (youtubeTimestampToSeconds(targetDevice.currentSong.duration) ?? 0) : 0;
+      const finalDuration = targetDuration || durationSec || 180;
+      setCurrentTimeSec(Math.min(finalDuration, startSeek + elapsed));
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [isControllerMode, targetDevice, durationSec]);
+
+  // Sync song and play state from target device
+  useEffect(() => {
+    if (!isControllerMode || !targetDevice) return;
+
+    if (targetDevice.currentSong) {
+      const song: Song = {
+        id: targetDevice.currentSong.id,
+        title: targetDevice.currentSong.title,
+        artist: targetDevice.currentSong.artist,
+        artwork: targetDevice.currentSong.artwork || "",
+        duration: targetDevice.currentSong.duration || "0:00",
+        color: "#FA243C",
+      };
+      setCurrentSong(song);
+    } else {
+      setCurrentSong(null);
+    }
+    setIsPlaying(!!targetDevice.isPlaying);
+    
+    const targetDuration = targetDevice.currentSong?.duration ? (youtubeTimestampToSeconds(targetDevice.currentSong.duration) ?? 0) : 0;
+    if (targetDuration > 0) {
+      setDurationSec(targetDuration);
+    }
+  }, [isControllerMode, targetDevice]);
+
+  // Pause local background audio player if we enter controller mode
+  useEffect(() => {
+    if (isControllerMode) {
+      try { audio1Ref.current?.pause(); } catch {}
+      try { audio2Ref.current?.pause(); } catch {}
+      try { silentAudioRef.current?.pause(); } catch {}
+      try { ytPlayerRef.current?.pauseVideo(); } catch {}
+    }
+  }, [isControllerMode]);
 
   const onTogglePlay = useCallback(() => {
+    if (isControllerMode && targetDevice) {
+      triggerDeviceControl({
+        action: isPlaying ? "pause" : "play",
+        targetDeviceId: targetDevice.deviceId
+      });
+      return;
+    }
+
     if (viewMode === "video" || currentSongRef.current?.isLive) {
       setIsPlaying((v) => !v);
       userIntentRef.current = isPlayingRef.current ? "paused" : "playing";
@@ -1584,9 +1665,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         silentAudioRef.current?.pause();
       }
     }
-  }, [isPlaying, viewMode, isUsingNativeAudio]);
+  }, [isPlaying, viewMode, isUsingNativeAudio, isControllerMode, targetDevice, triggerDeviceControl]);
 
   const playVideo = useCallback(() => {
+    if (isControllerMode && targetDevice) {
+      triggerDeviceControl({ action: "play", targetDeviceId: targetDevice.deviceId });
+      return;
+    }
+
     userIntentRef.current = "playing";
     
     // In video/live modes, the ExpandedPlayer component owns the YouTube instance and 
@@ -1610,9 +1696,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     player.setVolume(volume);
     player.playVideo();
     setIsPlaying(true);
-  }, [volume, isUsingNativeAudio]);
+  }, [volume, isUsingNativeAudio, isControllerMode, targetDevice, triggerDeviceControl]);
 
   const pauseVideo = useCallback(() => {
+    if (isControllerMode && targetDevice) {
+      triggerDeviceControl({ action: "pause", targetDeviceId: targetDevice.deviceId });
+      return;
+    }
+
     userIntentRef.current = "paused";
     
     // For video/live mode, ExpandedPlayer will pause itself when isPlaying === false.
@@ -1633,9 +1724,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (!player || !playerReadyRef.current) return;
     player.pauseVideo();
     setIsPlaying(false);
-  }, [isUsingNativeAudio]);
+  }, [isUsingNativeAudio, isControllerMode, targetDevice, triggerDeviceControl]);
 
   const pauseBackgroundPlayer = useCallback(() => {
+    if (isControllerMode && targetDevice) {
+      triggerDeviceControl({ action: "pause", targetDeviceId: targetDevice.deviceId });
+      return;
+    }
+
     if (isUsingNativeAudio) {
         const activeAudio = getActiveAudio();
         if (activeAudio) {
@@ -1646,9 +1742,23 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
     player.pauseVideo();
-  }, [isUsingNativeAudio]);
+  }, [isUsingNativeAudio, isControllerMode, targetDevice, triggerDeviceControl]);
 
   const onSongClick = useCallback((song: Song, shouldResetQueue: boolean = true) => {
+    if (isControllerMode && targetDevice) {
+      triggerDeviceControl({
+        action: "device:control-target",
+        controllerDeviceId: localDeviceId,
+        targetDeviceId: targetDevice.deviceId,
+        song,
+        seekTime: 0,
+        queueSongs: shouldResetQueue ? [] : queueSongs,
+        upNextQueue: shouldResetQueue ? [] : upNextQueue,
+        previousQueue: shouldResetQueue ? [] : previousQueue,
+      });
+      return;
+    }
+
     if (shouldResetQueue) {
       setUpNextQueue([]);
       setPreviousQueue([]);
@@ -1694,10 +1804,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const filtered = prev.filter((s) => s.id !== song.id);
       return [song, ...filtered].slice(0, 50); // Keep last 50
     });
-  }, [setViewMode, setIsExpandedPlayerOpen, session]);
+  }, [setViewMode, setIsExpandedPlayerOpen, session, isControllerMode, targetDevice, triggerDeviceControl, localDeviceId, queueSongs, upNextQueue, previousQueue]);
 
   const lastNextCallRef = useRef(0);
   const onNext = useCallback(() => {
+    if (isControllerMode && targetDevice) {
+      triggerDeviceControl({ action: "skip", targetDeviceId: targetDevice.deviceId });
+      return;
+    }
+
     // Debounce guard to prevent double-triggering in background
     const now = Date.now();
     if (now - lastNextCallRef.current < 2000) return;
@@ -1726,11 +1841,16 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
     
     setIsPlaying(false);
-  }, [upNextQueue, onSongClick, settings.autoplay, currentSong]);
+  }, [upNextQueue, onSongClick, settings.autoplay, currentSong, isControllerMode, targetDevice, triggerDeviceControl]);
 
   onNextRef.current = onNext;
 
   const onSeek = useCallback((nextTimeSec: number) => {
+    if (isControllerMode && targetDevice) {
+      triggerDeviceControl({ action: "player:seek", targetDeviceId: targetDevice.deviceId, seekTime: nextTimeSec });
+      return;
+    }
+
     if (!Number.isFinite(nextTimeSec)) return;
     
     // In video/live modes, seeking should be handled by the ExpandedPlayer or ignored for live.
@@ -1754,9 +1874,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const clamped = Math.max(0, Math.min(nextTimeSec, safeDuration || nextTimeSec));
     player.seekTo(clamped, true);
     setCurrentTimeSec(clamped);
-  }, [durationSec, currentSong?.duration, isUsingNativeAudio]);
+  }, [durationSec, currentSong?.duration, isUsingNativeAudio, isControllerMode, targetDevice, triggerDeviceControl]);
 
   const onPrev = useCallback(() => {
+    if (isControllerMode && targetDevice) {
+      triggerDeviceControl({ action: "prev", targetDeviceId: targetDevice.deviceId });
+      return;
+    }
+
     if (currentTimeSec > 5 || previousQueue.length === 0) {
        onSeek(0);
        return;
@@ -1769,11 +1894,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     // Push the current song back to the top of upNextQueue
     if (currentSongRef.current) {
        setUpNextQueue(prev => [currentSongRef.current!, ...prev]);
-    }
+     }
     
     // Play the previous song without resetting queue
     onSongClick(prevSong, false);
-  }, [onSeek, currentTimeSec, previousQueue, onSongClick]);
+  }, [onSeek, currentTimeSec, previousQueue, onSongClick, isControllerMode, targetDevice, triggerDeviceControl]);
 
   const songIsInLikedLibrary = useCallback(
     (song: { id: string; title: string; artist: string; musicVideoId?: string }, audio?: AudioPayload | null) => {

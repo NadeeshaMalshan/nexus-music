@@ -18,6 +18,7 @@ export interface DeviceState {
   groupId?: string | null;
   targetDeviceId?: string | null;
   controllerDeviceId?: string | null;
+  seekTime?: number;
 }
 
 export type DeviceControlAction =

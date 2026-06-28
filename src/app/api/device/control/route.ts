@@ -158,6 +158,7 @@ export async function POST(request: Request) {
         groupId: null,
         currentSong: song || null,
         isPlaying: true,
+        seekTime: seekTime || 0,
         lastUpdated: timestamp,
       };
 

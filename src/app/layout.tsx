@@ -69,14 +69,14 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-[#050505] text-zinc-100">
         <Providers>
           <SettingsProvider>
-            <DashboardProvider>
-              <JamProvider>
-                <DeviceSyncProvider>
+            <DeviceSyncProvider>
+              <DashboardProvider>
+                <JamProvider>
                   <DashboardWrapper>{children}</DashboardWrapper>
                   <SiteIdentityFooter />
-                </DeviceSyncProvider>
-              </JamProvider>
-            </DashboardProvider>
+                </JamProvider>
+              </DashboardProvider>
+            </DeviceSyncProvider>
           </SettingsProvider>
         </Providers>
       </body>

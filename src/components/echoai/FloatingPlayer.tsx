@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Play, Pause, SkipBack, SkipForward, Maximize2, Heart, ListMusic, Volume2, Users, Mic2, ChevronDown, Cast } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Maximize2, Heart, ListMusic, Volume2, Users, Mic2, ChevronDown } from "lucide-react";
 import { type Song } from "./types";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { m, AnimatePresence } from "motion/react";
@@ -67,10 +67,6 @@ export function FloatingPlayer({
     queueSongs,
     upNextQueue,
     previousQueue,
-    isCastApiAvailable,
-    isCasting,
-    requestCastSession,
-    endCastSession,
   } = useDashboard();
   const { crossDeviceState, activeDeviceCount, activeDevices, localDeviceId, triggerDeviceControl } = useDeviceSync();
   const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
@@ -502,29 +498,9 @@ export function FloatingPlayer({
                  />
               </div>
               <Volume2 size={20} className="text-white/30 group-hover/vol:text-white" />
-            </div>
 
-            {/* Chromecast Cast Button */}
-            {isCastApiAvailable && (
-              <button
-                onClick={() => {
-                  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-                    alert("Chromecast cannot access 'localhost' to stream audio. Please open the app in your browser using your local Wi-Fi IP address (e.g., http://192.168.1.100:3000) to allow the TV to connect to your computer.");
-                  }
-                  if (isCasting) {
-                    endCastSession();
-                  } else {
-                    requestCastSession();
-                  }
-                }}
-                className={`transition-all transform hover:scale-110 active:scale-90 ${
-                  isCasting ? "text-[var(--art-accent,#1db954)]" : "text-white/30 hover:text-white"
-                }`}
-                title={isCasting ? "Disconnect Chromecast" : "Cast to TV"}
-              >
-                <Cast size={20} />
-              </button>
-            )}
+              
+            </div>
 
             <div className="h-6 w-px bg-white/10 mx-1 hidden md:block" />
 

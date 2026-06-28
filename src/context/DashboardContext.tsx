@@ -10,7 +10,6 @@ import { readResponseJson } from "@/lib/readResponseJson";
 import { useArtworkColors } from "@/lib/useArtworkColors";
 import { useSettings } from "./SettingsContext";
 import { type LiveMetadata } from "@/lib/live-tracker";
-import { useCast } from "./CastContext";
 
 type AudioPayload = {
   audioUrl: string;
@@ -127,12 +126,6 @@ type DashboardContextType = {
   setViewMode: (mode: "music" | "video") => void;
   isJamActive: boolean;
   setIsJamActive: (active: boolean) => void;
-  
-  // Chromecast state & actions
-  isCastApiAvailable: boolean;
-  isCasting: boolean;
-  requestCastSession: () => Promise<void>;
-  endCastSession: () => void;
   
   // Refs
   ytPlayerRef: React.RefObject<{
@@ -273,86 +266,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (currentSong?.isLive) return false;
     return viewMode === "music" && !!directAudioUrl;
   }, [viewMode, directAudioUrl, currentSong?.isLive]);
-
-  const {
-    isCastApiAvailable,
-    isCasting,
-    requestCastSession,
-    endCastSession,
-    castMedia,
-    playCast,
-    pauseCast,
-    seekCast,
-    setCastVolume,
-    remotePlayer,
-    remotePlayerController,
-  } = useCast();
-
-  // Synchronize Google Cast Player states to React States
-  useEffect(() => {
-    if (!isCasting || !remotePlayerController || !remotePlayer) return;
-
-    const timeListener = () => {
-      if (typeof remotePlayer.currentTime === "number" && Number.isFinite(remotePlayer.currentTime)) {
-        setCurrentTimeSec(remotePlayer.currentTime);
-      }
-    };
-    const durationListener = () => {
-      if (typeof remotePlayer.duration === "number" && remotePlayer.duration > 0) {
-        setDurationSec(remotePlayer.duration);
-      }
-    };
-    const playStateListener = () => {
-      setIsPlaying(!remotePlayer.isPaused);
-    };
-
-    const castFramework = (window as any).cast?.framework;
-    if (castFramework) {
-      remotePlayerController.addEventListener(castFramework.RemotePlayerEventType.CURRENT_TIME_CHANGED, timeListener);
-      remotePlayerController.addEventListener(castFramework.RemotePlayerEventType.DURATION_CHANGED, durationListener);
-      remotePlayerController.addEventListener(castFramework.RemotePlayerEventType.IS_PAUSED_CHANGED, playStateListener);
-    }
-
-    return () => {
-      if (castFramework) {
-        remotePlayerController.removeEventListener(castFramework.RemotePlayerEventType.CURRENT_TIME_CHANGED, timeListener);
-        remotePlayerController.removeEventListener(castFramework.RemotePlayerEventType.DURATION_CHANGED, durationListener);
-        remotePlayerController.removeEventListener(castFramework.RemotePlayerEventType.IS_PAUSED_CHANGED, playStateListener);
-      }
-    };
-  }, [isCasting, remotePlayerController, remotePlayer]);
-
-  // When casting starts or a new directAudioUrl is resolved, stream it to Chromecast
-  useEffect(() => {
-    if (isCasting && currentSong && directAudioUrl) {
-      const targetId = audioData?.videoId || currentSong.id;
-      castMedia(currentSong, targetId, directAudioUrl, currentTimeSec, isPlaying);
-      // Mute/pause local players
-      try {
-        audio1Ref.current?.pause();
-        audio2Ref.current?.pause();
-        ytPlayerRef.current?.pauseVideo();
-      } catch {}
-    }
-  }, [directAudioUrl, isCasting, currentSong, audioData]);
-
-  // Also pause local audio elements if casting becomes active at any point
-  useEffect(() => {
-    if (isCasting) {
-      try {
-        audio1Ref.current?.pause();
-        audio2Ref.current?.pause();
-        ytPlayerRef.current?.pauseVideo();
-      } catch {}
-    }
-  }, [isCasting]);
-
-  // Propagate volume changes to Chromecast
-  useEffect(() => {
-    if (isCasting) {
-      setCastVolume(volume);
-    }
-  }, [volume, isCasting]);
 
   // Keep latest state in refs for intervals and events to avoid closure staleness
   const settingsRef = useRef(settings);
@@ -1418,7 +1331,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Load / cue hidden player when resolved audio id OR currentSong id changes
   useEffect(() => {
     // Sync native audio if in use
-    if (isUsingNativeAudio && !isCasting) {
+    if (isUsingNativeAudio) {
         const activeAudio = getActiveAudio();
         const inactiveAudio = getInactiveAudio();
 
@@ -1479,7 +1392,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         try { ytPlayerRef.current?.pauseVideo(); ytPlayerRef.current?.setVolume(0); } catch {}
     }
 
-    if (!ytPlayerRef.current || !isPlayerReady || isUsingNativeAudio || isCasting) return;
+    if (!ytPlayerRef.current || !isPlayerReady || isUsingNativeAudio) return;
     
     // We prioritize audioData.videoId, but fallback to currentSong.id for instant start
     const targetId = audioData?.videoId || currentSong?.id;
@@ -1619,12 +1532,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, [isPlaying]);
 
   const onTogglePlay = useCallback(() => {
-    if (isCasting) {
-      if (isPlaying) pauseCast();
-      else playCast();
-      return;
-    }
-
     if (viewMode === "video" || currentSongRef.current?.isLive) {
       setIsPlaying((v) => !v);
       userIntentRef.current = isPlayingRef.current ? "paused" : "playing";
@@ -1677,16 +1584,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         silentAudioRef.current?.pause();
       }
     }
-  }, [isPlaying, viewMode, isUsingNativeAudio, isCasting, playCast, pauseCast]);
+  }, [isPlaying, viewMode, isUsingNativeAudio]);
 
   const playVideo = useCallback(() => {
     userIntentRef.current = "playing";
-
-    if (isCasting) {
-        playCast();
-        setIsPlaying(true);
-        return;
-    }
     
     // In video/live modes, the ExpandedPlayer component owns the YouTube instance and 
     // will react to the isPlaying state changing. We don't want to play the hidden player here.
@@ -1709,16 +1610,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     player.setVolume(volume);
     player.playVideo();
     setIsPlaying(true);
-  }, [volume, isUsingNativeAudio, isCasting, playCast]);
+  }, [volume, isUsingNativeAudio]);
 
   const pauseVideo = useCallback(() => {
     userIntentRef.current = "paused";
-
-    if (isCasting) {
-        pauseCast();
-        setIsPlaying(false);
-        return;
-    }
     
     // For video/live mode, ExpandedPlayer will pause itself when isPlaying === false.
     if (viewModeRef.current === "video" || currentSongRef.current?.isLive) {
@@ -1738,7 +1633,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (!player || !playerReadyRef.current) return;
     player.pauseVideo();
     setIsPlaying(false);
-  }, [isUsingNativeAudio, isCasting, pauseCast]);
+  }, [isUsingNativeAudio]);
 
   const pauseBackgroundPlayer = useCallback(() => {
     if (isUsingNativeAudio) {
@@ -1838,12 +1733,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const onSeek = useCallback((nextTimeSec: number) => {
     if (!Number.isFinite(nextTimeSec)) return;
     
-    if (isCasting) {
-      seekCast(nextTimeSec);
-      setCurrentTimeSec(nextTimeSec);
-      return;
-    }
-
     // In video/live modes, seeking should be handled by the ExpandedPlayer or ignored for live.
     if (viewModeRef.current === "video" || currentSongRef.current?.isLive) {
         setCurrentTimeSec(nextTimeSec);
@@ -1865,7 +1754,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const clamped = Math.max(0, Math.min(nextTimeSec, safeDuration || nextTimeSec));
     player.seekTo(clamped, true);
     setCurrentTimeSec(clamped);
-  }, [durationSec, currentSong?.duration, isUsingNativeAudio, isCasting, seekCast]);
+  }, [durationSec, currentSong?.duration, isUsingNativeAudio]);
 
   const onPrev = useCallback(() => {
     if (currentTimeSec > 5 || previousQueue.length === 0) {
@@ -2179,10 +2068,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setPreviousQueue,
     previousQueue,
     rightSidebarMode,
-    isCastApiAvailable,
-    isCasting,
-    requestCastSession,
-    endCastSession,
   }), [
     audioData, queueSongs, previousQueue, currentSong, isPlaying, currentTimeSec, 
     durationSec, volume, lyricsData, lyricsLoading, knowFacts, 
@@ -2190,7 +2075,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
     setIsPlaying, setQueueSongs, setPreviousQueue, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata,
-    isJamActive, isCastApiAvailable, isCasting, requestCastSession, endCastSession
+    isJamActive
   ]);
 
   return (

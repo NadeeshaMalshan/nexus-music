@@ -18,24 +18,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Failed to extract audio URL" }, { status: 404 });
     }
 
-    // Fetch the stream from Google's servers
-    const response = await fetch(directUrl);
-    if (!response.ok || !response.body) {
-      return NextResponse.json({ error: "Failed to fetch stream" }, { status: 502 });
-    }
-
-    // Return the response stream back to the Chromecast client
-    return new Response(response.body as any, {
-      status: 200,
-      headers: {
-        "Content-Type": response.headers.get("Content-Type") || "audio/mp3",
-        "Transfer-Encoding": "chunked",
-        "Accept-Ranges": "bytes",
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
+    // Redirect the Chromecast to the direct YouTube CDN URL.
+    // The Chromecast's own IP will request the URL, making it authorized by Google.
+    return NextResponse.redirect(directUrl, 302);
   } catch (error) {
-    console.error("Proxy streaming failed:", error);
-    return NextResponse.json({ error: "Streaming proxy error" }, { status: 500 });
+    console.error("Redirect streaming failed:", error);
+    return NextResponse.json({ error: "Streaming redirect error" }, { status: 500 });
   }
 }

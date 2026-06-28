@@ -507,7 +507,16 @@ export function FloatingPlayer({
             {/* Chromecast Cast Button */}
             {isCastApiAvailable && (
               <button
-                onClick={isCasting ? endCastSession : requestCastSession}
+                onClick={() => {
+                  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+                    alert("Chromecast cannot access 'localhost' to stream audio. Please open the app in your browser using your local Wi-Fi IP address (e.g., http://192.168.1.100:3000) to allow the TV to connect to your computer.");
+                  }
+                  if (isCasting) {
+                    endCastSession();
+                  } else {
+                    requestCastSession();
+                  }
+                }}
                 className={`transition-all transform hover:scale-110 active:scale-90 ${
                   isCasting ? "text-[var(--art-accent,#1db954)]" : "text-white/30 hover:text-white"
                 }`}

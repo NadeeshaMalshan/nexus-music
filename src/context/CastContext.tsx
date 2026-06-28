@@ -11,7 +11,7 @@ interface CastContextType {
   remotePlayerController: any;
   requestCastSession: () => Promise<void>;
   endCastSession: () => void;
-  castMedia: (song: Song, audioUrl: string, currentTime: number, isPlaying: boolean) => void;
+  castMedia: (song: Song, videoId: string, audioUrl: string, currentTime: number, isPlaying: boolean) => void;
   playCast: () => void;
   pauseCast: () => void;
   seekCast: (time: number) => void;
@@ -125,14 +125,14 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const castMedia = (song: Song, audioUrl: string, currentTime: number, isPlaying: boolean) => {
+  const castMedia = (song: Song, videoId: string, audioUrl: string, currentTime: number, isPlaying: boolean) => {
     try {
       const castFramework = (window as any).cast?.framework;
       const chromeCast = (window as any).chrome?.cast;
       if (!castFramework || !chromeCast || !castSession) return;
 
       // Use our proxy endpoint to serve the stream from the server IP (bypassing Google's client-IP locks)
-      const proxyUrl = `${window.location.origin}/api/cast-stream?videoId=${song.id}`;
+      const proxyUrl = `${window.location.origin}/api/cast-stream?videoId=${videoId}`;
 
       const mediaInfo = new chromeCast.media.MediaInfo(proxyUrl, "audio/mp4");
       const metadata = new chromeCast.media.MusicTrackMediaMetadata();

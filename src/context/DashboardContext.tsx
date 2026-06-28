@@ -325,7 +325,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // When casting starts or a new directAudioUrl is resolved, stream it to Chromecast
   useEffect(() => {
     if (isCasting && currentSong && directAudioUrl) {
-      castMedia(currentSong, directAudioUrl, currentTimeSec, isPlaying);
+      const targetId = audioData?.videoId || currentSong.id;
+      castMedia(currentSong, targetId, directAudioUrl, currentTimeSec, isPlaying);
       // Mute/pause local players
       try {
         audio1Ref.current?.pause();
@@ -333,7 +334,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         ytPlayerRef.current?.pauseVideo();
       } catch {}
     }
-  }, [directAudioUrl, isCasting]);
+  }, [directAudioUrl, isCasting, currentSong, audioData]);
 
   // Also pause local audio elements if casting becomes active at any point
   useEffect(() => {

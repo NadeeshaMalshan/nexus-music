@@ -717,7 +717,7 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
           <m.div 
             initial={false}
             animate={{ y: 0, opacity: 1 }} 
-            className="mb-8 w-full max-w-4xl animate-gpu relative z-50"
+            className="mb-8 w-full animate-gpu relative z-50"
           >
             <form
               onSubmit={(e) => {

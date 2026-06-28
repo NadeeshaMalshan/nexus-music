@@ -534,7 +534,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           setPlayedHistory(prev => {
             const localIds = new Set(prev.map(s => s.id));
             const dbFiltered = data.recentPlayed.filter((s: Song) => !localIds.has(s.id));
-            return [...prev, ...dbFiltered].slice(0, 50);
+            return [...prev, ...dbFiltered].slice(0, 20);
           });
         }
       })

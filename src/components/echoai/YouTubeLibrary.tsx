@@ -69,6 +69,7 @@ export function YouTubeLibrary({
   const [playlists, setPlaylists] = useState<YouTubePlaylist[]>([]);
   const [likedSongs, setLikedSongs] = useState<any[]>([]);
   const [ytHistory, setYtHistory] = useState<any[]>([]);
+  const [dbPlayHistory, setDbPlayHistory] = useState<any[]>([]);
   const [historyFeedMeta, setHistoryFeedMeta] = useState<{
     source: string;
     ytmBrowseAvailable: boolean;
@@ -111,6 +112,14 @@ export function YouTubeLibrary({
                 ytmBrowseAvailable: !!parsedHist.ytmBrowseAvailable,
               });
             }
+          }
+        }
+
+        const statsRes = await fetch("/api/user/stats", init);
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          if (statsData?.recentPlayed && Array.isArray(statsData.recentPlayed)) {
+            setDbPlayHistory(statsData.recentPlayed);
           }
         }
 
@@ -250,7 +259,7 @@ export function YouTubeLibrary({
   }, [historyFeedMeta]);
 
   const unifiedHistory = useMemo(() => {
-    const local = playedHistory.map(s => ({ ...s, source: "App" as const }));
+    const local = dbPlayHistory.map(s => ({ ...s, source: "App" as const }));
     const remoteLabel =
       historyFeedMeta?.source === "youtube.ytm_browse"
         ? ("YT Music" as const)
@@ -274,7 +283,7 @@ export function YouTubeLibrary({
       (s.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
       (s.artist?.toLowerCase() || "").includes(searchQuery.toLowerCase())
     );
-  }, [playedHistory, ytHistory, searchQuery, accentColor, historyFeedMeta?.source]);
+  }, [dbPlayHistory, ytHistory, searchQuery, accentColor, historyFeedMeta?.source]);
 
   const firstArtwork = likedSongs.length > 0 ? likedSongs[0].thumbnailUrl : (playlists.length > 0 ? playlists[0].thumbnailUrl : null);
 

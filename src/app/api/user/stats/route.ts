@@ -223,7 +223,8 @@ export async function GET(request: Request) {
     const recentPlayed = dedupeRecentSongs(
       (rawRecent || [])
         .map((item) => parseStoredSong(item, 0))
-        .filter((song): song is StoredSong => song !== null)
+        .filter((song): song is StoredSong => song !== null),
+      1000
     );
 
     // Fetch top songs (limit 5)
@@ -380,7 +381,7 @@ export async function POST(request: Request) {
     const songId = String(song.id);
     await removeSongIdFromRecentList(recentKey, songId);
     await redis.lpush(recentKey, songStr);
-    await redis.ltrim(recentKey, 0, 49); // Keep last 50
+    await redis.ltrim(recentKey, 0, 999); // Keep last 1000 items in database
 
     // 6. Update Daily Activity (400 days retention policy)
     const dateStr = new Date().toISOString().split("T")[0];

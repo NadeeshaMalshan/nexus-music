@@ -799,16 +799,14 @@ export function LibraryHistoryPane({
                     <ListPlus size={16} />
                   </button>
                 </div>
-                <span
-                  className="text-[8px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter transition-colors"
-                  style={
-                    track.source === "App"
-                      ? { backgroundColor: `${accentColor}33`, color: accentColor }
-                      : { backgroundColor: "rgb(255 255 255 / 0.1)", color: "rgb(255 255 255 / 0.4)" }
-                  }
-                >
-                  {track.source || "YouTube"}
-                </span>
+                {track.source !== "App" && (
+                  <span
+                    className="text-[8px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-tighter transition-colors"
+                    style={{ backgroundColor: "rgb(255 255 255 / 0.1)", color: "rgb(255 255 255 / 0.4)" }}
+                  >
+                    {track.source || "YouTube"}
+                  </span>
+                )}
               </div>
             </div>
           ))

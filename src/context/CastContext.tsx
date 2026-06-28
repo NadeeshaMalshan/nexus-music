@@ -134,7 +134,7 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
       // Use our proxy endpoint to serve the stream from the server IP (bypassing Google's client-IP locks)
       const proxyUrl = `${window.location.origin}/api/cast-stream?videoId=${song.id}`;
 
-      const mediaInfo = new chromeCast.media.MediaInfo(proxyUrl, "audio/mp3");
+      const mediaInfo = new chromeCast.media.MediaInfo(proxyUrl, "audio/mp4");
       const metadata = new chromeCast.media.MusicTrackMediaMetadata();
       metadata.metadataType = chromeCast.media.MetadataType.MUSIC_TRACK;
       metadata.title = song.title;

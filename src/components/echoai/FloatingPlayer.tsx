@@ -357,7 +357,7 @@ export function FloatingPlayer({
 
       {/* Cross-Device Playback Indicator */}
       <AnimatePresence>
-        {isLinked && localDevice && (
+        {activeCrossDeviceState && (
           <m.div
             onClick={() => setIsDeviceMenuOpen(!isDeviceMenuOpen)}
             initial={{ height: 0, opacity: 0, y: 10 }}
@@ -367,12 +367,9 @@ export function FloatingPlayer({
             style={{ backgroundColor: 'var(--art-accent, #1db954)' }}
           >
             <span className="text-base font-bold tracking-wide">
-              {localDevice.syncMode === "controller"
-                ? (activeCrossDeviceState ? `Active on ${activeCrossDeviceState.deviceName}` : "Connecting to device...")
-                : `Controlled by ${otherDevices.find(d => d.deviceId === localDevice.controllerDeviceId)?.deviceName || "another device"}`
-              }
+              {activeDeviceCount > 2 ? `Active in ${activeDeviceCount - 1} devices` : `Active in ${activeCrossDeviceState.deviceName}`}
             </span>
-            {localDevice.syncMode === "controller" && activeCrossDeviceState && (
+            {activeDeviceCount <= 2 && (
               <span className="text-base font-semibold opacity-75 max-w-[40%] truncate">
                 {activeCrossDeviceState.song?.title}
               </span>

@@ -66,11 +66,12 @@ export async function setPendingActions(email: string, actions: any[]) {
   await redis.set(key, JSON.stringify(actions));
 }
 
-export async function mergeUserLibraryData(email: string, newPlaylists: any[], newLiked: any[]) {
+export async function mergeUserLibraryData(email: string, newPlaylists: any[], newLiked: any[], newHistory: any = null) {
   if (!redis) return;
 
   const playlistsKey = `${LIBRARY_KEY_PREFIX}:playlists:${email}`;
   const likedKey = `${LIBRARY_KEY_PREFIX}:liked:${email}`;
+  const historyKey = `${LIBRARY_KEY_PREFIX}:history:${email}`;
 
   const [existingPlaylistsStr, existingLikedStr] = await Promise.all([
     redis.get(playlistsKey),
@@ -107,9 +108,15 @@ export async function mergeUserLibraryData(email: string, newPlaylists: any[], n
     mergedLikedMap.set(s.videoId || s.id, s);
   }
 
-  await Promise.all([
+  const promises = [
     redis.set(playlistsKey, JSON.stringify(Array.from(mergedPlaylistsMap.values()))),
     redis.set(likedKey, JSON.stringify(Array.from(mergedLikedMap.values()))),
     redis.set(`${LIBRARY_KEY_PREFIX}:synced_at:${email}`, String(Date.now())),
-  ]);
+  ];
+
+  if (newHistory) {
+    promises.push(redis.set(historyKey, JSON.stringify(newHistory)));
+  }
+
+  await Promise.all(promises);
 }

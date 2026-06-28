@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { MusicArtwork } from "./MusicArtwork";
 import { 
   Play, Loader2, Music2, Heart, Plus, Sparkles, 
-  Search, Filter, History, ListPlus, PlaySquare
+  Search, Filter, History, ListPlus, PlaySquare, Check, X
 } from "lucide-react";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
 import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
@@ -62,6 +62,10 @@ export function YouTubeLibrary({
   const [activeTab, setActiveTab] = useState<LibraryTab>("playlists");
   const [searchQuery, setSearchQuery] = useState("");
   
+  type SortOrder = "alphabetical" | "newest" | "oldest";
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  
   const [playlists, setPlaylists] = useState<YouTubePlaylist[]>([]);
   const [likedSongs, setLikedSongs] = useState<any[]>([]);
   const [ytHistory, setYtHistory] = useState<any[]>([]);
@@ -96,6 +100,18 @@ export function YouTubeLibrary({
           if (Array.isArray(dbData.liked) && dbData.liked.length) {
             setLikedSongs(dbData.liked);
           }
+          if (dbData.history) {
+            const parsedHist = typeof dbData.history === "string" ? JSON.parse(dbData.history) : dbData.history;
+            if (Array.isArray(parsedHist.tracks)) {
+              setYtHistory(parsedHist.tracks);
+            }
+            if (parsedHist.source) {
+              setHistoryFeedMeta({
+                source: parsedHist.source,
+                ytmBrowseAvailable: !!parsedHist.ytmBrowseAvailable,
+              });
+            }
+          }
         }
 
         const [pRes, lRes, hRes] = await Promise.all([
@@ -108,6 +124,7 @@ export function YouTubeLibrary({
         let showedCache = false;
         const playlistRows = pRes.ok ? await pRes.json() : [];
         const likedRows = lRes.ok ? await lRes.json() : [];
+        let hData: any = null;
 
         if (pRes.ok) {
           const arr = Array.isArray(playlistRows) ? playlistRows : [];
@@ -117,16 +134,16 @@ export function YouTubeLibrary({
           const errBody = await pRes.json().catch(() => ({}));
           if (pRes.status === 503 && errBody?.error === "quotaExceeded") {
             quotaHit = true;
+          }
+          setPlaylists(prev => {
+            if (prev.length > 0) return prev; // Keep DB playlists!
             const cached = readLibraryCache<YouTubePlaylist[]>("playlists");
             if (cached?.length) {
-              setPlaylists(cached);
               showedCache = true;
-            } else {
-              setPlaylists([]);
+              return cached;
             }
-          } else {
-            setPlaylists([]);
-          }
+            return [];
+          });
         }
 
         if (lRes.ok) {
@@ -137,20 +154,20 @@ export function YouTubeLibrary({
           const errBody = await lRes.json().catch(() => ({}));
           if (lRes.status === 503 && errBody?.error === "quotaExceeded") {
             quotaHit = true;
+          }
+          setLikedSongs(prev => {
+            if (prev.length > 0) return prev; // Keep DB liked songs!
             const cached = readLibraryCache<unknown[]>("liked");
             if (cached?.length) {
-              setLikedSongs(cached);
               showedCache = true;
-            } else {
-              setLikedSongs([]);
+              return cached;
             }
-          } else {
-            setLikedSongs([]);
-          }
+            return [];
+          });
         }
 
         if (hRes.ok) {
-          const hData = await hRes.json();
+          hData = await hRes.json();
           setYtHistory(Array.isArray(hData.tracks) ? hData.tracks : []);
           setHistoryFeedMeta({
             source: typeof hData.source === "string" ? hData.source : "youtube.activities",
@@ -161,34 +178,27 @@ export function YouTubeLibrary({
           const errBody = await hRes.json().catch(() => ({}));
           if (hRes.status === 503 && errBody?.error === "quotaExceeded") {
             quotaHit = true;
+          }
+          setYtHistory(prev => {
+            if (prev.length > 0) return prev; // Keep DB history!
             const cached = readLibraryCache<{
               tracks?: unknown[];
               source?: string;
               ytmBrowseAvailable?: boolean;
             }>("history");
             if (cached?.tracks && Array.isArray(cached.tracks) && cached.tracks.length) {
-              setYtHistory(cached.tracks as any[]);
               setHistoryFeedMeta({
                 source: typeof cached.source === "string" ? cached.source : "youtube.activities",
                 ytmBrowseAvailable: !!cached.ytmBrowseAvailable,
               });
               showedCache = true;
-            } else {
-              setYtHistory([]);
-              setHistoryFeedMeta(null);
+              return cached.tracks as any[];
             }
-          } else {
-            setYtHistory([]);
-            setHistoryFeedMeta(null);
-          }
+            return [];
+          });
         }
-        if (quotaHit) {
-          setError(
-            showedCache
-              ? "YouTube Data API quota exceeded for today. Showing the last synced library from this browser until the quota resets."
-              : "YouTube Data API quota exceeded for today. Playlists and likes can't load until the quota resets (usually midnight Pacific Time), or increase quota in Google Cloud Console."
-          );
-        } else if (pRes.ok || lRes.ok) {
+
+        if (pRes.ok || lRes.ok || hRes.ok) {
           await fetch("/api/user/library", {
             ...init,
             method: "POST",
@@ -199,6 +209,7 @@ export function YouTubeLibrary({
             body: JSON.stringify({
               playlists: Array.isArray(playlistRows) ? playlistRows : [],
               liked: Array.isArray(likedRows) ? likedRows : [],
+              history: hRes.ok ? hData : null,
             }),
           });
         }
@@ -209,15 +220,27 @@ export function YouTubeLibrary({
     if (session?.accessToken) loadLibrary();
   }, [session?.accessToken]);
 
-  const filteredPlaylists = useMemo(() => 
-    playlists.filter(p => (p.title || "").toLowerCase().includes(searchQuery.toLowerCase())),
-    [playlists, searchQuery]
-  );
+  const filteredPlaylists = useMemo(() => {
+    const list = playlists.filter(p => (p.title || "").toLowerCase().includes(searchQuery.toLowerCase()));
+    if (sortOrder === "alphabetical") {
+      return [...list].sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+    }
+    if (sortOrder === "oldest") {
+      return [...list].reverse();
+    }
+    return list;
+  }, [playlists, searchQuery, sortOrder]);
 
-  const filteredLiked = useMemo(() => 
-    likedSongs.filter(s => (s.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || (s.artist?.toLowerCase() || "").includes(searchQuery.toLowerCase())),
-    [likedSongs, searchQuery]
-  );
+  const filteredLiked = useMemo(() => {
+    const list = likedSongs.filter(s => (s.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || (s.artist?.toLowerCase() || "").includes(searchQuery.toLowerCase()));
+    if (sortOrder === "alphabetical") {
+      return [...list].sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+    }
+    if (sortOrder === "oldest") {
+      return [...list].reverse();
+    }
+    return list;
+  }, [likedSongs, searchQuery, sortOrder]);
 
   const historySubtitle = useMemo(() => {
     if (!historyFeedMeta) return null;
@@ -253,15 +276,12 @@ export function YouTubeLibrary({
     );
   }, [playedHistory, ytHistory, searchQuery, accentColor, historyFeedMeta?.source]);
 
-  const headerSurfaceStyle = {
-    backgroundColor: `color-mix(in srgb, ${accentColor} 14%, rgb(10, 10, 12))`,
-    borderBottomColor: `color-mix(in srgb, ${accentColor} 28%, rgba(255,255,255,0.06))`,
-  } as const;
+  const firstArtwork = likedSongs.length > 0 ? likedSongs[0].thumbnailUrl : (playlists.length > 0 ? playlists[0].thumbnailUrl : null);
 
   if (!session?.accessToken) {
     return (
       <div
-        className={`flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[50vh] bg-transparent transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[60vh] bg-transparent transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
           isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
         }`}
       >
@@ -287,262 +307,283 @@ export function YouTubeLibrary({
     <div className={`flex-1 h-full flex flex-col bg-transparent transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
       isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
     }`}>
-      <header className="px-6 pt-10 pb-6 md:px-8 md:pt-12 md:pb-8 lg:px-12 border-b border-white/[0.04] sticky top-0 z-20 backdrop-blur-md">
-        <div className="max-w-[1600px] mx-auto space-y-6 md:space-y-8">
-           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
-              <div>
-                 <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight leading-none mb-1">Library</h1>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                 <button 
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white/[0.02] border border-white/10 text-white hover:text-black hover:bg-white hover:border-transparent transition-all duration-300 font-bold text-xs uppercase tracking-wider active:scale-95"
-                 >
-                    <Plus className="w-3.5 h-3.5 shrink-0" strokeWidth={3} />
-                    <span>New Playlist</span>
-                 </button>
-                 <button 
-                    onClick={() => setIsAiModalOpen(true)}
-                    className="flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all border shadow-lg active:scale-95"
-                    style={{ 
-                      backgroundColor: `${accentColor}15`, 
-                      borderColor: `${accentColor}30`,
-                      color: accentColor 
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = accentColor;
-                      e.currentTarget.style.color = '#000';
-                      e.currentTarget.style.borderColor = 'transparent';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = `${accentColor}15`;
-                      e.currentTarget.style.color = accentColor;
-                      e.currentTarget.style.borderColor = `${accentColor}30`;
-                    }}
-                 >
-                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                    <span>AI Build</span>
-                 </button>
-              </div>
-           </div>
-
-           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-white/[0.04] pb-2">
-              <div className="flex items-center gap-8 relative overflow-x-auto no-scrollbar">
-                 {(["playlists", "history", "liked"] as LibraryTab[]).map(tab => (
-                    <button
-                       key={tab}
-                       onClick={() => setActiveTab(tab)}
-                        className={`relative py-3.5 text-xs md:text-sm font-bold capitalize tracking-wide transition-colors duration-300 focus:outline-none ${
-                          activeTab === tab
-                          ? "text-white"
-                          : "text-white/45 hover:text-white/70"
-                       }`}
-                    >
-                       {tab}
-                       {activeTab === tab && (
-                          <m.div 
-                             layoutId="library-active-tab"
-                             className="absolute bottom-0 inset-x-0 h-0.5"
-                             style={{ backgroundColor: accentColor }}
-                             transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                          />
-                       )}
-                    </button>
-                 ))}
-              </div>
-
-              <div className="flex items-center gap-4 w-full sm:w-auto">
-                 <div className="relative flex-1 sm:w-64 group/search">
-                    <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-white/20 group-focus-within/search:text-white/50 transition-colors w-4 h-4" />
-                    <input 
-                       value={searchQuery}
-                       onChange={e => setSearchQuery(e.target.value)}
-                       placeholder={`Search ${activeTab}...`}
-                       className="w-full bg-transparent border-b border-white/10 rounded-none py-2 pl-6 pr-4 text-xs md:text-sm text-white placeholder:text-white/10 focus:border-white/30 outline-none transition-all"
-                    />
-                 </div>
-                 <button className="p-2.5 rounded-xl bg-white/[0.02] border border-white/10 text-white/40 hover:text-white hover:bg-white/[0.06] transition-all">
-                    <Filter className="w-4 h-4 md:w-5 md:h-5" />
-                 </button>
-              </div>
-           </div>
-        </div>
-      </header>
-
+      
       <main className="min-h-0 px-6 py-8 md:px-8 md:py-10 lg:px-12 pb-32 md:pb-40 text-left">
-        <div className="max-w-[1600px] mx-auto">
-           {error && (
-              <div
-                className="mb-6 md:mb-8 rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 md:px-5 md:py-4 text-left text-sm text-amber-50/95 leading-relaxed"
-                role="status"
-              >
-                {error}
+        <div className="max-w-[1600px] mx-auto space-y-10">
+          
+          {/* Awwwards Standard Library Hero Section */}
+          <section className="relative rounded-[32px] overflow-hidden flex flex-col lg:flex-row border border-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.5)] group transition-all duration-[450ms]">
+            <div className="absolute inset-0 z-0 pointer-events-none">
+              <div className="absolute inset-0 bg-gradient-to-tr from-[#0b0b0c] via-[#0d0d0f] to-[#101012]" />
+              <div 
+                className="absolute inset-0 opacity-10 filter blur-[80px] transition-all duration-[1s]"
+                style={{
+                  background: `radial-gradient(circle at 70% 30%, ${accentColor}, transparent 70%)`
+                }}
+              />
+            </div>
+
+            <div className="relative z-10 w-full flex flex-col md:flex-row md:items-center justify-between p-6 sm:p-8 lg:p-14 min-h-[260px] gap-6">
+              <div className="flex-1 flex flex-col justify-center max-w-2xl">
+                <h1 className="text-[44px] sm:text-[60px] lg:text-[72px] font-black tracking-tighter text-white leading-[1.02] drop-shadow-xl">
+                  Your Library
+                </h1>
+                <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-2">
+                  {playlists.length} Playlists • {likedSongs.length} Liked Tracks
+                </p>
               </div>
-           )}
-           {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-4">
-                 <Loader2 className="w-8 h-8 md:w-10 md:h-10 animate-spin" style={{ color: accentColor }} />
-                 <p className="text-white/20 font-bold uppercase tracking-widest text-[9px] md:text-[10px]">Syncing Database...</p>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <button 
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white text-black hover:bg-white/90 hover:scale-105 active:scale-95 transition-all font-black text-xs uppercase tracking-wider shadow-lg shrink-0"
+                >
+                  <Plus className="w-4 h-4 shrink-0" strokeWidth={3} />
+                  <span>New Playlist</span>
+                </button>
+                <button 
+                  onClick={() => setIsAiModalOpen(true)}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-full hover:scale-105 active:scale-95 transition-all font-black text-xs uppercase tracking-wider shadow-lg shrink-0"
+                  style={{ backgroundColor: accentColor, color: '#000' }}
+                >
+                  <Sparkles className="w-4 h-4 shrink-0" />
+                  <span>AI Build</span>
+                </button>
               </div>
-           ) : (
-              <AnimatePresence mode="wait">
-                  {activeTab === "playlists" && (
-                     <m.div 
-                        key="playlists-pane"
-                        variants={CONTAINER_STAGGER}
-                        initial="initial"
-                        animate="animate"
-                        exit="exit"
-                        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 md:gap-x-8 gap-y-8 md:gap-y-12 animate-gpu"
-                     >
-                        <m.div 
-                           variants={CARD_VARIANTS}
-                           onClick={() => setActiveTab("liked")}
-                           className="group flex flex-col cursor-pointer"
+            </div>
+          </section>
+
+          {/* Sub-Header segment containing capsule tabs and capsule search */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-white/[0.04] pb-6">
+            
+            {/* Apple/Awwwards segmented control capsule */}
+            <div className="flex items-center gap-1.5 p-1.5 bg-black/40 border border-white/5 backdrop-blur-md rounded-2xl w-fit">
+              {(["playlists", "liked", "history"] as LibraryTab[]).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`relative px-5 py-2.5 text-xs md:text-sm font-black uppercase tracking-wider transition-colors duration-300 focus:outline-none rounded-xl z-10 ${
+                    activeTab === tab
+                    ? "text-black"
+                    : "text-white/40 hover:text-white/80"
+                  }`}
+                >
+                  <span className="relative z-10">{tab}</span>
+                  {activeTab === tab && (
+                    <m.div 
+                      layoutId="library-active-tab-pill"
+                      className="absolute inset-0 rounded-xl"
+                      style={{ backgroundColor: accentColor }}
+                      transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-4 w-full sm:w-auto relative">
+              <div className="relative flex-1 sm:w-72 group/search">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within/search:text-white/50 transition-colors w-4 h-4" />
+                <input 
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder={`Search ${activeTab}...`}
+                  className="w-full bg-black/20 border border-white/5 focus:border-white/20 rounded-2xl py-3 pl-11 pr-4 text-xs md:text-sm text-white placeholder:text-white/20 outline-none transition-all backdrop-blur-sm"
+                />
+              </div>
+              
+              <div className="relative">
+                <button 
+                  onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+                  className="p-3 rounded-2xl bg-white/[0.02] border border-white/10 text-white/40 hover:text-white hover:bg-white/[0.06] transition-all flex items-center gap-2"
+                  title="Sort order"
+                >
+                  <Filter className="w-5 h-5" />
+                  <span className="hidden md:inline text-xs font-black uppercase tracking-wider text-white/60">
+                    {sortOrder === "alphabetical" ? "A-Z" : sortOrder === "newest" ? "Newest" : "Oldest"}
+                  </span>
+                </button>
+                
+                {isSortMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsSortMenuOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-zinc-950/95 border border-white/10 backdrop-blur-xl shadow-2xl p-2 z-50 flex flex-col gap-1">
+                      {(["newest", "oldest", "alphabetical"] as const).map((order) => (
+                        <button
+                          key={order}
+                          onClick={() => {
+                            setSortOrder(order);
+                            setIsSortMenuOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                            sortOrder === order
+                              ? "text-black"
+                              : "text-white/60 hover:text-white hover:bg-white/[0.04]"
+                          }`}
+                          style={sortOrder === order ? { backgroundColor: accentColor } : {}}
                         >
-                            <div 
-                               className="relative aspect-square mb-3 md:mb-4 rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center border border-white/5 transition-transform duration-500 hover:scale-[1.03]"
-                               style={{ backgroundColor: `color-mix(in srgb, ${accentColor} 55%, #8E2DE2)` }}
+                          {order === "newest" ? "Date Added: Newest" : order === "oldest" ? "Date Added: Oldest" : "Alphabetical"}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+
+
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-4">
+              <Loader2 className="w-8 h-8 md:w-10 md:h-10 animate-spin" style={{ color: accentColor }} />
+              <p className="text-white/20 font-bold uppercase tracking-widest text-[9px] md:text-[10px]">Syncing Database...</p>
+            </div>
+          ) : (
+            <AnimatePresence mode="wait">
+              {activeTab === "playlists" && (
+                <m.div 
+                  key="playlists-pane"
+                  variants={CONTAINER_STAGGER}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10 animate-gpu"
+                >
+
+
+                  {filteredPlaylists.map(playlist => (
+                    <m.div 
+                      variants={CARD_VARIANTS}
+                      key={playlist.id} 
+                      onClick={() => onPlaylistClick?.(playlist)}
+                      className="group flex flex-col cursor-pointer"
+                    >
+                      <div className="relative aspect-square mb-4 rounded-3xl overflow-hidden bg-zinc-900 border border-white/5 shadow-xl transition-all duration-500">
+                        <div className="w-full h-full transition-transform duration-700 ease-out group-hover:scale-[1.06]">
+                          <MusicArtwork
+                            src={playlist.thumbnailUrl?.replace("s90", "s600")}
+                            alt={playlist.title}
+                            iconSize={40}
+                            variant="track"
+                            rounded="none"
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      </div>
+                      <h3 
+                        className="text-base md:text-[17px] font-black text-white truncate tracking-tight mb-0.5 group-hover:text-(--art-accent,#FA243C) transition-colors duration-300"
+                        style={{ ['--art-accent' as any]: accentColor }}
+                      >
+                        {playlist.title}
+                      </h3>
+                      <p className="text-xs md:text-[14px] text-white/20 font-bold uppercase tracking-wider">{playlist.itemCount} Items</p>
+                    </m.div>
+                  ))}
+                </m.div>
+              )}
+
+              {activeTab === "history" && (
+                <LibraryHistoryPane
+                  key="history-pane"
+                  tracks={unifiedHistory}
+                  accentColor={accentColor}
+                  subtitle={historySubtitle}
+                  onPlayPlaylist={onPlayPlaylist}
+                  onSongClick={onSongClick}
+                  onPlayNext={onPlayNext}
+                  onAddToQueue={onAddToQueue}
+                />
+              )}
+
+              {activeTab === "liked" && (
+                <m.div 
+                  key="liked-pane"
+                  variants={CONTAINER_STAGGER}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 animate-gpu"
+                >
+                  {filteredLiked.map((track, idx) => {
+                    const likedSongsList: Song[] = filteredLiked.map(t => ({
+                      id: t.videoId,
+                      title: t.title,
+                      artist: t.artist,
+                      artwork: t.thumbnailUrl,
+                      duration: t.duration || "",
+                      color: accentColor,
+                    }));
+                    
+                    const songObj = likedSongsList[idx];
+                    return (
+                      <m.div 
+                        variants={CARD_VARIANTS}
+                        key={`liked-${idx}`}
+                        onClick={() => {
+                          if (onPlayPlaylist) {
+                            onPlayPlaylist(likedSongsList, idx);
+                          } else {
+                            onSongClick?.(songObj);
+                          }
+                        }}
+                        className="group flex flex-col cursor-pointer"
+                      >
+                        <div className="relative aspect-square mb-4 rounded-3xl overflow-hidden bg-zinc-900 border border-white/5 shadow-xl transition-all duration-500">
+                          <div className="w-full h-full transition-transform duration-700 ease-out group-hover:scale-[1.06]">
+                            <MusicArtwork
+                              src={track.thumbnailUrl?.replace("s90", "s600")}
+                              alt={track.title}
+                              iconSize={40}
+                              variant="track"
+                              rounded="none"
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-opacity duration-300">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onPlayNext?.(songObj);
+                              }}
+                              className="p-3 rounded-full bg-white/20 hover:bg-white text-white hover:text-black transition-all hover:scale-110 focus:outline-none"
+                              title="Play Next"
                             >
-                               <Heart className="w-8 h-8 md:w-16 md:h-16 text-white drop-shadow-xl transition-transform duration-500 group-hover:scale-110" fill="white" />
-                            </div>
-                           <h3 className="text-base md:text-lg font-bold text-white truncate">Liked Songs</h3>
-                           <p className="text-xs md:text-sm text-white/30 font-bold uppercase tracking-wider">{likedSongs.length} Tracks</p>
-                        </m.div>
-
-                        {filteredPlaylists.map(playlist => (
-                           <m.div 
-                              variants={CARD_VARIANTS}
-                              key={playlist.id} 
-                              onClick={() => onPlaylistClick?.(playlist)}
-                              className="group flex flex-col cursor-pointer"
-                           >
-                              <div className="relative aspect-square mb-3 md:mb-4 rounded-3xl overflow-hidden bg-zinc-900 border border-white/5 shadow-xl transition-all duration-500">
-                                 <div className="w-full h-full transition-transform duration-700 ease-out group-hover:scale-[1.06]">
-                                    <MusicArtwork
-                                      src={playlist.thumbnailUrl?.replace("s90", "s600")}
-                                      alt={playlist.title}
-                                      iconSize={40}
-                                      variant="track"
-                                      rounded="3xl"
-                                      className="h-full w-full"
-                                    />
-                                 </div>
-                              </div>
-                              <h3 
-                                className="text-sm md:text-[17px] font-bold text-white truncate leading-tight mb-0.5 md:mb-1 group-hover:text-(--art-accent,#FA243C) transition-colors duration-300"
-                                style={{ ['--art-accent' as any]: accentColor }}
-                              >
-                                {playlist.title}
-                              </h3>
-                              <p className="text-xs md:text-[14px] text-white/20 font-bold">{playlist.itemCount} Items</p>
-                           </m.div>
-                        ))}
-                     </m.div>
-                  )}
-
-                  {activeTab === "history" && (
-                     <LibraryHistoryPane
-                       key="history-pane"
-                       tracks={unifiedHistory}
-                       accentColor={accentColor}
-                       subtitle={historySubtitle}
-                       onPlayPlaylist={onPlayPlaylist}
-                       onSongClick={onSongClick}
-                       onPlayNext={onPlayNext}
-                       onAddToQueue={onAddToQueue}
-                     />
-                  )}
-
-                  {activeTab === "liked" && (
-                     <m.div 
-                        key="liked-pane"
-                        variants={CONTAINER_STAGGER}
-                        initial="initial"
-                        animate="animate"
-                        exit="exit"
-                        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 animate-gpu"
-                     >
-                        {filteredLiked.map((track, idx) => {
-                           const likedSongsList: Song[] = filteredLiked.map(t => ({
-                              id: t.videoId,
-                              title: t.title,
-                              artist: t.artist,
-                              artwork: t.thumbnailUrl,
-                              duration: t.duration || "",
-                              color: accentColor,
-                           }));
-                           
-                           const songObj = likedSongsList[idx];
-                           return (
-                             <m.div 
-                                variants={CARD_VARIANTS}
-                                key={`liked-${idx}`}
-                                onClick={() => {
-                                  if (onPlayPlaylist) {
-                                    onPlayPlaylist(likedSongsList, idx);
-                                  } else {
-                                    onSongClick?.(songObj);
-                                  }
-                                }}
-                                className="group flex flex-col cursor-pointer"
-                             >
-                                <div className="relative aspect-square mb-3 md:mb-4 rounded-3xl overflow-hidden bg-zinc-900 border border-white/5 shadow-xl transition-all duration-500">
-                                   <div className="w-full h-full transition-transform duration-700 ease-out group-hover:scale-[1.06]">
-                                      <MusicArtwork
-                                        src={track.thumbnailUrl?.replace("s90", "s600")}
-                                        alt={track.title}
-                                        iconSize={40}
-                                        variant="track"
-                                        rounded="3xl"
-                                        className="h-full w-full"
-                                      />
-                                   </div>
-                                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-opacity duration-300">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          onPlayNext?.(songObj);
-                                        }}
-                                        className="p-3 rounded-full bg-white/20 hover:bg-white text-white hover:text-black transition-all hover:scale-110 focus:outline-none"
-                                        title="Play Next"
-                                      >
-                                        <PlaySquare size={20} />
-                                      </button>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          onAddToQueue?.(songObj);
-                                        }}
-                                        className="p-3 rounded-full bg-white/20 hover:bg-white text-white hover:text-black transition-all hover:scale-110 focus:outline-none"
-                                        title="Add to Queue"
-                                      >
-                                        <ListPlus size={20} />
-                                      </button>
-                                   </div>
-                                </div>
-                                <h3 
-                                  className="font-bold text-white truncate text-base md:text-[17px] mb-0.5 md:mb-1 leading-tight group-hover:text-(--art-accent,#FA243C) transition-colors duration-300"
-                                  style={{ ['--art-accent' as any]: accentColor }}
-                                >
-                                  {track.title}
-                                </h3>
-                                <p className="text-white/30 text-xs md:text-[14px] font-bold truncate">{track.artist}</p>
-                             </m.div>
-                           );
-                        })}
-                     </m.div>
-                  )}
-              </AnimatePresence>
-           )}
+                              <PlaySquare size={20} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAddToQueue?.(songObj);
+                              }}
+                              className="p-3 rounded-full bg-white/20 hover:bg-white text-white hover:text-black transition-all hover:scale-110 focus:outline-none"
+                              title="Add to Queue"
+                            >
+                              <ListPlus size={20} />
+                            </button>
+                          </div>
+                        </div>
+                        <h3 
+                          className="font-black text-white truncate text-base md:text-[17px] mb-0.5 tracking-tight leading-tight group-hover:text-(--art-accent,#FA243C) transition-colors duration-300"
+                          style={{ ['--art-accent' as any]: accentColor }}
+                        >
+                          {track.title}
+                        </h3>
+                        <p className="text-white/40 text-xs md:text-[14px] font-bold uppercase tracking-wide truncate">{track.artist}</p>
+                      </m.div>
+                    );
+                  })}
+                </m.div>
+              )}
+            </AnimatePresence>
+          )}
         </div>
       </main>
 
       <CreatePlaylistModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} accentColor={accentColor} />
-      <AiPlaylistModal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} accentColor={accentColor} />
+      <m.div key="ai-modal-wrapper" className="relative z-[250]">
+        <AiPlaylistModal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} accentColor={accentColor} />
+      </m.div>
     </div>
   );
 }
-
-

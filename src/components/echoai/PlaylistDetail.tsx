@@ -35,7 +35,37 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
 
   useEffect(() => {
     async function loadData() {
-      setLoading(true);
+      const cacheKey = `nexus-playlist-tracks-${playlist.id}`;
+      
+      // 0. Load cached tracks first for zero-latency instant offline display
+      if (typeof window !== "undefined") {
+        try {
+          const cachedRaw = localStorage.getItem(cacheKey);
+          if (cachedRaw) {
+            const cachedParsed = JSON.parse(cachedRaw);
+            // 7 days expiration threshold
+            if (Date.now() - cachedParsed.at < 7 * 24 * 60 * 60 * 1000) {
+              setTracks(cachedParsed.data || []);
+              setLoading(false);
+            }
+          }
+        } catch {}
+      }
+
+      // 0.5 Load from Redis database (persists across devices/browsers)
+      try {
+        const dbTracksRes = await fetch(`/api/user/playlist-tracks?playlistId=${playlist.id}`);
+        if (dbTracksRes.ok) {
+          const dbTracksData = await dbTracksRes.json();
+          if (dbTracksData.tracks && Array.isArray(dbTracksData.tracks) && dbTracksData.tracks.length) {
+            setTracks(dbTracksData.tracks);
+            setLoading(false);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to load playlist tracks from Redis database:", err);
+      }
+
       try {
         // 1. Resolve basic metadata (Title, Description, Art)
         // If it's a deep link (coming from ArtistPage), we might only have an ID
@@ -65,9 +95,21 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
               setTracks(mappedTracks);
               setCurrentPlaylist(meta as YouTubePlaylist);
               setLoading(false);
+              
+              // Cache successful result
+              if (typeof window !== "undefined") {
+                localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), data: mappedTracks }));
+              }
+              // Save to Redis
+              void fetch("/api/user/playlist-tracks", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ playlistId: playlist.id, tracks: mappedTracks })
+              }).catch(() => {});
+              
               return; // Exit early since we have everything
            }
-        }
+         }
 
         // 2. Fallback to user library check for metadata
         if (!meta.title || meta.title === "Loading...") {
@@ -88,6 +130,17 @@ export function PlaylistDetail({ playlist, onSongClick, onQueueReplace, accentCo
         if (res.ok) {
           const data = await res.json();
           setTracks(data);
+          
+          // Cache successful result
+          if (typeof window !== "undefined") {
+            localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), data }));
+          }
+          // Save to Redis
+          void fetch("/api/user/playlist-tracks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ playlistId: playlist.id, tracks: data })
+          }).catch(() => {});
         }
       } catch (err) {
         console.error("Failed to load playlist tracks:", err);

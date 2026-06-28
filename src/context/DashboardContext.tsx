@@ -191,8 +191,31 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [lastSeedFetched, setLastSeedFetched] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
-  const [rightSidebarMode, setRightSidebarMode] = useState<"queue" | "jam" | "lyrics">("queue");
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return window.localStorage.getItem("nexus_right_sidebar_open") === "true";
+    }
+    return false;
+  });
+  const [rightSidebarMode, setRightSidebarMode] = useState<"queue" | "jam" | "lyrics">((() => {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage.getItem("nexus_right_sidebar_mode");
+      if (saved === "queue" || saved === "jam" || saved === "lyrics") return saved;
+    }
+    return "queue";
+  }) as any);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("nexus_right_sidebar_open", String(isRightSidebarOpen));
+    }
+  }, [isRightSidebarOpen]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("nexus_right_sidebar_mode", rightSidebarMode);
+    }
+  }, [rightSidebarMode]);
   const [isExpandedPlayerOpen, setIsExpandedPlayerOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
@@ -593,7 +616,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const prefix = isPlaying ? "▶ " : "";
       const displayTitle = liveMetadata?.title || currentSong.title;
       const displayArtist = liveMetadata?.artist || currentSong.artist;
-      document.title = `${prefix}${displayTitle} — ${displayArtist}`;
+      document.title = `${prefix}${displayTitle} - ${displayArtist}`;
     } else {
       document.title = "Nexus | Premium AI Ecosystem";
     }

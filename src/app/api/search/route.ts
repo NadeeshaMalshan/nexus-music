@@ -175,6 +175,9 @@ async function searchYouTubeMusicAlbums(query: string) {
     .slice(0, 12);
 }
 
+const searchCache = new Map<string, { data: any; expiry: number }>();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour cache
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -185,21 +188,33 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Missing required query param: q" }, { status: 400 });
     }
 
+    const cacheKey = `${type}:${q}`;
+    const cached = searchCache.get(cacheKey);
+    if (cached && cached.expiry > Date.now()) {
+      console.log(`[Search Cache] Hit: ${cacheKey}`);
+      return NextResponse.json(cached.data);
+    }
+
+    const sendResponse = (data: any) => {
+      searchCache.set(cacheKey, { data, expiry: Date.now() + CACHE_TTL_MS });
+      return NextResponse.json(data);
+    };
+
     if (type === "artists") {
        const { searchArtistsRobust } = await import("@/lib/ytmSearchService");
        const artists = await searchArtistsRobust(q);
-       return NextResponse.json({ items: artists, source: "music.youtube.com" });
+       return sendResponse({ items: artists, source: "music.youtube.com" });
     }
 
     if (type === "playlists") {
        const { searchPlaylistsRobust } = await import("@/lib/ytmSearchService");
        const playlists = await searchPlaylistsRobust(q);
-       return NextResponse.json({ items: playlists, source: "music.youtube.com" });
+       return sendResponse({ items: playlists, source: "music.youtube.com" });
     }
 
     if (type === "albums") {
       const albums = await searchYouTubeMusicAlbums(q);
-      return NextResponse.json({ items: albums, source: "music.youtube.com" as const });
+      return sendResponse({ items: albums, source: "music.youtube.com" });
     }
 
     if (type === "live") {
@@ -361,7 +376,7 @@ export async function GET(request: Request) {
         }
 
         if (scrapedItems.length > 0) {
-          return NextResponse.json({
+          return sendResponse({
             items: scrapedItems.slice(0, 12),
             source: "youtube.com",
           });
@@ -376,7 +391,7 @@ export async function GET(request: Request) {
         }));
       }
 
-      return NextResponse.json({
+      return sendResponse({
         items: finalItems.slice(0, 12),
         source: ytSearchSuccess ? "youtube.googleapis.com" : "music.youtube.com",
       });
@@ -420,7 +435,7 @@ export async function GET(request: Request) {
         }
       }
 
-      return NextResponse.json({ items: finalItems.slice(0, 12), source: "music.youtube.com" as const });
+      return sendResponse({ items: finalItems.slice(0, 12), source: "music.youtube.com" });
     }
 
     // Default: Songs (with Top Artist Heuristic)
@@ -476,7 +491,7 @@ export async function GET(request: Request) {
        }
     }
 
-    return NextResponse.json({ items: finalItems.slice(0, 12), source: "music.youtube.com" as const });
+    return sendResponse({ items: finalItems.slice(0, 12), source: "music.youtube.com" });
   } catch (error) {
     console.error("Search route failed:", error);
     return NextResponse.json({ error: "Failed to search tracks." }, { status: 500 });

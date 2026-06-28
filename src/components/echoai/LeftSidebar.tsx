@@ -87,7 +87,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
 
   const navigationItems = [
     { id: "home", icon: Home, label: "Home", href: "/" },
-    { id: "library", icon: ListMusic, label: "Library", href: "/library" },
+    ...(session ? [{ id: "library", icon: ListMusic, label: "Library", href: "/library" }] : []),
     { id: "explore", icon: Compass, label: "Explore", href: "/explore" },
     { id: "settings", icon: Settings, label: "Settings", href: "/settings" },
   ];
@@ -372,7 +372,7 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
         {[
           { id: "home", icon: Home, label: "Home", href: "/" },
           { id: "explore", icon: Compass, label: "Explore", href: "/explore" },
-          { id: "library", icon: ListMusic, label: "Library", href: "/library" },
+          ...(session ? [{ id: "library", icon: ListMusic, label: "Library", href: "/library" }] : []),
           { id: "stats", icon: User, label: "Profile", href: "/stats" },
           { id: "settings", icon: Settings, label: "Settings", href: "/settings" },
         ].map((item) => {

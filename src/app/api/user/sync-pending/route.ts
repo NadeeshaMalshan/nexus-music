@@ -49,8 +49,11 @@ export async function POST(request: Request) {
           }
         }
       } else if (action.type === "LIKE_SONG") {
-        const { videoId, rating } = action.data;
-        await rateVideo(accessToken, videoId, rating);
+        const { videoId } = action.data;
+        await rateVideo(accessToken, videoId, "like");
+      } else if (action.type === "UNLIKE_SONG") {
+        const { videoId } = action.data;
+        await rateVideo(accessToken, videoId, "none");
       }
       
       // If we got here, it succeeded

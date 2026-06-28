@@ -119,10 +119,6 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   // Determine active view based on pathname
   const activeView = pathname === "/" ? "home" : pathname.split("/")[1] || "home";
 
-  if (pathname === "/tv" || pathname.startsWith("/tv")) {
-    return <div className="w-full h-full min-h-screen bg-[#050505] text-zinc-100 overflow-hidden">{children}</div>;
-  }
-
   return (
     <div className="relative h-screen overflow-hidden text-zinc-100 bg-[#0D0D0D]">
       {/* Redesigned Background: Solid #0D0D0D by default, ambient artwork glows when playing */}

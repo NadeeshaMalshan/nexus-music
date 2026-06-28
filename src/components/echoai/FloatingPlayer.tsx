@@ -67,6 +67,10 @@ export function FloatingPlayer({
     queueSongs,
     upNextQueue,
     previousQueue,
+    isCastApiAvailable,
+    isCasting,
+    requestCastSession,
+    endCastSession,
   } = useDashboard();
   const { crossDeviceState, activeDeviceCount, activeDevices, localDeviceId, triggerDeviceControl } = useDeviceSync();
   const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
@@ -223,29 +227,6 @@ export function FloatingPlayer({
     }
   };
 
-  const handleCastClick = () => {
-    if (typeof window !== "undefined" && (window as any).PresentationRequest) {
-      const targetUrl = `${window.location.origin}/tv`;
-      const request = new (window as any).PresentationRequest([targetUrl]);
-      
-      request.start()
-        .then((connection: any) => {
-          console.log("[Cast] Connected to native receiver:", connection.id);
-        })
-        .catch((err: any) => {
-          if (err.name === "NotAllowedError" || err.name === "NotFoundError") {
-            console.log("[Cast] Native selection cancelled or not found. Showing custom panel.");
-            setIsDeviceMenuOpen(!isDeviceMenuOpen);
-          } else {
-            console.error("[Cast] Native request failed:", err);
-            setIsDeviceMenuOpen(!isDeviceMenuOpen);
-          }
-        });
-    } else {
-      setIsDeviceMenuOpen(!isDeviceMenuOpen);
-    }
-  };
-
   return (
     <div className="relative w-full max-w-[800px] mx-auto mb-24 md:mb-10 lg:mb-12 flex flex-col items-center justify-end pointer-events-none">
       {/* Device Control Popup */}
@@ -255,7 +236,7 @@ export function FloatingPlayer({
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute bottom-[100px] right-4 md:right-6 w-[320px] max-h-[460px] overflow-y-auto bg-[#111111] rounded-3xl shadow-2xl border border-white/10 p-4 pointer-events-auto z-50 flex flex-col gap-4"
+            className="absolute bottom-[100px] left-4 md:left-6 w-[320px] max-h-[460px] overflow-y-auto bg-[#111111] rounded-3xl shadow-2xl border border-white/10 p-4 pointer-events-auto z-50 flex flex-col gap-4"
           >
             <div className="flex items-center justify-between gap-2">
               <div>
@@ -521,18 +502,20 @@ export function FloatingPlayer({
                  />
               </div>
               <Volume2 size={20} className="text-white/30 group-hover/vol:text-white" />
-
-              
             </div>
 
-            {/* Chromecast / Device Cast Button */}
-            <button
-              onClick={handleCastClick}
-              className="transition-all transform hover:scale-110 active:scale-90"
-              style={{ color: isDeviceMenuOpen ? 'var(--art-accent, #FA243C)' : undefined }}
-            >
-              <Cast size={20} className={!isDeviceMenuOpen ? "text-white/40 hover:text-white" : ""} />
-            </button>
+            {/* Chromecast Cast Button */}
+            {isCastApiAvailable && (
+              <button
+                onClick={isCasting ? endCastSession : requestCastSession}
+                className={`transition-all transform hover:scale-110 active:scale-90 ${
+                  isCasting ? "text-[var(--art-accent,#1db954)]" : "text-white/30 hover:text-white"
+                }`}
+                title={isCasting ? "Disconnect Chromecast" : "Cast to TV"}
+              >
+                <Cast size={20} />
+              </button>
+            )}
 
             <div className="h-6 w-px bg-white/10 mx-1 hidden md:block" />
 

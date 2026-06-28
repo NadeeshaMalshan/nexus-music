@@ -5,6 +5,8 @@ import { DashboardProvider } from "@/context/DashboardContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { DashboardWrapper } from "@/components/echoai/DashboardWrapper";
 import { SiteIdentityFooter } from "@/components/SiteIdentityFooter";
+import { CastProvider } from "@/context/CastContext";
+import Script from "next/script";
 
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL ||
@@ -68,17 +70,23 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-[#050505] text-zinc-100">
         <Providers>
-          <SettingsProvider>
-            <DashboardProvider>
-              <JamProvider>
-                <DeviceSyncProvider>
-                  <DashboardWrapper>{children}</DashboardWrapper>
-                  <SiteIdentityFooter />
-                </DeviceSyncProvider>
-              </JamProvider>
-            </DashboardProvider>
-          </SettingsProvider>
+          <CastProvider>
+            <SettingsProvider>
+              <DashboardProvider>
+                <JamProvider>
+                  <DeviceSyncProvider>
+                    <DashboardWrapper>{children}</DashboardWrapper>
+                    <SiteIdentityFooter />
+                  </DeviceSyncProvider>
+                </JamProvider>
+              </DashboardProvider>
+            </SettingsProvider>
+          </CastProvider>
         </Providers>
+        <Script
+          src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );

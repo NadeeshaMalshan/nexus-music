@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List
 from ytmusicapi import YTMusic
 import services
+import hashlib
 from schemas import TasteProfile
 
 app = FastAPI()
@@ -80,6 +81,20 @@ def create_ai_playlist(req: PlaylistRequest):
         except Exception as e:
             print(f"Fallback search failed: {e}")
             
+    # Ultimate LLM Recommendations Fallback (when YT Music completely blocks datacenter IPs)
+    if not compiled_songs:
+        print("All YouTube Music searches failed due to IP/SSL block. Generating LLM fallback recommendations...")
+        fallback_playlist = services.get_fallback_recommendations(req.prompt, taste)
+        for s in fallback_playlist.songs:
+            # Generate a deterministic dummy ID based on title and artist
+            dummy_id = f"fallback_{hashlib.md5((s.title + s.artist).encode('utf-8')).hexdigest()[:11]}"
+            compiled_songs.append(TrackItem(
+                id=dummy_id,
+                title=s.title,
+                artist=s.artist,
+                artwork="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=250&h=250&fit=crop"
+            ))
+            
     # 4. Generate Name, Description and Cover Image
     songs_dict = [{"title": s.title, "artist": s.artist} for s in compiled_songs]
     branding = services.generate_playlist_branding(req.prompt, songs_dict)
@@ -90,5 +105,6 @@ def create_ai_playlist(req: PlaylistRequest):
         "title": branding.title,
         "description": branding.description,
         "cover_url": cover_url,
+        "queries": queries,
         "songs": [s.model_dump() if hasattr(s, "model_dump") else s.dict() for s in compiled_songs]
     }

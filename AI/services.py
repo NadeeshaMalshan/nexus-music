@@ -2,8 +2,8 @@ import os
 import requests
 import hashlib
 from typing import List
-from schemas import TasteProfile, SearchQueries, PlaylistBranding
-from config import redis_client, llm, imagen_client
+from schemas import TasteProfile, SearchQueries, PlaylistBranding, FallbackPlaylist, FallbackSong
+from config import redis_client, llm, get_structured_llm, imagen_client
 
 # --- STEP 1: Taste Profile Predictor ---
 def get_user_taste(user_id: str, raw_history: List[dict]) -> TasteProfile:
@@ -32,7 +32,7 @@ def get_user_taste(user_id: str, raw_history: List[dict]) -> TasteProfile:
         
     formatted_history = ", ".join([f"{item['title']} by {item['artist']}" for item in raw_history])
     
-    structured_llm = llm.with_structured_output(TasteProfile)
+    structured_llm = get_structured_llm(TasteProfile)
     system_prompt = "Analyze the music listening history and output a structured profile."
     user_prompt = f"Listening history: {formatted_history}"
     
@@ -48,7 +48,7 @@ def get_user_taste(user_id: str, raw_history: List[dict]) -> TasteProfile:
 
 # --- STEP 2: Generate Taste-Aware Searches ---
 def generate_playlist_searches(user_prompt: str, taste: TasteProfile) -> List[str]:
-    structured_llm = llm.with_structured_output(SearchQueries)
+    structured_llm = get_structured_llm(SearchQueries)
     system_prompt = "You generate search keywords for YouTube Music."
     user_content = f"""
     User Query/Theme: {user_prompt}
@@ -65,7 +65,7 @@ def generate_playlist_searches(user_prompt: str, taste: TasteProfile) -> List[st
 
 # --- STEP 3: Playlist Name & Cover Art with Fallback ---
 def generate_playlist_branding(user_prompt: str, songs: List[dict]) -> PlaylistBranding:
-    structured_llm = llm.with_structured_output(PlaylistBranding)
+    structured_llm = get_structured_llm(PlaylistBranding)
     song_list = "\n".join([f"- {s['title']} by {s['artist']}" for s in songs[:10]])
     
     branding = structured_llm.invoke([
@@ -110,3 +110,31 @@ def generate_cover_image(image_prompt: str, theme: str) -> str:
             
     # Ultimate Static Fallback
     return "https://images.unsplash.com/photo-1614149162883-504ce4d13909"
+
+def get_fallback_recommendations(user_prompt: str, taste: TasteProfile) -> FallbackPlaylist:
+    structured_llm = get_structured_llm(FallbackPlaylist)
+    system_prompt = "Recommend 15 real, highly-relevant popular songs with titles and artists matching the user theme and preference. Do not use dummy data."
+    user_content = f"""
+    Theme/Prompt: {user_prompt}
+    User Genre/Vibe Preferences: {taste.preferred_genres}, {taste.vibe_description}
+    Generate exactly 15 songs.
+    """
+    try:
+        return structured_llm.invoke([
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content}
+        ])
+    except Exception as e:
+        print(f"Fallback generation failed: {e}")
+        return FallbackPlaylist(songs=[
+            FallbackSong(title="Summer", artist="Calvin Harris"),
+            FallbackSong(title="Paradise", artist="Coldplay"),
+            FallbackSong(title="Stay", artist="The Kid LAROI, Justin Bieber"),
+            FallbackSong(title="Save Your Tears", artist="The Weeknd"),
+            FallbackSong(title="Sweater Weather", artist="The Neighbourhood"),
+            FallbackSong(title="Blinding Lights", artist="The Weeknd"),
+            FallbackSong(title="Perfect", artist="Ed Sheeran"),
+            FallbackSong(title="Lovely", artist="Billie Eilish, Khalid"),
+            FallbackSong(title="Stay", artist="Rihanna"),
+            FallbackSong(title="Watermelon Sugar", artist="Harry Styles")
+        ])

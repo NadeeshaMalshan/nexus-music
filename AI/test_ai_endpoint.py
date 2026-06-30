@@ -1,7 +1,7 @@
 import requests
 
 # Test local FastAPI server on port 8000
-url = "http://127.0.0.1:8000/api/recommendations"
+url = "https://nadeeshamalshan-nexusai.hf.space/api/recommendations"
 data = {
     "user_id": "test_user",
     "prompt": "happy summer",

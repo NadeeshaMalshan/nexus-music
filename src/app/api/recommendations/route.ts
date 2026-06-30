@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { fetchRecentMusicActivities } from "@/lib/youtubeData";
 import { getRequestAccessToken } from "@/lib/requestAccessToken";
-
 import { getRelatedTracksRobust } from "@/lib/youtubeMusicRelated";
+import { searchSongsRobust } from "@/lib/ytmSearchService";
 
 export const dynamic = "force-dynamic";
 
@@ -71,14 +71,42 @@ export async function POST(request: Request) {
 
     const data = await pythonRes.json();
     
-    // Directly mapping compiled songs into the recommendations payload structure
-    const recommendations = (data.songs || []).map((t: any) => ({
-      youtubeId: t.id,
-      title: t.title,
-      artist: t.artist,
-      thumbnail: t.artwork,
-      reason: "AI Taste Prediction"
-    }));
+    let recommendations: any[] = [];
+
+    // 3. Search queries on Next.js side (avoiding HF IP blocking)
+    if (data.queries && data.queries.length > 0) {
+      console.log("[Next.js] Searching generated queries from Next.js backend...");
+      const seenIds = new Set<string>();
+      for (const q of data.queries) {
+        if (recommendations.length >= 20) break;
+        try {
+          const results = await searchSongsRobust(q);
+          for (const item of results) {
+            if (item.youtubeId && !seenIds.has(item.youtubeId)) {
+              seenIds.add(item.youtubeId);
+              recommendations.push({
+                youtubeId: item.youtubeId,
+                title: item.title,
+                artist: item.artist,
+                thumbnail: item.thumbnail,
+                reason: "AI Taste Prediction"
+              });
+              if (recommendations.length >= 20) break;
+            }
+          }
+        } catch (err) {
+          console.error(`[Next.js] Search failed for query "${q}":`, err);
+        }
+      }
+    }
+
+    // If search on Next.js side didn't yield anything, return a 400 Bad Request
+    if (recommendations.length === 0) {
+      return NextResponse.json(
+        { error: "No playable tracks found on YouTube Music. Please try a different query." },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json({
       title: data.title,
@@ -90,7 +118,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("[Recommendations Proxy] Error connecting to Hugging Face:", error);
     return NextResponse.json(
-      { error: "AI recommendation engine failed", detail: error.message },
+      { error: "AI backend error", detail: error.message },
       { status: 500 }
     );
   }

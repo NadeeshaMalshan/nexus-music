@@ -310,12 +310,16 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
   } as const;
   const [step, setStep] = useState<'input' | 'loading' | 'results'>('input');
   const [prompt, setPrompt] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [generatedResult, setGeneratedResult] = useState<{ name: string, songs: CreateModalSong[] }>({ name: "", songs: [] });
   const [librarySyncStatus, setLibrarySyncStatus] = useState<LibrarySyncStatus>("idle");
   const [loadingStatus, setLoadingStatus] = useState("Analyzing taste profile...");
 
   useEffect(() => {
-    if (isOpen) setStep('input');
+    if (isOpen) {
+      setStep('input');
+      setError(null);
+    }
   }, [isOpen]);
 
   useEffect(() => {
@@ -345,6 +349,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setStep('loading');
+    setError(null);
     try {
       const res = await fetch("/api/recommendations", {
         method: "POST",
@@ -355,8 +360,10 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
           genres: []
         }),
       });
-      if (!res.ok) throw new Error(`API error ${res.status}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || `API error ${res.status}`);
+      }
       const recs = (data.recommendations || []).slice(0, 20);
       
       // Determine cover art (fallback to first song's artwork if API did not return one)
@@ -373,8 +380,9 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
       });
       setLibrarySyncStatus("idle");
       setStep('results');
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Error:", err);
+      setError(err.message || "Something went wrong");
       setStep('input');
     }
   };
@@ -491,6 +499,11 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                         >
                           Synthesize Vibe
                         </m.button>
+                        {error && (
+                          <div className="w-full text-left p-4 rounded-2xl border border-red-500/20 bg-red-500/5 text-red-400 font-bold text-sm backdrop-blur-md">
+                            {error}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </m.div>

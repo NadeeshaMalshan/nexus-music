@@ -10,6 +10,7 @@ export interface UserSettings {
   reduceAnimations: boolean;
   crossfade: number; // 0 to 12 seconds
   autoplay: boolean;
+  serverProxyStreaming: boolean;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -20,4 +21,5 @@ export const DEFAULT_SETTINGS: UserSettings = {
   reduceAnimations: false,
   crossfade: 0,
   autoplay: true,
+  serverProxyStreaming: true,
 };

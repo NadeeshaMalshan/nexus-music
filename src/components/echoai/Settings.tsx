@@ -18,7 +18,8 @@ import {
   Music,
   Monitor,
   LogOut,
-  LogIn
+  LogIn,
+  Server
 } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
 import { VideoQuality, AudioQuality, DefaultPlayMode } from "@/types/settings";
@@ -282,6 +283,17 @@ export function Settings() {
                   { label: "Music Video", value: "video" },
                 ]}
                 onChange={(val) => updateSetting("defaultPlayMode", val)}
+              />
+            </SettingsRow>
+
+            <SettingsRow 
+              icon={<Server size={20} />} 
+              label="Server Proxy Streaming" 
+              description="Proxy playback through the server for background play. Turn off to play directly from YouTube (supports YouTube data plans)."
+            >
+              <Toggle 
+                checked={settings.serverProxyStreaming} 
+                onChange={(val) => updateSetting("serverProxyStreaming", val)} 
               />
             </SettingsRow>
           </div>

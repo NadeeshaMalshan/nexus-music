@@ -760,39 +760,49 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Check prefetch cache first
-    if (directUrlCacheRef.current[currentSong.id]) {
-      setDirectAudioUrl(directUrlCacheRef.current[currentSong.id]);
-      return;
-    }
-
-    const controller = new AbortController();
-    async function loadDirectUrl() {
-      if (!currentSong?.id) {
-        console.warn("[DashboardContext] Skipping loadDirectUrl - currentSong.id is missing");
+    if (settings.serverProxyStreaming) {
+      // Set the direct audio URL to our same-domain proxy stream endpoint.
+      // This resolves CORS, IP-binding, and background audio suspension issues
+      // on mobile browsers like Samsung Internet.
+      const streamUrl = `/api/audio/stream?videoId=${currentSong.id}`;
+      directUrlCacheRef.current[currentSong.id] = streamUrl;
+      setDirectAudioUrl(streamUrl);
+    } else {
+      // Check prefetch cache first (make sure it's a direct url and not a proxy url)
+      const cached = directUrlCacheRef.current[currentSong.id];
+      if (cached && !cached.startsWith("/api/audio/stream")) {
+        setDirectAudioUrl(cached);
         return;
       }
-      console.log(`[DashboardContext] Loading direct URL for: ${currentSong.id}`);
-      try {
-        const response = await fetch(`/api/get-audio-url?videoId=${currentSong.id}&isLive=${currentSong.isLive || ""}`, {
-          signal: controller.signal,
-          cache: "no-store",
-        });
-        if (!response.ok) throw new Error("Failed to fetch direct URL");
-        const data = await readResponseJson<{ url?: string }>(response);
-        if (data?.url) {
-          directUrlCacheRef.current[currentSong.id] = data.url;
-          setDirectAudioUrl(data.url);
+
+      const controller = new AbortController();
+      async function loadDirectUrl() {
+        if (!currentSong?.id) {
+          console.warn("[DashboardContext] Skipping loadDirectUrl - currentSong.id is missing");
+          return;
         }
-      } catch (error) {
-        if ((error as Error).name !== "AbortError") {
-          console.error("Failed to load direct audio URL:", error);
+        console.log(`[DashboardContext] Loading direct URL for: ${currentSong.id}`);
+        try {
+          const response = await fetch(`/api/get-audio-url?videoId=${currentSong.id}&isLive=${currentSong.isLive || ""}`, {
+            signal: controller.signal,
+            cache: "no-store",
+          });
+          if (!response.ok) throw new Error("Failed to fetch direct URL");
+          const data = await readResponseJson<{ url?: string }>(response);
+          if (data?.url) {
+            directUrlCacheRef.current[currentSong.id] = data.url;
+            setDirectAudioUrl(data.url);
+          }
+        } catch (error) {
+          if ((error as Error).name !== "AbortError") {
+            console.error("Failed to load direct audio URL:", error);
+          }
         }
       }
+      void loadDirectUrl();
+      return () => controller.abort();
     }
-    void loadDirectUrl();
-    return () => controller.abort();
-  }, [currentSong, viewMode]);
+  }, [currentSong, viewMode, settings.serverProxyStreaming]);
 
   // Lyrics loading logic
   useEffect(() => {
@@ -886,13 +896,17 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
       // 2. Prefetch direct audio URL (music mode only)
       if (viewMode === "music" && !song.isLive && !directUrlCacheRef.current[song.id]) {
-        try {
-          const res = await fetch(`/api/get-audio-url?videoId=${song.id}`, { signal: controller.signal, cache: "no-store" });
-          if (res.ok) {
-            const data = await res.json() as { url?: string };
-            if (data?.url) directUrlCacheRef.current[song.id] = data.url;
-          }
-        } catch { /* ignore */ }
+        if (settingsRef.current.serverProxyStreaming) {
+          directUrlCacheRef.current[song.id] = `/api/audio/stream?videoId=${song.id}`;
+        } else {
+          try {
+            const res = await fetch(`/api/get-audio-url?videoId=${song.id}`, { signal: controller.signal, cache: "no-store" });
+            if (res.ok) {
+              const data = await res.json() as { url?: string };
+              if (data?.url) directUrlCacheRef.current[song.id] = data.url;
+            }
+          } catch { /* ignore */ }
+        }
       }
 
       // 3. Prefetch lyrics

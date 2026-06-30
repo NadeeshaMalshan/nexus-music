@@ -659,12 +659,12 @@ export function MobileExpandedPlayer({
           <div
             className={`absolute transition-all duration-700 pointer-events-none ${activeTab === "controls"
                 ? (viewMode === "video"
-                  ? "inset-0 z-20 opacity-100 scale-100"
-                  : "top-[15dvh] left-1/2 -translate-x-1/2 w-[70vw] aspect-square rounded-[20px] overflow-hidden opacity-0 z-0 scale-50")
+                  ? "top-[16dvh] left-1/2 -translate-x-1/2 w-[90vw] max-w-[360px] aspect-video rounded-[16px] overflow-hidden opacity-100 z-20 scale-100 shadow-2xl"
+                  : "top-[13dvh] left-1/2 -translate-x-1/2 w-[70vw] aspect-square rounded-[20px] overflow-hidden opacity-0 z-0 scale-50")
                 : "inset-0 opacity-0 z-0 pointer-events-none scale-0"
               }`}
           >
-            <div ref={videoContainerRef} className="h-full w-full bg-black relative flex items-center justify-center">
+            <div ref={videoContainerRef} className="absolute inset-0 bg-black flex items-center justify-center">
               {currentSong.isLive && activeTab === "controls" && viewMode === "video" && (
                 <div className="absolute top-4 left-4 z-50 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-600/90 backdrop-blur-md shadow-lg pointer-events-none">
                   <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
@@ -675,6 +675,7 @@ export function MobileExpandedPlayer({
                 key={`mobile-yt-${videoKey}`}
                 videoId={currentSong.musicVideoId || currentSong.id}
                 opts={youtubeOpts}
+                iframeClassName="h-full w-full"
                 onReady={e => {
                   ytPlayerInstance.current = e.target;
                   e.target.setVolume(volume);
@@ -710,7 +711,6 @@ export function MobileExpandedPlayer({
                   }
                 }}
                 className="h-full w-full pointer-events-none select-none transition-transform duration-700"
-                iframeClassName="h-full w-full"
               />
               {/* Interaction Blocker & Controls (Only active in controls + video mode) */}
               {activeTab === "controls" && viewMode === "video" && (
@@ -749,9 +749,9 @@ export function MobileExpandedPlayer({
               className="flex flex-1 flex-col items-center justify-between pb-12 animate-gpu"
             >
               {/* Artwork Section */}
-              <div className={`w-full flex-[1.4] flex items-center justify-center transition-all duration-300 ${viewMode === 'video' ? 'px-0' : 'px-10'}`}>
+              <div className="w-full flex-[1.4] flex items-center justify-center px-10">
                 <m.div
-                  className={`relative w-full shadow-[0_40px_100px_rgba(0,0,0,0.6)] animate-gpu transform-gpu transition-all duration-300 ${viewMode === 'video' ? 'aspect-video max-w-full rounded-none! overflow-visible! border-none!' : 'aspect-square max-w-[340px] rounded-[20px] overflow-hidden border border-white/10'}`}
+                  className={`relative w-full shadow-[0_40px_100px_rgba(0,0,0,0.6)] animate-gpu transform-gpu transition-all duration-500 ${viewMode === 'video' ? 'aspect-video max-w-[360px] rounded-[16px] border border-white/5' : 'aspect-square max-w-[340px] rounded-[20px] border border-white/10'}`}
                 >
                   {viewMode === "music" && (
                     <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={64} />

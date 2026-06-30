@@ -632,12 +632,13 @@ export function DesktopExpandedPlayer({
             {(viewMode === "video" || isReallyLive) && (
               <div 
                 ref={videoContainerRef}
-                className={`group/vid relative overflow-hidden ${viewMode === "music" ? "absolute inset-0 opacity-0 pointer-events-none" : "h-full w-full bg-black"}`}
+                className={`group/vid absolute inset-0 overflow-hidden ${viewMode === "music" ? "opacity-0 pointer-events-none" : "bg-black"}`}
               >
                 <YouTube 
                   key={`desktop-yt-${videoKey}`}
                   videoId={currentSong.musicVideoId || currentSong.id} 
                   opts={youtubeOpts} 
+                  iframeClassName="w-full h-full"
                   onReady={e => { 
                     ytPlayerInstance.current = e.target; 
                     e.target.setVolume(volume); 

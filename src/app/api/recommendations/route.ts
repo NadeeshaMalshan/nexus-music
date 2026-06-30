@@ -2,17 +2,38 @@ import { NextResponse } from "next/server";
 import { fetchRecentMusicActivities } from "@/lib/youtubeData";
 import { getRequestAccessToken } from "@/lib/requestAccessToken";
 
+import { getRelatedTracksRobust } from "@/lib/youtubeMusicRelated";
+
 export const dynamic = "force-dynamic";
 
 /**
  * POST /api/recommendations
- * Routes to the Python AI Backend deployed on Hugging Face Spaces.
+ * Routes to the Python AI Backend deployed on Hugging Face Spaces or fetches related tracks locally.
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
-  const { prompt } = body;
+  const { prompt, recentTrackId } = body;
 
   try {
+    if (recentTrackId) {
+      console.log(`[Next.js API] Fetching related tracks for: ${recentTrackId}`);
+      const related = await getRelatedTracksRobust(recentTrackId);
+      const recommendations = related.map((t: any) => ({
+        youtubeId: t.youtubeId,
+        title: t.title,
+        artist: t.artist,
+        thumbnail: t.thumbnail || t.thumbnailUrl,
+        duration: t.duration,
+        reason: "Related to playing track"
+      }));
+      return NextResponse.json({
+        title: "More songs like current song",
+        description: "Recommended tracks similar to the current song",
+        cover_url: recommendations[0]?.thumbnail || "",
+        recommendations
+      });
+    }
+
     const accessToken = await getRequestAccessToken(request);
     let rawHistory: any[] = [];
     

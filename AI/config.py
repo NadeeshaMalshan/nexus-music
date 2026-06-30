@@ -24,7 +24,13 @@ fallbacks = [
     ChatGoogleGenerativeAI(model="gemma-4-31b-it", google_api_key=os.getenv("GEMINI_API_KEY")),
 ]
 
-# Combined model with fallback chain
+# Combined unstructured model with fallback chain
 llm = primary_llm.with_fallbacks(fallbacks)
+
+# Helper function to get structured LLM with fallbacks
+def get_structured_llm(schema):
+    primary_structured = primary_llm.with_structured_output(schema)
+    fallbacks_structured = [fb.with_structured_output(schema) for fb in fallbacks]
+    return primary_structured.with_fallbacks(fallbacks_structured)
 
 imagen_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))

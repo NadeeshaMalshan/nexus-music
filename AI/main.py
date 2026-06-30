@@ -90,5 +90,5 @@ def create_ai_playlist(req: PlaylistRequest):
         "title": branding.title,
         "description": branding.description,
         "cover_url": cover_url,
-        "songs": [s.model_dump() for s in compiled_songs]
+        "songs": [s.model_dump() if hasattr(s, "model_dump") else s.dict() for s in compiled_songs]
     }

@@ -9,14 +9,19 @@ from config import redis_client, llm, get_structured_llm, imagen_client
 def get_user_taste(user_id: str, raw_history: List[dict]) -> TasteProfile:
     cache_key = f"user:taste_profile:{user_id}"
     
-    # 1. Try DB/Redis Cache first
     cached = redis_client.get(cache_key)
     if cached:
-        print("Taste profile loaded from Redis cache!")
         try:
-            return TasteProfile.model_validate_json(cached)
-        except Exception:
-            # Fallback in case format is old/invalid
+            if isinstance(cached, str):
+                profile = TasteProfile.model_validate_json(cached)
+                print("Taste profile loaded from Redis cache!")
+                return profile
+            elif isinstance(cached, dict):
+                profile = TasteProfile.model_validate(cached) if hasattr(TasteProfile, "model_validate") else TasteProfile.parse_obj(cached)
+                print("Taste profile loaded from Redis cache (decoded dict)!")
+                return profile
+        except Exception as e:
+            print(f"Failed to parse cached taste profile: {e}")
             pass
     
     # 2. If Cache Miss, predict using Gemini
@@ -24,9 +29,9 @@ def get_user_taste(user_id: str, raw_history: List[dict]) -> TasteProfile:
     if not raw_history:
         # Fallback profile if history is empty
         return TasteProfile(
-            preferred_genres=["Pop", "Lo-Fi"],
-            vibe_description="Chill and relaxed acoustic beats",
-            tempo_preference="moderate",
+            preferred_genres=["General"],
+            vibe_description="A diverse mix of music styles",
+            tempo_preference="any",
             top_artists=[]
         )
         

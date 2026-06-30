@@ -298,7 +298,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
   return createPortal(tree, document.body);
 }
 
-type LibrarySyncStatus = "idle" | "saving" | "synced" | "error";
+type LibrarySyncStatus = "idle" | "saving" | "synced" | "queued" | "error";
 
 export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: ModalProps) {
   const { data: session } = useSession();
@@ -311,7 +311,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
   const [step, setStep] = useState<'input' | 'loading' | 'results'>('input');
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [generatedResult, setGeneratedResult] = useState<{ name: string, songs: CreateModalSong[] }>({ name: "", songs: [] });
+  const [generatedResult, setGeneratedResult] = useState<{ name: string, tasteVibe?: string, songs: CreateModalSong[] }>({ name: "", songs: [] });
   const [librarySyncStatus, setLibrarySyncStatus] = useState<LibrarySyncStatus>("idle");
   const [loadingStatus, setLoadingStatus] = useState("Analyzing taste profile...");
 
@@ -371,6 +371,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
       
       setGeneratedResult({
         name: data.title || (prompt ? `${prompt.charAt(0).toUpperCase() + prompt.slice(1).split(' ')[0]} Evolution` : "Neural DNA Mix"),
+        tasteVibe: data.taste_vibe,
         songs: recs.map((rec: any) => ({
           id: rec.youtubeId,
           title: rec.title,
@@ -388,7 +389,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
   };
 
   const handleSaveToYt = async () => {
-    if (librarySyncStatus === "saving" || librarySyncStatus === "synced") return;
+    if (librarySyncStatus === "saving" || librarySyncStatus === "synced" || librarySyncStatus === "queued") return;
     const title = generatedResult.name?.trim();
     const ids = generatedResult.songs.map((s) => s.id).filter(Boolean);
     if (!title || ids.length === 0) return;
@@ -400,14 +401,27 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
         youtubeApiFetchInit(session?.accessToken, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, videoIds: ids }),
+          body: JSON.stringify({ 
+            title, 
+            videoIds: ids,
+            trackDetails: generatedResult.songs.map(s => ({
+              id: s.id,
+              title: s.title,
+              artist: s.artist,
+              artwork: s.artwork
+            }))
+          }),
         })
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(typeof data.error === "string" ? data.error : "Failed to save playlist");
       }
-      setLibrarySyncStatus("synced");
+      if (data.pending) {
+        setLibrarySyncStatus("queued");
+      } else {
+        setLibrarySyncStatus("synced");
+      }
       router.refresh();
     } catch (err) {
       console.error("AI Save Error:", err);
@@ -442,11 +456,11 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
             onClick={(e) => e.stopPropagation()}
           >
             {/* Immersive background covering the entire modal shell */}
-            <div className="absolute inset-0 z-0 pointer-events-none">
+            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
               <img
                 src={firstArtwork || "https://images.unsplash.com/photo-1614149162883-504ce4d13909?q=80&w=1000&auto=format&fit=crop"}
                 alt="Background"
-                className="w-full h-full object-cover opacity-45 mix-blend-screen scale-105 group-hover:scale-100 transition-transform duration-[2s] ease-out"
+                className="w-full h-full object-cover opacity-15 blur-3xl scale-105 transition-transform duration-[2s] ease-out"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-[#0d0d0d]/90 via-[#0d0d0d]/60 to-[#0d0d0d]/90" />
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0d0d0d]/50 to-[#0d0d0d]" />
@@ -630,19 +644,24 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                           />
                         </h1>
                         <p className="text-white/40 text-[17px] font-medium leading-relaxed italic mt-3 text-center">" {prompt} "</p>
+                        {generatedResult.tasteVibe && (
+                          <div className="mt-4 px-4 py-1.5 rounded-full border border-white/5 bg-white/[0.02] text-[13px] font-black text-white/50 tracking-wider uppercase max-w-lg text-center backdrop-blur-md">
+                            Vibe Match: {generatedResult.tasteVibe}
+                          </div>
+                        )}
                         
                         <div className="flex gap-3 mt-6 justify-center">
-                          <m.button 
+                           <m.button 
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleSaveToYt}
-                            disabled={librarySyncStatus === "saving" || librarySyncStatus === "synced"}
+                            disabled={librarySyncStatus === "saving" || librarySyncStatus === "synced" || librarySyncStatus === "queued"}
                             className="px-6 py-3.5 rounded-2xl font-black text-sm tracking-tight hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
-                            style={librarySyncStatus === "synced" ? { backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff' } : { backgroundColor: currentAccent, color: '#000' }}
+                            style={librarySyncStatus === "synced" || librarySyncStatus === "queued" ? { backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff' } : { backgroundColor: currentAccent, color: '#000' }}
                           >
-                            {librarySyncStatus === "saving" ? "Syncing..." : librarySyncStatus === "synced" ? "Synced to YouTube" : "Sync to Library"}
+                            {librarySyncStatus === "saving" ? "Syncing..." : librarySyncStatus === "queued" ? "Queued for Sync" : librarySyncStatus === "synced" ? "Synced to YouTube" : "Sync to Library"}
                             {librarySyncStatus === "idle" && <Plus size={14} />}
-                            {librarySyncStatus === "synced" && <Check size={14} />}
+                            {(librarySyncStatus === "synced" || librarySyncStatus === "queued") && <Check size={14} />}
                           </m.button>
                           <m.button 
                             whileHover={{ scale: 1.02 }}
@@ -655,13 +674,14 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                         </div>
                       </div>
 
-                      {/* Top 3 tracks listed below the title section, centered */}
-                      <div className="w-full max-w-2xl flex flex-col gap-3 justify-center mx-auto">
-                        {generatedResult.songs.slice(0, 3).map((track, i) => (
+                      {/* List of all generated songs, listed below the title section, centered */}
+                      <div className="w-full max-w-2xl flex flex-col gap-3 justify-center mx-auto mt-6 max-h-[400px] overflow-y-auto pr-1 no-scrollbar">
+                        {generatedResult.songs.map((track, i) => (
                           <div
-                            key={i}
+                            key={`${track.id}-${i}`}
                             className="group/item flex items-center gap-5 bg-black/20 hover:bg-white/10 backdrop-blur-md border border-white/10 p-3 rounded-2xl cursor-pointer transition-all duration-300 hover:translate-x-2"
                           >
+                            <div className="text-[12px] font-black text-white/20 w-4 text-center shrink-0">{i + 1}</div>
                             <div className="w-[72px] h-[72px] shrink-0 bg-black overflow-hidden rounded-xl relative shadow-lg">
                               <MusicArtwork src={track.artwork} alt={track.title} rounded="none" className="w-full h-full" />
                             </div>
@@ -676,36 +696,6 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
                               <Minus size={16} />
                             </button>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* shelf list for rest of the songs - matching CenterPanel.tsx shelves */}
-                    <div className="mt-12">
-                      <h2 className="text-[24px] font-black text-white tracking-tight mb-6 text-left">Generated setlist ({generatedResult.songs.length} tracks)</h2>
-                      <div className="flex items-start gap-x-6 overflow-x-auto no-scrollbar scroll-smooth pb-6">
-                        {generatedResult.songs.map((song, i) => (
-                          <m.div 
-                            key={`${song.id}-${i}`} 
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.03, ease: APPLE_EASE }}
-                            className="w-[180px] sm:w-[200px] shrink-0 group flex flex-col relative"
-                          >
-                            <div className="relative aspect-square overflow-hidden rounded-[22px] bg-[#161618] shadow-[0_20px_40px_rgba(0,0,0,0.4)] ring-1 ring-white/5 transition-all duration-500 group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.55)]">
-                              <MusicArtwork src={song.artwork} alt={song.title} iconSize={30} variant="track" rounded="2xl" className="transition-transform duration-700 group-hover:scale-110" />
-                              <button 
-                                onClick={() => setGeneratedResult(prev => ({ ...prev, songs: prev.songs.filter(s => s.id !== song.id) }))}
-                                className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-md rounded-full text-white/40 hover:text-red-400 border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <Minus size={12} />
-                              </button>
-                            </div>
-                            <div className="mt-4 px-1 text-left">
-                              <h3 className="line-clamp-2 text-[15px] font-bold leading-tight tracking-tight text-white h-[38px]">{song.title}</h3>
-                              <p className="mt-1 truncate text-[12px] font-medium text-white/40 uppercase">{song.artist}</p>
-                            </div>
-                          </m.div>
                         ))}
                       </div>
                     </div>

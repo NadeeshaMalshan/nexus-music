@@ -112,6 +112,7 @@ export async function POST(request: Request) {
       title: data.title,
       description: data.description,
       cover_url: data.cover_url,
+      taste_vibe: data.taste_vibe,
       recommendations
     });
 

@@ -106,5 +106,6 @@ def create_ai_playlist(req: PlaylistRequest):
         "description": branding.description,
         "cover_url": cover_url,
         "queries": queries,
+        "taste_vibe": taste.vibe_description,
         "songs": [s.model_dump() if hasattr(s, "model_dump") else s.dict() for s in compiled_songs]
     }

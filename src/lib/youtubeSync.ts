@@ -53,6 +53,16 @@ export async function processSyncQueue(email: string, accessToken: string): Prom
               : p
           );
           await redis.set(playlistsKey, JSON.stringify(updated));
+
+          // Migrate tracks key to the new real playlist ID
+          const oldTracksKey = `${LIBRARY_KEY_PREFIX}:playlist_tracks:${tempPlaylistId}:${email}`;
+          const newTracksKey = `${LIBRARY_KEY_PREFIX}:playlist_tracks:${realPlaylistId}:${email}`;
+          const cachedTracks = await redis.get(oldTracksKey);
+          if (cachedTracks) {
+            await redis.set(newTracksKey, typeof cachedTracks === "string" ? cachedTracks : JSON.stringify(cachedTracks));
+            await redis.expire(newTracksKey, 7 * 24 * 60 * 60);
+            await redis.del(oldTracksKey);
+          }
         }
 
         console.log(`[syncQueue] Synced CREATE_PLAYLIST: "${title}" -> ${realPlaylistId}`);

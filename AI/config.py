@@ -19,7 +19,7 @@ primary_llm = ChatGoogleGenerativeAI(
 
 # Fallback models
 fallbacks = [
-    ChatGoogleGenerativeAI(model="gemini-3.1-pro", google_api_key=os.getenv("GEMINI_API_KEY")),
+    ChatGoogleGenerativeAI(model="gemini-3.1-pro-preview", google_api_key=os.getenv("GEMINI_API_KEY")),
     ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", google_api_key=os.getenv("GEMINI_API_KEY")),
     ChatGoogleGenerativeAI(model="gemma-4-31b-it", google_api_key=os.getenv("GEMINI_API_KEY")),
 ]

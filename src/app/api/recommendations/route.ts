@@ -1,62 +1,80 @@
 import { NextResponse } from "next/server";
-import { searchSongsRobust } from "@/lib/ytmSearchService";
+import { fetchRecentMusicActivities } from "@/lib/youtubeData";
+import { getRequestAccessToken } from "@/lib/requestAccessToken";
 
 export const dynamic = "force-dynamic";
 
 /**
  * POST /api/recommendations
- * Standard, non-AI recommendation provider.
- * Uses direct YouTube Music searches and YTM related track mappings.
+ * Routes to the Python AI Backend deployed on Hugging Face Spaces.
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
-  const { prompt, recentTrackId } = body;
+  const { prompt } = body;
 
   try {
-    // 1. If recentTrackId is provided, pull YTM related tracks (non-AI related algorithm)
-    if (recentTrackId) {
-      console.log(`[Recommendations] Fetching YTM Related Tracks for: ${recentTrackId}`);
+    const accessToken = await getRequestAccessToken(request);
+    let rawHistory: any[] = [];
+    
+    // 1. Fetch user's raw music history from YouTube API
+    if (accessToken) {
       try {
-        const { getRelatedTracksRobust } = await import("@/lib/youtubeMusicRelated");
-        const rawSuggestions = await getRelatedTracksRobust(recentTrackId);
-
-        const recommendations = rawSuggestions.slice(0, 20).map((t: any) => ({
-          youtubeId: t.youtubeId,
-          title: t.title,
-          artist: t.artists ? t.artists[0]?.name : "Unknown Artist",
-          thumbnail: t.thumbnail || t.thumbnailUrl || "",
-          duration: t.duration || "0:00",
-          reason: "Similar to recent playback"
-        })).filter((t: any) => t.youtubeId && t.youtubeId !== recentTrackId);
-
-        if (recommendations.length > 0) {
-          return NextResponse.json({ recommendations });
-        }
-      } catch (fallbackError: any) {
-        console.error("[Recommendations] YTM Related tracks fetch failed:", fallbackError);
+        rawHistory = await fetchRecentMusicActivities(accessToken, 50);
+      } catch (e) {
+        console.warn("[Next.js] Failed to fetch YT activities:", e);
       }
     }
 
-    // 2. Default: Perform a standard YTMusic search for the prompt (completely non-AI search query)
-    const query = prompt?.trim() || "Popular Songs";
-    console.log(`[Recommendations] Performing direct YTMusic search for prompt: "${query}"`);
+    // 2. Call the Hugging Face Space backend
+    const backendBaseUrl = process.env.PYTHON_AI_BACKEND_URL || "https://nadeeshamalshan-nexusai.hf.space";
+    const pythonEndpoint = `${backendBaseUrl}/api/recommendations`;
+
+    console.log(`[Next.js API] Calling Python AI Backend at: ${pythonEndpoint}`);
+
+    const pythonRes = await fetch(pythonEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: "default_user", // Replace with session user ID if available
+        prompt: prompt || "Personalized Mix",
+        raw_history: rawHistory.map(track => ({
+          title: track.title,
+          artist: track.artist
+        }))
+      }),
+    });
+
+    if (!pythonRes.ok) {
+      throw new Error(`Python API responded with status ${pythonRes.status}`);
+    }
+
+    const data = await pythonRes.json();
     
-    const searchResults = await searchSongsRobust(query);
-    const recommendations = (searchResults || []).slice(0, 20).map((t: any) => ({
-      youtubeId: t.youtubeId,
+    // Directly mapping compiled songs into the recommendations payload structure
+    const recommendations = (data.songs || []).map((t: any) => ({
+      youtubeId: t.id,
       title: t.title,
       artist: t.artist,
-      thumbnail: t.thumbnailUrl,
-      duration: t.duration || "0:00",
-      reason: "Curated search match"
+      thumbnail: t.artwork,
+      reason: "AI Taste Prediction"
     }));
 
-    return NextResponse.json({ recommendations });
+    return NextResponse.json({
+      title: data.title,
+      description: data.description,
+      cover_url: data.cover_url,
+      recommendations
+    });
+
   } catch (error: any) {
-    console.error("[Recommendations] Search recommendation failed:", error);
-    return NextResponse.json({ error: "Failed to generate recommendations", detail: error.message }, { status: 500 });
+    console.error("[Recommendations Proxy] Error connecting to Hugging Face:", error);
+    return NextResponse.json(
+      { error: "AI recommendation engine failed", detail: error.message },
+      { status: 500 }
+    );
   }
 }
+
 
 export async function GET() {
   return NextResponse.json({ error: "Method not allowed" }, { status: 405 });

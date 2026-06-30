@@ -358,13 +358,17 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
       if (!res.ok) throw new Error(`API error ${res.status}`);
       const data = await res.json();
       const recs = (data.recommendations || []).slice(0, 20);
+      
+      // Determine cover art (fallback to first song's artwork if API did not return one)
+      const finalCover = data.cover_url || (recs.length > 0 ? recs[0].thumbnail : null);
+      
       setGeneratedResult({
-        name: prompt ? `${prompt.charAt(0).toUpperCase() + prompt.slice(1).split(' ')[0]} Evolution` : "Neural DNA Mix",
+        name: data.title || (prompt ? `${prompt.charAt(0).toUpperCase() + prompt.slice(1).split(' ')[0]} Evolution` : "Neural DNA Mix"),
         songs: recs.map((rec: any) => ({
           id: rec.youtubeId,
           title: rec.title,
           artist: rec.artist,
-          artwork: rec.thumbnail
+          artwork: rec.thumbnail || finalCover
         })) as CreateModalSong[]
       });
       setLibrarySyncStatus("idle");

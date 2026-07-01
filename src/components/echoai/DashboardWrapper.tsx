@@ -128,13 +128,8 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
 
     const segments = pathname.split("/").filter(Boolean);
 
-    // 1. Song playing state (takes priority)
-    if (isPlaying && mergedCurrentSong) {
-      finalTitle = `🎵 ${mergedCurrentSong.title} • ${mergedCurrentSong.artist}`;
-      finalFavicon = mergedCurrentSong.artwork || "/icons/icon.svg";
-    } 
-    // 2. Specific routes
-    else if (segments[0] === "artist" && segments[1]) {
+    // 1. Specific routes (artist, playlist, album) take priority
+    if (segments[0] === "artist" && segments[1]) {
       const artistName = decodeURIComponent(segments[1]);
       finalTitle = `👤 ${artistName} | Nexus Music`;
       finalFavicon = "/icons/icon.svg";
@@ -144,7 +139,14 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     } else if (segments[0] === "album" && segments[1]) {
       finalTitle = `💿 ${pageTitle || "Album"} | Nexus Music`;
       finalFavicon = pageFavicon || "/icons/icon.svg";
-    } else if (pathname === "/") {
+    } 
+    // 2. Otherwise, if a song is actively playing, show the song name
+    else if (isPlaying && mergedCurrentSong) {
+      finalTitle = `🎵 ${mergedCurrentSong.title} • ${mergedCurrentSong.artist}`;
+      finalFavicon = mergedCurrentSong.artwork || "/icons/icon.svg";
+    } 
+    // 3. Fallbacks
+    else if (pathname === "/") {
       finalTitle = "Nexus Music | Premium AI Ecosystem";
       finalFavicon = "/icons/icon.svg";
     } else {

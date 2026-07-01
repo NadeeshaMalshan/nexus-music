@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <!-- Subtle Drop Shadow for depth -->
+    <filter id="subtle-glow" x="-10%" y="-10%" width="120%" height="120%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#FFFFFF" flood-opacity="0.15" />
+    </filter>
+  </defs>
+
+  <!-- The "Nexus Wave" (Solid White) -->
+  <g filter="url(#subtle-glow)">
+    <path d="M 172 340 
+             C 172 230, 214 172, 256 256 
+             C 298 340, 340 282, 340 172" 
+          stroke="#FFFFFF" 
+          stroke-width="36" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+  </g>
+</svg>

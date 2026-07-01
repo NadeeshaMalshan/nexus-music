@@ -85,6 +85,10 @@ type DashboardContextType = {
   overrideArtwork: string | null;
   setOverrideArtwork: (url: string | null) => void;
   liveMetadata: LiveMetadata | null;
+  pageTitle: string | null;
+  setPageTitle: (title: string | null) => void;
+  pageFavicon: string | null;
+  setPageFavicon: (favicon: string | null) => void;
 
   // View State (Shared but UI-specific)
   isRightSidebarOpen: boolean;
@@ -226,6 +230,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [selectedPlaylist, setSelectedPlaylist] = useState<YouTubePlaylist | null>(null);
   const [playedHistory, setPlayedHistory] = useState<Song[]>([]);
   const [overrideArtwork, setOverrideArtwork] = useState<string | null>(null);
+  const [pageTitle, setPageTitle] = useState<string | null>(null);
+  const [pageFavicon, setPageFavicon] = useState<string | null>(null);
   const [upNextQueue, setUpNextQueue] = useState<Song[]>([]);
   const [previousQueue, setPreviousQueue] = useState<Song[]>([]);
   const [knowFacts, setKnowFacts] = useState<string[]>([]);
@@ -2181,6 +2187,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     aiLoading,
     overrideArtwork,
     setOverrideArtwork,
+    pageTitle,
+    setPageTitle,
+    pageFavicon,
+    setPageFavicon,
     isRightSidebarOpen,
     isExpandedPlayerOpen,
     selectedPlaylist,
@@ -2237,7 +2247,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
     setIsPlaying, setQueueSongs, setPreviousQueue, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata,
-    isJamActive
+    isJamActive, pageTitle, pageFavicon
   ]);
 
   return (

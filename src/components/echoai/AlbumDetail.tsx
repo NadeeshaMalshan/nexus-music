@@ -24,7 +24,7 @@ interface AlbumDetailProps {
 }
 
 export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNavigateArtist, accentColor, currentSongId, onAddToQueue, onPlayNext, onPlayPlaylist }: AlbumDetailProps) {
-  const { setOverrideArtwork, isRightSidebarOpen } = useDashboard();
+  const { setOverrideArtwork, isRightSidebarOpen, setPageTitle, setPageFavicon } = useDashboard();
   const [albumData, setAlbumData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -38,10 +38,12 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
           setAlbumData(data);
           
           // Set the global dashboard background based on the artwork
-          const artworkUrl = data.thumbnails?.[data.thumbnails.length - 1]?.url;
+          const artworkUrl = data.thumbnails?.[data.thumbnails.length - 1]?.url || data.thumbnails?.[0]?.url;
           if (artworkUrl) {
             setOverrideArtwork(artworkUrl);
+            setPageFavicon(artworkUrl);
           }
+          setPageTitle(data.title || "Album");
         }
       } catch (err) {
         console.error("Failed to load album details:", err);
@@ -51,11 +53,13 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
     }
     loadData();
 
-    // Reset background when leaving the page (on unmount)
+    // Reset background and metadata when leaving the page (on unmount)
     return () => {
       setOverrideArtwork(null);
+      setPageTitle(null);
+      setPageFavicon(null);
     };
-  }, [albumId, setOverrideArtwork]);
+  }, [albumId, setOverrideArtwork, setPageTitle, setPageFavicon]);
 
   if (loading) {
     return <div className="flex-1 h-full bg-transparent" />;

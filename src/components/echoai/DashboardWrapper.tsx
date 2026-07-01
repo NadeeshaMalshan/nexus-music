@@ -54,6 +54,9 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     rightSidebarMode,
     setRightSidebarMode,
     liveMetadata,
+    pageTitle,
+    pageFavicon,
+    selectedPlaylist,
   } = useDashboard();
 
   const themeColor = palette.accent;
@@ -115,6 +118,61 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
       appleMeta.setAttribute("content", currentSong ? "black-translucent" : "black");
     }
   }, [palette.accent, currentSong]);
+
+  // Sync Tab Title and Favicon based on routing & playback state
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    let finalTitle = "Nexus Music | Premium AI Ecosystem";
+    let finalFavicon = "/icons/icon.svg";
+
+    const segments = pathname.split("/").filter(Boolean);
+
+    // 1. Song playing state (takes priority)
+    if (isPlaying && mergedCurrentSong) {
+      finalTitle = `🎵 ${mergedCurrentSong.title} • ${mergedCurrentSong.artist}`;
+      finalFavicon = mergedCurrentSong.artwork || "/icons/icon.svg";
+    } 
+    // 2. Specific routes
+    else if (segments[0] === "artist" && segments[1]) {
+      const artistName = decodeURIComponent(segments[1]);
+      finalTitle = `👤 ${artistName} | Nexus Music`;
+      finalFavicon = "/icons/icon.svg";
+    } else if (segments[0] === "playlists" && segments[1]) {
+      finalTitle = `📁 ${selectedPlaylist?.title || "Playlist"} | Nexus Music`;
+      finalFavicon = selectedPlaylist?.thumbnailUrl || "/icons/icon.svg";
+    } else if (segments[0] === "album" && segments[1]) {
+      finalTitle = `💿 ${pageTitle || "Album"} | Nexus Music`;
+      finalFavicon = pageFavicon || "/icons/icon.svg";
+    } else if (pathname === "/") {
+      finalTitle = "Nexus Music | Premium AI Ecosystem";
+      finalFavicon = "/icons/icon.svg";
+    } else {
+      finalTitle = pageTitle ? `${pageTitle} | Nexus Music` : "Nexus Music";
+      finalFavicon = pageFavicon || "/icons/icon.svg";
+    }
+
+    document.title = finalTitle;
+
+    const faviconSelectors = ['link[rel="icon"]', 'link[rel="shortcut icon"]', 'link[rel="apple-touch-icon"]'];
+    faviconSelectors.forEach(selector => {
+      let link = document.querySelector(selector) as HTMLLinkElement | null;
+      if (link) {
+        link.setAttribute("href", finalFavicon);
+      } else {
+        link = document.createElement("link");
+        if (selector.includes("apple-touch-icon")) {
+          link.rel = "apple-touch-icon";
+        } else if (selector.includes("shortcut")) {
+          link.rel = "shortcut icon";
+        } else {
+          link.rel = "icon";
+        }
+        link.href = finalFavicon;
+        document.getElementsByTagName("head")[0].appendChild(link);
+      }
+    });
+  }, [isPlaying, mergedCurrentSong, pathname, selectedPlaylist, pageTitle, pageFavicon]);
 
   // Determine active view based on pathname
   const activeView = pathname === "/" ? "home" : pathname.split("/")[1] || "home";

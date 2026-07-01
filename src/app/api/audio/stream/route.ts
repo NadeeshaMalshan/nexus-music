@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import ytdl from "@distube/ytdl-core";
 import { Readable } from "stream";
 
@@ -26,6 +26,20 @@ function nodeReadableToWeb(nodeReadable: Readable): ReadableStream {
 export async function GET(req: NextRequest) {
   const videoId = req.nextUrl.searchParams.get("videoId");
   if (!videoId) return new Response("Missing videoId", { status: 400 });
+
+  // On serverless environments (like Vercel), proxying audio bytes directly
+  // hits the 10-second execution timeout and the 4.5MB payload limit.
+  // Redirecting the client to the direct CDN URL allows the client browser
+  // to fetch it natively using the client's residential (non-blocked) IP.
+  try {
+    const directUrl = await getYoutubeDirectAudioUrl(videoId);
+    if (directUrl) {
+      console.log(`[audio/stream] Redirecting ${videoId} to direct CDN url`);
+      return NextResponse.redirect(directUrl, { status: 307 });
+    }
+  } catch (err) {
+    console.warn("[audio/stream] Redirect extraction failed, attempting direct stream:", err);
+  }
 
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   const rangeHeader = req.headers.get("range");

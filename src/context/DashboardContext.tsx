@@ -145,6 +145,8 @@ type DashboardContextType = {
     destroy: () => void;
     getPlayerState: () => number;
   } | null>;
+  installPwa: () => void;
+  pwaInstallable: boolean;
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -244,6 +246,46 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const viewModeRef = useRef<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const prevViewModeRef = useRef<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const userIntentRef = useRef<"playing" | "paused">("paused");
+
+  // PWA installation states and effects
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [pwaInstallable, setPwaInstallable] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setPwaInstallable(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    if (window.matchMedia("(display-mode: standalone)").matches) {
+      setPwaInstallable(false);
+    }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const installPwa = useCallback(() => {
+    if (!deferredPrompt) {
+      console.warn("Deferred installation prompt is not available yet.");
+      return;
+    }
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult: { outcome: string }) => {
+      if (choiceResult.outcome === "accepted") {
+        console.log("User accepted the PWA install prompt");
+        setPwaInstallable(false);
+      } else {
+        console.log("User dismissed the PWA install prompt");
+      }
+      setDeferredPrompt(null);
+    });
+  }, [deferredPrompt]);
 
   const [directAudioUrl, setDirectAudioUrl] = useState<string | null>(null);
   const audio1Ref = useRef<HTMLAudioElement | null>(null);
@@ -782,12 +824,58 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
 
       const controller = new AbortController();
+      async function getClientSideAudioUrl(videoId: string): Promise<string | null> {
+        const instances = [
+          "https://pipedapi.kavin.rocks",
+          "https://pipedapi.tokhmi.xyz",
+          "https://pipedapi.moomoo.me",
+          "https://api.piped.yt",
+          "https://pipedapi.colbyland.xyz"
+        ];
+        for (const base of instances) {
+          try {
+            const res = await fetch(`${base}/streams/${encodeURIComponent(videoId)}`, {
+              headers: { Accept: "application/json" }
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const streams = data.audioStreams;
+              if (Array.isArray(streams) && streams.length > 0) {
+                const withUrl = streams.filter((s: any) => typeof s.url === "string" && s.url.length > 0);
+                if (withUrl.length > 0) {
+                  withUrl.sort((a: any, b: any) => (b.bitrate ?? 0) - (a.bitrate ?? 0));
+                  return withUrl[0].url;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn(`[Client-side Piped] Instance ${base} failed:`, e);
+          }
+        }
+        return null;
+      }
+
       async function loadDirectUrl() {
         if (!currentSong?.id) {
           console.warn("[DashboardContext] Skipping loadDirectUrl - currentSong.id is missing");
           return;
         }
         console.log(`[DashboardContext] Loading direct URL for: ${currentSong.id}`);
+        
+        // 1. Try client-side extraction first to avoid using Vercel backend
+        try {
+          const clientUrl = await getClientSideAudioUrl(currentSong.id);
+          if (clientUrl) {
+            console.log("[DashboardContext] Successfully resolved audio URL on client-side");
+            directUrlCacheRef.current[currentSong.id] = clientUrl;
+            setDirectAudioUrl(clientUrl);
+            return;
+          }
+        } catch (clientErr) {
+          console.warn("[DashboardContext] Client-side extraction error:", clientErr);
+        }
+
+        // 2. Fall back to backend extraction if client-side fails
         try {
           const response = await fetch(`/api/get-audio-url?videoId=${currentSong.id}&isLive=${currentSong.isLive || ""}`, {
             signal: controller.signal,
@@ -801,7 +889,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (error) {
           if ((error as Error).name !== "AbortError") {
-            console.error("Failed to load direct audio URL:", error);
+            console.error("Failed to load direct audio URL from backend:", error);
           }
         }
       }
@@ -2240,6 +2328,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setPreviousQueue,
     previousQueue,
     rightSidebarMode,
+    installPwa,
+    pwaInstallable,
   }), [
     audioData, queueSongs, previousQueue, currentSong, isPlaying, currentTimeSec, 
     durationSec, volume, lyricsData, lyricsLoading, knowFacts, 
@@ -2247,7 +2337,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
     setIsPlaying, setQueueSongs, setPreviousQueue, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata,
-    isJamActive, pageTitle, pageFavicon
+    isJamActive, pageTitle, pageFavicon, installPwa, pwaInstallable
   ]);
 
   return (

@@ -526,18 +526,23 @@ export function YouTubeLibrary({
                     
                     const songObj = likedSongsList[idx];
                     return (
-                      <m.div 
-                        variants={CARD_VARIANTS}
-                        key={`liked-${idx}`}
-                        onClick={() => {
-                          if (onPlayPlaylist) {
-                            onPlayPlaylist(likedSongsList, idx);
-                          } else {
-                            onSongClick?.(songObj);
-                          }
-                        }}
-                        className="group flex flex-col cursor-pointer"
-                      >
+                       <m.div 
+                         variants={CARD_VARIANTS}
+                         key={`liked-${idx}`}
+                         onClick={() => {
+                           if (onPlayPlaylist) {
+                             onPlayPlaylist(likedSongsList, idx);
+                           } else {
+                             onSongClick?.(songObj);
+                           }
+                         }}
+                         data-song-id={songObj.id}
+                         data-song-title={songObj.title}
+                         data-song-artist={songObj.artist}
+                         data-song-artwork={songObj.artwork || ""}
+                         data-song-duration={songObj.duration || ""}
+                         className="group flex flex-col cursor-pointer"
+                       >
                         <div className="relative aspect-square mb-4 rounded-3xl overflow-hidden bg-zinc-900 border border-white/5 shadow-xl transition-all duration-500">
                           <div className="w-full h-full transition-transform duration-700 ease-out group-hover:scale-[1.06]">
                             <MusicArtwork

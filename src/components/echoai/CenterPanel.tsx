@@ -261,6 +261,11 @@ function SearchCard(props: {
     <m.div
       initial={false}
       animate={{ opacity: 1, y: 0 }}
+      data-song-id={item.videoId || ""}
+      data-song-title={item.title || ""}
+      data-song-artist={item.author || ""}
+      data-song-artwork={item.thumbnail || ""}
+      data-song-duration={item.duration || ""}
       className="group relative flex flex-col w-full min-w-0 cursor-pointer"
       onClick={onPlay}
     >

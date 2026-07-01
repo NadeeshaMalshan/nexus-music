@@ -244,6 +244,11 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
                   initial={false}
                   animate={{ opacity: 1, y: 0 }}
                   onClick={() => handleTrackClick(track, i)}
+                  data-song-id={song.id}
+                  data-song-title={song.title}
+                  data-song-artist={song.artist}
+                  data-song-artwork={song.artwork || ""}
+                  data-song-duration={song.duration || ""}
                   className={`group flex items-center gap-4 p-3 md:p-4 rounded-2xl cursor-pointer border ${
                     isActive ? "bg-white/10 border-white/10 shadow-2xl" : "hover:bg-white/5 border-transparent hover:border-white/10"
                   }`}

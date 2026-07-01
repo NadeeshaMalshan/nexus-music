@@ -618,6 +618,11 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                     <m.div
                       initial={false}
                       animate={{ opacity: 1, x: 0 }}
+                      data-song-id={track.videoId || ""}
+                      data-song-title={track.name || ""}
+                      data-song-artist={data?.name || artistName || ""}
+                      data-song-artwork={track.thumbnail || track.albumArt || ""}
+                      data-song-duration={track.duration || fmtMs(track.durationMs) || ""}
                       className={`group relative flex items-center gap-4 rounded-2xl px-4 py-3 cursor-pointer animate-gpu ${
                         currentSong?.id === track.videoId
                           ? "bg-white/8"

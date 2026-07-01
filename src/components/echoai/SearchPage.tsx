@@ -1156,6 +1156,11 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                       e.preventDefault();
                       setOpenMenuId(song.id);
                     }}
+                    data-song-id={song.id}
+                    data-song-title={song.title}
+                    data-song-artist={song.artist}
+                    data-song-artwork={song.artwork || ""}
+                    data-song-duration={song.duration || ""}
                     className="group flex cursor-pointer items-center justify-between p-3 px-4 rounded-2xl bg-black/20 hover:bg-white/10 backdrop-blur-md border border-white/10 hover:translate-x-2 transition-all duration-300 animate-gpu shadow-lg"
                     onClick={() => {
                       if (song.type === "ARTIST") {

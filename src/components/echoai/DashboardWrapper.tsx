@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDashboard } from "@/context/DashboardContext";
 import { LeftSidebar } from "./LeftSidebar";
 import { RightSidebar } from "./RightSidebar";
@@ -10,6 +10,8 @@ import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { m, AnimatePresence } from "motion/react";
 import { EchoAIDashboard } from "./EchoAIDashboard";
+import { ListPlus, PlaySquare, Disc, User, Info, X, Loader2 } from "lucide-react";
+import { type Song } from "./types";
 
 export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -29,6 +31,8 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     onNext,
     onPrev,
     onRateSong,
+    onAddToQueue,
+    onPlayNext,
     setIsExpandedPlayerOpen,
     setIsRightSidebarOpen,
     upNextQueue,
@@ -60,6 +64,121 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   } = useDashboard();
 
   const themeColor = palette.accent;
+
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; song: Song } | null>(null);
+  const [infoSong, setInfoSong] = useState<Song | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Responsive device check
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Global Context Menu & Long Press Listeners
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const songElement = target.closest("[data-song-id]");
+      if (!songElement) return;
+
+      e.preventDefault();
+
+      const song: Song = {
+        id: songElement.getAttribute("data-song-id") || "",
+        title: songElement.getAttribute("data-song-title") || "",
+        artist: songElement.getAttribute("data-song-artist") || "",
+        artwork: songElement.getAttribute("data-song-artwork") || "",
+        duration: songElement.getAttribute("data-song-duration") || "",
+        color: "",
+      };
+
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        song,
+      });
+    };
+
+    const handleGlobalClick = () => {
+      setContextMenu(null);
+    };
+
+    window.addEventListener("contextmenu", handleContextMenu);
+    window.addEventListener("click", handleGlobalClick);
+
+    return () => {
+      window.removeEventListener("contextmenu", handleContextMenu);
+      window.removeEventListener("click", handleGlobalClick);
+    };
+  }, []);
+
+  // Long-press detection for mobile
+  useEffect(() => {
+    let pressTimer: NodeJS.Timeout | null = null;
+    let startX = 0;
+    let startY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      const songElement = target.closest("[data-song-id]");
+      if (!songElement) return;
+
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+
+      pressTimer = setTimeout(() => {
+        e.preventDefault();
+        
+        const song: Song = {
+          id: songElement.getAttribute("data-song-id") || "",
+          title: songElement.getAttribute("data-song-title") || "",
+          artist: songElement.getAttribute("data-song-artist") || "",
+          artwork: songElement.getAttribute("data-song-artwork") || "",
+          duration: songElement.getAttribute("data-song-duration") || "",
+          color: "",
+        };
+
+        setContextMenu({
+          x: touch.clientX,
+          y: touch.clientY,
+          song,
+        });
+      }, 600);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!pressTimer) return;
+      const touch = e.touches[0];
+      if (Math.abs(touch.clientX - startX) > 10 || Math.abs(touch.clientY - startY) > 10) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    };
+
+    window.addEventListener("touchstart", handleTouchStart, { passive: false });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd);
+    window.addEventListener("touchcancel", handleTouchEnd);
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, []);
 
   const mergedCurrentSong = useMemo(() => {
     if (!currentSong) return null;
@@ -344,6 +463,319 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           router.push(`/artist/${encodeURIComponent(name)}`);
         }}
       />
+
+      {/* Custom Context Menu */}
+      <AnimatePresence>
+        {contextMenu && (
+          isMobile ? (
+            <>
+              {/* Mobile Drawer Backdrop */}
+              <m.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-80 bg-black/60 backdrop-blur-xs"
+                onClick={() => setContextMenu(null)}
+              />
+              
+              {/* Mobile Spotify-style Bottom Sheet */}
+              <m.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 220 }}
+                className="fixed inset-x-0 bottom-0 z-90 w-full rounded-t-[32px] border-t border-white/10 bg-[#161618] p-6 pb-8 shadow-[0_-15px_40px_rgba(0,0,0,0.5)] flex flex-col max-h-[65vh] overflow-y-auto no-scrollbar"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Drag Handle Indicator */}
+                <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-6 shrink-0" />
+                
+                {/* Bottom Sheet Header */}
+                <div className="flex items-center gap-4 border-b border-white/5 pb-4 mb-4">
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-900 border border-white/10 shadow-lg">
+                    <img src={contextMenu.song.artwork} alt={contextMenu.song.title} className="h-full w-full object-cover" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-lg font-black text-white leading-tight">{contextMenu.song.title}</p>
+                    <p className="truncate text-sm font-bold text-white/50 mt-1">{contextMenu.song.artist}</p>
+                  </div>
+                </div>
+
+                {/* Touch Action Items List */}
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => {
+                      onAddToQueue?.(contextMenu.song);
+                      setContextMenu(null);
+                    }}
+                    className="flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 text-base font-bold text-white/80 hover:text-white transition-all hover:bg-white/5 active:bg-white/10 group"
+                  >
+                    <ListPlus size={20} className="text-white/40 group-hover:text-white" />
+                    <span>Add to Queue</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onPlayNext?.(contextMenu.song);
+                      setContextMenu(null);
+                    }}
+                    className="flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 text-base font-bold text-white/80 hover:text-white transition-all hover:bg-white/5 active:bg-white/10 group"
+                  >
+                    <PlaySquare size={20} className="text-white/40 group-hover:text-white" />
+                    <span>Play Next</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const query = `${contextMenu.song.title} ${contextMenu.song.artist} album`;
+                      router.push(`/explore?q=${encodeURIComponent(query)}`);
+                      setContextMenu(null);
+                    }}
+                    className="flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 text-base font-bold text-white/80 hover:text-white transition-all hover:bg-white/5 active:bg-white/10 group"
+                  >
+                    <Disc size={20} className="text-white/40 group-hover:text-white" />
+                    <span>Go to Album</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      router.push(`/artist/${encodeURIComponent(contextMenu.song.artist)}`);
+                      setContextMenu(null);
+                    }}
+                    className="flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 text-base font-bold text-white/80 hover:text-white transition-all hover:bg-white/5 active:bg-white/10 group"
+                  >
+                    <User size={20} className="text-white/40 group-hover:text-white" />
+                    <span>Go to Artist</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setInfoSong(contextMenu.song);
+                      setContextMenu(null);
+                    }}
+                    className="flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 text-base font-bold text-white/80 hover:text-white transition-all hover:bg-white/5 active:bg-white/10 group"
+                  >
+                    <Info size={20} className="text-white/40 group-hover:text-white" />
+                    <span>View Song Info</span>
+                  </button>
+                </div>
+              </m.div>
+            </>
+          ) : (
+            /* Desktop Coordinates Menu */
+            <m.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.1 }}
+              style={{
+                top: typeof window !== "undefined" && contextMenu.y + 250 > window.innerHeight ? window.innerHeight - 260 : contextMenu.y,
+                left: typeof window !== "undefined" && contextMenu.x + 224 > window.innerWidth ? window.innerWidth - 234 : contextMenu.x,
+              }}
+              className="fixed z-90 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#1c1c1e]/90 backdrop-blur-xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Context Header */}
+              <div className="flex items-center gap-3 border-b border-white/5 p-3 mb-1">
+                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-zinc-900 border border-white/10">
+                  <img src={contextMenu.song.artwork} alt={contextMenu.song.title} className="h-full w-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-black text-white">{contextMenu.song.title}</p>
+                  <p className="truncate text-[10px] font-bold text-white/40">{contextMenu.song.artist}</p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <button
+                onClick={() => {
+                  onAddToQueue?.(contextMenu.song);
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 hover:text-white transition-all hover:bg-white/10 group"
+              >
+                <ListPlus size={18} className="text-white/40 group-hover:text-white" />
+                <span>Add to Queue</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  onPlayNext?.(contextMenu.song);
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 hover:text-white transition-all hover:bg-white/10 group"
+              >
+                <PlaySquare size={18} className="text-white/40 group-hover:text-white" />
+                <span>Play Next</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const query = `${contextMenu.song.title} ${contextMenu.song.artist} album`;
+                  router.push(`/explore?q=${encodeURIComponent(query)}`);
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 hover:text-white transition-all hover:bg-white/10 group"
+              >
+                <Disc size={18} className="text-white/40 group-hover:text-white" />
+                <span>Go to Album</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  router.push(`/artist/${encodeURIComponent(contextMenu.song.artist)}`);
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 hover:text-white transition-all hover:bg-white/10 group"
+              >
+                <User size={18} className="text-white/40 group-hover:text-white" />
+                <span>Go to Artist</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setInfoSong(contextMenu.song);
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 hover:text-white transition-all hover:bg-white/10 group"
+              >
+                <Info size={18} className="text-white/40 group-hover:text-white" />
+                <span>View Song Info</span>
+              </button>
+            </m.div>
+          )
+        )}
+      </AnimatePresence>
+
+      {/* Song Info Modal */}
+      <AnimatePresence>
+        {infoSong && (
+          <SongInfoModal song={infoSong} onClose={() => setInfoSong(null)} />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function SongInfoModal({ song, onClose }: { song: Song; onClose: () => void }) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/lyrics?track=${encodeURIComponent(song.title)}&artist=${encodeURIComponent(song.artist)}`);
+        if (res.ok) {
+          const payload = await res.json();
+          setData(payload);
+        }
+      } catch (err) {
+        console.error("Failed to load song details:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [song.title, song.artist]);
+
+  return (
+    <div 
+      className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fade-in"
+      onClick={onClose}
+    >
+      <m.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-[#161618] shadow-2xl flex flex-col max-h-[85vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <Info className="text-white/60" size={24} />
+            <h2 className="text-2xl font-black text-white tracking-tight">Song Information</h2>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/5 text-white/40 hover:text-white transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+          {/* Track Summary Card */}
+          <div className="flex flex-col sm:flex-row gap-6 p-4 rounded-2xl bg-white/5 border border-white/5">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 rounded-xl overflow-hidden bg-zinc-900 border border-white/10 shadow-lg">
+              <img src={song.artwork} alt={song.title} className="w-full h-full object-cover" />
+            </div>
+            <div className="flex flex-col justify-center min-w-0">
+              <h3 className="text-2xl font-black text-white leading-tight truncate tracking-tight">{song.title}</h3>
+              <p className="text-base font-bold text-white/60 mt-1 truncate">{song.artist}</p>
+              {song.id && (
+                <div className="flex items-center gap-2 mt-2 text-xs font-semibold text-white/30">
+                  <span>Duration: {song.duration || "N/A"}</span>
+                  <span>•</span>
+                  <span>ID: {song.id}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3 text-white/40">
+              <Loader2 className="animate-spin" size={32} />
+              <span className="text-sm font-bold">Fetching track insights & credits...</span>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Credits Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                  <span className="text-xs font-black uppercase tracking-widest text-white/35">Performed By</span>
+                  <p className="text-sm font-bold text-white mt-1">{song.artist || "Unknown"}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                  <span className="text-xs font-black uppercase tracking-widest text-white/35">Written By</span>
+                  <p className="text-sm font-bold text-white mt-1">
+                    {data?.geniusData?.writers?.join(", ") || "Unknown / Traditional"}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                  <span className="text-xs font-black uppercase tracking-widest text-white/35">Composed / Produced By</span>
+                  <p className="text-sm font-bold text-white mt-1">
+                    {data?.geniusData?.producers?.join(", ") || "AI Synthesized / Unknown"}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                  <span className="text-xs font-black uppercase tracking-widest text-white/35">Release Year</span>
+                  <p className="text-sm font-bold text-white mt-1">
+                    {data?.geniusData?.releaseYear || "Unknown"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Metadata Details */}
+              {data?.geniusData?.description && (
+                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                  <span className="text-xs font-black uppercase tracking-widest text-white/35">Song Background</span>
+                  <p className="text-sm font-medium text-white/70 mt-1.5 leading-relaxed">{data.geniusData.description}</p>
+                </div>
+              )}
+
+              {/* Lyrics Section */}
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col">
+                <span className="text-xs font-black uppercase tracking-widest text-white/35 mb-3">Lyrics</span>
+                <div className="bg-black/20 rounded-lg p-4 max-h-60 overflow-y-auto no-scrollbar border border-white/5">
+                  <pre className="text-sm font-semibold text-white/80 leading-relaxed whitespace-pre-wrap font-sans">
+                    {data?.lyrics?.content || "Lyrics not available for this track."}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </m.div>
     </div>
   );
 }

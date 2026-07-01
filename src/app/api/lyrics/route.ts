@@ -58,6 +58,8 @@ interface UnifiedLyricsPayload {
     thumbnail: string | null;
     description: string | null;
     writers: string[] | null;
+    producers: string[] | null;
+    releaseYear: number | string | null;
   };
 }
 
@@ -191,7 +193,7 @@ async function fetchGenius(track: string, artist: string): Promise<GeniusSearchH
   return data.response?.hits?.[0]?.result ?? null;
 }
 
-async function fetchGeniusDetails(id: number): Promise<{ description: string | null; writers: string[] | null } | null> {
+async function fetchGeniusDetails(id: number): Promise<{ description: string | null; writers: string[] | null; producers: string[] | null; releaseYear: number | string | null } | null> {
   const token = process.env.GENIUS_ACCESS_TOKEN;
   if (!token) return null;
 
@@ -206,10 +208,14 @@ async function fetchGeniusDetails(id: number): Promise<{ description: string | n
   const song = data.response?.song;
   
   const writers = (song?.writer_artists || []).map((w: any) => w.name as string);
+  const producers = (song?.producer_artists || []).map((p: any) => p.name as string);
+  const releaseYear = song?.release_date_components?.year || (song?.release_date ? new Date(song.release_date).getFullYear() : null);
   
   return {
     description: song?.description?.plain || null,
-    writers: writers.length > 0 ? writers : null
+    writers: writers.length > 0 ? writers : null,
+    producers: producers.length > 0 ? producers : null,
+    releaseYear: releaseYear || null
   };
 }
 
@@ -384,10 +390,14 @@ export async function GET(request: Request) {
 
     let geniusDescription: string | null = null;
     let geniusWriters: string[] | null = null;
+    let geniusProducers: string[] | null = null;
+    let geniusReleaseYear: number | string | null = null;
     if (geniusResult?.id) {
       const details = await fetchGeniusDetails(geniusResult.id);
       geniusDescription = details?.description || null;
       geniusWriters = details?.writers || null;
+      geniusProducers = details?.producers || null;
+      geniusReleaseYear = details?.releaseYear || null;
 
       // Clean up the description if it's just a placeholder like "No description available."
       if (geniusDescription?.toLowerCase().includes("no description available") || geniusDescription?.length && geniusDescription.length < 5) {
@@ -428,6 +438,8 @@ export async function GET(request: Request) {
         thumbnail: geniusResult?.song_art_image_thumbnail_url ?? null,
         description: geniusDescription,
         writers: geniusWriters,
+        producers: geniusProducers,
+        releaseYear: geniusReleaseYear,
       },
     };
 
@@ -457,6 +469,8 @@ export async function GET(request: Request) {
         thumbnail: null,
         description: null,
         writers: null,
+        producers: null,
+        releaseYear: null,
       },
     };
 

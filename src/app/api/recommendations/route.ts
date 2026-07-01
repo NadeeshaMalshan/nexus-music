@@ -14,115 +14,148 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const { prompt, recentTrackId } = body;
 
-  try {
-    if (recentTrackId) {
-      console.log(`[Next.js API] Fetching related tracks for: ${recentTrackId}`);
-      const related = await getRelatedTracksRobust(recentTrackId);
-      const recommendations = related.map((t: any) => ({
-        youtubeId: t.youtubeId,
-        title: t.title,
-        artist: t.artist,
-        thumbnail: t.thumbnail || t.thumbnailUrl,
-        duration: t.duration,
-        reason: "Related to playing track"
-      }));
-      return NextResponse.json({
-        title: "More songs like current song",
-        description: "Recommended tracks similar to the current song",
-        cover_url: recommendations[0]?.thumbnail || "",
-        recommendations
-      });
-    }
+  const encoder = new TextEncoder();
 
-    const accessToken = await getRequestAccessToken(request);
-    let rawHistory: any[] = [];
-    
-    // 1. Fetch user's raw music history from YouTube API
-    if (accessToken) {
+  const stream = new ReadableStream({
+    async start(controller) {
+      const sendStatus = (status: string) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status })}\n\n`));
+      };
+      const sendResult = (result: any) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ result })}\n\n`));
+      };
+      const sendError = (error: string) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error })}\n\n`));
+      };
+
       try {
-        rawHistory = await fetchRecentMusicActivities(accessToken, 50);
-      } catch (e) {
-        console.warn("[Next.js] Failed to fetch YT activities:", e);
-      }
-    }
+        sendStatus("Initializing quantum neural weights...");
 
-    // 2. Call the Hugging Face Space backend
-    const backendBaseUrl = process.env.PYTHON_AI_BACKEND_URL || "https://nadeeshamalshan-nexusai.hf.space";
-    const pythonEndpoint = `${backendBaseUrl}/api/recommendations`;
+        if (recentTrackId) {
+          sendStatus("Scouting the Grid database...");
+          console.log(`[Next.js API] Fetching related tracks for: ${recentTrackId}`);
+          const related = await getRelatedTracksRobust(recentTrackId);
+          const recommendations = related.map((t: any) => ({
+            youtubeId: t.youtubeId,
+            title: t.title,
+            artist: t.artist,
+            thumbnail: t.thumbnail || t.thumbnailUrl,
+            duration: t.duration,
+            reason: "Related to playing track"
+          }));
 
-    console.log(`[Next.js API] Calling Python AI Backend at: ${pythonEndpoint}`);
+          sendStatus("Polishing final setlist...");
+          sendResult({
+            title: "More songs like current song",
+            description: "Recommended tracks similar to the current song",
+            cover_url: recommendations[0]?.thumbnail || "",
+            recommendations
+          });
+          controller.close();
+          return;
+        }
 
-    const pythonRes = await fetch(pythonEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: "default_user", // Replace with session user ID if available
-        prompt: prompt || "Personalized Mix",
-        raw_history: rawHistory.map(track => ({
-          title: track.title,
-          artist: track.artist
-        }))
-      }),
-    });
+        sendStatus("Analyzing taste profile...");
+        const accessToken = await getRequestAccessToken(request);
+        let rawHistory: any[] = [];
+        
+        // 1. Fetch user's raw music history from YouTube API
+        if (accessToken) {
+          try {
+            rawHistory = await fetchRecentMusicActivities(accessToken, 50);
+          } catch (e) {
+            console.warn("[Next.js] Failed to fetch YT activities:", e);
+          }
+        }
 
-    if (!pythonRes.ok) {
-      throw new Error(`Python API responded with status ${pythonRes.status}`);
-    }
+        // 2. Call the Hugging Face Space backend
+        sendStatus("Scouting the Grid database...");
+        const backendBaseUrl = process.env.PYTHON_AI_BACKEND_URL || "https://nadeeshamalshan-nexusai.hf.space";
+        const pythonEndpoint = `${backendBaseUrl}/api/recommendations`;
 
-    const data = await pythonRes.json();
-    
-    let recommendations: any[] = [];
+        console.log(`[Next.js API] Calling Python AI Backend at: ${pythonEndpoint}`);
 
-    // 3. Search queries on Next.js side (avoiding HF IP blocking)
-    if (data.queries && data.queries.length > 0) {
-      console.log("[Next.js] Searching generated queries from Next.js backend...");
-      const seenIds = new Set<string>();
-      for (const q of data.queries) {
-        if (recommendations.length >= 20) break;
-        try {
-          const results = await searchSongsRobust(q);
-          for (const item of results) {
-            if (item.youtubeId && !seenIds.has(item.youtubeId)) {
-              seenIds.add(item.youtubeId);
-              recommendations.push({
-                youtubeId: item.youtubeId,
-                title: item.title,
-                artist: item.artist,
-                thumbnail: item.thumbnail,
-                reason: "AI Taste Prediction"
-              });
-              if (recommendations.length >= 20) break;
+        const pythonRes = await fetch(pythonEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: "default_user", // Replace with session user ID if available
+            prompt: prompt || "Personalized Mix",
+            raw_history: rawHistory.map(track => ({
+              title: track.title,
+              artist: track.artist
+            }))
+          }),
+        });
+
+        if (!pythonRes.ok) {
+          throw new Error(`Python API responded with status ${pythonRes.status}`);
+        }
+
+        const data = await pythonRes.json();
+        
+        sendStatus("Synthesizing melodic sequences...");
+        let recommendations: any[] = [];
+
+        // 3. Search queries on Next.js side (avoiding HF IP blocking)
+        if (data.queries && data.queries.length > 0) {
+          sendStatus("Structuring neural flow...");
+          console.log("[Next.js] Searching generated queries from Next.js backend...");
+          const seenIds = new Set<string>();
+          for (const q of data.queries) {
+            if (recommendations.length >= 20) break;
+            try {
+              const results = await searchSongsRobust(q);
+              for (const item of results) {
+                if (item.youtubeId && !seenIds.has(item.youtubeId)) {
+                  seenIds.add(item.youtubeId);
+                  recommendations.push({
+                    youtubeId: item.youtubeId,
+                    title: item.title,
+                    artist: item.artist,
+                    thumbnail: item.thumbnail,
+                    reason: "AI Taste Prediction"
+                  });
+                  if (recommendations.length >= 20) break;
+                }
+              }
+            } catch (err) {
+              console.error(`[Next.js] Search failed for query "${q}":`, err);
             }
           }
-        } catch (err) {
-          console.error(`[Next.js] Search failed for query "${q}":`, err);
         }
+
+        // If search on Next.js side didn't yield anything, return an error
+        if (recommendations.length === 0) {
+          sendError("No playable tracks found on YouTube Music. Please try a different query.");
+          controller.close();
+          return;
+        }
+
+        sendStatus("Polishing final setlist...");
+        sendResult({
+          title: data.title,
+          description: data.description,
+          cover_url: data.cover_url,
+          taste_vibe: data.taste_vibe,
+          recommendations
+        });
+        controller.close();
+      } catch (error: any) {
+        console.error("[Recommendations Proxy] Error connecting to Hugging Face:", error);
+        sendError(error.message || "AI backend error");
+        controller.close();
       }
     }
+  });
 
-    // If search on Next.js side didn't yield anything, return a 400 Bad Request
-    if (recommendations.length === 0) {
-      return NextResponse.json(
-        { error: "No playable tracks found on YouTube Music. Please try a different query." },
-        { status: 400 }
-      );
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
     }
-
-    return NextResponse.json({
-      title: data.title,
-      description: data.description,
-      cover_url: data.cover_url,
-      taste_vibe: data.taste_vibe,
-      recommendations
-    });
-
-  } catch (error: any) {
-    console.error("[Recommendations Proxy] Error connecting to Hugging Face:", error);
-    return NextResponse.json(
-      { error: "AI backend error", detail: error.message },
-      { status: 500 }
-    );
-  }
+  });
 }
 
 

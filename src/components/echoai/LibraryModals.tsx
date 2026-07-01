@@ -326,26 +326,6 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
     if (isOpen) setLibrarySyncStatus("idle");
   }, [isOpen]);
 
-  // Loading state status text rotation
-  useEffect(() => {
-    if (step !== 'loading') return;
-    const statuses = [
-      "Initializing quantum neural weights...",
-      "Analyzing taste profile...",
-      "Scouting the Grid database...",
-      "Synthesizing melodic sequences...",
-      "Structuring neural flow...",
-      "Polishing final setlist..."
-    ];
-    let idx = 0;
-    setLoadingStatus(statuses[0]);
-    const interval = setInterval(() => {
-      idx = (idx + 1) % statuses.length;
-      setLoadingStatus(statuses[idx]);
-    }, 1800);
-    return () => clearInterval(interval);
-  }, [step]);
-
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setStep('loading');
@@ -360,27 +340,71 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
           genres: []
         }),
       });
-      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        throw new Error(data.error || `API error ${res.status}`);
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `API error ${res.status}`);
       }
-      const recs = (data.recommendations || []).slice(0, 20);
-      
-      // Determine cover art (fallback to first song's artwork if API did not return one)
-      const finalCover = data.cover_url || (recs.length > 0 ? recs[0].thumbnail : null);
-      
-      setGeneratedResult({
-        name: data.title || (prompt ? `${prompt.charAt(0).toUpperCase() + prompt.slice(1).split(' ')[0]} Evolution` : "Neural DNA Mix"),
-        tasteVibe: data.taste_vibe,
-        songs: recs.map((rec: any) => ({
-          id: rec.youtubeId,
-          title: rec.title,
-          artist: rec.artist,
-          artwork: rec.thumbnail || finalCover
-        })) as CreateModalSong[]
-      });
-      setLibrarySyncStatus("idle");
-      setStep('results');
+
+      const reader = res.body?.getReader();
+      if (!reader) {
+        throw new Error("No response reader available");
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let hasResult = false;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const dataStr = line.slice(6).trim();
+            if (!dataStr) continue;
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.status) {
+                setLoadingStatus(parsed.status);
+              }
+              if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+              if (parsed.result) {
+                hasResult = true;
+                const result = parsed.result;
+                const recs = (result.recommendations || []).slice(0, 20);
+                const finalCover = result.cover_url || (recs.length > 0 ? recs[0].thumbnail : null);
+
+                setGeneratedResult({
+                  name: result.title || (prompt ? `${prompt.charAt(0).toUpperCase() + prompt.slice(1).split(' ')[0]} Evolution` : "Neural DNA Mix"),
+                  tasteVibe: result.taste_vibe,
+                  songs: recs.map((rec: any) => ({
+                    id: rec.youtubeId,
+                    title: rec.title,
+                    artist: rec.artist,
+                    artwork: rec.thumbnail || finalCover
+                  })) as CreateModalSong[]
+                });
+                setLibrarySyncStatus("idle");
+                setStep('results');
+              }
+            } catch (jsonErr) {
+              console.error("Error parsing stream chunk:", jsonErr);
+            }
+          }
+        }
+      }
+
+      if (!hasResult) {
+        throw new Error("No recommendation results received from backend.");
+      }
+
     } catch (err: any) {
       console.error("AI Error:", err);
       setError(err.message || "Something went wrong");

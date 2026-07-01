@@ -537,16 +537,39 @@ export function CenterPanel(props: CenterPanelProps) {
         }),
       });
 
-      if (res.ok) {
-        const data = await readResponseJson<{ recommendations?: unknown[] }>(res);
-        if (!data) return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const resolved = (data.recommendations || []).map((track: any) => ({
-          ...track,
-          id: track.youtubeId,
-          artwork: track.thumbnail,
-        }));
-        setForYouTracks(resolved);
+      if (res.ok && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextEncoder();
+        let buffer = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += new TextDecoder().decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            const cleanLine = line.trim();
+            if (cleanLine.startsWith("data: ")) {
+              try {
+                const payload = JSON.parse(cleanLine.slice(6));
+                if (payload.result) {
+                  const data = payload.result;
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const resolved = (data.recommendations || []).map((track: any) => ({
+                    ...track,
+                    id: track.youtubeId,
+                    artwork: track.thumbnail,
+                  }));
+                  setForYouTracks(resolved);
+                }
+              } catch (e) {
+                console.error("Error parsing stream line:", e);
+              }
+            }
+          }
+        }
       }
     } catch (err) {
       console.error("For You fetch failed:", err);

@@ -197,7 +197,11 @@ export async function GET(request: Request) {
 
     const sendResponse = (data: any) => {
       searchCache.set(cacheKey, { data, expiry: Date.now() + CACHE_TTL_MS });
-      return NextResponse.json(data);
+      return NextResponse.json(data, {
+        headers: {
+          "Cache-Control": "public, max-age=900, s-maxage=900, stale-while-revalidate=300"
+        }
+      });
     };
 
     if (type === "artists") {

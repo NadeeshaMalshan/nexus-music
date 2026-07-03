@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { Redis } from "@upstash/redis";
 
 import { getYoutubeDirectAudioUrl } from "@/lib/youtubeDirectAudioUrl";
+
+const redis = Redis.fromEnv();
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,7 +22,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid or missing videoId" }, { status: 400 });
   }
 
-  console.log(`[get-audio-url] videoId: ${videoId}, isLive: ${isLive}`);
+  const cacheKey = `audiourl:${videoId}:${isLive}`;
+
+  try {
+    const cachedUrl = await redis.get<string>(cacheKey);
+    if (cachedUrl) {
+      console.log(`[get-audio-url] Serving cached URL for ${videoId} from Redis`);
+      return NextResponse.json(
+        { url: cachedUrl },
+        {
+          headers: {
+            "Cache-Control": "public, max-age=7200, s-maxage=7200, stale-while-revalidate=600",
+          },
+        }
+      );
+    }
+  } catch (err) {
+    console.error("[get-audio-url] Redis read error:", err);
+  }
+
+  console.log(`[get-audio-url] Cache miss. videoId: ${videoId}, isLive: ${isLive}. Extracting...`);
   const url = await getYoutubeDirectAudioUrl(videoId, isLive);
 
   if (!url) {
@@ -29,6 +51,21 @@ export async function GET(request: Request) {
     );
   }
 
+  try {
+    // Cache for 2 hours (7200 seconds)
+    await redis.set(cacheKey, url, { ex: 7200 });
+    console.log(`[get-audio-url] Saved ${videoId} URL to Redis cache`);
+  } catch (err) {
+    console.error("[get-audio-url] Redis write error:", err);
+  }
+
   console.log(`[get-audio-url] OK (len ${url.length})`);
-  return NextResponse.json({ url });
+  return NextResponse.json(
+    { url },
+    {
+      headers: {
+        "Cache-Control": "public, max-age=7200, s-maxage=7200, stale-while-revalidate=600",
+      },
+    }
+  );
 }

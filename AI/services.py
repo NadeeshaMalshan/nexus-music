@@ -86,10 +86,10 @@ def generate_cover_image(image_prompt: str, theme: str) -> str:
     # Deterministic file naming using MD5
     prompt_hash = hashlib.md5(image_prompt.encode("utf-8")).hexdigest()
     
-    # Try Option A: Imagen 3
+    # Try Option A: Imagen 4
     try:
         result = imagen_client.models.generate_images(
-            model='imagen-3.0-generate-002',
+            model='imagen-4.0-generate-001',
             prompt=image_prompt,
             config=dict(number_of_images=1, aspect_ratio="1:1")
         )
@@ -101,7 +101,10 @@ def generate_cover_image(image_prompt: str, theme: str) -> str:
                 f.write(gen_img.image.image_bytes)
             return f"/covers/{prompt_hash}.jpg"
     except Exception as e:
-        print(f"Imagen 3 failed ({e}). Falling back to Unsplash...")
+        if "paid plans" in str(e) or "INVALID_ARGUMENT" in str(e):
+            print("Imagen generation skipped (requires paid API key). Falling back to Unsplash...")
+        else:
+            print(f"Imagen generation failed ({e}). Falling back to Unsplash...")
         
     # Try Option B: Unsplash Fallback
     unsplash_key = os.getenv("UNSPLASH_ACCESS_KEY")

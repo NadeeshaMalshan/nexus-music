@@ -4,7 +4,9 @@ from typing import List
 from ytmusicapi import YTMusic
 import services
 import hashlib
+import json
 from schemas import TasteProfile
+from config import redis_client
 
 app = FastAPI()
 ytm = YTMusic()
@@ -26,6 +28,22 @@ def read_root():
 
 @app.post("/api/recommendations")
 def create_ai_playlist(req: PlaylistRequest):
+    # Deterministic cache key based on prompt and history
+    history_str = json.dumps(req.raw_history, sort_keys=True)
+    request_hash = hashlib.md5(f"{req.prompt}:{history_str}".encode("utf-8")).hexdigest()
+    cache_key = f"user:playlist_rec:{req.user_id}:{request_hash}"
+    
+    # Check cache
+    try:
+        cached_res = redis_client.get(cache_key)
+        if cached_res:
+            print("Playlist recommendation loaded from Redis cache!")
+            if isinstance(cached_res, bytes):
+                cached_res = cached_res.decode("utf-8")
+            return json.loads(cached_res)
+    except Exception as cache_err:
+        print(f"Cache lookup failed: {cache_err}")
+
     # 1. Taste Profile Predictor
     taste = services.get_user_taste(req.user_id, req.raw_history)
     
@@ -35,6 +53,7 @@ def create_ai_playlist(req: PlaylistRequest):
     # 3. Search YT Music and collect unique songs
     seen_ids = set()
     compiled_songs: List[TrackItem] = []
+    is_blocked = False
     
     for q in queries:
         if len(compiled_songs) >= 20:
@@ -60,9 +79,13 @@ def create_ai_playlist(req: PlaylistRequest):
                         break
         except Exception as e:
             print(f"Search failed for query '{q}': {e}")
+            if any(term in str(e) for term in ["SSL", "Max retries exceeded", "EOF", "Connection", "SSLEOFError"]):
+                print("Detected network or SSL block on YouTube Music. Skipping remaining searches to prevent delays.")
+                is_blocked = True
+                break
             
     # If no songs were found, fall back to search for prompt itself
-    if not compiled_songs:
+    if not compiled_songs and not is_blocked:
         try:
             results = ytm.search(req.prompt, filter="songs")
             for item in results[:20]:
@@ -101,7 +124,7 @@ def create_ai_playlist(req: PlaylistRequest):
     
     cover_url = services.generate_cover_image(branding.image_prompt, req.prompt)
     
-    return {
+    response = {
         "title": branding.title,
         "description": branding.description,
         "cover_url": cover_url,
@@ -109,3 +132,11 @@ def create_ai_playlist(req: PlaylistRequest):
         "taste_vibe": taste.vibe_description,
         "songs": [s.model_dump() if hasattr(s, "model_dump") else s.dict() for s in compiled_songs]
     }
+    
+    try:
+        redis_client.setex(cache_key, 86400, json.dumps(response))
+        print("Playlist recommendation cached in Redis!")
+    except Exception as cache_err:
+        print(f"Failed to cache response in Redis: {cache_err}")
+        
+    return response

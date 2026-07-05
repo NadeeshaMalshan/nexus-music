@@ -1,6 +1,7 @@
 import { chooseFormat, getInfo } from "@distube/ytdl-core";
 import type ytdl from "@distube/ytdl-core";
 import play from "play-dl";
+import redis from "./redis";
 
 const CHROME_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -89,34 +90,63 @@ export async function getYoutubeInfoWithRetry(videoUrl: string) {
  * several player-client orders, then play-dl (often succeeds when ytdl fails on serverless).
  */
 export async function getYoutubeDirectAudioUrl(videoId: string, isLive: boolean = false): Promise<string | null> {
+  const cacheKey = `audiourl:${videoId}:${isLive}`;
+
+  if (redis) {
+    try {
+      const cached = await redis.get<string>(cacheKey);
+      if (cached) {
+        console.log(`[youtubeDirectAudioUrl] Serving cached URL for ${videoId} from Redis`);
+        return cached;
+      }
+    } catch (err) {
+      console.error("[youtubeDirectAudioUrl] Redis read error:", err);
+    }
+  }
+
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  let resolvedUrl: string | null = null;
 
   try {
     const info = await getYoutubeInfoWithRetry(videoUrl);
     // If live, we might want to be more careful with format selection, but ytdl-core's highestaudio
     // for live often points to an HLS stream which is fine.
     const url = pickFormatUrl(info.formats);
-    if (url) return url;
+    if (url) resolvedUrl = url;
   } catch {
     /* all ytdl strategies failed or unusable */
   }
 
-  try {
-    // For live streams in music mode, we use lowest quality to save data
-    const stream = await play.stream(videoUrl, { quality: isLive ? 0 : 2 });
-    const url =
-      stream && typeof stream === "object" && stream !== null && "url" in stream
-        ? String((stream as unknown as { url: string }).url)
-        : "";
-    if (url) return url;
-  } catch (e) {
-    console.warn("[youtubeDirectAudioUrl] play-dl:", e instanceof Error ? e.message : e);
+  if (!resolvedUrl) {
+    try {
+      // For live streams in music mode, we use lowest quality to save data
+      const stream = await play.stream(videoUrl, { quality: isLive ? 0 : 2 });
+      const url =
+        stream && typeof stream === "object" && stream !== null && "url" in stream
+          ? String((stream as unknown as { url: string }).url)
+          : "";
+      if (url) resolvedUrl = url;
+    } catch (e) {
+      console.warn("[youtubeDirectAudioUrl] play-dl:", e instanceof Error ? e.message : e);
+    }
   }
 
-  const piped = await getPipedAudioUrl(videoId);
-  if (piped) return piped;
+  if (!resolvedUrl) {
+    const piped = await getPipedAudioUrl(videoId);
+    if (piped) resolvedUrl = piped;
+  }
 
-  return null;
+  if (resolvedUrl && redis) {
+    try {
+      // Cache for 2 hours (7200 seconds)
+      await redis.set(cacheKey, resolvedUrl, { ex: 7200 });
+      console.log(`[youtubeDirectAudioUrl] Saved URL for ${videoId} to Redis cache`);
+    } catch (err) {
+      console.error("[youtubeDirectAudioUrl] Redis write error:", err);
+    }
+  }
+
+  return resolvedUrl;
 }
 
 type PipedStreamsResponse = { audioStreams?: Array<{ url?: string; bitrate?: number; mimeType?: string }> };

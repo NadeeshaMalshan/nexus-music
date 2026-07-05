@@ -21,5 +21,5 @@ export const DEFAULT_SETTINGS: UserSettings = {
   reduceAnimations: false,
   crossfade: 0,
   autoplay: true,
-  serverProxyStreaming: true,
+  serverProxyStreaming: false,
 };

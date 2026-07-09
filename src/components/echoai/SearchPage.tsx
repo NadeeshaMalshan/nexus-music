@@ -179,6 +179,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const searchRunIdRef = useRef(0);
   const searchQueryRef = useRef(searchQuery);
   const lastSearchedQueryRef = useRef("");
+  const activeCategoryRef = useRef(activeCategory);
   const onCloseRef = useRef(onClose);
   const onSongSelectRef = useRef(onSongSelect);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -192,6 +193,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   }, [isInputFocused, setSuggestionsOpen]);
 
   searchQueryRef.current = searchQuery;
+  activeCategoryRef.current = activeCategory;
   onCloseRef.current = onClose;
   onSongSelectRef.current = onSongSelect;
 
@@ -362,7 +364,7 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
 
   const runSearch = useCallback(async (queryOverride?: string, categoryOverride?: string) => {
     const query = (queryOverride ?? searchQueryRef.current).trim();
-    const cat = categoryOverride ?? activeCategory;
+    const cat = categoryOverride ?? activeCategoryRef.current;
     if (!query) {
       setSearchResults([]);
       setResultsByCategory({});
@@ -564,7 +566,7 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
     } finally {
       setSearchLoading(false);
     }
-  }, [activeCategory]);
+  }, []);
 
   // Handle query from URL (?q=) — watch URLs play via playFromWatchUrl inside runSearch
   const searchParams = useSearchParams();

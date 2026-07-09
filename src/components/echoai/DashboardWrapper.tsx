@@ -78,6 +78,30 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Listen to ?watch=songId URLs to trigger direct playback on load
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const watchId = params.get("watch");
+    if (!watchId) return;
+
+    // Clear parameter to keep URL clean and prevent loop
+    params.delete("watch");
+    const queryStr = params.toString() ? `?${params.toString()}` : "";
+    const newUrl = `${window.location.pathname}${queryStr}`;
+    window.history.replaceState({}, "", newUrl);
+
+    void (async () => {
+      try {
+        const { songFromYouTubeVideoId } = await import("@/lib/parseYouTubeUrl");
+        const song = await songFromYouTubeVideoId(watchId, "var(--art-accent, #FA233B)", false, false);
+        onSongClick(song);
+      } catch (err) {
+        console.error("Failed to load watch query song:", err);
+      }
+    })();
+  }, [onSongClick]);
+
   // Global Context Menu & Long Press Listeners
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {

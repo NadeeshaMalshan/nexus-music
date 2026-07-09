@@ -268,9 +268,6 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
           <div className="space-y-4">
             <div className="flex items-center justify-between px-4 mb-6 gap-3">
               <AppBrandMark size="lg" />
-              <button className="p-2.5 rounded-full bg-white/5 text-white/40 hover:bg-white/10 hover:text-white shrink-0">
-                <MoreHorizontal size={22} />
-              </button>
             </div>
 
             <nav className="space-y-1">

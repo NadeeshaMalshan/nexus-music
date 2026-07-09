@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
 import YouTube from "react-youtube";
-import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, PlaySquare, Maximize } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, PlaySquare, Maximize, MoreHorizontal, User, Disc, Info, Link2, X, Copy } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "motion/react";
 import { MOTION_CONFIG, APPLE_LYRICS_TRANSITION } from "@/lib/animations";
 import { type ExpandedPlayerProps } from "./types";
@@ -68,6 +69,10 @@ export function DesktopExpandedPlayer({
 }: ExpandedPlayerProps) {
   const { palette, resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const { settings } = useSettings();
+  const router = useRouter();
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls">(viewMode === "video" ? "controls" : "lyrics");
   const [isControlsVisible] = useState(true);
   const [liveLikeToast, setLiveLikeToast] = useState<{ title: string; artist: string; artwork?: string | null } | null>(null);
@@ -467,36 +472,102 @@ export function DesktopExpandedPlayer({
               />
             </button>
           </div>
-          {isLoggedIn && (
+          <div className="flex items-center gap-2 shrink-0 relative">
+            {isLoggedIn && (
+              <button
+                onClick={() => {
+                  if (isLiked) {
+                    void onRateSong(resolveLikedLibraryRateVideoId(currentSong), "none");
+                  } else {
+                    const liveTitle = liveMetadata?.title;
+                    const liveArtist = liveMetadata?.artist;
+                    void (async () => {
+                      const result = await onRateSong(
+                        currentSong.id,
+                        "like",
+                        liveTitle && liveArtist
+                          ? { title: liveTitle, artist: liveArtist }
+                          : { title: currentSong.title, artist: currentSong.artist }
+                      );
+                      // Always show success toast, never pending state
+                      setLiveLikeToast({
+                        title: liveTitle && liveArtist ? liveTitle : currentSong.title,
+                        artist: liveTitle && liveArtist ? liveArtist : currentSong.artist,
+                        artwork: liveMetadata?.artwork ?? currentSong.artwork,
+                      });
+                    })();
+                  }
+                }}
+                className="mt-1 rounded-full bg-white/5 p-2 hover:bg-white/10"
+              >
+                <Heart size={24} style={{ fill: isLiked ? 'var(--art-accent, #FA243C)' : 'none', color: isLiked ? 'var(--art-accent, #FA243C)' : 'rgb(255 255 255 / 0.7)' }} />
+              </button>
+            )}
+
             <button
-              onClick={() => {
-                if (isLiked) {
-                  void onRateSong(resolveLikedLibraryRateVideoId(currentSong), "none");
-                } else {
-                  const liveTitle = liveMetadata?.title;
-                  const liveArtist = liveMetadata?.artist;
-                  void (async () => {
-                    const result = await onRateSong(
-                      currentSong.id,
-                      "like",
-                      liveTitle && liveArtist
-                        ? { title: liveTitle, artist: liveArtist }
-                        : { title: currentSong.title, artist: currentSong.artist }
-                    );
-                    // Always show success toast, never pending state
-                    setLiveLikeToast({
-                      title: liveTitle && liveArtist ? liveTitle : currentSong.title,
-                      artist: liveTitle && liveArtist ? liveArtist : currentSong.artist,
-                      artwork: liveMetadata?.artwork ?? currentSong.artwork,
-                    });
-                  })();
-                }
-              }}
-              className="mt-1 rounded-full bg-white/5 p-2 hover:bg-white/10"
+              onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+              className="mt-1 rounded-full bg-white/5 p-2 hover:bg-white/10 text-white/70 hover:text-white transition-all active:scale-90"
             >
-              <Heart size={24} style={{ fill: isLiked ? 'var(--art-accent, #FA243C)' : 'none', color: isLiked ? 'var(--art-accent, #FA243C)' : 'rgb(255 255 255 / 0.7)' }} />
+              <MoreHorizontal size={24} />
             </button>
-          )}
+
+            {/* More Menu Dropdown */}
+            {isMoreMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setIsMoreMenuOpen(false)} />
+                <div className="absolute right-0 bottom-full mb-2 z-40 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#1c1c1e] p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] text-left">
+                  <button
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      onClose();
+                      onArtistClick?.(liveMetadata?.artist || currentSong.artist);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white"
+                  >
+                    <User size={18} className="text-white/40" />
+                    <span>Go to Artist</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      onClose();
+                      router.push(`/search?q=${encodeURIComponent(liveMetadata?.artist || currentSong.artist)} ${encodeURIComponent(liveMetadata?.title || currentSong.title)}`);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white"
+                  >
+                    <Disc size={18} className="text-white/40" />
+                    <span>Go to Album / Search</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setIsInfoModalOpen(true);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white"
+                  >
+                    <Info size={18} className="text-white/40" />
+                    <span>Song Info</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const shareUrl = `${window.location.origin}/?watch=${currentSong.id}`;
+                      navigator.clipboard.writeText(shareUrl);
+                      setIsCopied(true);
+                      setTimeout(() => setIsCopied(false), 2000);
+                      setIsMoreMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white"
+                  >
+                    <Link2 size={18} className="text-white/40" />
+                    <span>Copy Song Link</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -1003,6 +1074,59 @@ export function DesktopExpandedPlayer({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Song Info Modal */}
+      {isInfoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-[#1c1c1e] p-6 shadow-2xl text-left">
+            <button
+              onClick={() => setIsInfoModalOpen(false)}
+              className="absolute right-4 top-4 rounded-full p-2 text-white/40 hover:bg-white/5 hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-xl font-black text-white tracking-tight mb-6">Song Info</h3>
+            <div className="flex gap-4 mb-6">
+              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl">
+                <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={24} variant="track" rounded="md" className="h-full w-full" />
+              </div>
+              <div className="min-w-0 flex flex-col justify-center">
+                <h4 className="font-bold text-white truncate leading-snug">{liveMetadata?.title || currentSong.title}</h4>
+                <p className="text-sm text-white/60 truncate leading-snug">{liveMetadata?.artist || currentSong.artist}</p>
+              </div>
+            </div>
+            <div className="space-y-4 border-t border-white/5 pt-4 text-sm font-medium">
+              <div className="flex justify-between">
+                <span className="text-white/40">Duration</span>
+                <span className="text-white/85">{liveMetadata ? "Live" : (currentSong.duration || currentSong.durationObj?.label || "0:00")}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/40">YouTube Video ID</span>
+                <span className="text-white/85 select-all font-mono">{currentSong.id}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-white/40">Song Link</span>
+                <div className="flex items-center gap-2 mt-1 rounded-xl bg-white/5 p-2 pr-3">
+                  <span className="flex-1 text-xs text-white/60 truncate font-mono select-all">
+                    {typeof window !== "undefined" ? `${window.location.origin}/?watch=${currentSong.id}` : `/?watch=${currentSong.id}`}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const shareUrl = `${window.location.origin}/?watch=${currentSong.id}`;
+                      navigator.clipboard.writeText(shareUrl);
+                      setIsCopied(true);
+                      setTimeout(() => setIsCopied(false), 2000);
+                    }}
+                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors shrink-0"
+                  >
+                    {isCopied ? <span className="text-[10px] font-black text-green-400">Copied!</span> : <Copy size={14} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </m.div>
   );
 }

@@ -560,7 +560,7 @@ export function FloatingPlayer({
 
           {/* Interactive Linear Progress Indicator (Outer Bottom Edge) */}
           {!isReallyLive && (
-            <div className="absolute bottom-0 left-0 right-0 h-3 group/seek flex items-end overflow-hidden z-20">
+            <div className="absolute bottom-0 left-0 right-0 h-3 group/seek flex items-end z-20">
               <input
                 type="range"
                 min={0}
@@ -569,7 +569,7 @@ export function FloatingPlayer({
                 onChange={(e) => {
                   handleSeek(parseFloat(e.target.value));
                 }}
-                className="w-full h-[3px] appearance-none bg-white/5 cursor-pointer hover:h-[5px] transition-[height] m-0 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-0 [&::-webkit-slider-thumb]:h-0 [&::-moz-range-thumb]:w-0 [&::-moz-range-thumb]:h-0 [&::-moz-range-thumb]:border-0"
+                className="w-full h-[3px] appearance-none bg-white/5 cursor-pointer hover:h-[5px] transition-[height] m-0 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-0 [&::-webkit-slider-thumb]:h-0 [&::-moz-range-thumb]:w-0 [&::-moz-range-thumb]:h-0 [&::-moz-range-thumb]:border-0 group-hover/seek:[&::-webkit-slider-thumb]:w-3 group-hover/seek:[&::-webkit-slider-thumb]:h-3 group-hover/seek:[&::-webkit-slider-thumb]:rounded-full group-hover/seek:[&::-webkit-slider-thumb]:bg-white group-hover/seek:[&::-webkit-slider-thumb]:shadow-md group-hover/seek:[&::-moz-range-thumb]:w-3 group-hover/seek:[&::-moz-range-thumb]:h-3 group-hover/seek:[&::-moz-range-thumb]:rounded-full group-hover/seek:[&::-moz-range-thumb]:bg-white group-hover/seek:[&::-moz-range-thumb]:border-0 group-hover/seek:[&::-moz-range-thumb]:shadow-md"
                 style={{
                   background: `linear-gradient(to right, var(--art-accent, #FA243C) ${progress}%, transparent ${progress}%)`,
                 }}

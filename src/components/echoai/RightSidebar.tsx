@@ -364,7 +364,9 @@ export function RightSidebar({
                             <p
                               className={`w-full origin-left whitespace-pre-wrap break-words text-balance transition-all duration-700 font-extrabold tracking-tight ${
                                 !hasSynced
-                                  ? "text-[18px] leading-[1.4] text-white/80 scale-100 group-hover:text-white"
+                                  ? (line.includes("not available") || line.includes("Loading")
+                                      ? "text-[24px] leading-[1.2] text-white/40"
+                                      : "text-[24px] leading-[1.2] text-white/80 scale-100 group-hover:text-white")
                                   : "text-[24px] leading-[1.2] text-white"
                               }`}
                             >

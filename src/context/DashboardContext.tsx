@@ -473,6 +473,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
     if (!closedVideo && !closedExpanded) return;
 
+    // If we only closed the expanded player, and the background player was NOT silenced (i.e. not in video mode and not live),
+    // we don't need to reload or interrupt the audio.
+    if (closedExpanded && !closedVideo && !wasVideo && !isReallyLivePlayback) {
+      return;
+    }
+
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
 

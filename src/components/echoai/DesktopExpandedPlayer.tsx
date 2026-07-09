@@ -758,66 +758,56 @@ export function DesktopExpandedPlayer({
                      className="flex-1 overflow-hidden flex items-center justify-center"
                    >
                      {(!lyricsContent || lyricsContent === "Loading lyrics..." || lyricsContent === "Lyrics not available for this track yet.") ? (
-                       <div className="text-center p-8 max-w-md mx-auto space-y-6 animate-gpu">
-                         <div className="h-16 w-16 mx-auto rounded-full bg-white/5 border border-white/5 flex items-center justify-center shadow-lg">
-                           <Mic2 size={24} className="text-white/20" />
-                         </div>
-                         <div className="space-y-2">
-                           <h3 className="text-xl font-bold text-white/90 tracking-tight">
-                             {lyricsContent === "Loading lyrics..." ? "Loading Lyrics" : "Lyrics Unavailable"}
-                           </h3>
-                           <p className="text-sm font-semibold text-white/30 leading-relaxed text-balance">
-                             {lyricsContent === "Loading lyrics..." 
-                               ? "Fetching and synchronizing lyrics from Genius databases..." 
-                               : "We couldn't find lyrics for this song. Enjoy the high-fidelity playback."}
-                           </p>
-                         </div>
-                       </div>
-                     ) : (
-                       <div 
-                         ref={scrollRef} 
-                         className="h-full w-full overflow-y-auto custom-scrollbar px-4 pt-[25vh] pb-[40vh] no-scrollbar"
-                         style={{
-                           maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
-                           WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
-                         }}
-                       >
-                          <div className="max-w-2xl mx-auto">
-                            {lines.map((l, i) => (
-                              <LyricLine
-                                key={i}
-                                line={l}
-                                index={i}
-                                isActive={i === activeIndex}
-                                isInstrumental={displayHasSynced && syncedLines[i]?.isInstrumental}
-                                syncedLine={displayHasSynced ? syncedLines[i] : null}
-                                currentTimeSec={currentTimeSec}
-                                onSeek={onSeek}
-                              />
-                            ))}
-
-                          {/* Lyrics Credits */}
-                          {(geniusData?.writers || lyricsSource) && (
-                            <div className="mt-24 border-t border-white/10 pt-12 pb-20 space-y-5">
-                              {geniusData?.writers && (
-                                <div className="space-y-1">
-                                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">Written By</p>
-                                  <p className="text-xl font-bold text-white/60 leading-tight">
-                                    {geniusData.writers.join(", ")}
-                                  </p>
-                                </div>
-                              )}
-                              {lyricsSource && (
-                                <div className="flex items-center gap-2 pt-2">
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/20">Lyrics provided by</p>
-                                  <span className="px-2 py-0.5 rounded-sm bg-white/5 text-[9px] font-black text-white/40 tracking-tighter uppercase">{lyricsSource}</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
+                        <div className="w-full flex items-center justify-start py-6">
+                          <p className="w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-2xl text-[44px] leading-[1.1] text-white/40">
+                            {lyricsContent || "Lyrics not available for this track yet."}
+                          </p>
                         </div>
-                     </div>
-                     )}
+                      ) : (
+                        <div 
+                          ref={scrollRef} 
+                          className="h-full w-full overflow-y-auto custom-scrollbar px-4 pt-[25vh] pb-[40vh] no-scrollbar"
+                          style={{
+                            maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+                            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+                          }}
+                        >
+                           <div className="max-w-2xl ml-0 text-left">
+                             {lines.map((l, i) => (
+                               <LyricLine
+                                 key={i}
+                                 line={l}
+                                 index={i}
+                                 isActive={i === activeIndex}
+                                 isInstrumental={displayHasSynced && syncedLines[i]?.isInstrumental}
+                                 syncedLine={displayHasSynced ? syncedLines[i] : null}
+                                 currentTimeSec={currentTimeSec}
+                                 onSeek={onSeek}
+                               />
+                             ))}
+
+                           {/* Lyrics Credits */}
+                           {(geniusData?.writers || lyricsSource) && (
+                             <div className="mt-24 border-t border-white/10 pt-12 pb-20 space-y-5">
+                               {geniusData?.writers && (
+                                 <div className="space-y-1">
+                                   <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">Written By</p>
+                                   <p className="text-xl font-bold text-white/60 leading-tight">
+                                     {geniusData.writers.join(", ")}
+                                   </p>
+                                 </div>
+                               )}
+                               {lyricsSource && (
+                                 <div className="flex items-center gap-2 pt-2">
+                                   <p className="text-[10px] font-bold uppercase tracking-widest text-white/20">Lyrics provided by</p>
+                                   <span className="px-2 py-0.5 rounded-sm bg-white/5 text-[9px] font-black text-white/40 tracking-tighter uppercase">{lyricsSource}</span>
+                                 </div>
+                               )}
+                             </div>
+                           )}
+                         </div>
+                      </div>
+                      )}
                     </m.div>
                  )}
                  {activeTab === "queue" && (

@@ -81,7 +81,7 @@ export function SessionFriendsPanel({ accentColor, className = "" }: SessionFrie
     void fetchFriends();
     const interval = window.setInterval(() => {
       void fetchFriends();
-    }, 30_000);
+    }, 300_000); // Poll every 5 minutes as a fallback since Pusher handles real-time updates
     return () => window.clearInterval(interval);
   }, [fetchFriends]);
 

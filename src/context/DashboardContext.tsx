@@ -456,14 +456,22 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     viewModeRef.current = viewMode;
   }, [viewMode]);
 
-  // When video mode is closed (video → music transition), resume the hidden background player
-  // so audio keeps playing even after the expanded player is minimised.
+  const prevExpandedRef = useRef(isExpandedPlayerOpen);
+  // When video mode is closed (video → music transition) or expanded player is closed,
+  // resume the hidden background player so audio keeps playing even after the expanded player is minimised.
   useEffect(() => {
     const wasVideo = prevViewModeRef.current === "video";
     prevViewModeRef.current = viewMode;
 
-    if (!wasVideo || viewMode !== "music") return;   // only care about video → music
+    const wasExpanded = prevExpandedRef.current;
+    prevExpandedRef.current = isExpandedPlayerOpen;
+
     if (isUsingNativeAudio) return;                   // native audio will resume on its own
+
+    const closedExpanded = wasExpanded && !isExpandedPlayerOpen;
+    const closedVideo = wasVideo && viewMode === "music";
+
+    if (!closedVideo && !closedExpanded) return;
 
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
@@ -482,7 +490,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       } catch { /* ignore */ }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode]);
+  }, [viewMode, isExpandedPlayerOpen]);
 
   /** Hidden player: in video mode only cue + mute so expanded iframe is the sole audio source. */
   function syncHiddenPlayerForViewMode(

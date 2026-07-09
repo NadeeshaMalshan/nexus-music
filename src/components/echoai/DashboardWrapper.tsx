@@ -133,7 +133,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
 
       pressTimer = setTimeout(() => {
         e.preventDefault();
-        
+
         const song: Song = {
           id: songElement.getAttribute("data-song-id") || "",
           title: songElement.getAttribute("data-song-title") || "",
@@ -198,12 +198,12 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
       musicVideoId: audioData?.musicVideoId || currentSong.musicVideoId,
     };
   }, [
-    currentSong, 
-    liveMetadata?.title, 
-    liveMetadata?.artist, 
+    currentSong,
+    liveMetadata?.title,
+    liveMetadata?.artist,
     liveMetadata?.artwork,
     audioData?.trackName,
-    audioData?.artist, 
+    audioData?.artist,
     audioData?.coverArt,
     audioData?.musicVideoId
   ]);
@@ -216,7 +216,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   // Sync PWA status bar/theme color with artwork accent
   useEffect(() => {
     if (typeof document === "undefined") return;
-    
+
     // Update theme-color meta tag
     let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
     if (!meta) {
@@ -224,12 +224,12 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
       meta.name = "theme-color";
       document.getElementsByTagName('head')[0].appendChild(meta);
     }
-    
+
     // When a song is playing, let the status bar follow the artwork vibe.
     // Use the current accent color if a song is loaded, otherwise default to #0D0D0D.
     const activeColor = currentSong ? palette.accent : "#0D0D0D";
     meta.setAttribute("content", activeColor);
-    
+
     // For iOS specific status bar
     const appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
     if (appleMeta) {
@@ -258,12 +258,12 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     } else if (segments[0] === "album" && segments[1]) {
       finalTitle = `💿 ${pageTitle || "Album"} | Nexus Music`;
       finalFavicon = pageFavicon || "/icons/icon.svg";
-    } 
+    }
     // 2. Otherwise, if a song is actively playing, show the song name
     else if (isPlaying && mergedCurrentSong) {
-      finalTitle = `🎵 ${mergedCurrentSong.title} • ${mergedCurrentSong.artist}`;
+      finalTitle = ` ${mergedCurrentSong.title} • ${mergedCurrentSong.artist}`;
       finalFavicon = mergedCurrentSong.artwork || "/icons/icon.svg";
-    } 
+    }
     // 3. Fallbacks
     else if (pathname === "/") {
       finalTitle = "Nexus Music | Premium AI Ecosystem";
@@ -324,7 +324,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
       >
         <LeftSidebar
           activeView={activeView}
-          onViewChange={() => {}} // Now handled by Next.js routing via Link
+          onViewChange={() => { }} // Now handled by Next.js routing via Link
           accentColor={themeColor}
         />
 
@@ -386,13 +386,13 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
             isExpandedPlayerOpen
               ? { inset: 0 }
               : {
-                  top: 0, left: 0,
-                  width: "1px", height: "1px",
-                  overflow: "hidden",
-                  opacity: 0.01,
-                  pointerEvents: "none",
-                  zIndex: -10,
-                }
+                top: 0, left: 0,
+                width: "1px", height: "1px",
+                overflow: "hidden",
+                opacity: 0.01,
+                pointerEvents: "none",
+                zIndex: -10,
+              }
           }
         >
           <ExpandedPlayer
@@ -477,7 +477,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
                 className="fixed inset-0 z-80 bg-black/60 backdrop-blur-xs"
                 onClick={() => setContextMenu(null)}
               />
-              
+
               {/* Mobile Spotify-style Bottom Sheet */}
               <m.div
                 initial={{ y: "100%" }}
@@ -489,7 +489,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
               >
                 {/* Drag Handle Indicator */}
                 <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-6 shrink-0" />
-                
+
                 {/* Bottom Sheet Header */}
                 <div className="flex items-center gap-4 border-b border-white/5 pb-4 mb-4">
                   <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-900 border border-white/10 shadow-lg">
@@ -597,7 +597,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
                 <ListPlus size={18} className="text-white/40 group-hover:text-white" />
                 <span>Add to Queue</span>
               </button>
-              
+
               <button
                 onClick={() => {
                   onPlayNext?.(contextMenu.song);
@@ -680,7 +680,7 @@ function SongInfoModal({ song, onClose }: { song: Song; onClose: () => void }) {
   }, [song.title, song.artist]);
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fade-in"
       onClick={onClose}
     >

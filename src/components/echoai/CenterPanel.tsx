@@ -428,8 +428,6 @@ export function CenterPanel(props: CenterPanelProps) {
 
   useEffect(() => {
     void fetchFriendsActivity();
-    const interval = window.setInterval(() => { void fetchFriendsActivity(); }, 30_000);
-    return () => window.clearInterval(interval);
   }, [fetchFriendsActivity]);
 
   const [videoSeed, setVideoSeed] = useState("Trending Hits");

@@ -240,18 +240,22 @@ export function DesktopExpandedPlayer({
   LyricLine.displayName = "LyricLine";
 
   const safeDuration = durationSec || currentSong.durationObj?.totalSeconds || 0;
-  const targetTitle = (liveMetadata?.title || currentSong.title || "").toLowerCase();
-  const isReallyLive = 
-    currentSong.isLive || 
-    currentSong.duration === "LIVE" || 
-    safeDuration > 43200 || 
-    targetTitle.includes("one world radio") ||
-    targetTitle.includes("owr") ||
-    targetTitle.includes("daybreak") ||
-    targetTitle.includes("anthem") ||
-    targetTitle.includes(" 24/7") ||
-    (targetTitle.includes("live") && (targetTitle.includes("stream") || targetTitle.includes("festival") || targetTitle.includes("radio"))) ||
-    (Math.abs(safeDuration) < 1 && isPlaying && (targetTitle.includes("fest") || targetTitle.includes("radio") || targetTitle.includes("live") || !!liveMetadata));
+  const isReallyLive = useMemo(() => {
+    const fallbackDuration = currentSong.duration ? (currentSong.duration.includes(":") ? currentSong.duration.split(":").reduce((acc, time) => (60 * acc) + parseInt(time), 0) : parseInt(currentSong.duration)) : 0;
+    const safeDur = durationSec > 0 ? durationSec : (currentSong.durationObj?.totalSeconds || fallbackDuration || 0);
+    const targetTitle = (liveMetadata?.title || currentSong.title || "").toLowerCase();
+    return (
+      currentSong.isLive ||
+      currentSong.duration === "LIVE" ||
+      !!liveMetadata ||
+      safeDur > 43200 ||
+      (safeDur === 0 &&
+        isPlaying &&
+        (targetTitle.includes("fest") ||
+          targetTitle.includes("radio") ||
+          targetTitle.includes("live")))
+    );
+  }, [currentSong, liveMetadata, isPlaying, durationSec]);
 
   const displayHasSynced = hasSynced && !isReallyLive;
   const lines = displayHasSynced ? syncedLines.map(l => l.text) : plainLines;
@@ -337,7 +341,7 @@ export function DesktopExpandedPlayer({
 
   useEffect(() => {
     const p = ytPlayerInstance.current;
-    if ((viewMode === "video" || currentSong.isLive) && p) {
+    if ((viewMode === "video" || isReallyLive) && p) {
       const state = p.getPlayerState?.();
       if (isPlaying) {
         if (state !== 1 && state !== 3) p.playVideo();
@@ -345,7 +349,7 @@ export function DesktopExpandedPlayer({
         if (state !== 2 && state !== 5) p.pauseVideo();
       }
     }
-  }, [isPlaying, viewMode, currentSong.isLive]);
+  }, [isPlaying, viewMode, isReallyLive, isOpen, currentSong.id]);
 
   useEffect(() => {
     if ((viewMode === "video" || currentSong.isLive) && ytPlayerInstance.current) {
@@ -635,7 +639,7 @@ export function DesktopExpandedPlayer({
                 className={`group/vid absolute inset-0 overflow-hidden ${viewMode === "music" ? "opacity-0 pointer-events-none" : "bg-black"}`}
               >
                 <YouTube 
-                  key={`desktop-yt-${videoKey}`}
+                  key={`desktop-yt-${currentSong.musicVideoId || currentSong.id}-${videoKey}`}
                   videoId={currentSong.musicVideoId || currentSong.id} 
                   opts={youtubeOpts} 
                   iframeClassName="w-full h-full"

@@ -178,6 +178,7 @@ export function SearchPage({ onClose, onSongSelect, onQueueReplace, onAddToQueue
   const searchTimeoutRef = useRef<number | null>(null);
   const searchRunIdRef = useRef(0);
   const searchQueryRef = useRef(searchQuery);
+  const lastSearchedQueryRef = useRef("");
   const onCloseRef = useRef(onClose);
   const onSongSelectRef = useRef(onSongSelect);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -405,24 +406,6 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
             .catch(() => []),
         ]);
 
-        if (runId !== searchRunIdRef.current) return;
-
-        const byCat: Record<string, SearchItem[]> = {
-          Songs: songs,
-          Videos: videos,
-          Live: live,
-          Artists: artists,
-          Albums: albums,
-          Playlists: playlists,
-        };
-        setResultsByCategory(byCat);
-
-        const queryLower = finalQuery.toLowerCase();
-        let prioritizedResults: SearchItem[] = [];
-        
-        // Keep only actual live streams
-        const actualLiveOnly = (live || []).filter(isActuallyLiveStream);
-
         const userItems = (users || []).map((user: any, idx: number) => ({
           type: "USER",
           id: user.email || user.name || `user-${idx}`,
@@ -432,6 +415,24 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
           thumbnail: user.avatarUrl || user.image || user.thumbnail || "",
           user,
         }));
+
+        const byCat: Record<string, any[]> = {
+          Songs: songs,
+          Videos: videos,
+          Live: live,
+          Artists: artists,
+          Albums: albums,
+          Playlists: playlists,
+          Users: userItems,
+        };
+        setResultsByCategory(byCat);
+
+        const queryLower = finalQuery.toLowerCase();
+        let prioritizedResults: SearchItem[] = [];
+        
+        // Keep only actual live streams
+        const actualLiveOnly = (live || []).filter(isActuallyLiveStream);
+
         setUserResults(users.slice(0, 5));
 
         if (queryLower.includes("playlist") || queryLower.includes("mix")) {
@@ -555,6 +556,7 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
           setUserResults([]);
         }
       }
+      lastSearchedQueryRef.current = query;
     } catch (error) {
       console.error("Search failed:", error);
       setSearchResults([]);
@@ -932,31 +934,26 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                       const q = searchQuery.trim();
                       if (!q) return;
 
-                      // Instantly show cached results from the last dynamic run
-                      if (cat === "Top") {
-                        if (resultsByCategory.Songs || resultsByCategory.Videos || resultsByCategory.Artists) {
-                          setSearchResults([
-                            ...(resultsByCategory.Artists || []).slice(0, 2),
-                            ...(resultsByCategory.Songs || []).slice(0, 6),
-                            ...(resultsByCategory.Videos || []).slice(0, 4).map((v) => ({ ...v, fromVideosShelf: true })),
-                          ]);
+                      // Instantly show cached results from the last dynamic run if same query
+                      const isSameQuery = q === lastSearchedQueryRef.current;
+                      if (isSameQuery) {
+                        if (cat === "Top") {
+                          if (resultsByCategory.Songs || resultsByCategory.Videos || resultsByCategory.Artists) {
+                            setSearchResults([
+                              ...(resultsByCategory.Artists || []).slice(0, 2),
+                              ...(resultsByCategory.Songs || []).slice(0, 6),
+                              ...(resultsByCategory.Videos || []).slice(0, 4).map((v) => ({ ...v, fromVideosShelf: true })),
+                            ]);
+                            return;
+                          }
+                        } else if (cat === "Users") {
+                          const rawUsers = (resultsByCategory.Users || []) as any[];
+                          setSearchResults(rawUsers);
+                          return;
+                        } else if (resultsByCategory[cat]) {
+                          setSearchResults(resultsByCategory[cat]);
                           return;
                         }
-                      } else if (cat === "Users") {
-                        const rawUsers = (resultsByCategory.Users || []) as UserSearchItem[];
-                        setSearchResults(rawUsers.map((user, idx) => ({
-                          type: "USER",
-                          id: user.email || user.name || `user-${idx}`,
-                          name: user.name || user.email || "",
-                          title: user.name || user.email || "",
-                          author: user.email || "",
-                          thumbnail: user.avatarUrl || user.image || user.thumbnail || "",
-                          user,
-                        })));
-                        return;
-                      } else if (resultsByCategory[cat]) {
-                        setSearchResults(resultsByCategory[cat]);
-                        return;
                       }
 
                       void runSearch(q, cat);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { MusicArtwork } from "./MusicArtwork";
@@ -81,153 +81,167 @@ export function YouTubeLibrary({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
-  useEffect(() => {
-    async function loadLibrary() {
-      if (!session?.accessToken) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const init = youtubeApiFetchInit(session.accessToken);
-        
-        // Sync any pending offline actions first
-        await fetch("/api/user/sync-pending", { ...init, method: "POST" }).catch(() => {});
+  const loadLibrary = useCallback(async () => {
+    if (!session?.accessToken) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const init = youtubeApiFetchInit(session.accessToken);
+      
+      // Sync any pending offline actions first
+      await fetch("/api/user/sync-pending", { ...init, method: "POST" }).catch(() => {});
 
-        const dbRes = await fetch("/api/user/library", init);
-        if (dbRes.ok) {
-          const dbData = await dbRes.json();
-          if (Array.isArray(dbData.playlists) && dbData.playlists.length) {
-            setPlaylists(dbData.playlists);
+      const dbRes = await fetch("/api/user/library", init);
+      if (dbRes.ok) {
+        const dbData = await dbRes.json();
+        if (Array.isArray(dbData.playlists) && dbData.playlists.length) {
+          setPlaylists(dbData.playlists);
+        }
+        if (Array.isArray(dbData.liked) && dbData.liked.length) {
+          setLikedSongs(dbData.liked);
+        }
+        if (dbData.history) {
+          const parsedHist = typeof dbData.history === "string" ? JSON.parse(dbData.history) : dbData.history;
+          if (Array.isArray(parsedHist.tracks)) {
+            setYtHistory(parsedHist.tracks);
           }
-          if (Array.isArray(dbData.liked) && dbData.liked.length) {
-            setLikedSongs(dbData.liked);
-          }
-          if (dbData.history) {
-            const parsedHist = typeof dbData.history === "string" ? JSON.parse(dbData.history) : dbData.history;
-            if (Array.isArray(parsedHist.tracks)) {
-              setYtHistory(parsedHist.tracks);
-            }
-            if (parsedHist.source) {
-              setHistoryFeedMeta({
-                source: parsedHist.source,
-                ytmBrowseAvailable: !!parsedHist.ytmBrowseAvailable,
-              });
-            }
+          if (parsedHist.source) {
+            setHistoryFeedMeta({
+              source: parsedHist.source,
+              ytmBrowseAvailable: !!parsedHist.ytmBrowseAvailable,
+            });
           }
         }
-
-        const statsRes = await fetch("/api/user/stats", init);
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          if (statsData?.recentPlayed && Array.isArray(statsData.recentPlayed)) {
-            setDbPlayHistory(statsData.recentPlayed);
-          }
-        }
-
-        const [pRes, lRes, hRes] = await Promise.all([
-          fetch("/api/youtube/playlists", init),
-          fetch("/api/youtube/liked", init),
-          fetch("/api/youtube/history", init),
-        ]);
-
-        let quotaHit = false;
-        let showedCache = false;
-        const playlistRows = pRes.ok ? await pRes.json() : [];
-        const likedRows = lRes.ok ? await lRes.json() : [];
-        let hData: any = null;
-
-        if (pRes.ok) {
-          const arr = Array.isArray(playlistRows) ? playlistRows : [];
-          setPlaylists(arr);
-          writeLibraryCache("playlists", arr);
-        } else {
-          const errBody = await pRes.json().catch(() => ({}));
-          if (pRes.status === 503 && errBody?.error === "quotaExceeded") {
-            quotaHit = true;
-          }
-          setPlaylists(prev => {
-            if (prev.length > 0) return prev; // Keep DB playlists!
-            const cached = readLibraryCache<YouTubePlaylist[]>("playlists");
-            if (cached?.length) {
-              showedCache = true;
-              return cached;
-            }
-            return [];
-          });
-        }
-
-        if (lRes.ok) {
-          const arr = Array.isArray(likedRows) ? likedRows : [];
-          setLikedSongs(arr);
-          writeLibraryCache("liked", arr);
-        } else {
-          const errBody = await lRes.json().catch(() => ({}));
-          if (lRes.status === 503 && errBody?.error === "quotaExceeded") {
-            quotaHit = true;
-          }
-          setLikedSongs(prev => {
-            if (prev.length > 0) return prev; // Keep DB liked songs!
-            const cached = readLibraryCache<unknown[]>("liked");
-            if (cached?.length) {
-              showedCache = true;
-              return cached;
-            }
-            return [];
-          });
-        }
-
-        if (hRes.ok) {
-          hData = await hRes.json();
-          setYtHistory(Array.isArray(hData.tracks) ? hData.tracks : []);
-          setHistoryFeedMeta({
-            source: typeof hData.source === "string" ? hData.source : "youtube.activities",
-            ytmBrowseAvailable: !!hData.ytmBrowseAvailable,
-          });
-          writeLibraryCache("history", hData);
-        } else {
-          const errBody = await hRes.json().catch(() => ({}));
-          if (hRes.status === 503 && errBody?.error === "quotaExceeded") {
-            quotaHit = true;
-          }
-          setYtHistory(prev => {
-            if (prev.length > 0) return prev; // Keep DB history!
-            const cached = readLibraryCache<{
-              tracks?: unknown[];
-              source?: string;
-              ytmBrowseAvailable?: boolean;
-            }>("history");
-            if (cached?.tracks && Array.isArray(cached.tracks) && cached.tracks.length) {
-              setHistoryFeedMeta({
-                source: typeof cached.source === "string" ? cached.source : "youtube.activities",
-                ytmBrowseAvailable: !!cached.ytmBrowseAvailable,
-              });
-              showedCache = true;
-              return cached.tracks as any[];
-            }
-            return [];
-          });
-        }
-
-        if (pRes.ok || lRes.ok || hRes.ok) {
-          await fetch("/api/user/library", {
-            ...init,
-            method: "POST",
-            headers: {
-              ...(init.headers || {}),
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              playlists: Array.isArray(playlistRows) ? playlistRows : [],
-              liked: Array.isArray(likedRows) ? likedRows : [],
-              history: hRes.ok ? hData : null,
-            }),
-          });
-        }
-      } finally {
-        setLoading(false);
       }
+
+      const statsRes = await fetch("/api/user/stats", init);
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        if (statsData?.recentPlayed && Array.isArray(statsData.recentPlayed)) {
+          setDbPlayHistory(statsData.recentPlayed);
+        }
+      }
+
+      const [pRes, lRes, hRes] = await Promise.all([
+        fetch("/api/youtube/playlists", init),
+        fetch("/api/youtube/liked", init),
+        fetch("/api/youtube/history", init),
+      ]);
+
+      let quotaHit = false;
+      let showedCache = false;
+      const playlistRows = pRes.ok ? await pRes.json() : [];
+      const likedRows = lRes.ok ? await lRes.json() : [];
+      let hData: any = null;
+
+      if (pRes.ok) {
+        const arr = Array.isArray(playlistRows) ? playlistRows : [];
+        setPlaylists(arr);
+        writeLibraryCache("playlists", arr);
+      } else {
+        const errBody = await pRes.json().catch(() => ({}));
+        if (pRes.status === 503 && errBody?.error === "quotaExceeded") {
+          quotaHit = true;
+        }
+        setPlaylists(prev => {
+          if (prev.length > 0) return prev; // Keep DB playlists!
+          const cached = readLibraryCache<YouTubePlaylist[]>("playlists");
+          if (cached?.length) {
+            showedCache = true;
+            return cached;
+          }
+          return [];
+        });
+      }
+
+      if (lRes.ok) {
+        const arr = Array.isArray(likedRows) ? likedRows : [];
+        setLikedSongs(arr);
+        writeLibraryCache("liked", arr);
+      } else {
+        const errBody = await lRes.json().catch(() => ({}));
+        if (lRes.status === 503 && errBody?.error === "quotaExceeded") {
+          quotaHit = true;
+        }
+        setLikedSongs(prev => {
+          if (prev.length > 0) return prev; // Keep DB liked songs!
+          const cached = readLibraryCache<unknown[]>("liked");
+          if (cached?.length) {
+            showedCache = true;
+            return cached;
+          }
+          return [];
+        });
+      }
+
+      if (hRes.ok) {
+        hData = await hRes.json();
+        setYtHistory(Array.isArray(hData.tracks) ? hData.tracks : []);
+        setHistoryFeedMeta({
+          source: typeof hData.source === "string" ? hData.source : "youtube.activities",
+          ytmBrowseAvailable: !!hData.ytmBrowseAvailable,
+        });
+        writeLibraryCache("history", hData);
+      } else {
+        const errBody = await hRes.json().catch(() => ({}));
+        if (hRes.status === 503 && errBody?.error === "quotaExceeded") {
+          quotaHit = true;
+        }
+        setYtHistory(prev => {
+          if (prev.length > 0) return prev; // Keep DB history!
+          const cached = readLibraryCache<{
+            tracks?: unknown[];
+            source?: string;
+            ytmBrowseAvailable?: boolean;
+          }>("history");
+          if (cached?.tracks && Array.isArray(cached.tracks) && cached.tracks.length) {
+            setHistoryFeedMeta({
+              source: typeof cached.source === "string" ? cached.source : "youtube.activities",
+              ytmBrowseAvailable: !!cached.ytmBrowseAvailable,
+            });
+            showedCache = true;
+            return cached.tracks as any[];
+          }
+          return [];
+        });
+      }
+
+      if (quotaHit && showedCache) {
+        setError("YouTube quota exceeded. Showing cached offline data.");
+      }
+
+      if (pRes.ok || lRes.ok || hRes.ok) {
+        await fetch("/api/user/library", {
+          ...init,
+          method: "POST",
+          headers: {
+            ...(init.headers || {}),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            playlists: Array.isArray(playlistRows) ? playlistRows : [],
+            liked: Array.isArray(likedRows) ? likedRows : [],
+            history: hRes.ok ? hData : null,
+          }),
+        });
+      }
+    } finally {
+      setLoading(false);
     }
-    if (session?.accessToken) loadLibrary();
   }, [session?.accessToken]);
+
+  useEffect(() => {
+    if (session?.accessToken) loadLibrary();
+  }, [session?.accessToken, loadLibrary]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleUpdate = () => {
+      void loadLibrary();
+    };
+    window.addEventListener("nexus-playlists-updated", handleUpdate);
+    return () => window.removeEventListener("nexus-playlists-updated", handleUpdate);
+  }, [loadLibrary]);
 
   const filteredPlaylists = useMemo(() => {
     const list = playlists.filter(p => (p.title || "").toLowerCase().includes(searchQuery.toLowerCase()));

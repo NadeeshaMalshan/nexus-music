@@ -82,6 +82,7 @@ export function CreatePlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }
       );
       if (res.ok) {
         onClose();
+        window.dispatchEvent(new CustomEvent("nexus-playlists-updated"));
         router.refresh();
       }
     } catch (err) {
@@ -446,6 +447,7 @@ export function AiPlaylistModal({ isOpen, onClose, accentColor = "#FA233B" }: Mo
       } else {
         setLibrarySyncStatus("synced");
       }
+      window.dispatchEvent(new CustomEvent("nexus-playlists-updated"));
       router.refresh();
     } catch (err) {
       console.error("AI Save Error:", err);

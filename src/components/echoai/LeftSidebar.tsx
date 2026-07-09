@@ -66,24 +66,34 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const canManageYtLibrary = !!session?.accessToken;
 
-  useEffect(() => {
-    async function loadPlaylists() {
-      if (!session?.accessToken) return;
-      setLoading(true);
-      try {
-        const response = await fetch("/api/youtube/playlists", youtubeApiFetchInit(session.accessToken));
-        if (response.ok) {
-          const data = await response.json();
-          setPlaylists(data);
-        }
-      } catch (err) {
-        console.error("Sidebar playlist fetch error:", err);
-      } finally {
-        setLoading(false);
+  const loadPlaylists = useCallback(async () => {
+    if (!session?.accessToken) return;
+    setLoading(true);
+    try {
+      const response = await fetch("/api/youtube/playlists", youtubeApiFetchInit(session.accessToken));
+      if (response.ok) {
+        const data = await response.json();
+        setPlaylists(data);
       }
+    } catch (err) {
+      console.error("Sidebar playlist fetch error:", err);
+    } finally {
+      setLoading(false);
     }
-    if (session?.accessToken) loadPlaylists();
   }, [session?.accessToken]);
+
+  useEffect(() => {
+    if (session?.accessToken) loadPlaylists();
+  }, [session?.accessToken, loadPlaylists]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleUpdate = () => {
+      void loadPlaylists();
+    };
+    window.addEventListener("nexus-playlists-updated", handleUpdate);
+    return () => window.removeEventListener("nexus-playlists-updated", handleUpdate);
+  }, [loadPlaylists]);
 
   const navigationItems = [
     { id: "home", icon: Home, label: "Home", href: "/" },

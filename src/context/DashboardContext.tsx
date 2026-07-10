@@ -920,8 +920,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (!currentSong) {
       return;
     }
-    const track = (liveMetadata?.title || currentSong.title || audioData?.trackName)?.trim();
-    const artist = (liveMetadata?.artist || currentSong.artist || audioData?.artist)?.trim();
+    const track = (liveMetadata?.title || currentSong.title || audioData?.trackName || "").trim();
+    const artist = (liveMetadata?.artist || currentSong.artist || audioData?.artist || "").trim();
     if (!track || !artist) {
       return;
     }

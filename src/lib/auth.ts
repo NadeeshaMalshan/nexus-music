@@ -62,6 +62,23 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      if (
+        url.startsWith("exp://") ||
+        url.startsWith("mobile://") ||
+        url.startsWith("nexus-music://")
+      ) {
+        return url;
+      }
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      try {
+        const parsedUrl = new URL(url);
+        if (parsedUrl.origin === baseUrl) return url;
+      } catch {
+        // Fallback
+      }
+      return baseUrl;
+    },
     async jwt({ token, account, user }) {
       // Initial sign in: Merge account and user info into the token
       if (account && user) {

@@ -658,7 +658,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, [session?.user?.email]);
 
   // Palette handling
-  const effectiveArtwork = useMemo(() => overrideArtwork || liveMetadata?.artwork || currentSong?.artwork || audioData?.coverArt || null, [overrideArtwork, liveMetadata, audioData, currentSong]);
+  const effectiveArtwork = useMemo(() => overrideArtwork || liveMetadata?.artwork || audioData?.coverArt || currentSong?.artwork || null, [overrideArtwork, liveMetadata, audioData, currentSong]);
   const palette = useArtworkColors(effectiveArtwork);
 
   useEffect(() => {

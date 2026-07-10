@@ -219,7 +219,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
       ...currentSong,
       title: liveMetadata?.title || currentSong.title || audioData?.trackName || "",
       artist: resolvedArtist,
-      artwork: liveMetadata?.artwork || currentSong.artwork || audioData?.coverArt || "",
+      artwork: liveMetadata?.artwork || audioData?.coverArt || currentSong.artwork || "",
       musicVideoId: audioData?.musicVideoId || currentSong.musicVideoId,
     };
   }, [

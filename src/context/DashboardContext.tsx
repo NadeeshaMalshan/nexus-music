@@ -501,7 +501,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   /** Hidden player: in video mode only cue + mute so expanded iframe is the sole audio source. */
   function syncHiddenPlayerForViewMode(
     player: NonNullable<(typeof ytPlayerRef)["current"]>,
-    videoId: string
+    videoId: string,
+    startSeconds: number = 0
   ) {
     // If we're in video mode or it's a LIVE stream, we do NOT want the hidden player
     // to touch this video at all. The visible ExpandedPlayer will own the playback.
@@ -519,11 +520,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (userIntentRef.current === "paused") {
-      player.cueVideoById({ videoId, startSeconds: 0 });
+      player.cueVideoById({ videoId, startSeconds });
       return;
     }
 
-    player.loadVideoById({ videoId, startSeconds: 0 });
+    player.loadVideoById({ videoId, startSeconds });
   }
 
   // Persistence: Load from localStorage on mount
@@ -2354,6 +2355,38 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     isJamActive, pageTitle, pageFavicon, installPwa, pwaInstallable
   ]);
 
+  const handleAudioError = useCallback((index: 1 | 2) => {
+    const audio = index === 1 ? audio1Ref.current : audio2Ref.current;
+    if (!audio) return;
+    console.warn(`[DashboardContext] Native Audio player ${index} error:`, audio.error);
+    
+    if (directAudioUrl) {
+      console.log("[DashboardContext] Falling back to YouTube iframe player due to native audio error.");
+      
+      const currentTime = audio.currentTime || currentTimeSec;
+      
+      // Clear direct audio URL to disable native audio mode
+      setDirectAudioUrl(null);
+      
+      // Force YouTube player to reload by clearing last processed ID
+      lastProcessedIdRef.current = null;
+      
+      const targetId = audioData?.videoId || currentSong?.id;
+      if (targetId && ytPlayerRef.current && playerReadyRef.current) {
+        try {
+          if (userIntentRef.current === "playing") {
+            ytPlayerRef.current.loadVideoById({ videoId: targetId, startSeconds: currentTime });
+            setIsPlaying(true);
+          } else {
+            ytPlayerRef.current.cueVideoById({ videoId: targetId, startSeconds: currentTime });
+          }
+        } catch (err) {
+          console.error("[DashboardContext] YouTube fallback playback failed:", err);
+        }
+      }
+    }
+  }, [directAudioUrl, currentTimeSec, audioData?.videoId, currentSong?.id, isPlayerReady]);
+
   return (
     <DashboardContext.Provider value={value}>
       {children}
@@ -2374,7 +2407,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
             onNext();
           }
         }}
-        onError={(e) => console.warn("Audio player 1 error:", e)}
+        onError={() => handleAudioError(1)}
       />
       <audio
         ref={audio2Ref}
@@ -2393,7 +2426,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
             onNext();
           }
         }}
-        onError={(e) => console.warn("Audio player 2 error:", e)}
+        onError={() => handleAudioError(2)}
       />
     </DashboardContext.Provider>
   );

@@ -212,13 +212,13 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     const currentHasMultiple = multiArtistRe.test(currentSong.artist);
     const audioHasMultiple = audioData?.artist ? multiArtistRe.test(audioData.artist) : false;
     const resolvedArtist = liveMetadata?.artist
-      || (audioData?.artist && (!currentHasMultiple || audioHasMultiple) ? audioData.artist : null)
-      || currentSong.artist;
+      || currentSong.artist
+      || (audioData?.artist && (!currentHasMultiple || audioHasMultiple) ? audioData.artist : null);
     return {
       ...currentSong,
-      title: liveMetadata?.title || audioData?.trackName || currentSong.title,
+      title: liveMetadata?.title || currentSong.title || audioData?.trackName,
       artist: resolvedArtist,
-      artwork: liveMetadata?.artwork || audioData?.coverArt || currentSong.artwork,
+      artwork: liveMetadata?.artwork || currentSong.artwork || audioData?.coverArt || "",
       musicVideoId: audioData?.musicVideoId || currentSong.musicVideoId,
     };
   }, [

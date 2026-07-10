@@ -14,14 +14,15 @@ redis_client = Redis(url=REDIS_URL, token=REDIS_TOKEN)
 # Main model (gemini-3.5-flash)
 primary_llm = ChatGoogleGenerativeAI(
     model="gemini-3.5-flash",
-    google_api_key=os.getenv("GEMINI_API_KEY")
+    google_api_key=os.getenv("GEMINI_API_KEY"),
+    max_retries=1
 )
 
 # Fallback models (avoiding "pro" models since the free tier API key has a quota limit of 0 for them)
 fallbacks = [
-    ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=os.getenv("GEMINI_API_KEY")),
-    ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", google_api_key=os.getenv("GEMINI_API_KEY")),
-    ChatGoogleGenerativeAI(model="gemma-4-31b-it", google_api_key=os.getenv("GEMINI_API_KEY")),
+    ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=os.getenv("GEMINI_API_KEY"), max_retries=1),
+    ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", google_api_key=os.getenv("GEMINI_API_KEY"), max_retries=1),
+    ChatGoogleGenerativeAI(model="gemma-4-26b-a4b-it", google_api_key=os.getenv("GEMINI_API_KEY"), max_retries=1),
 ]
 
 # Combined unstructured model with fallback chain

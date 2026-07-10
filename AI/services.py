@@ -41,10 +41,19 @@ def get_user_taste(user_id: str, raw_history: List[dict]) -> TasteProfile:
     system_prompt = "Analyze the music listening history and output a structured profile."
     user_prompt = f"Listening history: {formatted_history}"
     
-    taste_profile = structured_llm.invoke([
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt}
-    ])
+    try:
+        taste_profile = structured_llm.invoke([
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ])
+    except Exception as e:
+        print(f"Taste profile generation failed: {e}. Falling back to default profile.")
+        taste_profile = TasteProfile(
+            preferred_genres=["Pop", "Rock", "Electronic"],
+            vibe_description="A balanced mix of popular genres and mood-matching tunes",
+            tempo_preference="any",
+            top_artists=[]
+        )
     
     # Cache taste profile in Redis for 7 days (604800 seconds)
     redis_client.setex(cache_key, 604800, taste_profile.model_dump_json())
@@ -61,11 +70,22 @@ def generate_playlist_searches(user_prompt: str, taste: TasteProfile) -> List[st
     Generate 5 queries blending both elements.
     """
     
-    result = structured_llm.invoke([
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_content}
-    ])
-    return result.queries
+    try:
+        result = structured_llm.invoke([
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content}
+        ])
+        return result.queries
+    except Exception as e:
+        print(f"Playlist searches generation failed: {e}. Falling back to default queries.")
+        clean_prompt = user_prompt.strip() if user_prompt else "music"
+        return [
+            f"{clean_prompt} music",
+            f"{clean_prompt} playlist",
+            f"{clean_prompt} mix",
+            f"{clean_prompt} songs",
+            clean_prompt
+        ]
 
 
 # --- STEP 3: Playlist Name & Cover Art with Fallback ---
@@ -73,11 +93,22 @@ def generate_playlist_branding(user_prompt: str, songs: List[dict]) -> PlaylistB
     structured_llm = get_structured_llm(PlaylistBranding)
     song_list = "\n".join([f"- {s['title']} by {s['artist']}" for s in songs[:10]])
     
-    branding = structured_llm.invoke([
-        {"role": "system", "content": "Create a playlist title, description, and image prompt based on the prompt and songs."},
-        {"role": "user", "content": f"Prompt: {user_prompt}\nSongs:\n{song_list}"}
-    ])
-    return branding
+    try:
+        branding = structured_llm.invoke([
+            {"role": "system", "content": "Create a playlist title, description, and image prompt based on the prompt and songs."},
+            {"role": "user", "content": f"Prompt: {user_prompt}\nSongs:\n{song_list}"}
+        ])
+        return branding
+    except Exception as e:
+        print(f"Playlist branding generation failed: {e}. Falling back to default branding.")
+        title = f"{user_prompt[:25]} Mix" if user_prompt else "Vibe Mix"
+        description = f"A custom curated playlist based on '{user_prompt}' and your taste."
+        image_prompt = f"A modern abstract playlist cover art representing '{user_prompt}', vibrant color palette, high resolution, minimalist."
+        return PlaylistBranding(
+            title=title,
+            description=description,
+            image_prompt=image_prompt
+        )
 
 def generate_cover_image(image_prompt: str, theme: str) -> str:
     """

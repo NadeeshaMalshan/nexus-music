@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import React from "react";
 import { X, Play, Trash2, GripVertical, Plus, Loader2 } from "lucide-react";
 import { type Song } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
@@ -6,6 +7,118 @@ import { AudioVisualizer } from "./AudioVisualizer";
 import { motion, Reorder, AnimatePresence } from "motion/react";
 import { SessionFriendsPanel } from "./SessionFriendsPanel";
 import { MusicArtwork } from "./MusicArtwork";
+
+interface SidebarLyricLineProps {
+  line: string;
+  index: number;
+  isActive: boolean;
+  isPast: boolean;
+  isInstrumental: boolean;
+  hasSynced: boolean;
+  instProgress: number;
+  syncedAt: number;
+  onSeek?: (time: number) => void;
+  elRef: (el: HTMLDivElement | null) => void;
+}
+
+const SidebarLyricLine = React.memo(
+  ({ line, index, isActive, isPast, isInstrumental, hasSynced, instProgress, syncedAt, onSeek, elRef }: SidebarLyricLineProps) => {
+    return (
+      <motion.div
+        ref={elRef}
+        onClick={() => { if (hasSynced && onSeek) onSeek(syncedAt); }}
+        initial={false}
+        animate={{
+          opacity: !hasSynced ? 0.85 : isActive ? 1 : isPast ? 0.18 : 0.28,
+          scale: isActive ? 1.01 : isPast ? 0.97 : 0.98,
+          x: isActive ? 6 : 0,
+          filter: isActive
+            ? "blur(0px) brightness(1.15)"
+            : isPast
+            ? "blur(0.8px) brightness(0.6)"
+            : "blur(0.5px) brightness(0.7)",
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 120,
+          damping: 22,
+          mass: 0.8,
+          filter: { duration: 0.5, ease: "easeOut" },
+        }}
+        className={`group flex items-center origin-left ${
+          hasSynced ? 'cursor-pointer' : ''
+        } ${
+          isInstrumental
+            ? (isActive ? "h-[60px]" : "h-0 overflow-hidden")
+            : "min-h-[48px] py-3"
+        }`}
+      >
+        {isInstrumental ? (
+          <div className={`flex gap-3 origin-left items-center transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
+            {[0, 1, 2].map((dotIdx) => {
+              const thresholds = [0, 0.33, 0.66];
+              const ranges = [0.33, 0.33, 0.34];
+              const dotProgress = Math.max(0, Math.min(1, (instProgress - thresholds[dotIdx]) / ranges[dotIdx]));
+              const dotScale = 0.35 + 0.65 * dotProgress;
+              const dotOpacity = 0.2 + 0.8 * dotProgress;
+              const glowSpread = 4 + 10 * dotProgress;
+              return (
+                <motion.div
+                  key={dotIdx}
+                  animate={{
+                    scale: isActive ? dotScale : 0.35,
+                    opacity: isActive ? dotOpacity : 0.15,
+                  }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  className="rounded-full bg-white"
+                  style={{
+                    width: 10,
+                    height: 10,
+                    boxShadow: isActive && dotProgress > 0
+                      ? `0 0 ${glowSpread}px 1px rgba(255,255,255,${0.3 + 0.5 * dotProgress})`
+                      : 'none',
+                  }}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <div className="w-full relative">
+            {isActive && hasSynced ? (
+              <p
+                className="w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight text-[24px] leading-[1.25] text-white"
+                style={{ textShadow: '0 0 20px rgba(255,255,255,0.35), 0 0 40px rgba(255,255,255,0.15)' }}
+              >
+                {line}
+              </p>
+            ) : (
+              <p
+                className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight text-[24px] leading-[1.25] transition-[filter,opacity] duration-300 group-hover:opacity-70 group-hover:[filter:blur(0px)_brightness(1)] ${
+                  !hasSynced
+                    ? (line.includes("not available") || line.includes("Loading")
+                        ? "text-white/40"
+                        : "text-white/80")
+                    : "text-white"
+                }`}
+              >
+                {line}
+              </p>
+            )}
+          </div>
+        )}
+      </motion.div>
+    );
+  },
+  (prev, next) => {
+    // Only re-render when active/past state changes for this line
+    if (prev.isActive !== next.isActive) return false;
+    if (prev.isPast !== next.isPast) return false;
+    // If this is the currently active instrumental, update on every tick for dot progress
+    if (next.isActive && next.isInstrumental) return prev.instProgress === next.instProgress;
+    return true;
+  }
+);
+SidebarLyricLine.displayName = "SidebarLyricLine";
 
 
 interface RightSidebarProps {
@@ -335,99 +448,19 @@ export function RightSidebar({
                       }
 
                       return (
-                        <motion.div
-                          key={`${index}`} 
-                          ref={(el) => { elementsRef.current[index] = el; }}
-                          onClick={() => { if (hasSynced && onSeek) onSeek(syncedLines[index].at); }}
-                          animate={{
-                            opacity: !hasSynced ? 0.85 : isActive ? 1 : isPast ? 0.18 : 0.28,
-                            scale: isActive ? 1.01 : isPast ? 0.97 : 0.98,
-                            x: isActive ? 6 : 0,
-                            filter: isActive
-                              ? "blur(0px) brightness(1.15)"
-                              : isPast
-                              ? "blur(0.8px) brightness(0.6)"
-                              : "blur(0.5px) brightness(0.7)",
-                          }}
-                          whileHover={hasSynced && !isActive ? {
-                            opacity: 0.65,
-                            filter: "blur(0px) brightness(0.95)",
-                            x: 3,
-                          } : undefined}
-                          transition={{
-                            type: "spring",
-                            stiffness: 120,
-                            damping: 22,
-                            mass: 0.8,
-                            filter: { duration: 0.5, ease: "easeOut" },
-                          }}
-                          className={`group flex items-center origin-left ${
-                            hasSynced ? 'cursor-pointer' : ''
-                          } ${
-                            isInstrumental 
-                                ? (isActive ? "h-[60px]" : "h-0 overflow-hidden") 
-                                : "min-h-[48px] py-3"
-                          }`}
-                        >
-                          {isInstrumental ? (
-                            <div className={`flex gap-3 origin-left items-center transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
-                              {[0, 1, 2].map((dotIdx) => {
-                                const thresholds = [0, 0.33, 0.66];
-                                const ranges = [0.33, 0.33, 0.34];
-                                const dotProgress = Math.max(0, Math.min(1, (instProgress - thresholds[dotIdx]) / ranges[dotIdx]));
-                                const dotSize = 0.6 + 0.4 * dotProgress;
-                                return (
-                                  <motion.div
-                                    key={dotIdx}
-                                    animate={isActive ? {
-                                      scale: [1, 1.4, 1],
-                                      opacity: [0.3, 1, 0.3],
-                                    } : { scale: 0.6, opacity: 0.1 }}
-                                    transition={isActive ? {
-                                      duration: 1.2,
-                                      repeat: Infinity,
-                                      ease: "easeInOut",
-                                      delay: dotIdx * 0.3,
-                                    } : {}}
-                                    className="rounded-full bg-white"
-                                    style={{
-                                      width: 10,
-                                      height: 10,
-                                      boxShadow: isActive ? `0 0 ${8 * dotSize}px 2px rgba(255,255,255,0.6)` : 'none',
-                                    }}
-                                  />
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="w-full relative">
-                              {isActive && hasSynced ? (
-                                // Active line: glowing text with subtle gradient shimmer
-                                <p
-                                  className="w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight text-[24px] leading-[1.25]"
-                                  style={{
-                                    color: 'white',
-                                    textShadow: '0 0 20px rgba(255,255,255,0.35), 0 0 40px rgba(255,255,255,0.15)',
-                                  }}
-                                >
-                                  {line}
-                                </p>
-                              ) : (
-                                <p
-                                  className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight text-[24px] leading-[1.25] ${
-                                    !hasSynced
-                                      ? (line.includes("not available") || line.includes("Loading")
-                                          ? "text-white/40"
-                                          : "text-white/80 group-hover:text-white transition-colors")
-                                      : "text-white"
-                                  }`}
-                                >
-                                  {line}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </motion.div>
+                        <SidebarLyricLine
+                          key={index}
+                          line={line}
+                          index={index}
+                          isActive={isActive}
+                          isPast={isPast}
+                          isInstrumental={!!isInstrumental}
+                          hasSynced={hasSynced}
+                          instProgress={instProgress}
+                          syncedAt={hasSynced ? syncedLines[index]?.at ?? 0 : 0}
+                          onSeek={onSeek}
+                          elRef={(el) => { elementsRef.current[index] = el; }}
+                        />
                       );
                     })}
                   </div>

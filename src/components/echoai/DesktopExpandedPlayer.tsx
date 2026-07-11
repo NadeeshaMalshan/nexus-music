@@ -203,12 +203,6 @@ export function DesktopExpandedPlayer({
                 : "blur(3.5px) brightness(0.45)") 
             : "blur(0px) brightness(1.0)"
         }}
-        whileHover={hasSynced && !isActive ? {
-          opacity: 0.6,
-          scale: 0.99,
-          filter: "blur(0px) brightness(0.85)",
-          x: 4,
-        } : undefined}
         initial={false}
         transition={{
           ...APPLE_LYRICS_TRANSITION,
@@ -227,26 +221,28 @@ export function DesktopExpandedPlayer({
               const thresholds = [0, 0.33, 0.66];
               const ranges = [0.33, 0.33, 0.34];
               const dotProgress = Math.max(0, Math.min(1, (instProgress - thresholds[dotIdx]) / ranges[dotIdx]));
-              const glowSize = 6 + 14 * dotProgress;
+              // Progress-driven fill: dim+small → bright+full as playback reaches each dot's window
+              const dotScale = 0.3 + 0.7 * dotProgress;
+              const dotOpacity = 0.18 + 0.82 * dotProgress;
+              const glowSize = 4 + 18 * dotProgress;
               return (
                 <m.div
                   key={dotIdx}
-                  animate={isActive ? {
-                    scale: [1, 1.5, 1],
-                    opacity: [0.4, 1, 0.4],
-                    y: [0, -4, 0],
-                  } : { scale: 0.6, opacity: 0.15, y: 0 }}
-                  transition={isActive ? {
-                    duration: 1.4,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: dotIdx * 0.35,
-                  } : {}}
+                  animate={{
+                    scale: isActive ? dotScale : 0.3,
+                    opacity: isActive ? dotOpacity : 0.12,
+                  }}
+                  transition={{
+                    duration: 0.2,
+                    ease: "easeOut",
+                  }}
                   className="rounded-full bg-white"
                   style={{
                     width: 16,
                     height: 16,
-                    boxShadow: isActive ? `0 0 ${glowSize}px 3px rgba(255,255,255,0.7)` : 'none',
+                    boxShadow: isActive && dotProgress > 0
+                      ? `0 0 ${glowSize}px 2px rgba(255,255,255,${0.25 + 0.55 * dotProgress})`
+                      : 'none',
                   }}
                 />
               );
@@ -254,7 +250,9 @@ export function DesktopExpandedPlayer({
           </div>
         ) : (
           <p 
-            className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-2xl text-[44px] leading-[1.1] text-white`}
+            className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-2xl text-[44px] leading-[1.1] text-white transition-[filter,opacity] duration-300 ${
+              hasSynced && !isActive ? 'group-hover:opacity-60 group-hover:[filter:blur(0px)_brightness(0.9)]' : ''
+            }`}
             style={isActive && hasSynced ? {
               textShadow: '0 0 30px rgba(255,255,255,0.4), 0 0 60px rgba(255,255,255,0.15), 0 2px 8px rgba(0,0,0,0.5)',
             } : undefined}

@@ -188,26 +188,32 @@ export function DesktopExpandedPlayer({
       instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
     }
 
+    const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
+    const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
+    const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
+
     return (
       <m.div 
         ref={el => { elementsRef.current[index] = el; }} 
         onClick={() => hasSynced && syncedLine && onSeek(syncedLine.at)}
         layout
         animate={{
-          opacity: hasSynced ? (isActive ? 1 : 0.22) : 0.8,
-          scale: hasSynced ? (isActive ? 1.03 : 0.97) : 1,
-          x: hasSynced ? (isActive ? 12 : 0) : 0,
+          opacity: hasSynced ? (isActive ? 1 : 0.3) : 0.8,
+          scale: hasSynced ? (isActive ? 1.02 : 0.98) : 1,
+          x: hasSynced ? (isActive ? 10 : 0) : 0,
           filter: hasSynced 
-            ? (isActive 
-                ? "blur(0px) brightness(1.2)" 
-                : "blur(3.5px) brightness(0.45)") 
+            ? (isActive ? "blur(0px) brightness(1.1)" : "blur(3px) brightness(0.5)") 
             : "blur(0px) brightness(1.0)"
         }}
+        whileHover={hasSynced && !isActive ? {
+          opacity: 0.65,
+          scale: 0.99,
+          filter: "blur(0px) brightness(0.9)"
+        } : undefined}
         initial={false}
         transition={{
           ...APPLE_LYRICS_TRANSITION,
-          filter: { duration: 0.65, ease: "easeOut" },
-          x: { type: "spring", stiffness: 130, damping: 22, mass: 0.7 },
+          filter: { duration: 0.6, ease: "easeOut" }
         }}
         className={`group flex items-center origin-left transform ${hasSynced ? "z-10 cursor-pointer" : "cursor-default"} ${
           isInstrumental 
@@ -216,46 +222,14 @@ export function DesktopExpandedPlayer({
         }`}
       >
         {isInstrumental ? (
-          <div className={`flex gap-5 items-center h-full transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
-            {[0, 1, 2].map((dotIdx) => {
-              const thresholds = [0, 0.33, 0.66];
-              const ranges = [0.33, 0.33, 0.34];
-              const dotProgress = Math.max(0, Math.min(1, (instProgress - thresholds[dotIdx]) / ranges[dotIdx]));
-              // Progress-driven fill: dim+small → bright+full as playback reaches each dot's window
-              const dotScale = 0.3 + 0.7 * dotProgress;
-              const dotOpacity = 0.18 + 0.82 * dotProgress;
-              const glowSize = 4 + 18 * dotProgress;
-              return (
-                <m.div
-                  key={dotIdx}
-                  animate={{
-                    scale: isActive ? dotScale : 0.3,
-                    opacity: isActive ? dotOpacity : 0.12,
-                  }}
-                  transition={{
-                    duration: 0.2,
-                    ease: "easeOut",
-                  }}
-                  className="rounded-full bg-white"
-                  style={{
-                    width: 16,
-                    height: 16,
-                    boxShadow: isActive && dotProgress > 0
-                      ? `0 0 ${glowSize}px 2px rgba(255,255,255,${0.25 + 0.55 * dotProgress})`
-                      : 'none',
-                  }}
-                />
-              );
-            })}
+          <div className={`flex gap-4 items-center h-full transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
+            <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.1 }} />
+            <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.1 }} />
+            <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
           </div>
         ) : (
           <p 
-            className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-2xl text-[44px] leading-[1.1] text-white transition-[filter,opacity] duration-300 ${
-              hasSynced && !isActive ? 'group-hover:opacity-60 group-hover:[filter:blur(0px)_brightness(0.9)]' : ''
-            }`}
-            style={isActive && hasSynced ? {
-              textShadow: '0 0 30px rgba(255,255,255,0.4), 0 0 60px rgba(255,255,255,0.15), 0 2px 8px rgba(0,0,0,0.5)',
-            } : undefined}
+            className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-2xl text-[44px] leading-[1.1] text-white`}
           >
             {line}
           </p>

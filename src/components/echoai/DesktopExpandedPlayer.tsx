@@ -28,6 +28,9 @@ interface LyricLineProps {
   syncedLine: { at: number; text: string; isInstrumental: boolean } | null;
   currentTimeSec: number;
   onSeek: (time: number) => void;
+  syncedLines: { at: number; text: string; isInstrumental: boolean }[];
+  hasSynced: boolean;
+  elementsRef: React.RefObject<(HTMLDivElement | null)[]>;
 }
 
 import { useDashboard } from "@/context/DashboardContext";
@@ -35,6 +38,77 @@ import { FlowingBackground } from "./FlowingBackground";
 import { LiveLikeToast } from "./LiveLikeToast";
 import { MarqueeText } from "./MarqueeText";
 import React from "react";
+
+const LyricLine = React.memo(({ 
+  line, 
+  index, 
+  isActive, 
+  isInstrumental, 
+  syncedLine, 
+  currentTimeSec, 
+  onSeek,
+  syncedLines,
+  hasSynced,
+  elementsRef
+}: LyricLineProps) => {
+  let instProgress = 0;
+  if (isInstrumental && isActive && syncedLine) {
+    const start = syncedLine.at;
+    const next = syncedLines[index + 1];
+    const end = next ? next.at : start + 5;
+    const dur = end > start ? end - start : 5;
+    instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
+  }
+
+  const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
+  const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
+  const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
+
+  return (
+    <div 
+      ref={el => { if (elementsRef.current) elementsRef.current[index] = el; }} 
+      onClick={() => hasSynced && syncedLine && onSeek(syncedLine.at)}
+      className={`group flex items-center origin-left transform transition-all duration-700 ease-out ${
+        hasSynced ? "z-10 cursor-pointer" : "cursor-default"
+      } ${
+        isInstrumental 
+            ? (isActive ? "h-[100px]" : "h-0 overflow-hidden") 
+            : "py-6"
+      } ${
+        hasSynced
+          ? (isActive 
+              ? "opacity-100 scale-[1.02] translate-x-2.5 blur-0 brightness-110" 
+              : "opacity-30 scale-[0.98] translate-x-0 blur-[3px] brightness-50 hover:opacity-65 hover:scale-[0.99] hover:blur-0 hover:brightness-90")
+          : "opacity-80 scale-100 blur-0 brightness-100"
+      }`}
+    >
+      {isInstrumental ? (
+        <div className={`flex gap-4 items-center h-full transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
+          <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.1 }} />
+          <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.1 }} />
+          <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
+        </div>
+      ) : (
+        <p 
+          className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-2xl text-[44px] leading-[1.1] text-white`}
+        >
+          {line}
+        </p>
+      )}
+    </div>
+  );
+}, (prev, next) => {
+  if (prev.isActive !== next.isActive) return false;
+  if (prev.line !== next.line) return false;
+  if (prev.index !== next.index) return false;
+  if (prev.isInstrumental !== next.isInstrumental) return false;
+  if (prev.syncedLine !== next.syncedLine) return false;
+  if (next.isActive && next.isInstrumental) {
+    return prev.currentTimeSec === next.currentTimeSec;
+  }
+  return true;
+});
+LyricLine.displayName = "LyricLine";
 
 export function DesktopExpandedPlayer({
   onClose,
@@ -177,72 +251,7 @@ export function DesktopExpandedPlayer({
     return currentTimeSec >= line.at && (!next || currentTimeSec < next.at);
   }) : -1;
 
-  // Memoize lyrics components to prevent total re-render on activeIndex change
-  const LyricLine = React.memo(({ line, index, isActive, isInstrumental, syncedLine, currentTimeSec, onSeek }: LyricLineProps) => {
-    let instProgress = 0;
-    if (isInstrumental && isActive && syncedLine) {
-      const start = syncedLine.at;
-      const next = syncedLines[index + 1];
-      const end = next ? next.at : start + 5;
-      const dur = end > start ? end - start : 5;
-      instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
-    }
 
-    const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
-    const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
-    const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
-
-    return (
-      <m.div 
-        ref={el => { elementsRef.current[index] = el; }} 
-        onClick={() => hasSynced && syncedLine && onSeek(syncedLine.at)}
-        layout
-        animate={{
-          opacity: hasSynced ? (isActive ? 1 : 0.3) : 0.8,
-          scale: hasSynced ? (isActive ? 1.02 : 0.98) : 1,
-          x: hasSynced ? (isActive ? 10 : 0) : 0,
-          filter: hasSynced 
-            ? (isActive ? "blur(0px) brightness(1.1)" : "blur(3px) brightness(0.5)") 
-            : "blur(0px) brightness(1.0)"
-        }}
-        whileHover={hasSynced && !isActive ? {
-          opacity: 0.65,
-          scale: 0.99,
-          filter: "blur(0px) brightness(0.9)"
-        } : undefined}
-        initial={false}
-        transition={{
-          ...APPLE_LYRICS_TRANSITION,
-          filter: { duration: 0.6, ease: "easeOut" }
-        }}
-        className={`group flex items-center origin-left transform ${hasSynced ? "z-10 cursor-pointer" : "cursor-default"} ${
-          isInstrumental 
-              ? (isActive ? "h-[100px]" : "h-0 overflow-hidden") 
-              : "py-6"
-        }`}
-      >
-        {isInstrumental ? (
-          <div className={`flex gap-4 items-center h-full transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
-            <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.1 }} />
-            <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.1 }} />
-            <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
-          </div>
-        ) : (
-          <p 
-            className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-2xl text-[44px] leading-[1.1] text-white`}
-          >
-            {line}
-          </p>
-        )}
-      </m.div>
-    );
-  }, (prev, next) => {
-    // Only re-render if its active status changed, or if it is the currently active instrumental line (needs progress updates)
-    if (prev.isActive !== next.isActive) return false;
-    if (next.isActive && next.isInstrumental) return prev.currentTimeSec === next.currentTimeSec;
-    return true;
-  });
-  LyricLine.displayName = "LyricLine";
 
   const safeDuration = durationSec || currentSong.durationObj?.totalSeconds || 0;
   const isReallyLive = useMemo(() => {
@@ -854,6 +863,9 @@ export function DesktopExpandedPlayer({
                                  syncedLine={displayHasSynced ? syncedLines[i] : null}
                                  currentTimeSec={currentTimeSec}
                                  onSeek={onSeek}
+                                 syncedLines={syncedLines}
+                                 hasSynced={displayHasSynced}
+                                 elementsRef={elementsRef}
                                />
                              ))}
 

@@ -269,10 +269,19 @@ export async function GET(request: Request) {
     // 3. Resolve Statistics (Embedded for UI accuracy)
     let ytStats: any = null;
     try {
-      const { fetchChannelStats } = await import("@/lib/youtubeData");
-      ytStats = await fetchChannelStats(session?.accessToken || "", artistId);
+      const { fetchChannelStats, scrapeChannelStats } = await import("@/lib/youtubeData");
+      ytStats = await scrapeChannelStats(artistId);
+      if (!ytStats) {
+        ytStats = await fetchChannelStats(session?.accessToken || "", artistId);
+      }
     } catch (err) {
-      console.warn("[Artist API] Stats resolution failed:", err);
+      console.warn("[Artist API] Stats scraping failed, trying fallback API:", err);
+      try {
+        const { fetchChannelStats } = await import("@/lib/youtubeData");
+        ytStats = await fetchChannelStats(session?.accessToken || "", artistId);
+      } catch (e) {
+        console.warn("[Artist API] Stats fallback API fetch failed:", e);
+      }
     }
 
     // Final response

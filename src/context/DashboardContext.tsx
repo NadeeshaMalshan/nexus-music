@@ -100,6 +100,7 @@ type DashboardContextType = {
   // Actions
   setIsPlaying: (playing: boolean) => void;
   setCurrentTimeSec: (time: number) => void;
+  setDurationSec: (duration: number) => void;
   setCurrentSong: (song: Song | null) => void;
   setQueueSongs: (songs: Song[]) => void;
   setUpNextQueue: React.Dispatch<React.SetStateAction<Song[]>>;
@@ -243,7 +244,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [liveMetadata, setLiveMetadata] = useState<LiveMetadata | null>(null);
   const likedLibraryRollbackRef = useRef<LikedLibraryTrackRow | null>(null);
   const [viewMode, setViewMode] = useState<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
-  const viewModeRef = useRef<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const prevViewModeRef = useRef<"music" | "video">(settings.defaultPlayMode === "video" ? "video" : "music");
   const userIntentRef = useRef<"playing" | "paused">("paused");
 
@@ -366,6 +366,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     isExpandedPlayerOpenRef.current = isExpandedPlayerOpen;
   }, [isExpandedPlayerOpen]);
 
+  const viewModeRef = useRef(viewMode);
+  useEffect(() => {
+    viewModeRef.current = viewMode;
+  }, [viewMode]);
+
   /**
    * Matches ExpandedPlayer "live / radio" detection. Many streams never set `song.isLive`;
    * once live-tracker returns `liveMetadata`, ExpandedPlayer mounts its own YouTube — the hidden
@@ -466,10 +471,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const wasExpanded = prevExpandedRef.current;
     prevExpandedRef.current = isExpandedPlayerOpen;
 
-    if (isUsingNativeAudio) return;                   // native audio will resume on its own
-
     const closedExpanded = wasExpanded && !isExpandedPlayerOpen;
     const closedVideo = wasVideo && viewMode === "music";
+
+    if (isUsingNativeAudio) {
+      if (closedVideo) {
+        const musicDuration = currentSongRef.current ? (youtubeTimestampToSeconds(currentSongRef.current.duration) ?? 0) : 0;
+        const isDurationEqual = musicDuration > 0 && durationSec > 0 && Math.abs(musicDuration - durationSec) <= 2;
+        if (!isDurationEqual) {
+          setCurrentTimeSec(0);
+        }
+      }
+      return; // native audio will resume on its own
+    }
 
     if (!closedVideo && !closedExpanded) return;
 
@@ -489,14 +503,22 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       try {
         // Force-reload from current position and unmute
         lastProcessedIdRef.current = null;
-        const seekTo = Math.max(0, currentTimeSec - 0.3);
+        
+        const musicDuration = currentSongRef.current ? (youtubeTimestampToSeconds(currentSongRef.current.duration) ?? 0) : 0;
+        const isDurationEqual = musicDuration > 0 && durationSec > 0 && Math.abs(musicDuration - durationSec) <= 2;
+        
+        const seekTo = (closedVideo && !isDurationEqual) ? 0 : Math.max(0, currentTimeSec - 0.3);
+        if (closedVideo && !isDurationEqual) {
+          setCurrentTimeSec(0);
+        }
+
         (player as any).loadVideoById({ videoId: targetId, startSeconds: seekTo });
         player.setVolume(volumeRef.current);
         setIsPlaying(true);
       } catch { /* ignore */ }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, isExpandedPlayerOpen]);
+  }, [viewMode, isExpandedPlayerOpen, isUsingNativeAudio]);
 
   /** Hidden player: in video mode only cue + mute so expanded iframe is the sole audio source. */
   function syncHiddenPlayerForViewMode(
@@ -917,13 +939,16 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Reset lyrics immediately when song OR live metadata changes to prevent stale display
     setLyricsData(null);
+    setLyricsLoading(true);
 
     if (!currentSong) {
+      setLyricsLoading(false);
       return;
     }
     const track = (liveMetadata?.title || currentSong.title || audioData?.trackName || "").trim();
     const artist = (liveMetadata?.artist || currentSong.artist || audioData?.artist || "").trim();
     if (!track || !artist) {
+      setLyricsLoading(false);
       return;
     }
 
@@ -1542,6 +1567,34 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
             activeAudio.volume = volumeRef.current / 100;
             activeAudio.src = directAudioUrl;
+
+            // Check if we transitioned from video to music mode
+            const wasVideo = prevViewModeRef.current === "video";
+            const musicDuration = currentSongRef.current ? (youtubeTimestampToSeconds(currentSongRef.current.duration) ?? 0) : 0;
+            const isDurationEqual = musicDuration > 0 && durationSec > 0 && Math.abs(musicDuration - durationSec) <= 2;
+            
+            let seekTo = 0;
+            if (wasVideo && isDurationEqual) {
+              seekTo = currentTimeSec;
+            } else if (wasVideo) {
+              setCurrentTimeSec(0);
+            }
+            
+            if (seekTo > 0) {
+              const onMetadata = () => {
+                try {
+                  activeAudio.currentTime = seekTo;
+                } catch (e) {
+                  console.warn("Failed to set native audio currentTime on metadata load:", e);
+                }
+                activeAudio.removeEventListener("loadedmetadata", onMetadata);
+              };
+              activeAudio.addEventListener("loadedmetadata", onMetadata);
+              try {
+                activeAudio.currentTime = seekTo;
+              } catch {}
+            }
+
             if (userIntentRef.current === "playing") {
                 activeAudio.play().catch(e => console.warn("Native audio play failed:", e));
                 setIsPlaying(true);
@@ -1931,6 +1984,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     userIntentRef.current = "playing";
     try { audioCtxRef.current?.resume(); } catch {}
     setCurrentSong({ ...song, isLive });
+    setLyricsData(null);
+    setLyricsLoading(true);
     setCurrentTimeSec(0);
     lastTimeBucketRef.current = -1;
     setIsPlaying(true);
@@ -2303,6 +2358,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setIsJamActive,
     setIsPlaying,
     setCurrentTimeSec,
+    setDurationSec,
     setCurrentSong,
     setQueueSongs,
     setVolume,
@@ -2352,7 +2408,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
     setIsPlaying, setQueueSongs, setPreviousQueue, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata,
-    isJamActive, pageTitle, pageFavicon, installPwa, pwaInstallable
+    isJamActive, pageTitle, pageFavicon, installPwa, pwaInstallable, setDurationSec
   ]);
 
   const handleAudioError = useCallback((index: 1 | 2) => {

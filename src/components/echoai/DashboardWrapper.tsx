@@ -55,6 +55,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     setIsPlaying,
     viewMode,
     setViewMode,
+    setDurationSec,
     rightSidebarMode,
     setRightSidebarMode,
     liveMetadata,
@@ -456,6 +457,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
             setIsPlaying={setIsPlaying}
             viewMode={viewMode}
             setViewMode={setViewMode}
+            setDurationSec={setDurationSec}
             onArtistClick={(name) => {
               setIsExpandedPlayerOpen(false);
               router.push(`/artist/${encodeURIComponent(name)}`);
@@ -471,10 +473,14 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         onSongClick={onSongClick}
         upNextQueue={upNextQueue}
         currentSong={currentSong}
+
         currentSongId={currentSong?.id}
         currentArtist={audioData?.artist || currentSong?.artist || "Unknown"}
         accentColor={themeColor}
-        lyricsContent={lyricsData?.lyrics.content || null}
+        lyricsContent={
+          lyricsData?.lyrics.content ||
+          (lyricsLoading ? "Loading lyrics..." : "Lyrics not available for this track yet.")
+        }
         lyricsSource={lyricsData?.lyrics.source || null}
         currentTimeSec={currentTimeSec}
         aiInsights={lyricsData?.geniusData.found ? "Genius metadata found for this song." : "AI insights are not available yet."}

@@ -80,4 +80,5 @@ export interface ExpandedPlayerProps {
   onReorderUpNext?: (newQueue: Song[]) => void;
   onArtistClick?: (artistName: string) => void;
   isOpen?: boolean;
+  setDurationSec?: (duration: number) => void;
 }

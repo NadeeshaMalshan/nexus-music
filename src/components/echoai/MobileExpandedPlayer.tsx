@@ -137,6 +137,7 @@ export function MobileExpandedPlayer({
   onReorderUpNext,
   onArtistClick,
   isOpen,
+  setDurationSec,
 }: ExpandedPlayerProps) {
   const { palette, resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
   const { settings } = useSettings();
@@ -217,6 +218,15 @@ export function MobileExpandedPlayer({
   const isPlayingRef = useRef(isPlaying);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
 
+  const onNextRef = useRef(onNext);
+  useEffect(() => { onNextRef.current = onNext; }, [onNext]);
+
+  const safeDuration = durationSec || currentSong.durationObj?.totalSeconds || 0;
+  const safeDurationRef = useRef(safeDuration);
+  useEffect(() => { safeDurationRef.current = safeDuration; }, [safeDuration]);
+
+  const lastSkippedVideoIdRef = useRef<string | null>(null);
+
   // Fresh player key every time we enter video mode — prevents "page couldn't load"
   // caused by old player cleanup racing with new player init on the same DOM element.
   const [videoKey, setVideoKey] = useState(0);
@@ -281,7 +291,7 @@ export function MobileExpandedPlayer({
 
 
 
-  const safeDuration = durationSec || currentSong.durationObj?.totalSeconds || 0;
+
   const isReallyLive = useMemo(() => {
     const fallbackDuration = currentSong.duration ? (currentSong.duration.includes(":") ? currentSong.duration.split(":").reduce((acc, time) => (60 * acc) + parseInt(time), 0) : parseInt(currentSong.duration)) : 0;
     const safeDur = durationSec > 0 ? durationSec : (currentSong.durationObj?.totalSeconds || fallbackDuration || 0);
@@ -299,7 +309,23 @@ export function MobileExpandedPlayer({
     );
   }, [currentSong, liveMetadata, isPlaying, durationSec]);
 
-  const displayHasSynced = hasSynced && !isReallyLive;
+  const isDurationEqual = useMemo(() => {
+    const parseDurationToSeconds = (durationStr: string): number => {
+      if (!durationStr || durationStr === "LIVE") return 0;
+      const parts = durationStr.split(":").map(Number);
+      if (parts.length === 2) {
+        return parts[0] * 60 + parts[1];
+      }
+      if (parts.length === 3) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      }
+      return parseFloat(durationStr) || 0;
+    };
+    const musicDuration = parseDurationToSeconds(currentSong.duration);
+    return musicDuration > 0 && durationSec > 0 && Math.abs(musicDuration - durationSec) <= 2;
+  }, [currentSong.duration, durationSec]);
+
+  const displayHasSynced = hasSynced && !isReallyLive && (viewMode === "music" || isDurationEqual);
   const lines = displayHasSynced ? syncedLines.map(l => l.text) : plainLines;
 
   useEffect(() => {
@@ -354,12 +380,25 @@ export function MobileExpandedPlayer({
     if (viewMode === "video") {
       videoSyncIntervalRef.current = setInterval(() => {
         try {
-          const p = ytPlayerInstance.current;
+          const p = ytPlayerInstance.current as any;
           if (!p) return;
           const state = p.getPlayerState?.();
           if (state === 1) {
             const time = p.getCurrentTime();
-            if (time > 0 && Number.isFinite(time)) setCurrentTimeSec(time);
+            const duration = p.getDuration ? p.getDuration() : 0;
+            if (duration > 0 && Number.isFinite(duration)) {
+              setDurationSec?.(duration);
+            }
+            if (time > 0 && Number.isFinite(time)) {
+              setCurrentTimeSec(time);
+              
+              // Watchdog for background/minimized autoplay in video mode
+              const dur = safeDurationRef.current;
+              if (dur > 0 && time >= dur - 1.5 && isPlayingRef.current && lastSkippedVideoIdRef.current !== currentSong.id) {
+                lastSkippedVideoIdRef.current = currentSong.id;
+                onNextRef.current();
+              }
+            }
           }
           // Resilience: browser throttled the player while we want it playing
           if (state === 2 && isPlayingRef.current) {
@@ -397,6 +436,42 @@ export function MobileExpandedPlayer({
       }
     }
   }, [isPlaying, viewMode, isReallyLive, isOpen, currentSong.id]);
+
+  const prevViewModeRefForSeek = useRef(viewMode);
+  const currentTimeSecRef = useRef(currentTimeSec);
+  useEffect(() => { currentTimeSecRef.current = currentTimeSec; }, [currentTimeSec]);
+
+  useEffect(() => {
+    const p = ytPlayerInstance.current as any;
+    if (!p) return;
+
+    if (prevViewModeRefForSeek.current === "music" && viewMode === "video") {
+      // Helper function to parse duration
+      const parseDurationToSeconds = (durationStr: string): number => {
+        if (!durationStr || durationStr === "LIVE") return 0;
+        const parts = durationStr.split(":").map(Number);
+        if (parts.length === 2) {
+          return parts[0] * 60 + parts[1];
+        }
+        if (parts.length === 3) {
+          return parts[0] * 3600 + parts[1] * 60 + parts[2];
+        }
+        return parseFloat(durationStr) || 0;
+      };
+
+      const musicDuration = parseDurationToSeconds(currentSong.duration);
+      const videoDuration = p.getDuration ? p.getDuration() : 0;
+      const isDurationEqual = musicDuration > 0 && videoDuration > 0 && Math.abs(musicDuration - videoDuration) <= 2;
+      
+      if (isDurationEqual) {
+        p.seekTo(currentTimeSecRef.current, true);
+      } else {
+        p.seekTo(0, true);
+        setCurrentTimeSec(0);
+      }
+    }
+    prevViewModeRefForSeek.current = viewMode;
+  }, [viewMode, currentSong.duration, setCurrentTimeSec]);
 
   useEffect(() => {
     if ((viewMode === "video" || currentSong.isLive) && ytPlayerInstance.current) {

@@ -1,6 +1,6 @@
 import redis from "@/lib/redis";
 import { getPendingActions, setPendingActions, LIBRARY_KEY_PREFIX } from "@/lib/userLibrary";
-import { rateVideo, createPlaylist, addSongToPlaylist } from "@/lib/youtubeData";
+import { rateVideo, createPlaylist, addSongToPlaylist, subscribeToChannel } from "@/lib/youtubeData";
 import { YouTubeQuotaError } from "@/lib/youtubeApiErrors";
 
 /**
@@ -25,6 +25,10 @@ export async function processSyncQueue(email: string, accessToken: string): Prom
         const { videoId, rating } = action.data;
         await rateVideo(accessToken, videoId, rating);
         console.log(`[syncQueue] Synced LIKE_SONG: ${videoId} = ${rating}`);
+      } else if (action.type === "SUBSCRIBE_CHANNEL") {
+        const { channelId } = action.data;
+        await subscribeToChannel(accessToken, channelId);
+        console.log(`[syncQueue] Synced SUBSCRIBE_CHANNEL: ${channelId}`);
       } else if (action.type === "CREATE_PLAYLIST") {
         const { tempPlaylistId, title, description, videoIds, trackDetails } = action.data;
 

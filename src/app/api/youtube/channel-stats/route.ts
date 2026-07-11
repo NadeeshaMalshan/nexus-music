@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchChannelStats, searchOfficialChannel } from "@/lib/youtubeData";
+import { fetchChannelStats, searchOfficialChannel, scrapeChannelStats } from "@/lib/youtubeData";
 import { getRequestAccessToken } from "@/lib/requestAccessToken";
 
 export async function GET(request: Request) {
@@ -16,7 +16,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let stats = await fetchChannelStats(accessToken, channelId);
+    let stats = await scrapeChannelStats(channelId);
+    if (!stats) {
+      try {
+        stats = await fetchChannelStats(accessToken, channelId);
+      } catch (e) {
+        console.warn("scrapeChannelStats failed, trying fallback fetchChannelStats:", e);
+      }
+    }
+
     if (!stats) return NextResponse.json({ error: "No statistics found" }, { status: 404 });
 
     const subs = parseInt(stats.statistics?.subscriberCount || "0");

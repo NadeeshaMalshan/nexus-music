@@ -508,6 +508,58 @@ export async function fetchChannelStats(accessToken: string, channelId: string) 
   return data.items?.[0] || null;
 }
 
+export async function scrapeChannelStats(channelId: string) {
+  try {
+    const url = `https://www.youtube.com/channel/${channelId}`;
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      next: { revalidate: 86400 } // cache for 24 hours
+    });
+    if (!response.ok) return null;
+    const html = await response.text();
+    
+    // Look for subscriberCountText
+    const match = html.match(/"subscriberCountText"\s*:\s*\{\s*"accessibleText"\s*:\s*\{\s*"text"\s*:\s*"([^"]+)"/i)
+               || html.match(/"subscriberCountText"\s*:\s*\{\s*"simpleText"\s*:\s*"([^"]+)"/i);
+    
+    if (match && match[1]) {
+      const text = match[1];
+      const cleanedText = text.replace(/subscribers/gi, "").trim();
+      
+      let rawCount = 0;
+      const numMatch = cleanedText.match(/^([\d\.]+)\s*([KMB]?)$/i);
+      if (numMatch) {
+        const val = parseFloat(numMatch[1]);
+        const unit = (numMatch[2] || "").toUpperCase();
+        if (unit === "K") rawCount = val * 1000;
+        else if (unit === "M") rawCount = val * 1000000;
+        else if (unit === "B") rawCount = val * 1000000000;
+        else rawCount = val;
+      } else {
+        const cleanRaw = cleanedText.replace(/,/g, "");
+        const parsed = parseInt(cleanRaw);
+        if (!isNaN(parsed)) rawCount = parsed;
+      }
+
+      return {
+        id: channelId,
+        snippet: {
+          title: "Channel",
+        },
+        statistics: {
+          subscriberCount: String(Math.round(rawCount))
+        }
+      };
+    }
+  } catch (err) {
+    console.error("Scraping YouTube stats failed:", err);
+  }
+  return null;
+}
+
 export async function subscribeToChannel(accessToken: string, channelId: string): Promise<void> {
   const response = await fetch(
     "https://www.googleapis.com/youtube/v3/subscriptions?part=snippet",
@@ -529,7 +581,8 @@ export async function subscribeToChannel(accessToken: string, channelId: string)
   );
 
   if (!response.ok) {
-    const errorData = await response.json();
+    const errorData = await response.json().catch(() => ({}));
+    assertNotYouTubeQuotaError(response, errorData);
     console.error("YouTube Subscribe error:", errorData);
     throw new Error("Failed to subscribe to channel");
   }

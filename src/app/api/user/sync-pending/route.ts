@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRequestAccessToken } from "@/lib/requestAccessToken";
 import { resolveUserEmail, getPendingActions, setPendingActions, LIBRARY_KEY_PREFIX } from "@/lib/userLibrary";
-import { createPlaylist, addSongToPlaylist, rateVideo } from "@/lib/youtubeData";
+import { createPlaylist, addSongToPlaylist, rateVideo, subscribeToChannel } from "@/lib/youtubeData";
 import redis from "@/lib/redis";
 
 export async function POST(request: Request) {
@@ -54,6 +54,9 @@ export async function POST(request: Request) {
       } else if (action.type === "UNLIKE_SONG") {
         const { videoId } = action.data;
         await rateVideo(accessToken, videoId, "none");
+      } else if (action.type === "SUBSCRIBE_CHANNEL") {
+        const { channelId } = action.data;
+        await subscribeToChannel(accessToken, channelId);
       }
       
       // If we got here, it succeeded

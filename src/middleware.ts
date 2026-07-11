@@ -47,7 +47,7 @@ function corsHeaders(origin: string | null): HeadersInit {
   };
 }
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const origin = request.headers.get("origin");
 
   if (request.method === "OPTIONS") {

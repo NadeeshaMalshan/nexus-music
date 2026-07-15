@@ -256,13 +256,6 @@ export function DesktopExpandedPlayer({
   }, [lyricsContent]);
 
   const hasSynced = syncedLines.length > 0;
-  const activeIndex = hasSynced ? syncedLines.findIndex((line, index) => {
-    const next = syncedLines[index + 1];
-    return currentTimeSec >= line.at && (!next || currentTimeSec < next.at);
-  }) : -1;
-
-
-
 
   const isReallyLive = useMemo(() => {
     const fallbackDuration = currentSong.duration ? (currentSong.duration.includes(":") ? currentSong.duration.split(":").reduce((acc, time) => (60 * acc) + parseInt(time), 0) : parseInt(currentSong.duration)) : 0;
@@ -300,8 +293,13 @@ export function DesktopExpandedPlayer({
   const displayHasSynced = hasSynced && !isReallyLive && (viewMode === "music" || isDurationEqual);
   const lines = displayHasSynced ? syncedLines.map(l => l.text) : plainLines;
 
+  const activeIndex = displayHasSynced ? syncedLines.findIndex((line, index) => {
+    const next = syncedLines[index + 1];
+    return currentTimeSec >= line.at && (!next || currentTimeSec < next.at);
+  }) : -1;
+
   useEffect(() => {
-    if (!hasSynced || activeIndex < 0 || !scrollRef.current) return;
+    if (!displayHasSynced || activeIndex < 0 || !scrollRef.current) return;
     if (activeTab !== "lyrics") return;
     
     requestAnimationFrame(() => {
@@ -312,7 +310,7 @@ export function DesktopExpandedPlayer({
         scrollRef.current.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
       }
     });
-  }, [activeIndex, hasSynced, activeTab]);
+  }, [activeIndex, displayHasSynced, activeTab]);
 
   const [storyActiveIndex, setStoryActiveIndex] = useState(0);
   const [storyProgress, setStoryProgress] = useState(0);

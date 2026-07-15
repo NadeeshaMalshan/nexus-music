@@ -161,52 +161,36 @@ export async function getPipedAudioUrl(videoId: string): Promise<string | null> 
   const raw = process.env.PIPED_API_BASE_URL?.trim();
   if (raw?.toLowerCase() === "off" || raw === "0") return null;
 
-  const bases = raw
-    ? [raw.replace(/\/+$/, "")]
-    : [
-        "https://api.piped.private.coffee",
-        "https://pipedapi.adminforge.de",
-        "https://pipedapi.leptons.xyz",
-        "https://piped-api.privacy.com.de",
-        "https://pipedapi.nosebs.ru",
-        "https://pipedapi.kavin.rocks",
-        "https://pipedapi-libre.kavin.rocks",
-        "https://api.piped.yt"
-      ];
+  const base = (raw || "https://pipedapi.kavin.rocks").replace(/\/+$/, "");
 
-  for (const base of bases) {
-    try {
-      const ac = new AbortController();
-      const t = setTimeout(() => ac.abort(), 3500); // 3.5s timeout per instance
-      const r = await fetch(`${base}/streams/${encodeURIComponent(videoId)}`, {
-        signal: ac.signal,
-        headers: {
-          Accept: "application/json",
-          "User-Agent": CHROME_UA,
-        },
-      });
-      clearTimeout(t);
+  try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 15_000);
+    const r = await fetch(`${base}/streams/${encodeURIComponent(videoId)}`, {
+      signal: ac.signal,
+      headers: {
+        Accept: "application/json",
+        "User-Agent": CHROME_UA,
+      },
+    });
+    clearTimeout(t);
 
-      if (!r.ok) {
-        console.warn("[youtubeDirectAudioUrl] Piped HTTP instance failed:", base, r.status);
-        continue;
-      }
-
-      const data = (await r.json()) as any;
-      // Fallback to videoStreams if audioStreams is empty (expo-av can play audio from combined video streams)
-      const streams = (Array.isArray(data.audioStreams) && data.audioStreams.length > 0)
-        ? data.audioStreams
-        : (data.videoStreams || []);
-      if (!Array.isArray(streams) || streams.length === 0) continue;
-
-      const withUrl = streams.filter((s: any): s is { url: string; bitrate?: number } => typeof s.url === "string" && s.url.length > 0);
-      if (withUrl.length === 0) continue;
-
-      withUrl.sort((a, b) => (b.bitrate ?? 0) - (a.bitrate ?? 0));
-      return withUrl[0].url;
-    } catch (e) {
-      console.warn("[youtubeDirectAudioUrl] Piped instance failed/timed out:", base, e instanceof Error ? e.message : e);
+    if (!r.ok) {
+      console.warn("[youtubeDirectAudioUrl] Piped HTTP", r.status);
+      return null;
     }
+
+    const data = (await r.json()) as PipedStreamsResponse;
+    const streams = data.audioStreams;
+    if (!Array.isArray(streams) || streams.length === 0) return null;
+
+    const withUrl = streams.filter((s): s is typeof s & { url: string } => typeof s.url === "string" && s.url.length > 0);
+    if (withUrl.length === 0) return null;
+
+    withUrl.sort((a, b) => (b.bitrate ?? 0) - (a.bitrate ?? 0));
+    return withUrl[0].url;
+  } catch (e) {
+    console.warn("[youtubeDirectAudioUrl] Piped:", e instanceof Error ? e.message : e);
+    return null;
   }
-  return null;
 }

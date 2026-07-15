@@ -284,13 +284,6 @@ export function MobileExpandedPlayer({
   }, [lyricsContent]);
 
   const hasSynced = syncedLines.length > 0;
-  const activeIndex = hasSynced ? syncedLines.findIndex((line, index) => {
-    const next = syncedLines[index + 1];
-    return currentTimeSec >= line.at && (!next || currentTimeSec < next.at);
-  }) : -1;
-
-
-
 
   const isReallyLive = useMemo(() => {
     const fallbackDuration = currentSong.duration ? (currentSong.duration.includes(":") ? currentSong.duration.split(":").reduce((acc, time) => (60 * acc) + parseInt(time), 0) : parseInt(currentSong.duration)) : 0;
@@ -328,8 +321,13 @@ export function MobileExpandedPlayer({
   const displayHasSynced = hasSynced && !isReallyLive && (viewMode === "music" || isDurationEqual);
   const lines = displayHasSynced ? syncedLines.map(l => l.text) : plainLines;
 
+  const activeIndex = displayHasSynced ? syncedLines.findIndex((line, index) => {
+    const next = syncedLines[index + 1];
+    return currentTimeSec >= line.at && (!next || currentTimeSec < next.at);
+  }) : -1;
+
   useEffect(() => {
-    if (!hasSynced || activeIndex < 0 || !scrollRef.current) return;
+    if (!displayHasSynced || activeIndex < 0 || !scrollRef.current) return;
     if (activeTab !== "lyrics") return;
 
     const activeEl = elementsRef.current[activeIndex];
@@ -342,7 +340,7 @@ export function MobileExpandedPlayer({
         behavior: "smooth"
       });
     }
-  }, [activeIndex, hasSynced, activeTab]);
+  }, [activeIndex, displayHasSynced, activeTab]);
 
   const [storyActiveIndex, setStoryActiveIndex] = useState(0);
   const [storyProgress, setStoryProgress] = useState(0);

@@ -1,8 +1,10 @@
+import { NextResponse } from "next/server";
+
 export const dynamic = "force-dynamic";
 
 /**
  * Initiates Google OAuth sign-in automatically when opened in external Chrome browser.
- * Fetches NextAuth CSRF token, forwards CSRF cookies to browser, and auto-submits POST form to /api/auth/signin/google.
+ * Fetches NextAuth CSRF token, sets the CSRF cookie on NextResponse, and auto-submits POST form to /api/auth/signin/google.
  */
 export async function GET(request: Request) {
   const reqUrl = new URL(request.url);
@@ -13,9 +15,9 @@ export async function GET(request: Request) {
   const DEEP_LINK_CALLBACK = "nexus://auth-callback";
   const mobileCallback = `${baseUrl}/api/mobile-callback?redirect=${encodeURIComponent(DEEP_LINK_CALLBACK)}`;
 
-  // Fetch CSRF token and set-cookie headers from NextAuth csrf endpoint
   let csrfToken = "";
-  let setCookieHeaders: string[] = [];
+  let csrfCookieName = "";
+  let csrfCookieValue = "";
 
   try {
     const csrfRes = await fetch(`${baseUrl}/api/auth/csrf`, {
@@ -23,12 +25,11 @@ export async function GET(request: Request) {
       cache: "no-store",
     });
 
-    // Extract Set-Cookie headers from NextAuth response
-    if (typeof (csrfRes.headers as any).getSetCookie === "function") {
-      setCookieHeaders = (csrfRes.headers as any).getSetCookie();
-    } else {
-      const singleCookie = csrfRes.headers.get("set-cookie");
-      if (singleCookie) setCookieHeaders = [singleCookie];
+    const setCookieHeader = csrfRes.headers.get("set-cookie") || "";
+    const match = setCookieHeader.match(/(__Host-next-auth\.csrf-token|next-auth\.csrf-token)=([^;]+)/);
+    if (match) {
+      csrfCookieName = match[1];
+      csrfCookieValue = decodeURIComponent(match[2]);
     }
 
     if (csrfRes.ok) {
@@ -84,19 +85,21 @@ export async function GET(request: Request) {
 </body>
 </html>`;
 
-  const responseHeaders = new Headers({
-    "Content-Type": "text/html; charset=utf-8",
-    "Cache-Control": "no-store, no-cache, must-revalidate",
+  const response = new NextResponse(html, {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+    },
   });
 
-  // Forward NextAuth CSRF cookies to the browser response
-  for (const cookieStr of setCookieHeaders) {
-    if (cookieStr) {
-      responseHeaders.append("Set-Cookie", cookieStr);
-    }
+  if (csrfCookieName && csrfCookieValue) {
+    response.cookies.set(csrfCookieName, csrfCookieValue, {
+      path: "/",
+      httpOnly: true,
+      secure: csrfCookieName.startsWith("__Host-"),
+      sameSite: "lax",
+    });
   }
 
-  return new Response(html, {
-    headers: responseHeaders,
-  });
+  return response;
 }

@@ -1,10 +1,8 @@
-import { headers } from "next/headers";
-
 export const dynamic = "force-dynamic";
 
 /**
  * Initiates Google OAuth sign-in automatically when opened in external Chrome browser.
- * Renders an HTML page that auto-submits a POST to /api/auth/signin/google with CSRF token.
+ * Fetches NextAuth CSRF token, forwards CSRF cookies to browser, and auto-submits POST form to /api/auth/signin/google.
  */
 export async function GET(request: Request) {
   const reqUrl = new URL(request.url);
@@ -15,13 +13,24 @@ export async function GET(request: Request) {
   const DEEP_LINK_CALLBACK = "nexus://auth-callback";
   const mobileCallback = `${baseUrl}/api/mobile-callback?redirect=${encodeURIComponent(DEEP_LINK_CALLBACK)}`;
 
-  // Fetch CSRF token from internal NextAuth endpoint
+  // Fetch CSRF token and set-cookie headers from NextAuth csrf endpoint
   let csrfToken = "";
+  let setCookieHeaders: string[] = [];
+
   try {
     const csrfRes = await fetch(`${baseUrl}/api/auth/csrf`, {
       headers: { cookie: request.headers.get("cookie") || "" },
       cache: "no-store",
     });
+
+    // Extract Set-Cookie headers from NextAuth response
+    if (typeof (csrfRes.headers as any).getSetCookie === "function") {
+      setCookieHeaders = (csrfRes.headers as any).getSetCookie();
+    } else {
+      const singleCookie = csrfRes.headers.get("set-cookie");
+      if (singleCookie) setCookieHeaders = [singleCookie];
+    }
+
     if (csrfRes.ok) {
       const data = await csrfRes.json();
       csrfToken = data.csrfToken || "";
@@ -75,10 +84,19 @@ export async function GET(request: Request) {
 </body>
 </html>`;
 
+  const responseHeaders = new Headers({
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store, no-cache, must-revalidate",
+  });
+
+  // Forward NextAuth CSRF cookies to the browser response
+  for (const cookieStr of setCookieHeaders) {
+    if (cookieStr) {
+      responseHeaders.append("Set-Cookie", cookieStr);
+    }
+  }
+
   return new Response(html, {
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store, no-cache, must-revalidate",
-    },
+    headers: responseHeaders,
   });
 }

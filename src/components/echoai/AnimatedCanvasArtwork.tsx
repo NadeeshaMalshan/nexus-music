@@ -70,9 +70,7 @@ export function AnimatedCanvasArtwork({
     video.muted = true;
     let hls: Hls | null = null;
     if (/\.m3u8(?:\?|$)/i.test(canvasUrl)) {
-      if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = canvasUrl;
-      } else if (Hls.isSupported()) {
+      if (Hls.isSupported()) {
         hls = new Hls({ enableWorker: true, lowLatencyMode: false, maxBufferLength: 12 });
         hls.loadSource(canvasUrl);
         hls.attachMedia(video);
@@ -80,15 +78,24 @@ export function AnimatedCanvasArtwork({
           video.play().catch(() => undefined);
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
-          if (data.fatal) setVideoFailed(true);
+          if (data.fatal) {
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+              hls?.startLoad();
+            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+              hls?.recoverMediaError();
+            } else {
+              setVideoFailed(true);
+            }
+          }
         });
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = canvasUrl;
+        video.play().catch(() => undefined);
       } else {
         setVideoFailed(true);
       }
     } else {
       video.src = canvasUrl;
-    }
-    if (!/\.m3u8(?:\?|$)/i.test(canvasUrl) || video.canPlayType("application/vnd.apple.mpegurl")) {
       video.play().catch(() => undefined);
     }
     return () => {

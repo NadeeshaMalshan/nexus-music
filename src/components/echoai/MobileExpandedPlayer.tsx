@@ -929,7 +929,7 @@ export function MobileExpandedPlayer({
               {/* Artwork Section */}
               <div className="w-full flex-[1.4] flex items-center justify-center px-10">
                 <m.div
-                  className={`relative w-full shadow-[0_40px_100px_rgba(0,0,0,0.6)] animate-gpu transform-gpu transition-all duration-500 ${viewMode === 'video' ? 'aspect-video max-w-[360px] rounded-[16px] border border-white/5' : 'aspect-square max-w-[340px] rounded-[20px] border border-white/10'}`}
+                  className={`relative w-full overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.6)] animate-gpu transform-gpu transition-all duration-500 ${viewMode === 'video' ? 'aspect-video max-w-[360px] rounded-[16px] border border-white/5' : 'aspect-square max-w-[340px] rounded-[20px] border border-white/10'}`}
                 >
                   {viewMode === "music" && (
                     <AnimatedCanvasArtwork title={liveMetadata?.title || currentSong.title} artist={currentSong.artist} src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={64} />

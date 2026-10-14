@@ -67,6 +67,7 @@ export function AnimatedCanvasArtwork({
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !canvasUrl || reducedMotion || videoFailed) return;
+    video.muted = true;
     let hls: Hls | null = null;
     if (/\.m3u8(?:\?|$)/i.test(canvasUrl)) {
       if (video.canPlayType("application/vnd.apple.mpegurl")) {
@@ -100,9 +101,9 @@ export function AnimatedCanvasArtwork({
 
   const showVideo = Boolean(canvasUrl && videoReady && !reducedMotion && !videoFailed);
   return (
-    <div className={`relative h-full w-full overflow-hidden ${className}`}>
-      <div className={`absolute inset-0 transition-opacity duration-500 ${showVideo ? "opacity-0" : "opacity-100"}`}>
-        <MusicArtwork src={src} alt={alt ?? title} iconSize={iconSize} className="" />
+    <div className={`relative h-full w-full overflow-hidden rounded-[inherit] ${className}`}>
+      <div className={`absolute inset-0 rounded-[inherit] transition-opacity duration-500 ${showVideo ? "opacity-0" : "opacity-100"}`}>
+        <MusicArtwork src={src} alt={alt ?? title} iconSize={iconSize} className="rounded-[inherit]" />
       </div>
       {canvasUrl && !reducedMotion && (
         <video
@@ -111,11 +112,13 @@ export function AnimatedCanvasArtwork({
           playsInline
           autoPlay
           loop
-          preload="metadata"
+          preload="auto"
           aria-label={`${alt ?? title} animated album artwork`}
           onCanPlay={() => setVideoReady(true)}
+          onLoadedData={() => setVideoReady(true)}
+          onPlaying={() => setVideoReady(true)}
           onError={() => { setVideoFailed(true); setVideoReady(false); }}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${showVideo ? "opacity-100" : "opacity-0"}`}
+          className={`absolute inset-0 h-full w-full object-cover rounded-[inherit] transition-opacity duration-500 ${showVideo ? "opacity-100" : "opacity-0"}`}
         />
       )}
     </div>

@@ -222,11 +222,30 @@ export async function GET(request: Request) {
     let matchedAlbum = string(attributes.albumName);
 
     if (!url) {
+      let albumId = "";
       const relationships = obj(song.relationships);
       const albums = obj(relationships?.albums);
       const albumItem = obj(arr(albums?.data)[0]);
-      const albumId = string(albumItem?.id);
-      if (albumId && /^\d+$/.test(albumId)) {
+      albumId = string(albumItem?.id);
+
+      // Apple Catalog /search endpoint does not include song relationships.
+      // Fetch the song detail directly to obtain its linked album and editorial video.
+      if (!albumId) {
+        const songId = string(song.id);
+        if (songId && /^\d+$/.test(songId)) {
+          const songDetail = await appleGet(`${APPLE_API}/us/songs/${songId}?include=albums&extend=editorialVideo`, token);
+          const detailData = obj(arr(songDetail?.data)[0]);
+          const detailRel = obj(detailData?.relationships);
+          const detailAlbums = obj(detailRel?.albums);
+          const detailAlbumItem = obj(arr(detailAlbums?.data)[0]);
+          albumId = string(detailAlbumItem?.id);
+          const detailAlbumAttr = obj(detailAlbumItem?.attributes);
+          url = videoUrl(obj(detailAlbumAttr?.editorialVideo));
+          matchedAlbum = string(detailAlbumAttr?.name) || matchedAlbum;
+        }
+      }
+
+      if (!url && albumId && /^\d+$/.test(albumId)) {
         const albumUrl = new URL(`${APPLE_API}/us/albums/${albumId}`);
         albumUrl.searchParams.set("extend", "editorialVideo");
         const albumResult = await appleGet(albumUrl.toString(), token);
@@ -234,6 +253,33 @@ export async function GET(request: Request) {
         const albumAttributes = obj(albumRecord?.attributes);
         url = videoUrl(obj(albumAttributes?.editorialVideo));
         matchedAlbum = string(albumAttributes?.name) || matchedAlbum;
+      }
+
+      // Fallback: If still no video, search albums directly by artist and album name
+      if (!url && (matchedAlbum || album)) {
+        const albumTarget = matchedAlbum || album;
+        const albSearchUrl = new URL(`${APPLE_API}/us/search`);
+        albSearchUrl.searchParams.set("term", `${artist} ${albumTarget}`);
+        albSearchUrl.searchParams.set("types", "albums");
+        albSearchUrl.searchParams.set("limit", "3");
+        albSearchUrl.searchParams.set("extend", "editorialVideo");
+        const albSearch = await appleGet(albSearchUrl.toString(), token);
+        const albResults = obj(albSearch?.results);
+        const albContainer = obj(albResults?.albums);
+        const albData = arr(albContainer?.data).map(obj).filter((a): a is JsonObject => Boolean(a));
+        for (const alb of albData) {
+          const aAttr = obj(alb.attributes);
+          const gotAlbArtist = normalize(string(aAttr?.artistName));
+          const wantedArtistNorm = normalize(artist);
+          if (gotAlbArtist && wantedArtistNorm && (gotAlbArtist.includes(wantedArtistNorm) || wantedArtistNorm.includes(gotAlbArtist))) {
+            const v = videoUrl(obj(aAttr?.editorialVideo));
+            if (v) {
+              url = v;
+              matchedAlbum = string(aAttr?.name) || matchedAlbum;
+              break;
+            }
+          }
+        }
       }
     }
 

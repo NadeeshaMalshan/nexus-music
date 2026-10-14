@@ -439,6 +439,8 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
               (lyricsLoading ? "Loading lyrics..." : "Lyrics not available for this track yet.")
             }
             lyricsSource={lyricsData?.lyrics.source || null}
+            lyricsLines={lyricsData?.lyrics.lines}
+            lyricsSyncType={lyricsData?.lyrics.syncType}
             currentTimeSec={currentTimeSec}
             durationSec={durationSec}
             onSeek={onSeek}
@@ -481,6 +483,8 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
           lyricsData?.lyrics.content ||
           (lyricsLoading ? "Loading lyrics..." : "Lyrics not available for this track yet.")
         }
+        lyricsLines={lyricsData?.lyrics.lines}
+        lyricsSyncType={lyricsData?.lyrics.syncType}
         lyricsSource={lyricsData?.lyrics.source || null}
         currentTimeSec={currentTimeSec}
         aiInsights={lyricsData?.geniusData.found ? "Genius metadata found for this song." : "AI insights are not available yet."}

@@ -51,6 +51,14 @@ export interface ExpandedPlayerProps {
   onRemoveFromUpNext?: (index: number) => void;
   lyricsContent: string | null;
   lyricsSource: string | null;
+  lyricsLines?: Array<{
+    text: string;
+    start: number;
+    end: number;
+    words?: Array<{ text: string; start: number; end: number; isDerivedEnd?: boolean }>;
+    isInstrumental?: boolean;
+  }>;
+  lyricsSyncType?: "word" | "line" | "unsynced";
   currentTimeSec: number;
   durationSec: number;
   onSeek: (nextTimeSec: number) => void;

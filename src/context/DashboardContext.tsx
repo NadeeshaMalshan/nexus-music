@@ -48,15 +48,28 @@ type LyricsPayload = {
   success: boolean;
   lyrics: {
     isSynced: boolean;
+    isWordSynced?: boolean;
+    syncType?: "word" | "line" | "unsynced";
+    format?: "ttml" | "enhanced_lrc" | "lrc" | "plain";
     content: string | null;
-    source: "LRCLIB" | "Lyrics.ovh" | null;
+    source: string | null;
+    lines?: Array<{
+      text: string;
+      start: number;
+      end: number;
+      words?: Array<{ text: string; start: number; end: number; isDerivedEnd?: boolean }>;
+      isInstrumental?: boolean;
+    }>;
   };
   geniusData: {
     found: boolean;
     songId: number | null;
     url: string | null;
     thumbnail: string | null;
+    description?: string | null;
     writers: string[] | null;
+    producers?: string[] | null;
+    releaseYear?: number | string | null;
   };
 };
 

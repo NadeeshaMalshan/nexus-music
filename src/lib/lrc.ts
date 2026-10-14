@@ -1,59 +1,32 @@
 /**
- * Parse LRC synced lyric strings into timed entries.
- * Supports [mm:ss.xx], [m:ss.xx], optional [h:mm:ss.xx] (hours), LRCLIB-style centiseconds.
+ * Backward-compatible LRC parser entry point that connects to the new unified lyrics parser engine.
  */
+import { parseLyrics } from "./lyrics/parsers";
+import { LyricsLine, LyricsWord } from "./lyrics/types";
 
-export type LrcEntry = { at: number; text: string };
-
-const TAG_RE = /\[(\d{1,3}):(\d{2})(?::(\d{2}))?(?:\.(\d{1,4}))?\]/g;
-
-function fractionalSeconds(fracRaw: string | undefined): number {
-  if (!fracRaw) return 0;
-  const digits = fracRaw.replace(/\D/g, "");
-  if (!digits) return 0;
-  if (fracRaw.length <= 2) {
-    return Number(fracRaw) / 100;
-  }
-  const ms = Number(fracRaw.slice(0, 3));
-  return Number.isNaN(ms) ? 0 : ms / 1000;
-}
-
-function parseFirstTag(match: RegExpMatchArray): number {
-  const [, a, b, c, frac] = match;
-  if (c !== undefined) {
-    return (
-      Number(a) * 3600 + Number(b) * 60 + Number(c) + fractionalSeconds(frac)
-    );
-  }
-  return Number(a) * 60 + Number(b) + fractionalSeconds(frac);
-}
+export type LrcEntry = {
+  at: number;
+  text: string;
+  start?: number;
+  end?: number;
+  words?: LyricsWord[];
+  isInstrumental?: boolean;
+};
 
 export function parseLrcContent(raw: string): LrcEntry[] {
-  const normalized = raw.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
-  const entries: LrcEntry[] = [];
-  const seen = new Set<string>();
+  if (!raw || typeof raw !== "string") return [];
+  const parsed = parseLyrics(raw);
 
-  for (const rawLine of normalized.split("\n")) {
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    TAG_RE.lastIndex = 0;
-    const first = TAG_RE.exec(line);
-    if (!first) continue;
-
-    TAG_RE.lastIndex = 0;
-    const text = line.replace(TAG_RE, "").trim();
-    if (!text) continue;
-
-    const at = parseFirstTag(first);
-    if (Number.isNaN(at)) continue;
-
-    const key = `${at.toFixed(3)}|${text}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    entries.push({ at, text });
-  }
-
-  entries.sort((a, b) => a.at - b.at);
-  return entries;
+  return parsed.lines.map((line: LyricsLine) => ({
+    at: line.start,
+    start: line.start,
+    end: line.end,
+    text: line.text,
+    words: line.words,
+    isInstrumental: line.isInstrumental,
+  }));
 }
+
+export * from "./lyrics/types";
+export * from "./lyrics/parsers";
+export * from "./lyrics/synchronizer/playbackSynchronizer";

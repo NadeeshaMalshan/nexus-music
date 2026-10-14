@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { X, Play, Sparkles, Trash2, GripVertical, Plus, Loader2 } from "lucide-react";
 import { type Song } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
+import { type LyricsLine, type LyricsSyncType, type LyricsWord } from "@/lib/lyrics/types";
+import { findActiveLineIndex } from "@/lib/lyrics/synchronizer/playbackSynchronizer";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { motion, Reorder, AnimatePresence } from "motion/react";
 import { SessionFriendsPanel } from "./SessionFriendsPanel";
@@ -15,6 +17,8 @@ interface RightSidebarProps {
   onSongClick: (song: Song, reset?: boolean) => void;
   upNextQueue?: Song[]; // Discovery Radio Queue
   lyricsContent: string | null;
+  lyricsLines?: LyricsLine[];
+  lyricsSyncType?: LyricsSyncType;
   currentTimeSec: number;
   currentArtist: string;
   lyricsSource: string | null;
@@ -37,6 +41,8 @@ export function RightSidebar({
   onSongClick,
   upNextQueue = [],
   lyricsContent,
+  lyricsLines,
+  lyricsSyncType,
   currentTimeSec,
   currentArtist,
   lyricsSource,
@@ -103,13 +109,37 @@ export function RightSidebar({
     return finalLines;
   }, [lyricsContent]);
 
-  const hasSynced = syncedLines.length > 0;
-  const activeIndex = hasSynced ? syncedLines.findIndex((line, index) => {
-    const next = syncedLines[index + 1];
-    return currentTimeSec >= line.at && (!next || currentTimeSec < next.at);
-  }) : -1;
+  interface SidebarLine {
+    at: number;
+    text: string;
+    isInstrumental: boolean;
+    words?: LyricsWord[];
+  }
 
-  const lines = hasSynced ? syncedLines.map((l) => l.text) : plainLines;
+  // Use structured lyricsLines if available, otherwise fall back to syncedLines
+  const effectiveLines: SidebarLine[] = useMemo(() => {
+    if (lyricsLines && lyricsLines.length > 0) {
+      return lyricsLines.map((l) => ({
+        at: l.start,
+        text: l.text,
+        isInstrumental: l.isInstrumental || false,
+        words: l.words,
+      }));
+    }
+    return syncedLines.map((l) => ({ ...l, words: undefined }));
+  }, [lyricsLines, syncedLines]);
+
+  const hasSynced = effectiveLines.length > 0;
+  const activeIndex = hasSynced
+    ? (lyricsLines && lyricsLines.length > 0
+        ? findActiveLineIndex(lyricsLines, currentTimeSec)
+        : effectiveLines.findIndex((line, index) => {
+            const next = effectiveLines[index + 1];
+            return currentTimeSec >= line.at && (!next || currentTimeSec < next.at);
+          }))
+    : -1;
+
+  const lines = hasSynced ? effectiveLines.map((l) => l.text) : plainLines;
 
   useEffect(() => {
     if (!hasSynced || activeIndex < 0 || !scrollRef.current) return;
@@ -322,12 +352,13 @@ export function RightSidebar({
                   <div className={`max-w-2xl mx-auto ${!hasSynced ? "space-y-6" : "space-y-2 pb-32"}`}>
                     {lines.map((line, index) => {
                       const isActive = hasSynced && index === activeIndex;
-                      const isInstrumental = hasSynced && syncedLines[index]?.isInstrumental;
+                      const lineItem = effectiveLines[index];
+                      const isInstrumental = hasSynced && lineItem?.isInstrumental;
 
                       let instProgress = 0;
-                      if (isInstrumental && isActive) {
-                        const start = syncedLines[index].at;
-                        const next = syncedLines[index + 1];
+                      if (isInstrumental && isActive && lineItem) {
+                        const start = lineItem.at;
+                        const next = effectiveLines[index + 1];
                         const end = next ? next.at : start + 5;
                         const dur = end > start ? end - start : 5;
                         instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
@@ -341,7 +372,7 @@ export function RightSidebar({
                         <div 
                           key={`${index}`} 
                           ref={(el) => { elementsRef.current[index] = el; }}
-                          onClick={() => { if (hasSynced && onSeek) onSeek(syncedLines[index].at); }}
+                          onClick={() => { if (hasSynced && onSeek && lineItem) onSeek(lineItem.at); }}
                           className={`group flex items-center transition-all duration-700 ease-out origin-left transform ${
                             hasSynced ? 'cursor-pointer' : ''
                           } ${
@@ -370,7 +401,35 @@ export function RightSidebar({
                                   : "text-[24px] leading-[1.2] text-white"
                               }`}
                             >
-                              {line}
+                              {lineItem?.words && lineItem.words.length > 0 ? (
+                                <span className="inline">
+                                  {lineItem.words.map((w: LyricsWord, wIdx: number) => {
+                                    const isWordActive = isActive && (
+                                      currentTimeSec >= w.start &&
+                                      (w.end !== undefined ? currentTimeSec <= w.end : true)
+                                    );
+                                    const isWordPassed = isActive && (
+                                      w.end !== undefined ? currentTimeSec > w.end : currentTimeSec > w.start
+                                    );
+                                    return (
+                                      <span
+                                        key={wIdx}
+                                        className={`transition-all duration-200 ${
+                                          isWordActive
+                                            ? "text-white font-black"
+                                            : isWordPassed || isActive
+                                              ? "text-white/80"
+                                              : "text-white/30"
+                                        }`}
+                                      >
+                                        {w.text}{" "}
+                                      </span>
+                                    );
+                                  })}
+                                </span>
+                              ) : (
+                                line
+                              )}
                             </p>
                           )}
                         </div>

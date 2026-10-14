@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { m, AnimatePresence, Reorder, useDragControls } from "motion/react";
 import { APPLE_EASE, SLIDE_UP_VARIANTS, EXPO_OUT, MOTION_CONFIG, APPLE_LYRICS_TRANSITION } from "@/lib/animations";
 import { type Song, type ExpandedPlayerProps } from "./types";
-import { parseLrcContent } from "@/lib/lrc";
+import { parseLyrics, findActiveLineIndex, findActiveWordIndex, type LyricsLine } from "@/lib/lrc";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { SessionFriendsPanel } from "./SessionFriendsPanel";
 import { MusicArtwork } from "./MusicArtwork";
@@ -26,11 +26,11 @@ interface LyricLineProps {
   line: string;
   index: number;
   isActive: boolean;
-  isInstrumental: boolean;
-  syncedLine: { at: number; text: string; isInstrumental: boolean } | null;
+  isInstrumental?: boolean;
+  syncedLine: LyricsLine | null;
   currentTimeSec: number;
   onSeek: (time: number) => void;
-  syncedLines: { at: number; text: string; isInstrumental: boolean }[];
+  syncedLines: LyricsLine[];
   hasSynced: boolean;
   elementsRef: React.RefObject<(HTMLDivElement | null)[]>;
 }
@@ -49,9 +49,9 @@ const LyricLine = React.memo(({
 }: LyricLineProps) => {
   let instProgress = 0;
   if (isInstrumental && isActive && syncedLine) {
-    const start = syncedLine.at;
+    const start = syncedLine.start;
     const next = syncedLines[index + 1];
-    const end = next ? next.at : start + 5;
+    const end = next ? next.start : start + 5;
     const dur = end > start ? end - start : 5;
     instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
   }
@@ -59,21 +59,15 @@ const LyricLine = React.memo(({
   const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
   const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
   const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
-  const lyricWords = line.split(/(\s+)/);
-  const wordCount = lyricWords.filter((part) => part.trim().length > 0).length;
-  const nextLine = syncedLines[index + 1];
-  const lineStart = syncedLine?.at ?? 0;
-  const lineEnd = nextLine && nextLine.at > lineStart ? nextLine.at : lineStart + 4.5;
-  const wordProgress = hasSynced && isActive && syncedLine && lineEnd > lineStart
-    ? Math.max(0, Math.min(0.999, (currentTimeSec - lineStart) / (lineEnd - lineStart)))
-    : 0;
-  const activeWordIndex = Math.floor(wordProgress * Math.max(1, wordCount));
-  let renderedWordIndex = 0;
+
+  const words = syncedLine?.words;
+  const hasWordSync = Boolean(hasSynced && isActive && words && words.length > 0);
+  const activeWordIndex = hasWordSync && words ? findActiveWordIndex(words, currentTimeSec) : -1;
 
   return (
     <div
       ref={el => { if (elementsRef.current) elementsRef.current[index] = el; }}
-      onClick={() => hasSynced && syncedLine && onSeek(syncedLine.at)}
+      onClick={() => hasSynced && syncedLine && onSeek(syncedLine.start)}
       className={`group flex items-center origin-left transform transition-all duration-700 ease-out ${hasSynced ? "cursor-pointer" : "cursor-default"
         } ${isInstrumental
           ? (isActive ? "h-20" : "h-0 overflow-hidden")
@@ -91,16 +85,29 @@ const LyricLine = React.memo(({
           <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.1 }} />
           <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
         </div>
+      ) : hasWordSync && words ? (
+        <p className="w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] text-[40px] leading-[1.05] text-white">
+          {words.map((w, wIndex) => {
+            const isWordActive = wIndex === activeWordIndex;
+            const isWordPast = activeWordIndex >= 0 && wIndex < activeWordIndex;
+            const state = isWordActive
+              ? "text-cyan-200 drop-shadow-[0_0_14px_rgba(165,243,252,0.45)] scale-[1.03]"
+              : isWordPast
+                ? "text-white"
+                : "text-white/35";
+            return (
+              <span
+                key={wIndex}
+                className={`inline-block transition-all duration-150 transform-gpu ${state}`}
+              >
+                {w.text}
+              </span>
+            );
+          })}
+        </p>
       ) : (
         <p className="w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] text-[40px] leading-[1.05] text-white">
-          {hasSynced && isActive && syncedLine && wordCount > 0
-            ? lyricWords.map((part, partIndex) => {
-              if (!part.trim()) return <span key={partIndex}>{part}</span>;
-              const wordIndex = renderedWordIndex++;
-              const state = wordIndex < activeWordIndex ? "text-white" : wordIndex === activeWordIndex ? "text-cyan-200 drop-shadow-[0_0_14px_rgba(165,243,252,0.35)]" : "text-white/35";
-              return <span key={partIndex} className={`transition-colors duration-150 ${state}`}>{part}</span>;
-            })
-            : line}
+          {line}
         </p>
       )}
     </div>
@@ -130,6 +137,8 @@ export function MobileExpandedPlayer({
   onRemoveFromUpNext,
   lyricsContent,
   lyricsSource,
+  lyricsLines,
+  lyricsSyncType,
   currentTimeSec,
   durationSec,
   onSeek,
@@ -261,44 +270,26 @@ export function MobileExpandedPlayer({
   const capturedTimeRef = useRef<number>(0);
   const videoInitSeekRef = useRef<boolean>(false);
 
-  const plainLines = useMemo(() => (lyricsContent || "")
-    .replace(/\[\d{1,3}:\d{2}(?::\d{2})?(?:\.\d{1,4})?\]/g, "")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean), [lyricsContent]);
-
   const syncedLines = useMemo(() => {
-    const raw = parseLrcContent(lyricsContent || "");
-    const cleaned = raw.reduce<{ at: number; text: string; isInstrumental: boolean }[]>((acc, line) => {
-      const prev = acc[acc.length - 1];
-      if (prev && Math.abs(prev.at - line.at) < 0.0001) {
-        prev.text = `${prev.text}  /  ${line.text}`;
-        prev.isInstrumental = false;
-        return acc;
-      }
-      const isInst = !line.text.replace(/\[.*?\]/g, "").trim() || line.text.includes("♪") || line.text.toLowerCase().includes("instrumental");
-      acc.push({ ...line, isInstrumental: isInst });
-      return acc;
-    }, []);
-
-    if (cleaned.length > 0 && cleaned[0].at > 5) {
-      cleaned.unshift({ at: 0, text: "", isInstrumental: true });
+    if (lyricsLines && lyricsLines.length > 0) {
+      return lyricsLines;
     }
+    const parsed = parseLyrics(lyricsContent || "");
+    return parsed.lines;
+  }, [lyricsLines, lyricsContent]);
 
-    const finalLines = [];
-    for (let i = 0; i < cleaned.length; i++) {
-      finalLines.push(cleaned[i]);
-      if (i < cleaned.length - 1) {
-        const gap = cleaned[i + 1].at - cleaned[i].at;
-        if (gap > 20 && !cleaned[i].isInstrumental && !cleaned[i + 1].isInstrumental) {
-          finalLines.push({ at: cleaned[i].at + (gap * 0.3), text: "", isInstrumental: true });
-        }
-      }
+  const plainLines = useMemo(() => {
+    if (syncedLines.length > 0) {
+      return syncedLines.map((l) => l.text);
     }
-    return finalLines;
-  }, [lyricsContent]);
+    return (lyricsContent || "")
+      .replace(/\[\d{1,3}:\d{2}(?::\d{2})?(?:\.\d{1,4})?\]/g, "")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+  }, [syncedLines, lyricsContent]);
 
-  const hasSynced = syncedLines.length > 0;
+  const hasSynced = syncedLines.length > 0 && lyricsSyncType !== "unsynced";
 
   const isReallyLive = useMemo(() => {
     const fallbackDuration = currentSong.duration ? (currentSong.duration.includes(":") ? currentSong.duration.split(":").reduce((acc, time) => (60 * acc) + parseInt(time), 0) : parseInt(currentSong.duration)) : 0;
@@ -336,10 +327,7 @@ export function MobileExpandedPlayer({
   const displayHasSynced = hasSynced && !isReallyLive && (viewMode === "music" || isDurationEqual);
   const lines = displayHasSynced ? syncedLines.map(l => l.text) : plainLines;
 
-  const activeIndex = displayHasSynced ? syncedLines.findIndex((line, index) => {
-    const next = syncedLines[index + 1];
-    return currentTimeSec >= line.at && (!next || currentTimeSec < next.at);
-  }) : -1;
+  const activeIndex = displayHasSynced ? findActiveLineIndex(syncedLines, currentTimeSec) : -1;
 
   useEffect(() => {
     if (!displayHasSynced || activeIndex < 0 || !scrollRef.current) return;

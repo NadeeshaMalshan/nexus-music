@@ -11,6 +11,7 @@ import { parseLrcContent } from "@/lib/lrc";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { SessionFriendsPanel } from "./SessionFriendsPanel";
 import { MusicArtwork } from "./MusicArtwork";
+import { AnimatedCanvasArtwork } from "./AnimatedCanvasArtwork";
 import { useSettings } from "@/context/SettingsContext";
 import { useJam } from "@/context/JamContext";
 
@@ -34,13 +35,13 @@ interface LyricLineProps {
   elementsRef: React.RefObject<(HTMLDivElement | null)[]>;
 }
 
-const LyricLine = React.memo(({ 
-  line, 
-  index, 
-  isActive, 
-  isInstrumental, 
-  syncedLine, 
-  currentTimeSec, 
+const LyricLine = React.memo(({
+  line,
+  index,
+  isActive,
+  isInstrumental,
+  syncedLine,
+  currentTimeSec,
   onSeek,
   syncedLines,
   hasSynced,
@@ -58,24 +59,31 @@ const LyricLine = React.memo(({
   const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
   const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
   const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
+  const lyricWords = line.split(/(\s+)/);
+  const wordCount = lyricWords.filter((part) => part.trim().length > 0).length;
+  const nextLine = syncedLines[index + 1];
+  const lineStart = syncedLine?.at ?? 0;
+  const lineEnd = nextLine && nextLine.at > lineStart ? nextLine.at : lineStart + 4.5;
+  const wordProgress = hasSynced && isActive && syncedLine && lineEnd > lineStart
+    ? Math.max(0, Math.min(0.999, (currentTimeSec - lineStart) / (lineEnd - lineStart)))
+    : 0;
+  const activeWordIndex = Math.floor(wordProgress * Math.max(1, wordCount));
+  let renderedWordIndex = 0;
 
   return (
     <div
       ref={el => { if (elementsRef.current) elementsRef.current[index] = el; }}
       onClick={() => hasSynced && syncedLine && onSeek(syncedLine.at)}
-      className={`group flex items-center origin-left transform transition-all duration-700 ease-out ${
-        hasSynced ? "cursor-pointer" : "cursor-default"
-      } ${
-        isInstrumental
-            ? (isActive ? "h-20" : "h-0 overflow-hidden")
-            : "py-6"
-      } ${
-        hasSynced
-          ? (isActive 
-              ? "opacity-100 scale-105 translate-x-2.5 blur-0 brightness-120" 
-              : "opacity-40 scale-100 translate-x-0 blur-[4px] brightness-60")
+      className={`group flex items-center origin-left transform transition-all duration-700 ease-out ${hasSynced ? "cursor-pointer" : "cursor-default"
+        } ${isInstrumental
+          ? (isActive ? "h-20" : "h-0 overflow-hidden")
+          : "py-6"
+        } ${hasSynced
+          ? (isActive
+            ? "opacity-100 scale-105 translate-x-2.5 blur-0 brightness-120"
+            : "opacity-40 scale-100 translate-x-0 blur-[4px] brightness-60")
           : "opacity-80 scale-100 blur-0 brightness-100"
-      }`}
+        }`}
     >
       {isInstrumental ? (
         <div className={`flex gap-3 items-center h-full transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
@@ -84,8 +92,15 @@ const LyricLine = React.memo(({
           <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
         </div>
       ) : (
-        <p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] text-[40px] leading-[1.05] text-white`}>
-          {line}
+        <p className="w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] text-[40px] leading-[1.05] text-white">
+          {hasSynced && isActive && syncedLine && wordCount > 0
+            ? lyricWords.map((part, partIndex) => {
+              if (!part.trim()) return <span key={partIndex}>{part}</span>;
+              const wordIndex = renderedWordIndex++;
+              const state = wordIndex < activeWordIndex ? "text-white" : wordIndex === activeWordIndex ? "text-cyan-200 drop-shadow-[0_0_14px_rgba(165,243,252,0.35)]" : "text-white/35";
+              return <span key={partIndex} className={`transition-colors duration-150 ${state}`}>{part}</span>;
+            })
+            : line}
         </p>
       )}
     </div>
@@ -96,7 +111,7 @@ const LyricLine = React.memo(({
   if (prev.index !== next.index) return false;
   if (prev.isInstrumental !== next.isInstrumental) return false;
   if (prev.syncedLine !== next.syncedLine) return false;
-  if (next.isActive && next.isInstrumental) {
+  if (next.isActive && next.hasSynced) {
     return prev.currentTimeSec === next.currentTimeSec;
   }
   return true;
@@ -389,7 +404,7 @@ export function MobileExpandedPlayer({
             }
             if (time > 0 && Number.isFinite(time)) {
               setCurrentTimeSec(time);
-              
+
               // Watchdog for background/minimized autoplay in video mode
               const dur = safeDurationRef.current;
               if (dur > 0 && time >= dur - 1.5 && isPlayingRef.current && lastSkippedVideoIdRef.current !== currentSong.id) {
@@ -494,9 +509,9 @@ export function MobileExpandedPlayer({
       >
         <ListMusic size={24} />
       </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab(activeTab === "ai" ? "controls" : "ai")}
+      <button
+        type="button"
+        onClick={() => setActiveTab(activeTab === "ai" ? "controls" : "ai")}
         className={`p-3 rounded-xl transition-all ${activeTab === "ai" ? "bg-white/20 text-white" : "text-white/40 hover:text-white"}`}
       >
         <BookOpen size={24} />
@@ -797,10 +812,10 @@ export function MobileExpandedPlayer({
         {(viewMode === "video" || isReallyLive) && (
           <div
             className={`absolute transition-all duration-700 pointer-events-none ${activeTab === "controls"
-                ? (viewMode === "video"
-                  ? "top-[16dvh] left-1/2 -translate-x-1/2 w-[90vw] max-w-[360px] aspect-video rounded-[16px] overflow-hidden opacity-100 z-20 scale-100 shadow-2xl"
-                  : "top-[13dvh] left-1/2 -translate-x-1/2 w-[70vw] aspect-square rounded-[20px] overflow-hidden opacity-0 z-0 scale-50")
-                : "inset-0 opacity-0 z-0 pointer-events-none scale-0"
+              ? (viewMode === "video"
+                ? "top-[16dvh] left-1/2 -translate-x-1/2 w-[90vw] max-w-[360px] aspect-video rounded-[16px] overflow-hidden opacity-100 z-20 scale-100 shadow-2xl"
+                : "top-[13dvh] left-1/2 -translate-x-1/2 w-[70vw] aspect-square rounded-[20px] overflow-hidden opacity-0 z-0 scale-50")
+              : "inset-0 opacity-0 z-0 pointer-events-none scale-0"
               }`}
           >
             <div ref={videoContainerRef} className="absolute inset-0 bg-black flex items-center justify-center">
@@ -820,7 +835,7 @@ export function MobileExpandedPlayer({
                   e.target.setVolume(volume);
                   const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
                   try { e.target.setPlaybackQuality(vq); } catch (err) { }
-                  
+
                   // Seek check on mount (transition from music to video mode)
                   const parseDurationToSeconds = (durationStr: string): number => {
                     if (!durationStr || durationStr === "LIVE") return 0;
@@ -837,7 +852,7 @@ export function MobileExpandedPlayer({
                   const musicDuration = parseDurationToSeconds(currentSong.duration);
                   const videoDuration = e.target.getDuration();
                   const isDurationEqual = musicDuration > 0 && videoDuration > 0 && Math.abs(musicDuration - videoDuration) <= 2;
-                  
+
                   if (isDurationEqual && currentTimeSec > 0) {
                     e.target.seekTo(currentTimeSec, true);
                   } else if (!isDurationEqual) {
@@ -917,7 +932,7 @@ export function MobileExpandedPlayer({
                   className={`relative w-full shadow-[0_40px_100px_rgba(0,0,0,0.6)] animate-gpu transform-gpu transition-all duration-500 ${viewMode === 'video' ? 'aspect-video max-w-[360px] rounded-[16px] border border-white/5' : 'aspect-square max-w-[340px] rounded-[20px] border border-white/10'}`}
                 >
                   {viewMode === "music" && (
-                    <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={64} />
+                    <AnimatedCanvasArtwork title={liveMetadata?.title || currentSong.title} artist={currentSong.artist} src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={64} />
                   )}
                 </m.div>
               </div>

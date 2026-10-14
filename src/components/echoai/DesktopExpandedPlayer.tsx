@@ -9,6 +9,7 @@ import { MOTION_CONFIG, APPLE_LYRICS_TRANSITION } from "@/lib/animations";
 import { type ExpandedPlayerProps } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { MusicArtwork } from "./MusicArtwork";
+import { AnimatedCanvasArtwork } from "./AnimatedCanvasArtwork";
 import { useSettings } from "@/context/SettingsContext";
 import { useJam } from "@/context/JamContext";
 
@@ -39,13 +40,13 @@ import { LiveLikeToast } from "./LiveLikeToast";
 import { MarqueeText } from "./MarqueeText";
 import React from "react";
 
-const LyricLine = React.memo(({ 
-  line, 
-  index, 
-  isActive, 
-  isInstrumental, 
-  syncedLine, 
-  currentTimeSec, 
+const LyricLine = React.memo(({
+  line,
+  index,
+  isActive,
+  isInstrumental,
+  syncedLine,
+  currentTimeSec,
   onSeek,
   syncedLines,
   hasSynced,
@@ -63,24 +64,31 @@ const LyricLine = React.memo(({
   const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
   const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
   const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
+  const lyricWords = line.split(/(\s+)/);
+  const wordCount = lyricWords.filter((part) => part.trim().length > 0).length;
+  const nextLine = syncedLines[index + 1];
+  const lineStart = syncedLine?.at ?? 0;
+  const lineEnd = nextLine && nextLine.at > lineStart ? nextLine.at : lineStart + 4.5;
+  const wordProgress = hasSynced && isActive && syncedLine && lineEnd > lineStart
+    ? Math.max(0, Math.min(0.999, (currentTimeSec - lineStart) / (lineEnd - lineStart)))
+    : 0;
+  const activeWordIndex = Math.floor(wordProgress * Math.max(1, wordCount));
+  let renderedWordIndex = 0;
 
   return (
-    <div 
-      ref={el => { if (elementsRef.current) elementsRef.current[index] = el; }} 
+    <div
+      ref={el => { if (elementsRef.current) elementsRef.current[index] = el; }}
       onClick={() => hasSynced && syncedLine && onSeek(syncedLine.at)}
-      className={`group flex items-center origin-left transform transition-all duration-700 ease-out ${
-        hasSynced ? "z-10 cursor-pointer" : "cursor-default"
-      } ${
-        isInstrumental 
-            ? (isActive ? "h-[100px]" : "h-0 overflow-hidden") 
-            : "py-6"
-      } ${
-        hasSynced
-          ? (isActive 
-              ? "opacity-100 scale-[1.02] translate-x-2.5 blur-0 brightness-110" 
-              : "opacity-30 scale-[0.98] translate-x-0 blur-[3px] brightness-50 hover:opacity-65 hover:scale-[0.99] hover:blur-0 hover:brightness-90")
+      className={`group flex items-center origin-left transform transition-all duration-700 ease-out ${hasSynced ? "z-10 cursor-pointer" : "cursor-default"
+        } ${isInstrumental
+          ? (isActive ? "h-[100px]" : "h-0 overflow-hidden")
+          : "py-6"
+        } ${hasSynced
+          ? (isActive
+            ? "opacity-100 scale-[1.02] translate-x-2.5 blur-0 brightness-110"
+            : "opacity-30 scale-[0.98] translate-x-0 blur-[3px] brightness-50 hover:opacity-65 hover:scale-[0.99] hover:blur-0 hover:brightness-90")
           : "opacity-80 scale-100 blur-0 brightness-100"
-      }`}
+        }`}
     >
       {isInstrumental ? (
         <div className={`flex gap-4 items-center h-full transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
@@ -89,10 +97,15 @@ const LyricLine = React.memo(({
           <div className="h-4 w-4 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
         </div>
       ) : (
-        <p 
-          className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-2xl text-[44px] leading-[1.1] text-white`}
-        >
-          {line}
+        <p className="w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-2xl text-[44px] leading-[1.1] text-white">
+          {hasSynced && isActive && syncedLine && wordCount > 0
+            ? lyricWords.map((part, partIndex) => {
+              if (!part.trim()) return <span key={partIndex}>{part}</span>;
+              const wordIndex = renderedWordIndex++;
+              const state = wordIndex < activeWordIndex ? "text-white" : wordIndex === activeWordIndex ? "text-cyan-200 drop-shadow-[0_0_14px_rgba(165,243,252,0.35)]" : "text-white/35";
+              return <span key={partIndex} className={`transition-colors duration-150 ${state}`}>{part}</span>;
+            })
+            : line}
         </p>
       )}
     </div>
@@ -103,7 +116,7 @@ const LyricLine = React.memo(({
   if (prev.index !== next.index) return false;
   if (prev.isInstrumental !== next.isInstrumental) return false;
   if (prev.syncedLine !== next.syncedLine) return false;
-  if (next.isActive && next.isInstrumental) {
+  if (next.isActive && next.hasSynced) {
     return prev.currentTimeSec === next.currentTimeSec;
   }
   return true;
@@ -171,7 +184,7 @@ export function DesktopExpandedPlayer({
       setTimeout(() => setActiveTab("lyrics"), 0);
     }
   }, [viewMode, activeTab]);
-  
+
   const ytPlayerInstance = useRef<YouTubePlayer | null>(null);
   const videoSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   // Ref so callbacks always see the latest isPlaying without closure staleness
@@ -223,7 +236,7 @@ export function DesktopExpandedPlayer({
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean), [lyricsContent]);
-  
+
   const syncedLines = useMemo(() => {
     const raw = parseLrcContent(lyricsContent || "");
     const cleaned = raw.reduce<{ at: number; text: string; isInstrumental: boolean }[]>((acc, line) => {
@@ -244,13 +257,13 @@ export function DesktopExpandedPlayer({
 
     const finalLines = [];
     for (let i = 0; i < cleaned.length; i++) {
-        finalLines.push(cleaned[i]);
-        if (i < cleaned.length - 1) {
-            const gap = cleaned[i + 1].at - cleaned[i].at;
-            if (gap > 20 && !cleaned[i].isInstrumental && !cleaned[i + 1].isInstrumental) {
-                finalLines.push({ at: cleaned[i].at + (gap * 0.3), text: "", isInstrumental: true });
-            }
+      finalLines.push(cleaned[i]);
+      if (i < cleaned.length - 1) {
+        const gap = cleaned[i + 1].at - cleaned[i].at;
+        if (gap > 20 && !cleaned[i].isInstrumental && !cleaned[i + 1].isInstrumental) {
+          finalLines.push({ at: cleaned[i].at + (gap * 0.3), text: "", isInstrumental: true });
         }
+      }
     }
     return finalLines;
   }, [lyricsContent]);
@@ -301,7 +314,7 @@ export function DesktopExpandedPlayer({
   useEffect(() => {
     if (!displayHasSynced || activeIndex < 0 || !scrollRef.current) return;
     if (activeTab !== "lyrics") return;
-    
+
     requestAnimationFrame(() => {
       const activeEl = elementsRef.current[activeIndex];
       if (activeEl && scrollRef.current) {
@@ -340,7 +353,7 @@ export function DesktopExpandedPlayer({
 
     return () => clearInterval(interval);
   }, [activeTab, knowLoading, isPlaying, storyActiveIndex, knowFacts.length]);
-  
+
   useEffect(() => {
     if (viewMode === "video") {
       videoSyncIntervalRef.current = setInterval(() => {
@@ -356,7 +369,7 @@ export function DesktopExpandedPlayer({
             }
             if (time > 0 && Number.isFinite(time)) {
               setCurrentTimeSec(time);
-              
+
               // Watchdog for background/minimized autoplay in video mode
               const dur = safeDurationRef.current;
               if (dur > 0 && time >= dur - 1.5 && isPlayingRef.current && lastSkippedVideoIdRef.current !== currentSong.id) {
@@ -494,28 +507,28 @@ export function DesktopExpandedPlayer({
         <div className="mt-3 flex items-start justify-between">
           <div className="flex-1 pr-6 min-w-0">
             {liveMetadata && (
-               <m.div 
-                 initial={{ opacity: 0, y: 5 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 className="mb-2 flex items-center gap-1.5"
-               >
-                  <span className="px-2 py-0.5 rounded-[4px] bg-red-500 text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-red-500/20">
-                     <div className="h-1 w-1 rounded-full bg-white animate-pulse" />
-                     Live Radio
-                  </span>
-                  <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] line-clamp-1">{liveMetadata.source}</span>
-               </m.div>
+              <m.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-2 flex items-center gap-1.5"
+              >
+                <span className="px-2 py-0.5 rounded-[4px] bg-red-500 text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-red-500/20">
+                  <div className="h-1 w-1 rounded-full bg-white animate-pulse" />
+                  Live Radio
+                </span>
+                <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] line-clamp-1">{liveMetadata.source}</span>
+              </m.div>
             )}
-            <MarqueeText 
-              text={liveMetadata?.title || currentSong.title} 
+            <MarqueeText
+              text={liveMetadata?.title || currentSong.title}
               className="text-[32px] font-black tracking-tighter text-white leading-none mb-1"
             />
             <button
               onClick={() => onArtistClick?.(liveMetadata?.artist || currentSong.artist)}
               className="mt-1 w-full text-left hover:underline underline-offset-4"
             >
-              <MarqueeText 
-                text={liveMetadata?.artist || currentSong.artist} 
+              <MarqueeText
+                text={liveMetadata?.artist || currentSong.artist}
                 className="text-lg font-medium text-white/70 hover:text-white transition-colors"
               />
             </button>
@@ -633,13 +646,13 @@ export function DesktopExpandedPlayer({
       )}
 
       <div className={`${isCompact ? "mt-1" : "mt-3"} flex items-center justify-center gap-10`}>
-        <button 
-          onClick={onPrev} 
+        <button
+          onClick={onPrev}
           className="text-white/60 hover:text-white hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer"
         >
           <SkipBack size={isCompact ? 32 : 42} fill="currentColor" strokeWidth={0} />
         </button>
-        <button 
+        <button
           onClick={onTogglePlay}
           className={`flex ${isCompact ? "h-16 w-16" : "h-20 w-20"} items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-white hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer shadow-lg`}
         >
@@ -649,8 +662,8 @@ export function DesktopExpandedPlayer({
             <Play size={isCompact ? 28 : 34} fill="currentColor" strokeWidth={0} className={isCompact ? "ml-1" : "ml-1.5"} />
           )}
         </button>
-        <button 
-          onClick={onNext} 
+        <button
+          onClick={onNext}
           className="text-white/60 hover:text-white hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer"
         >
           <SkipForward size={isCompact ? 32 : 42} fill="currentColor" strokeWidth={0} />
@@ -658,7 +671,7 @@ export function DesktopExpandedPlayer({
       </div>
 
       <div className={`${isCompact ? "mt-4 px-6" : "mt-8 px-4 pb-2"} flex w-full items-center gap-5`}>
-        <m.div 
+        <m.div
           animate={{ scale: volume === 0 ? 0.8 : 1, opacity: volume === 0 ? 0.3 : 0.6 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
@@ -676,21 +689,21 @@ export function DesktopExpandedPlayer({
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
           />
           <div className="relative h-1.5 w-full rounded-full bg-white/10 z-10 pointer-events-none overflow-hidden">
-            <m.div 
-                className="absolute inset-y-0 left-0 bg-white/90" 
-                animate={{ width: `${volume}%` }}
-                transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
+            <m.div
+              className="absolute inset-y-0 left-0 bg-white/90"
+              animate={{ width: `${volume}%` }}
+              transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
             />
           </div>
-          <m.div 
-            className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.5)] z-20 pointer-events-none transition-transform" 
+          <m.div
+            className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.5)] z-20 pointer-events-none transition-transform"
             animate={{ left: `${volume}%`, scale: volume > 0 ? 1 : 0.8 }}
             transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
             style={{ x: "-50%" }}
           />
         </div>
 
-        <m.div 
+        <m.div
           animate={{ scale: volume > 80 ? 1.15 : 1, opacity: volume > 0 ? 0.6 : 0.3 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
@@ -710,7 +723,7 @@ export function DesktopExpandedPlayer({
   }, [jamWarning]);
 
   return (
-    <m.div 
+    <m.div
       initial={{ y: "100%", opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: "100%", opacity: 0 }}
@@ -720,7 +733,7 @@ export function DesktopExpandedPlayer({
     >
       <AnimatePresence>
         {jamWarning && (
-          <m.div 
+          <m.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -736,12 +749,12 @@ export function DesktopExpandedPlayer({
 
       <AnimatePresence>
         {isControlsVisible && (
-          <m.div 
-             initial={{ y: -50, opacity: 0 }} 
-             animate={{ y: 0, opacity: 1 }} 
-             exit={{ y: -50, opacity: 0 }} 
-             transition={MOTION_CONFIG.transition}
-             className="relative z-40 w-full flex items-center px-8 py-4 animate-gpu"
+          <m.div
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            transition={MOTION_CONFIG.transition}
+            className="relative z-40 w-full flex items-center px-8 py-4 animate-gpu"
           >
             <button onClick={onClose} className="p-2 rounded-full bg-black/20 hover:bg-black/40 active:scale-90 transition-transform"><ChevronDown size={32} className="text-white" /></button>
             <div className="flex-1" />
@@ -753,22 +766,22 @@ export function DesktopExpandedPlayer({
         <div className={`mx-auto flex w-full flex-col items-center justify-center ${viewMode === 'video' ? 'max-w-full' : 'max-w-[400px]'} animate-gpu`}>
           <m.div className={`group relative w-full overflow-hidden rounded-[32px] border border-white/10 bg-black shadow-2xl flex items-center justify-center animate-gpu transform-gpu ${viewMode === "music" ? "aspect-square" : "aspect-video"}`}>
             {(viewMode === "video" || isReallyLive) && (
-              <div 
+              <div
                 ref={videoContainerRef}
                 className={`group/vid absolute inset-0 overflow-hidden ${viewMode === "music" ? "opacity-0 pointer-events-none" : "bg-black"}`}
               >
-                <YouTube 
+                <YouTube
                   key={`desktop-yt-${currentSong.musicVideoId || currentSong.id}-${videoKey}`}
-                  videoId={currentSong.musicVideoId || currentSong.id} 
-                  opts={youtubeOpts} 
+                  videoId={currentSong.musicVideoId || currentSong.id}
+                  opts={youtubeOpts}
                   iframeClassName="w-full h-full"
-                  onReady={e => { 
-                    ytPlayerInstance.current = e.target; 
-                    e.target.setVolume(volume); 
+                  onReady={e => {
+                    ytPlayerInstance.current = e.target;
+                    e.target.setVolume(volume);
                     // For live streams in music mode, force tiny quality to save data
                     const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
-                    try { e.target.setPlaybackQuality(vq); } catch {}
-                    
+                    try { e.target.setPlaybackQuality(vq); } catch { }
+
                     // Seek check on mount (transition from music to video mode)
                     const parseDurationToSeconds = (durationStr: string): number => {
                       if (!durationStr || durationStr === "LIVE") return 0;
@@ -785,14 +798,14 @@ export function DesktopExpandedPlayer({
                     const musicDuration = parseDurationToSeconds(currentSong.duration);
                     const videoDuration = e.target.getDuration();
                     const isDurationEqual = musicDuration > 0 && videoDuration > 0 && Math.abs(musicDuration - videoDuration) <= 2;
-                    
+
                     if (isDurationEqual && currentTimeSec > 0) {
                       e.target.seekTo(currentTimeSec, true);
                     } else if (!isDurationEqual) {
                       e.target.seekTo(0, true);
                     }
 
-                    if(isPlaying) e.target.playVideo(); 
+                    if (isPlaying) e.target.playVideo();
                   }}
                   onStateChange={e => {
                     if (e.data === 0) {
@@ -801,7 +814,7 @@ export function DesktopExpandedPlayer({
                       setIsPlaying(true);
                       // Force quality again after playback starts to ensure it sticks
                       const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
-                      try { e.target.setPlaybackQuality(vq); } catch {}
+                      try { e.target.setPlaybackQuality(vq); } catch { }
                     } else if (e.data === 2) {
                       if (!isPlayingRef.current) {
                         setIsPlaying(false);
@@ -822,18 +835,18 @@ export function DesktopExpandedPlayer({
                       }
                     }
                   }}
-                  className="h-full w-full origin-center pointer-events-none select-none" 
+                  className="h-full w-full origin-center pointer-events-none select-none"
                 />
 
                 {/* Interaction Blocker - Prevents YT internal UI from showing while allowing custom play/pause */}
-                <div 
+                <div
                   className="absolute inset-0 z-10 cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     onTogglePlay();
                   }}
                 />
-                
+
                 {/* Fullscreen Overlay Button */}
                 {viewMode === "video" && (
                   <m.button
@@ -852,12 +865,12 @@ export function DesktopExpandedPlayer({
               </div>
             )}
             {viewMode === "music" && (
-              <MusicArtwork src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={48} />
+              <AnimatedCanvasArtwork title={liveMetadata?.title || currentSong.title} artist={currentSong.artist} src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={48} />
             )}
           </m.div>
           <div className="mt-6 flex w-full justify-center gap-1 rounded-full border border-white/5 bg-black/20 p-1 backdrop-blur-md max-w-[200px] relative">
-            <button 
-              onClick={() => setViewMode("music")} 
+            <button
+              onClick={() => setViewMode("music")}
               className={`relative flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-xs font-bold transition-all duration-300 z-10 ${viewMode === "music" ? "text-black" : "text-white/60 hover:text-white"}`}
             >
               {viewMode === "music" && (
@@ -865,14 +878,14 @@ export function DesktopExpandedPlayer({
               )}
               <Music size={14} /> Music
             </button>
-            <button 
+            <button
               onClick={() => {
                 if (jamState.roomId) {
                   setJamWarning("Can't switch to video mode while jamming");
                   return;
                 }
                 setViewMode("video");
-              }} 
+              }}
               className={`relative flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-xs font-bold transition-all duration-300 z-10 ${viewMode === "video" ? "text-black" : "text-white/60 hover:text-white"}`}
             >
               {viewMode === "video" && (
@@ -887,250 +900,250 @@ export function DesktopExpandedPlayer({
 
         <div className="h-full max-w-[800px] w-full flex flex-col justify-center">
           {(viewMode === "video" || (viewMode === "music" && activeTab === "controls")) && activeTab === "controls" ? (
-             <div className="flex h-full w-full items-center justify-center">{renderControls("right-controls")}</div>
+            <div className="flex h-full w-full items-center justify-center">{renderControls("right-controls")}</div>
           ) : (
             <div className="h-[75vh] w-full flex flex-col overflow-hidden">
-               <AnimatePresence mode="wait">
-                 {activeTab === "lyrics" && (
-                   <m.div 
-                     key="lyrics"
-                     initial={{ opacity: 0, y: 10 }}
-                     animate={{ opacity: 1, y: 0 }}
-                     exit={{ opacity: 0, y: -10 }}
-                     transition={MOTION_CONFIG.transition}
-                     className="flex-1 overflow-hidden flex items-center justify-center"
-                   >
-                     {(!lyricsContent || lyricsContent === "Loading lyrics..." || lyricsContent === "Lyrics not available for this track yet.") ? (
-                        <div className="w-full flex items-center justify-start py-6">
-                          <p className="w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-2xl text-[44px] leading-[1.1] text-white/40">
-                            {lyricsContent || "Lyrics not available for this track yet."}
-                          </p>
+              <AnimatePresence mode="wait">
+                {activeTab === "lyrics" && (
+                  <m.div
+                    key="lyrics"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={MOTION_CONFIG.transition}
+                    className="flex-1 overflow-hidden flex items-center justify-center"
+                  >
+                    {(!lyricsContent || lyricsContent === "Loading lyrics..." || lyricsContent === "Lyrics not available for this track yet.") ? (
+                      <div className="w-full flex items-center justify-start py-6">
+                        <p className="w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-2xl text-[44px] leading-[1.1] text-white/40">
+                          {lyricsContent || "Lyrics not available for this track yet."}
+                        </p>
+                      </div>
+                    ) : (
+                      <div
+                        ref={scrollRef}
+                        className="h-full w-full overflow-y-auto custom-scrollbar px-4 pt-[25vh] pb-[40vh] no-scrollbar"
+                        style={{
+                          maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+                          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+                        }}
+                      >
+                        <div className="max-w-2xl ml-0 text-left">
+                          {lines.map((l, i) => (
+                            <LyricLine
+                              key={i}
+                              line={l}
+                              index={i}
+                              isActive={i === activeIndex}
+                              isInstrumental={displayHasSynced && syncedLines[i]?.isInstrumental}
+                              syncedLine={displayHasSynced ? syncedLines[i] : null}
+                              currentTimeSec={currentTimeSec}
+                              onSeek={onSeek}
+                              syncedLines={syncedLines}
+                              hasSynced={displayHasSynced}
+                              elementsRef={elementsRef}
+                            />
+                          ))}
+
+                          {/* Lyrics Credits */}
+                          {(geniusData?.writers || lyricsSource) && (
+                            <div className="mt-24 border-t border-white/10 pt-12 pb-20 space-y-5">
+                              {geniusData?.writers && (
+                                <div className="space-y-1">
+                                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">Written By</p>
+                                  <p className="text-xl font-bold text-white/60 leading-tight">
+                                    {geniusData.writers.join(", ")}
+                                  </p>
+                                </div>
+                              )}
+                              {lyricsSource && (
+                                <div className="flex items-center gap-2 pt-2">
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/20">Lyrics provided by</p>
+                                  <span className="px-2 py-0.5 rounded-sm bg-white/5 text-[9px] font-black text-white/40 tracking-tighter uppercase">{lyricsSource}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </m.div>
+                )}
+                {activeTab === "queue" && (
+                  <m.div
+                    key="queue"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={MOTION_CONFIG.transition}
+                    className="flex-1 overflow-hidden"
+                  >
+                    <div className="h-full overflow-y-auto custom-scrollbar px-6 pt-10 pb-32 no-scrollbar">
+                      <div className="flex items-end justify-between mb-8 border-b border-white/5 pb-4">
+                        <div>
+                          <h2 className="text-4xl font-black text-white tracking-tight">Queue</h2>
+                          <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-1">Up Next</p>
+                        </div>
+                        <button
+                          onClick={() => onClearQueue?.()}
+                          className="p-3 rounded-full bg-white/5 text-white/30 hover:bg-white/10 hover:text-white transition-all active:scale-95"
+                          title="Clear Queue"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
+
+                      {/* Current Song - Now Playing */}
+                      <div className="mb-10">
+                        <p className="text-[11px] font-black text-white/30 uppercase tracking-[0.2em] mb-4">Now Playing</p>
+                        <div className="flex items-center gap-4 p-3 rounded-2xl bg-white/5 border border-white/5 shadow-2xl backdrop-blur-3xl">
+                          <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden shadow-sm">
+                            <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={16} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate font-black text-white text-[16px] leading-tight">{currentSong.title}</p>
+                            <button
+                              onClick={() => onArtistClick?.(currentSong.artist)}
+                              className="truncate text-sm font-bold text-white/40 hover:text-white/70 transition-colors mt-0.5 text-left"
+                            >
+                              {currentSong.artist}
+                            </button>
+                          </div>
+                          <div className="pr-2">
+                            <div className="flex gap-0.5 items-end h-3">
+                              <div className="w-0.5 h-full bg-(--art-accent,#FA243C) animate-pulse" />
+                              <div className="w-0.5 h-[60%] bg-(--art-accent,#FA243C) animate-pulse" />
+                              <div className="w-0.5 h-[80%] bg-(--art-accent,#FA243C) animate-pulse" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        {upNextQueue.map((s, i) => (
+                          <div
+                            key={s.id}
+                            onClick={() => onSongClick(s, false)}
+                            className="flex items-center gap-4 py-2.5 px-3 rounded-xl hover:bg-white/5 group cursor-pointer transition-all active:scale-[0.98]"
+                          >
+                            <div className="relative h-10 w-10 shrink-0 rounded-md overflow-hidden shadow-xs opacity-80 group-hover:opacity-100 transition-opacity">
+                              <MusicArtwork src={s.artwork} alt={s.title} iconSize={14} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="truncate font-bold text-white text-[15px] leading-tight">{s.title}</p>
+                              <p className="truncate text-xs font-bold text-white/30 mt-0.5">{s.artist}</p>
+                            </div>
+                            <div className="flex items-center">
+                              <button
+                                onClick={e => { e.stopPropagation(); onRemoveFromUpNext?.(i); }}
+                                className="p-2 opacity-0 group-hover:opacity-100 text-white/20 hover:text-red-500 transition-all transform translate-x-2 group-hover:translate-x-0"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                              <GripVertical size={16} className="text-white/5 cursor-grab active:cursor-grabbing" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </m.div>
+                )}
+                {activeTab === "ai" && (
+                  <m.div
+                    key="story"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    transition={MOTION_CONFIG.transition}
+                    className="flex-1 flex flex-col h-full overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-4">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <h2 className="text-4xl font-black text-white tracking-tight">Story</h2>
+                          <p className="text-white/40 text-[11px] font-black uppercase tracking-[0.3em] mt-1">By: GENIUS</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-1 gap-1.5 ml-10">
+                        {knowFacts.map((_, i) => (
+                          <div
+                            key={i}
+                            onClick={() => handleStoryJump(i)}
+                            className="relative h-2 flex-1 rounded-full bg-white/10 overflow-hidden cursor-pointer group/bar"
+                          >
+                            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/bar:opacity-100 transition-opacity" />
+                            <div
+                              className="absolute inset-y-0 left-0 bg-white/70 transition-all duration-[100ms] linear pointer-events-none"
+                              style={{
+                                width: i < storyActiveIndex ? "100%" : i === storyActiveIndex ? `${storyProgress}%` : "0%"
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 relative overflow-hidden px-12 pt-10 pb-24">
+                      {/* Tap Navigation Zones */}
+                      <div className="absolute inset-y-0 left-0 w-1/3 z-20" onClick={() => {
+                        setStoryActiveIndex(prev => prev === 0 ? knowFacts.length - 1 : prev - 1);
+                        setStoryProgress(0);
+                      }} />
+                      <div className="absolute inset-y-0 right-0 w-2/3 z-20" onClick={() => {
+                        setStoryActiveIndex(prev => (prev + 1) % knowFacts.length);
+                        setStoryProgress(0);
+                      }} />
+
+                      {knowLoading ? (
+                        <div className="flex flex-col items-center justify-center h-full gap-8 opacity-60">
+                          <div className="relative">
+                            <div className="w-20 h-20 border-2 border-white/5 rounded-full" />
+                            <div className="absolute top-0 left-0 w-20 h-20 border-2 border-t-white/40 rounded-full animate-spin" />
+                          </div>
+                          <div className="text-center space-y-2">
+                            <p className="text-white/60 uppercase tracking-[0.4em] text-xs font-black">Syncing with the Cosmos</p>
+                            <p className="text-white/20 text-[11px] font-bold italic">Curating historical data points...</p>
+                          </div>
                         </div>
                       ) : (
-                        <div 
-                          ref={scrollRef} 
-                          className="h-full w-full overflow-y-auto custom-scrollbar px-4 pt-[25vh] pb-[40vh] no-scrollbar"
-                          style={{
-                            maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
-                            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
-                          }}
-                        >
-                           <div className="max-w-2xl ml-0 text-left">
-                             {lines.map((l, i) => (
-                               <LyricLine
-                                 key={i}
-                                 line={l}
-                                 index={i}
-                                 isActive={i === activeIndex}
-                                 isInstrumental={displayHasSynced && syncedLines[i]?.isInstrumental}
-                                 syncedLine={displayHasSynced ? syncedLines[i] : null}
-                                 currentTimeSec={currentTimeSec}
-                                 onSeek={onSeek}
-                                 syncedLines={syncedLines}
-                                 hasSynced={displayHasSynced}
-                                 elementsRef={elementsRef}
-                               />
-                             ))}
-
-                           {/* Lyrics Credits */}
-                           {(geniusData?.writers || lyricsSource) && (
-                             <div className="mt-24 border-t border-white/10 pt-12 pb-20 space-y-5">
-                               {geniusData?.writers && (
-                                 <div className="space-y-1">
-                                   <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30">Written By</p>
-                                   <p className="text-xl font-bold text-white/60 leading-tight">
-                                     {geniusData.writers.join(", ")}
-                                   </p>
-                                 </div>
-                               )}
-                               {lyricsSource && (
-                                 <div className="flex items-center gap-2 pt-2">
-                                   <p className="text-[10px] font-bold uppercase tracking-widest text-white/20">Lyrics provided by</p>
-                                   <span className="px-2 py-0.5 rounded-sm bg-white/5 text-[9px] font-black text-white/40 tracking-tighter uppercase">{lyricsSource}</span>
-                                 </div>
-                               )}
-                             </div>
-                           )}
-                         </div>
-                      </div>
-                      )}
-                    </m.div>
-                 )}
-                 {activeTab === "queue" && (
-                   <m.div 
-                     key="queue"
-                     initial={{ opacity: 0, y: 10 }}
-                     animate={{ opacity: 1, y: 0 }}
-                     exit={{ opacity: 0, y: -10 }}
-                     transition={MOTION_CONFIG.transition}
-                     className="flex-1 overflow-hidden"
-                   >
-                     <div className="h-full overflow-y-auto custom-scrollbar px-6 pt-10 pb-32 no-scrollbar">
-                       <div className="flex items-end justify-between mb-8 border-b border-white/5 pb-4">
-                         <div>
-                           <h2 className="text-4xl font-black text-white tracking-tight">Queue</h2>
-                           <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-1">Up Next</p>
-                         </div>
-                         <button 
-                           onClick={() => onClearQueue?.()} 
-                           className="p-3 rounded-full bg-white/5 text-white/30 hover:bg-white/10 hover:text-white transition-all active:scale-95"
-                           title="Clear Queue"
-                         >
-                           <Trash2 size={20} />
-                         </button>
-                       </div>
-
-                       {/* Current Song - Now Playing */}
-                       <div className="mb-10">
-                         <p className="text-[11px] font-black text-white/30 uppercase tracking-[0.2em] mb-4">Now Playing</p>
-                         <div className="flex items-center gap-4 p-3 rounded-2xl bg-white/5 border border-white/5 shadow-2xl backdrop-blur-3xl">
-                           <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden shadow-sm">
-                             <MusicArtwork src={currentSong.artwork} alt={currentSong.title} iconSize={16} />
-                           </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="truncate font-black text-white text-[16px] leading-tight">{currentSong.title}</p>
-                              <button 
-                                onClick={() => onArtistClick?.(currentSong.artist)}
-                                className="truncate text-sm font-bold text-white/40 hover:text-white/70 transition-colors mt-0.5 text-left"
+                        <div className="absolute inset-x-12 top-12 bottom-20">
+                          <AnimatePresence mode="wait">
+                            {knowFacts.length > 0 ? (
+                              <m.div
+                                key={storyActiveIndex}
+                                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 1.05, y: -15 }}
+                                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                                className="absolute inset-0 flex flex-col justify-center p-8 sm:p-16"
                               >
-                                {currentSong.artist}
-                              </button>
-                            </div>
-                           <div className="pr-2">
-                              <div className="flex gap-0.5 items-end h-3">
-                                 <div className="w-0.5 h-full bg-(--art-accent,#FA243C) animate-pulse" />
-                                 <div className="w-0.5 h-[60%] bg-(--art-accent,#FA243C) animate-pulse" />
-                                 <div className="w-0.5 h-[80%] bg-(--art-accent,#FA243C) animate-pulse" />
-                              </div>
-                           </div>
-                         </div>
-                       </div>
-
-                       <div className="space-y-1">
-                         {upNextQueue.map((s, i) => (
-                           <div 
-                             key={s.id} 
-                             onClick={() => onSongClick(s, false)} 
-                             className="flex items-center gap-4 py-2.5 px-3 rounded-xl hover:bg-white/5 group cursor-pointer transition-all active:scale-[0.98]"
-                           >
-                             <div className="relative h-10 w-10 shrink-0 rounded-md overflow-hidden shadow-xs opacity-80 group-hover:opacity-100 transition-opacity">
-                               <MusicArtwork src={s.artwork} alt={s.title} iconSize={14} />
-                             </div>
-                             <div className="flex-1 min-w-0">
-                               <p className="truncate font-bold text-white text-[15px] leading-tight">{s.title}</p>
-                               <p className="truncate text-xs font-bold text-white/30 mt-0.5">{s.artist}</p>
-                             </div>
-                             <div className="flex items-center">
-                                <button 
-                                  onClick={e => { e.stopPropagation(); onRemoveFromUpNext?.(i); }} 
-                                  className="p-2 opacity-0 group-hover:opacity-100 text-white/20 hover:text-red-500 transition-all transform translate-x-2 group-hover:translate-x-0"
-                                >
-                                   <Trash2 size={16} />
-                                </button>
-                                <GripVertical size={16} className="text-white/5 cursor-grab active:cursor-grabbing" />
-                             </div>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   </m.div>
-                 )}
-                 {activeTab === "ai" && (
-                    <m.div 
-                      key="story"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 20 }}
-                      transition={MOTION_CONFIG.transition}
-                      className="flex-1 flex flex-col h-full overflow-hidden"
-                    >
-                      <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-4">
-                        <div className="flex items-center gap-3">
-                           <div>
-                             <h2 className="text-4xl font-black text-white tracking-tight">Story</h2>
-                             <p className="text-white/40 text-[11px] font-black uppercase tracking-[0.3em] mt-1">By: GENIUS</p>
-                           </div>
-                        </div>
-                        <div className="flex flex-1 gap-1.5 ml-10">
-                           {knowFacts.map((_, i) => (
-                               <div 
-                                   key={i} 
-                                   onClick={() => handleStoryJump(i)}
-                                   className="relative h-2 flex-1 rounded-full bg-white/10 overflow-hidden cursor-pointer group/bar"
-                               >
-                                   <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/bar:opacity-100 transition-opacity" />
-                                   <div 
-                                       className="absolute inset-y-0 left-0 bg-white/70 transition-all duration-[100ms] linear pointer-events-none"
-                                       style={{ 
-                                           width: i < storyActiveIndex ? "100%" : i === storyActiveIndex ? `${storyProgress}%` : "0%" 
-                                       }}
-                                   />
-                               </div>
-                           ))}
-                        </div>
-                      </div>
-
-                      <div className="flex-1 relative overflow-hidden px-12 pt-10 pb-24">
-                            {/* Tap Navigation Zones */}
-                            <div className="absolute inset-y-0 left-0 w-1/3 z-20" onClick={() => {
-                                setStoryActiveIndex(prev => prev === 0 ? knowFacts.length - 1 : prev - 1);
-                                setStoryProgress(0);
-                            }} />
-                            <div className="absolute inset-y-0 right-0 w-2/3 z-20" onClick={() => {
-                                setStoryActiveIndex(prev => (prev + 1) % knowFacts.length);
-                                setStoryProgress(0);
-                            }} />
-
-                          {knowLoading ? (
-                               <div className="flex flex-col items-center justify-center h-full gap-8 opacity-60">
-                                  <div className="relative">
-                                     <div className="w-20 h-20 border-2 border-white/5 rounded-full" />
-                                     <div className="absolute top-0 left-0 w-20 h-20 border-2 border-t-white/40 rounded-full animate-spin" />
-                                  </div>
-                                  <div className="text-center space-y-2">
-                                     <p className="text-white/60 uppercase tracking-[0.4em] text-xs font-black">Syncing with the Cosmos</p>
-                                     <p className="text-white/20 text-[11px] font-bold italic">Curating historical data points...</p>
-                                  </div>
-                               </div>
-                          ) : (
-                                <div className="absolute inset-x-12 top-12 bottom-20">
-                                    <AnimatePresence mode="wait">
-                                        {knowFacts.length > 0 ? (
-                                                <m.div 
-                                                key={storyActiveIndex}
-                                                initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                exit={{ opacity: 0, scale: 1.05, y: -15 }}
-                                                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                                                className="absolute inset-0 flex flex-col justify-center p-8 sm:p-16"
-                                            >
-                                                <div className="flex-1 flex flex-col justify-center">
-                                                    <p className={`font-black leading-[1.1] text-white tracking-tighter [text-shadow:0_4px_24px_rgba(0,0,0,0.6)] text-left text-balance py-4 ${knowFacts[storyActiveIndex].length > 200 ? 'text-[36px]' : knowFacts[storyActiveIndex].length > 100 ? 'text-[48px]' : 'text-[64px]'}`}>
-                                                        {knowFacts[storyActiveIndex]}
-                                                    </p>
-                                                </div>
-                                                <div className="flex justify-center mt-8">
-                                                    <div className="h-1.5 w-16 bg-white/20 rounded-full" />
-                                                </div>
-                                            </m.div>
-                                        ) : (
-                                            <m.div 
-                                                key="empty"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                className="absolute inset-0 flex flex-col items-center justify-center py-40 opacity-20 text-center max-w-lg mx-auto"
-                                            >
-                                                <BookOpen size={64} className="mb-8 opacity-20" />
-                                                <p className="text-2xl font-black italic leading-tight text-balance">This track&apos;s story is waiting for the perfect moment to reveal itself...</p>
-                                            </m.div>
-                                        )}
-                                    </AnimatePresence>
+                                <div className="flex-1 flex flex-col justify-center">
+                                  <p className={`font-black leading-[1.1] text-white tracking-tighter [text-shadow:0_4px_24px_rgba(0,0,0,0.6)] text-left text-balance py-4 ${knowFacts[storyActiveIndex].length > 200 ? 'text-[36px]' : knowFacts[storyActiveIndex].length > 100 ? 'text-[48px]' : 'text-[64px]'}`}>
+                                    {knowFacts[storyActiveIndex]}
+                                  </p>
                                 </div>
-                          )}
-                      </div>
-                    </m.div>
-                 )}
-               </AnimatePresence>
+                                <div className="flex justify-center mt-8">
+                                  <div className="h-1.5 w-16 bg-white/20 rounded-full" />
+                                </div>
+                              </m.div>
+                            ) : (
+                              <m.div
+                                key="empty"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="absolute inset-0 flex flex-col items-center justify-center py-40 opacity-20 text-center max-w-lg mx-auto"
+                              >
+                                <BookOpen size={64} className="mb-8 opacity-20" />
+                                <p className="text-2xl font-black italic leading-tight text-balance">This track&apos;s story is waiting for the perfect moment to reveal itself...</p>
+                              </m.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
+                    </div>
+                  </m.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
         </div>

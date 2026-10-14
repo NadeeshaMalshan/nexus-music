@@ -66,22 +66,14 @@ export const authOptions: NextAuthOptions = {
       if (
         url.startsWith("exp://") ||
         url.startsWith("mobile://") ||
-        url.startsWith("nexus-music://") ||
-        url.startsWith("nexus://")
+        url.startsWith("nexus-music://")
       ) {
         return url;
       }
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       try {
         const parsedUrl = new URL(url);
-        if (
-          parsedUrl.origin === baseUrl ||
-          parsedUrl.hostname.includes("nadeesha.site") ||
-          parsedUrl.hostname.includes("vercel.app") ||
-          parsedUrl.hostname === "localhost"
-        ) {
-          return url;
-        }
+        if (parsedUrl.origin === baseUrl) return url;
       } catch {
         // Fallback
       }
@@ -95,22 +87,18 @@ export const authOptions: NextAuthOptions = {
           ...token,
           accessToken: account.access_token,
           accessTokenExpires: expiresAt,
-          refreshToken: account.refresh_token ?? token.refreshToken,
+          refreshToken: account.refresh_token,
           user,
         };
       }
 
-      // Return previous token if the access token has not expired yet or expiresAt is not set
-      if (!(token as any).accessTokenExpires || Date.now() < (token as any).accessTokenExpires) {
+      // Return previous token if the access token has not expired yet
+      if (Date.now() < (token as any).accessTokenExpires) {
         return token;
       }
 
-      // Access token has expired, try to update it if refresh token is available
-      if (token.refreshToken) {
-        return refreshAccessToken(token);
-      }
-
-      return token;
+      // Access token has expired, try to update it
+      return refreshAccessToken(token);
     },
     async session({ session, token }: { session: any; token: any }) {
       // Populate the session object with the token's user data and accessToken

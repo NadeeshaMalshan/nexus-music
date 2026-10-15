@@ -14,11 +14,13 @@ export interface ArtworkPalette {
 }
 
 const DEFAULT_PALETTE: ArtworkPalette = {
-  primary: "#1b1427",
-  secondary: "#291f3d",
-  accent: "#c084fc",
-  coverTone: "#382854",
+  primary: "#141318",
+  secondary: "#1f1d26",
+  accent: "#8b5cf6",
+  coverTone: "#2a2736",
 };
+
+const paletteCache = new Map<string, ArtworkPalette>();
 
 function hexToRgb(hex: string): [number, number, number] | null {
   const h = hex.replace(/^#/, "").trim();
@@ -27,8 +29,12 @@ function hexToRgb(hex: string): [number, number, number] | null {
 }
 
 /** When no artwork image, derive FlowingBackground tones from the app accent (replaces fixed purple DEFAULT_PALETTE). */
-export function paletteFromAccent(accentHex: string): ArtworkPalette {
-  const rgb = hexToRgb(accentHex.trim() || "#FA233B");
+export function paletteFromAccent(accentHex?: string | null): ArtworkPalette {
+  if (!accentHex || accentHex.toUpperCase() === "#FA233B") {
+    // Return dark neutral palette to prevent harsh red background flashes
+    return DEFAULT_PALETTE;
+  }
+  const rgb = hexToRgb(accentHex.trim());
   if (!rgb) return DEFAULT_PALETTE;
   const [h, s, l] = rgbToHsl(rgb[0], rgb[1], rgb[2]);
   const [ph, ps, pl] = darkenHsl(h, s, l, 35);
@@ -247,33 +253,45 @@ export function useArtworkColors(
   artworkUrl: string | null | undefined,
   accentColor?: string,
 ): ArtworkPalette {
-  const accentFallback = useMemo(
-    () => paletteFromAccent(accentColor?.trim() || "#FA233B"),
+  const fallback = useMemo(
+    () => paletteFromAccent(accentColor),
     [accentColor],
   );
 
-  const [palette, setPalette] = useState<ArtworkPalette>(accentFallback);
+  const [palette, setPalette] = useState<ArtworkPalette>(() => {
+    if (artworkUrl && paletteCache.has(artworkUrl)) {
+      return paletteCache.get(artworkUrl)!;
+    }
+    return fallback;
+  });
+
   const lastUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!artworkUrl || artworkUrl === lastUrlRef.current) return;
+    if (!artworkUrl) {
+      setPalette(fallback);
+      lastUrlRef.current = null;
+      return;
+    }
+
+    if (artworkUrl === lastUrlRef.current) return;
     lastUrlRef.current = artworkUrl;
 
+    if (paletteCache.has(artworkUrl)) {
+      setPalette(paletteCache.get(artworkUrl)!);
+      return;
+    }
+
     let cancelled = false;
-    extractPalette(artworkUrl, accentFallback).then((p) => {
+    extractPalette(artworkUrl, fallback).then((p) => {
+      paletteCache.set(artworkUrl, p);
       if (!cancelled) setPalette(p);
     });
+
     return () => {
       cancelled = true;
     };
-  }, [artworkUrl, accentFallback]);
-
-  useEffect(() => {
-    if (!artworkUrl) {
-      setPalette(accentFallback);
-      lastUrlRef.current = null;
-    }
-  }, [artworkUrl, accentFallback]);
+  }, [artworkUrl, fallback]);
 
   return palette;
 }

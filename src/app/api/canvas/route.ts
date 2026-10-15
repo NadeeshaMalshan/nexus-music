@@ -126,13 +126,39 @@ function normalize(value: string): string {
     .replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+function cleanTitleForSearch(title: string): string {
+  let cleaned = title
+    .replace(
+      /\s*[\(\[][^)]*?(official|music|video|audio|lyric|visualizer|remaster|edit|version|feat|ft|with|clip|cover|tribute|karaoke|instrumental|hd|4k|8k|1080p|full\s+song|video\s+song|new\s+sinhala|sinhala\s+song|coke|mv|m\/v|live|sped\s+up|slowed)[^)]*?[\)\]]/gi,
+      ""
+    )
+    .replace(/\s+(feat|ft|with)\.?\s+.*$/gi, "")
+    .trim();
+
+  if (cleaned.includes(" - ")) {
+    const parts = cleaned.split(/\s+-\s+/);
+    if (parts.length >= 2 && /^(official|audio|video|lyrics?|visualizer|4k|hd|mv)$/i.test(parts[1].trim())) {
+      cleaned = parts[0].trim();
+    }
+  }
+  return cleaned;
+}
+
+function cleanArtistForSearch(artist: string): string {
+  return artist
+    .replace(/\s*-\s*Topic$/i, "")
+    .replace(/\s*VEVO$/i, "")
+    .replace(/\s*Official\s*(Channel)?$/i, "")
+    .trim();
+}
+
 function scoreSong(song: JsonObject, title: string, artist: string, album: string): number {
   const attributes = obj(song.attributes) ?? {};
   const gotTitle = normalize(string(attributes.name));
   const gotArtist = normalize(string(attributes.artistName));
   const gotAlbum = normalize(string(attributes.albumName));
-  const wantedTitle = normalize(title);
-  const wantedArtist = normalize(artist);
+  const wantedTitle = normalize(cleanTitleForSearch(title));
+  const wantedArtist = normalize(cleanArtistForSearch(artist));
   const wantedAlbum = normalize(album);
   if (!gotTitle || !gotArtist || !wantedTitle || !wantedArtist) return -100;
 
@@ -180,17 +206,20 @@ function emptyResponse(): CanvasResponse {
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
-  const title = params.get("title")?.trim() ?? "";
-  const artist = params.get("artist")?.trim() ?? "";
+  const rawTitle = params.get("title")?.trim() ?? "";
+  const rawArtist = params.get("artist")?.trim() ?? "";
   const album = params.get("album")?.trim() ?? "";
-  if (!title || !artist) {
+  if (!rawTitle || !rawArtist) {
     return NextResponse.json({ error: "title and artist are required", ...emptyResponse() }, { status: 400 });
   }
-  if (title.length > 180 || artist.length > 180 || album.length > 180) {
+  if (rawTitle.length > 180 || rawArtist.length > 180 || album.length > 180) {
     return NextResponse.json({ error: "query is too long", ...emptyResponse() }, { status: 400 });
   }
 
-  const cacheKey = `${normalize(title)}|${normalize(artist)}|${normalize(album)}`;
+  const cleanTitle = cleanTitleForSearch(rawTitle);
+  const cleanArtist = cleanArtistForSearch(rawArtist);
+
+  const cacheKey = `${normalize(cleanTitle)}|${normalize(cleanArtist)}|${normalize(album)}`;
   const cached = responseCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return NextResponse.json(cached.value);
 
@@ -201,7 +230,7 @@ export async function GET(request: Request) {
     return NextResponse.json(response);
   }
 
-  const term = [artist, title, album].filter(Boolean).join(" ");
+  const term = [cleanArtist, cleanTitle, album].filter(Boolean).join(" ");
   const searchUrl = new URL(`${APPLE_API}/us/search`);
   searchUrl.searchParams.set("term", term);
   searchUrl.searchParams.set("types", "songs");
@@ -213,7 +242,7 @@ export async function GET(request: Request) {
   const results = obj(search?.results);
   const songsContainer = obj(results?.songs);
   const songs = arr(songsContainer?.data).map(obj).filter((song): song is JsonObject => Boolean(song));
-  const ranked = songs.map((song) => ({ song, score: scoreSong(song, title, artist, album) }))
+  const ranked = songs.map((song) => ({ song, score: scoreSong(song, cleanTitle, cleanArtist, album) }))
     .filter((hit) => hit.score >= 12).sort((a, b) => b.score - a.score);
 
   for (const { song } of ranked) {
@@ -267,7 +296,7 @@ export async function GET(request: Request) {
       if (!url && (matchedAlbum || album)) {
         const albumTarget = matchedAlbum || album;
         const albSearchUrl = new URL(`${APPLE_API}/us/search`);
-        albSearchUrl.searchParams.set("term", `${artist} ${albumTarget}`);
+        albSearchUrl.searchParams.set("term", `${cleanArtist} ${albumTarget}`);
         albSearchUrl.searchParams.set("types", "albums");
         albSearchUrl.searchParams.set("limit", "3");
         albSearchUrl.searchParams.set("extend", "editorialVideo");
@@ -278,7 +307,7 @@ export async function GET(request: Request) {
         for (const alb of albData) {
           const aAttr = obj(alb.attributes);
           const gotAlbArtist = normalize(string(aAttr?.artistName));
-          const wantedArtistNorm = normalize(artist);
+          const wantedArtistNorm = normalize(cleanArtist);
           if (gotAlbArtist && wantedArtistNorm && (gotAlbArtist.includes(wantedArtistNorm) || wantedArtistNorm.includes(gotAlbArtist))) {
             const v = videoUrl(obj(aAttr?.editorialVideo));
             if (v) {

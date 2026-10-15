@@ -248,6 +248,11 @@ export function MobileExpandedPlayer({
   const [hasAnimatedCover, setHasAnimatedCover] = useState(false);
   const [canvasBgColor, setCanvasBgColor] = useState<string | null>(null);
 
+  const handleHasCanvasChange = React.useCallback((has: boolean, bg?: string | null) => {
+    setHasAnimatedCover(has);
+    if (bg) setCanvasBgColor(bg);
+  }, []);
+
   useEffect(() => {
     setHasAnimatedCover(false);
     setCanvasBgColor(null);
@@ -865,9 +870,7 @@ export function MobileExpandedPlayer({
       </AnimatePresence>
 
       {/* Background */}
-      {!isAnimatedFullView && (
-        <FlowingBackground palette={palette} artwork={liveMetadata?.artwork || currentSong.artwork} animate={hasOpened} />
-      )}
+      <FlowingBackground palette={palette} artwork={liveMetadata?.artwork || currentSong.artwork} animate={hasOpened} />
 
       {/* Top Grabber */}
       {!isAnimatedFullView && (
@@ -1156,11 +1159,7 @@ export function MobileExpandedPlayer({
                     artist={currentSong.artist}
                     src={liveMetadata?.artwork || currentSong.artwork}
                     alt={liveMetadata?.title || currentSong.title}
-                    iconSize={64}
-                    onHasCanvasChange={(has, bg) => {
-                      setHasAnimatedCover(has);
-                      setCanvasBgColor(bg || null);
-                    }}
+                    onHasCanvasChange={handleHasCanvasChange}
                     className="h-full w-full object-cover"
                   />
 
@@ -1391,10 +1390,7 @@ export function MobileExpandedPlayer({
                         src={liveMetadata?.artwork || currentSong.artwork}
                         alt={liveMetadata?.title || currentSong.title}
                         iconSize={64}
-                        onHasCanvasChange={(has, bg) => {
-                          setHasAnimatedCover(has);
-                          setCanvasBgColor(bg || null);
-                        }}
+                        onHasCanvasChange={handleHasCanvasChange}
                       />
                     )}
                   </m.div>

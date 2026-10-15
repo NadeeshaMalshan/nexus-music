@@ -21,6 +21,8 @@ interface AnimatedCanvasArtworkProps {
   onHasCanvasChange?: (hasCanvas: boolean, bgColor?: string | null) => void;
 }
 
+const canvasClientCache = new Map<string, CanvasResult>();
+
 /** Fetches a motion cover when available and gracefully falls back to the regular artwork. */
 export function AnimatedCanvasArtwork({
   title,
@@ -34,15 +36,24 @@ export function AnimatedCanvasArtwork({
   onHasCanvasChange,
 }: AnimatedCanvasArtworkProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [canvasUrl, setCanvasUrl] = useState<string | null>(null);
-  const [videoFailed, setVideoFailed] = useState(false);
-  const [videoReady, setVideoReady] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const onHasCanvasChangeRef = useRef(onHasCanvasChange);
+  useEffect(() => {
+    onHasCanvasChangeRef.current = onHasCanvasChange;
+  });
+
   const query = useMemo(() => {
     const params = new URLSearchParams({ title, artist });
     if (album) params.set("album", album);
     return params.toString();
   }, [title, artist, album]);
+
+  const [canvasUrl, setCanvasUrl] = useState<string | null>(() => {
+    const cached = canvasClientCache.get(query);
+    return cached?.hasCanvas && cached.animatedCover?.url ? cached.animatedCover.url : null;
+  });
+  const [videoFailed, setVideoFailed] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
     setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -51,35 +62,53 @@ export function AnimatedCanvasArtwork({
   useEffect(() => {
     if (!enabled || !title.trim() || !artist.trim()) {
       setCanvasUrl(null);
-      onHasCanvasChange?.(false, null);
+      onHasCanvasChangeRef.current?.(false, null);
       return;
     }
+
+    const cached = canvasClientCache.get(query);
+    if (cached) {
+      const has = Boolean(cached.hasCanvas && cached.animatedCover?.url);
+      const bg = cached.animatedCover?.bgColor || null;
+      setCanvasUrl(has ? cached.animatedCover!.url : null);
+      onHasCanvasChangeRef.current?.(has, bg);
+      return;
+    }
+
     const controller = new AbortController();
-    setCanvasUrl(null);
-    setVideoFailed(false);
-    setVideoReady(false);
     fetch(`/api/canvas?${query}`, { signal: controller.signal })
-      .then((response) => response.ok ? response.json() as Promise<CanvasResult> : null)
+      .then((response) => (response.ok ? (response.json() as Promise<CanvasResult>) : null))
       .then((data) => {
-        const has = Boolean(data?.hasCanvas && data.animatedCover?.url);
-        const bg = data?.animatedCover?.bgColor || null;
-        setCanvasUrl(has ? data!.animatedCover!.url : null);
-        onHasCanvasChange?.(has, bg);
+        if (!data) return;
+        canvasClientCache.set(query, data);
+        const has = Boolean(data.hasCanvas && data.animatedCover?.url);
+        const bg = data.animatedCover?.bgColor || null;
+        setCanvasUrl(has ? data.animatedCover!.url : null);
+        onHasCanvasChangeRef.current?.(has, bg);
       })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
           setCanvasUrl(null);
-          onHasCanvasChange?.(false, null);
+          onHasCanvasChangeRef.current?.(false, null);
         }
       });
+
     return () => controller.abort();
-  }, [enabled, query, title, artist, onHasCanvasChange]);
+  }, [enabled, query, title, artist]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !canvasUrl || reducedMotion || videoFailed) return;
+
+    video.defaultMuted = true;
     video.muted = true;
+    video.setAttribute("muted", "");
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+
     let hls: Hls | null = null;
+    let destroyed = false;
+
     if (/\.m3u8(?:\?|$)/i.test(canvasUrl)) {
       if (Hls.isSupported()) {
         hls = new Hls({
@@ -93,7 +122,10 @@ export function AnimatedCanvasArtwork({
         hls.loadSource(canvasUrl);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.play().catch(() => undefined);
+          if (!destroyed) {
+            setVideoReady(true);
+            video.play().catch(() => undefined);
+          }
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
           if (data.fatal) {
@@ -107,8 +139,17 @@ export function AnimatedCanvasArtwork({
           }
         });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        // Native HLS for Safari / iOS Mobile
         video.src = canvasUrl;
-        video.play().catch(() => undefined);
+        const onNativeReady = () => {
+          if (!destroyed) {
+            setVideoReady(true);
+            video.play().catch(() => undefined);
+          }
+        };
+        video.addEventListener("loadedmetadata", onNativeReady, { once: true });
+        video.addEventListener("canplay", onNativeReady, { once: true });
+        video.load();
       } else {
         setVideoFailed(true);
       }
@@ -116,7 +157,9 @@ export function AnimatedCanvasArtwork({
       video.src = canvasUrl;
       video.play().catch(() => undefined);
     }
+
     return () => {
+      destroyed = true;
       hls?.destroy();
       video.pause();
       video.removeAttribute("src");
@@ -139,10 +182,12 @@ export function AnimatedCanvasArtwork({
           loop
           preload="auto"
           aria-label={`${alt ?? title} animated album artwork`}
-          onCanPlay={() => { setVideoReady(true); onHasCanvasChange?.(true); }}
-          onLoadedData={() => { setVideoReady(true); onHasCanvasChange?.(true); }}
-          onPlaying={() => { setVideoReady(true); onHasCanvasChange?.(true); }}
-          onError={() => { setVideoFailed(true); setVideoReady(false); onHasCanvasChange?.(false); }}
+          onCanPlay={() => { setVideoReady(true); onHasCanvasChangeRef.current?.(true); }}
+          onLoadedData={() => { setVideoReady(true); onHasCanvasChangeRef.current?.(true); }}
+          onLoadedMetadata={() => { setVideoReady(true); onHasCanvasChangeRef.current?.(true); }}
+          onPlaying={() => { setVideoReady(true); onHasCanvasChangeRef.current?.(true); }}
+          onTimeUpdate={() => { setVideoReady(true); }}
+          onError={() => { setVideoFailed(true); setVideoReady(false); }}
           className={`absolute inset-0 h-full w-full object-cover rounded-[inherit] transition-opacity duration-500 ${showVideo ? "opacity-100" : "opacity-0"}`}
         />
       )}

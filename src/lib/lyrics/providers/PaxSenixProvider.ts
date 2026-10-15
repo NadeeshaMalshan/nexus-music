@@ -58,9 +58,9 @@ export class PaxSenixProvider implements ILyricsProvider {
       if (parsed.lines.length === 0) return null;
 
       parsed.metadata = {
-        title: itunesData.results?.[0]?.trackName || track,
-        artist: itunesData.results?.[0]?.artistName || artist,
-        album: itunesData.results?.[0]?.collectionName || album,
+        title: matchingResult?.trackName || track,
+        artist: matchingResult?.artistName || artist,
+        album: matchingResult?.collectionName || album,
         duration: durationSeconds || undefined,
       };
 

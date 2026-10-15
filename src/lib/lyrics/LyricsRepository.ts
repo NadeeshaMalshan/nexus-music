@@ -1,6 +1,12 @@
 import { Redis } from "@upstash/redis";
 import { ILyricsProvider, LyricsQuery, LyricsResult } from "./types";
-import { isTitleMatch } from "./matchUtils";
+import {
+  isArtistMatch,
+  isChannelOrPublisher,
+  isDurationMatch,
+  isNoiseText,
+  isTitleMatch,
+} from "./matchUtils";
 import {
   BetterLyricsProvider,
   BiniLyricsProvider,
@@ -89,38 +95,97 @@ export class LyricsRepository {
 
   /** Clean up artist and track title for matching */
   public cleanQuery(track: string, artist: string): { track: string; artist: string } {
-    let cleanArtist = artist
+    let cleanArtist = (artist || "")
       .replace(/\s*-\s*Topic$/i, "")
       .replace(/\s*VEVO$/i, "")
+      .replace(/\s*Official\s*(Channel)?$/i, "")
       .trim();
 
-    let cleanTrack = track
+    let cleanTrack = (track || "").trim();
+
+    // 1. Handle Pipe '|' Separators in YouTube Titles
+    // (e.g. "Manike Mage Hithe | Official Music Video | Yohani & Chamath Sangeeth")
+    if (cleanTrack.includes("|")) {
+      const segments = cleanTrack
+        .split(/\s*\|\s*/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      // Remove noise segments like "| Official Video | 4K"
+      const substantive = segments.filter((s) => !isNoiseText(s));
+
+      if (substantive.length === 1) {
+        cleanTrack = substantive[0];
+      } else if (substantive.length >= 2) {
+        const seg0 = substantive[0];
+        const seg1 = substantive[1];
+
+        if (isArtistMatch(cleanArtist, seg0)) {
+          cleanTrack = seg1;
+        } else if (isArtistMatch(cleanArtist, seg1)) {
+          cleanTrack = seg0;
+        } else if (isChannelOrPublisher(cleanArtist)) {
+          cleanTrack = seg0;
+          cleanArtist = seg1;
+        } else {
+          cleanTrack = seg0;
+        }
+      }
+    }
+
+    // 2. Remove Bracketed Noise (e.g. "[Official Music Video]", "(4K)", "(Audio)")
+    cleanTrack = cleanTrack
       .replace(
-        /\s*[\(\[][^)]*?(official|music|video|audio|lyric|visualizer|remaster|edit|version|feat|ft|with|clip|cover|tribute|karaoke|instrumental|hd|4k|mv|m\/v)[^)]*?[\)\]]/gi,
+        /\s*[\(\[][^)]*?(official|music|video|audio|lyric|visualizer|remaster|edit|version|feat|ft|with|clip|cover|tribute|karaoke|instrumental|hd|4k|8k|1080p|full\s+song|video\s+song|audio\s+song|new\s+sinhala|sinhala\s+song|sinhala\s+new|coke|mv|m\/v|live|sped\s+up|slowed|deluxe|bonus|exclusive|promo)[^)]*?[\)\]]/gi,
         ""
       )
       .replace(/\s{2,}/g, " ")
       .trim();
 
+    // 3. Remove non-Latin Indic/Sinhala script inside brackets if Latin title is present
+    // e.g. "Kandulu Bindak (කඳුළු බිඳක්)" -> "Kandulu Bindak"
+    if (/[a-zA-Z]/.test(cleanTrack)) {
+      cleanTrack = cleanTrack.replace(/\s*[\(\[][\u0900-\u0DFF\s]+[\)\]]/g, "").trim();
+    }
+
+    // 4. Handle Hyphen / Dash Splitting ("part1 - part2")
     const normalizedTrack = cleanTrack.replace(/[\u2013\u2014]/g, "-");
     const hyphenIndex = normalizedTrack.indexOf(" - ");
     if (hyphenIndex !== -1) {
       const part1 = cleanTrack.substring(0, hyphenIndex).trim();
       const part2 = cleanTrack.substring(hyphenIndex + 3).trim();
-      const p1Lower = part1.toLowerCase();
-      const aLower = cleanArtist.toLowerCase();
 
-      if (p1Lower.includes(aLower) || aLower.includes(p1Lower)) {
+      if (isNoiseText(part2)) {
+        // e.g. "Ravana - Official Audio" -> part1 is song, part2 is noise
+        cleanTrack = part1;
+      } else if (isNoiseText(part1)) {
         cleanTrack = part2;
-      } else if (aLower === "unknown artist" || aLower === "unknown") {
+      } else if (isArtistMatch(cleanArtist, part1)) {
+        // e.g. "Sanuka - Ravana" where artist is "Sanuka" -> part2 is song
         cleanTrack = part2;
-        cleanArtist = part1;
+      } else if (isArtistMatch(cleanArtist, part2)) {
+        // e.g. "Ravana - Sanuka" where artist is "Sanuka" -> part1 is song
+        cleanTrack = part1;
+      } else if (isChannelOrPublisher(cleanArtist)) {
+        // Uploader channel is a publisher (e.g. "M Entertainments", "T-Series")
+        if (/\b(feat|ft|with)\b/i.test(part2)) {
+          cleanTrack = part1;
+          cleanArtist = part2;
+        } else {
+          // Standard YouTube convention: "Artist - Track"
+          cleanTrack = part2;
+          cleanArtist = part1;
+        }
       } else {
         cleanTrack = part2;
       }
     }
 
+    // 5. Remove trailing feature tags from song title (e.g. "Song (feat. X)" or "Song ft. X")
     cleanTrack = cleanTrack.replace(/\s+(feat|ft|with)\.?\s+.*$/gi, "").trim();
+    cleanTrack = cleanTrack.replace(/\s{2,}/g, " ").trim();
+    cleanArtist = cleanArtist.replace(/\s{2,}/g, " ").trim();
+
     return { track: cleanTrack, artist: cleanArtist };
   }
 
@@ -166,7 +231,7 @@ export class LyricsRepository {
       return this.inFlightRequests.get(cacheKey)!;
     }
 
-    const fetchPromise = this.executeFetch(track, artist, album, durationSeconds, signal, cacheKey);
+    const fetchPromise = this.executeFetch(track, artist, album, durationSeconds, signal, cacheKey, rawArtist);
     this.inFlightRequests.set(cacheKey, fetchPromise);
 
     try {
@@ -182,7 +247,8 @@ export class LyricsRepository {
     album: string | undefined,
     durationSeconds: number | null | undefined,
     signal: AbortSignal | undefined,
-    cacheKey: string
+    cacheKey: string,
+    rawArtist?: string
   ): Promise<UnifiedLyricsResponse> {
     const query: LyricsQuery = {
       track,
@@ -203,13 +269,48 @@ export class LyricsRepository {
         const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
         const res = await provider.search({ ...query, signal: combinedSignal });
         if (res && res.success && res.lines && res.lines.length > 0) {
-          // Reject lyrics if the returned title is for a completely different song
-          if (res.metadata?.title && !isTitleMatch(query.track, res.metadata.title)) {
+          const resTitle = res.metadata?.title;
+          const resArtist = res.metadata?.artist;
+
+          // 1. Reject lyrics if the returned title is for a completely different song
+          const isDirectTitleMatch = resTitle ? isTitleMatch(query.track, resTitle) : true;
+          // In case artist and track were swapped in YouTube title
+          const isSwappedTitleMatch =
+            resTitle && isChannelOrPublisher(rawArtist) ? isTitleMatch(query.artist, resTitle) : false;
+
+          if (!isDirectTitleMatch && !isSwappedTitleMatch) {
             console.warn(
-              `[LyricsRepository] Rejecting mismatched lyrics from ${provider.name}: expected "${query.track}", got "${res.metadata.title}"`
+              `[LyricsRepository] Rejecting mismatched lyrics title from ${provider.name}: expected "${query.track}", got "${resTitle}"`
             );
             return null;
           }
+
+          // 2. Reject lyrics if the artist is completely mismatched (unless original artist was channel/unknown)
+          if (resArtist && query.artist && !isChannelOrPublisher(query.artist)) {
+            const isDirectArtistMatch = isArtistMatch(query.artist, resArtist);
+            const isSwappedArtistMatch =
+              isChannelOrPublisher(rawArtist) && isArtistMatch(query.track, resArtist);
+
+            if (!isDirectArtistMatch && !isSwappedArtistMatch) {
+              console.warn(
+                `[LyricsRepository] Rejecting mismatched lyrics artist from ${provider.name}: expected "${query.artist}", got "${resArtist}"`
+              );
+              return null;
+            }
+          }
+
+          // 3. Reject lyrics if duration difference is excessive (> 28s off)
+          if (
+            query.durationSeconds &&
+            res.metadata?.duration &&
+            !isDurationMatch(query.durationSeconds, res.metadata.duration, 28)
+          ) {
+            console.warn(
+              `[LyricsRepository] Rejecting mismatched lyrics duration from ${provider.name}: expected ${query.durationSeconds}s, got ${res.metadata.duration}s`
+            );
+            return null;
+          }
+
           return res;
         }
         return null;

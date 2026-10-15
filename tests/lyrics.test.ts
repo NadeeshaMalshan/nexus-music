@@ -780,7 +780,14 @@ describe("Karaoke Word-Sync Bracket Segmentation", () => {
 });
 
 // 11. SONG TITLE MATCHING & ACCURACY VALIDATION
-import { isTitleMatch, normalizeSongTitle } from "../src/lib/lyrics/matchUtils";
+import {
+  isArtistMatch,
+  isChannelOrPublisher,
+  isDurationMatch,
+  isNoiseText,
+  isTitleMatch,
+  normalizeSongTitle,
+} from "../src/lib/lyrics/matchUtils";
 
 describe("Song Title Matching & Accuracy Validation", () => {
   test("correctly matches identical and near-identical titles", () => {
@@ -804,6 +811,196 @@ describe("Song Title Matching & Accuracy Validation", () => {
   test("normalizes punctuation and noise words cleanly", () => {
     assert.equal(normalizeSongTitle("It's ok I'm ok (Official Music Video)"), "its ok im ok");
     assert.equal(normalizeSongTitle("Don't Start Now [Live Edition]"), "dont start now");
+  });
+});
+
+// 12. YOUTUBE TITLE CLEANING & METADATA NORMALIZATION
+const stubGenius = {
+  fetchGeniusDetails: async () => ({
+    found: false,
+    description: null,
+    releaseDate: null,
+    album: null,
+    writers: [],
+    producer: null,
+    verifiedLyrics: false,
+  }),
+} as unknown as GeniusProvider;
+
+describe("YouTube Title Cleaning (cleanQuery)", () => {
+  const repo = new LyricsRepository([], stubGenius);
+
+  test("fixes hyphen splitting bug where noise in part 2 was picked as track", () => {
+    // BUG FIX: Previously "Ravana - Official Audio" set cleanTrack = "Official Audio"
+    const cleaned = repo.cleanQuery("Ravana - Official Audio", "Sanuka");
+    assert.equal(cleaned.track, "Ravana");
+    assert.equal(cleaned.artist, "Sanuka");
+  });
+
+  test("handles Song - Artist format when artist is in part 2", () => {
+    const cleaned = repo.cleanQuery("Ravana - Sanuka", "Sanuka");
+    assert.equal(cleaned.track, "Ravana");
+    assert.equal(cleaned.artist, "Sanuka");
+  });
+
+  test("strips bracketed Sinhala and Indic script when Latin title is present", () => {
+    // Latin title present with bracketed Sinhala text
+    const cleaned = repo.cleanQuery("Kandulu Bindak (කඳුළු බිඳක්) - Sanuka", "Sanuka");
+    assert.equal(cleaned.track, "Kandulu Bindak");
+    assert.equal(cleaned.artist, "Sanuka");
+  });
+
+  test("preserves pure Sinhala text when no Latin text is present", () => {
+    const cleaned = repo.cleanQuery("කඳුළු බිඳක්", "සනුක");
+    assert.equal(cleaned.track, "කඳුළු බිඳක්");
+    assert.equal(cleaned.artist, "සනුක");
+  });
+
+  test("cleans YouTube pipe separators and discards noise segments", () => {
+    const cleaned = repo.cleanQuery(
+      "Manike Mage Hithe | Official Music Video | Yohani & Chamath Sangeeth",
+      "Yohani"
+    );
+    assert.equal(cleaned.track, "Manike Mage Hithe");
+    assert.equal(cleaned.artist, "Yohani");
+  });
+
+  test("handles YouTube record label/publisher channels as artist", () => {
+    const cleaned = repo.cleanQuery("Kandulu Bindak - Sanuka", "M Entertainments");
+    // "M Entertainments" recognized as publisher; track and artist extracted from video title
+    assert.equal(cleaned.track, "Sanuka");
+    assert.equal(cleaned.artist, "Kandulu Bindak");
+  });
+
+  test("strips bracketed noise like 4K, Official Video, and Topic suffixes", () => {
+    const cleaned = repo.cleanQuery("Shape of You [4K UHD] (Official Music Video)", "Ed Sheeran - Topic");
+    assert.equal(cleaned.track, "Shape of You");
+    assert.equal(cleaned.artist, "Ed Sheeran");
+  });
+});
+
+// 13. CHANNEL, ARTIST & DURATION VALIDATION
+describe("Channel, Artist & Duration Validation", () => {
+  test("identifies publisher channels and record labels accurately", () => {
+    assert.equal(isChannelOrPublisher("M Entertainments"), true);
+    assert.equal(isChannelOrPublisher("T-Series"), true);
+    assert.equal(isChannelOrPublisher("Sony Music India"), true);
+    assert.equal(isChannelOrPublisher("Torana Video"), true);
+    assert.equal(isChannelOrPublisher("Coke Studio Pakistan"), true);
+    assert.equal(isChannelOrPublisher("Unknown Artist"), true);
+    assert.equal(isChannelOrPublisher(""), true);
+    assert.equal(isChannelOrPublisher(null), true);
+
+    // Real musical artists must NOT be identified as channels
+    assert.equal(isChannelOrPublisher("Sanuka"), false);
+    assert.equal(isChannelOrPublisher("Ed Sheeran"), false);
+    assert.equal(isChannelOrPublisher("The Weeknd"), false);
+    assert.equal(isChannelOrPublisher("Yohani"), false);
+  });
+
+  test("identifies YouTube metadata noise text", () => {
+    assert.equal(isNoiseText("Official Audio"), true);
+    assert.equal(isNoiseText("Official Music Video"), true);
+    assert.equal(isNoiseText("New Sinhala Song 2024"), true);
+    assert.equal(isNoiseText("4K UHD"), true);
+    assert.equal(isNoiseText("Visualizer"), true);
+    assert.equal(isNoiseText("Coke RED"), true);
+
+    // Legitimate song names are not noise
+    assert.equal(isNoiseText("Ravana"), false);
+    assert.equal(isNoiseText("Kandulu Bindak"), false);
+    assert.equal(isNoiseText("Shape of You"), false);
+  });
+
+  test("matches artists and multiple collaborations correctly", () => {
+    assert.equal(isArtistMatch("Ed Sheeran", "Ed Sheeran ft. Justin Bieber"), true);
+    assert.equal(isArtistMatch("Yohani & Chamath", "Yohani"), true);
+    assert.equal(isArtistMatch("Sanuka", "Sanuka Wickramasinghe"), true);
+    assert.equal(isArtistMatch("The Weeknd", "Taylor Swift"), false);
+  });
+
+  test("validates duration tolerance within 28 seconds", () => {
+    assert.equal(isDurationMatch(210, 205, 28), true);
+    assert.equal(isDurationMatch(210, 230, 28), true);
+    assert.equal(isDurationMatch(210, 100, 28), false);
+    assert.equal(isDurationMatch(undefined, 210, 28), true); // Duration omitted in provider
+  });
+});
+
+// 14. PROVIDER MISMATCH REJECTION IN REPOSITORY
+describe("LyricsRepository Provider Validation", () => {
+  test("rejects provider results with mismatched song title", async () => {
+    const wrongTitleProvider: ILyricsProvider = {
+      name: "WrongTitleMock",
+      async search(_q: LyricsQuery): Promise<LyricsResult | null> {
+        return {
+          success: true,
+          syncType: "word",
+          format: "ttml",
+          source: "WrongTitleMock",
+          lines: [{ start: 0, end: 5, text: "Some lyrics" }],
+          metadata: {
+            title: "you broke me first",
+            artist: "Tate McRae",
+            duration: 180,
+          },
+        };
+      },
+    };
+
+    const repo = new LyricsRepository([wrongTitleProvider], stubGenius);
+    const result = await repo.getLyrics("run for the hills", "Tate McRae");
+    // Result should reject the wrong song
+    assert.equal(result.lyrics.source, null);
+    assert.equal(result.lyrics.isSynced, false);
+  });
+
+  test("rejects provider results with mismatched artist", async () => {
+    const wrongArtistProvider: ILyricsProvider = {
+      name: "WrongArtistMock",
+      async search(_q: LyricsQuery): Promise<LyricsResult | null> {
+        return {
+          success: true,
+          syncType: "line",
+          format: "lrc",
+          source: "WrongArtistMock",
+          lines: [{ start: 0, end: 5, text: "Some lyrics" }],
+          metadata: {
+            title: "Stay",
+            artist: "Sam Smith", // Not The Kid LAROI
+            duration: 140,
+          },
+        };
+      },
+    };
+
+    const repo = new LyricsRepository([wrongArtistProvider], stubGenius);
+    const result = await repo.getLyrics("Stay", "The Kid LAROI");
+    assert.equal(result.lyrics.source, null);
+  });
+
+  test("rejects provider results with wild duration discrepancy", async () => {
+    const wrongDurationProvider: ILyricsProvider = {
+      name: "WrongDurationMock",
+      async search(_q: LyricsQuery): Promise<LyricsResult | null> {
+        return {
+          success: true,
+          syncType: "word",
+          format: "ttml",
+          source: "WrongDurationMock",
+          lines: [{ start: 0, end: 5, text: "Some lyrics" }],
+          metadata: {
+            title: "Blinding Lights",
+            artist: "The Weeknd",
+            duration: 60, // 1 min vs expected 200s
+          },
+        };
+      },
+    };
+
+    const repo = new LyricsRepository([wrongDurationProvider], stubGenius);
+    const result = await repo.getLyrics("Blinding Lights", "The Weeknd", undefined, 200);
+    assert.equal(result.lyrics.source, null);
   });
 });
 

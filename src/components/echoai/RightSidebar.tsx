@@ -524,9 +524,11 @@ export function RightSidebar({
                                 <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.2 }} />
                                 <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.2 }} />
                              </div>
-                          ) : lineItem?.words && lineItem.words.length > 0 ? (
+                          ) : hasSynced ? (
                             <KaraokeWordLine
-                              words={lineItem.words}
+                              words={lineItem?.words}
+                              lineText={line}
+                              syncedLine={lineItem ? { text: line, start: lineItem.at, end: lineItem.at + 4, words: lineItem.words } : null}
                               currentTimeSec={currentTimeSec}
                               isActive={isActive}
                               isPastLine={hasSynced && activeIndex >= 0 && index < activeIndex}

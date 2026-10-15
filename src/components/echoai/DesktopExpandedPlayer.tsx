@@ -161,9 +161,11 @@ const LyricLine = React.memo(({
           <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.25 }} />
           <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.25 }} />
         </div>
-      ) : hasWordSync && words ? (
+      ) : hasSynced ? (
         <KaraokeWordLine
           words={words}
+          lineText={line}
+          syncedLine={syncedLine}
           currentTimeSec={currentTimeSec}
           isActive={isActive}
           isPastLine={hasSynced && activeIndex >= 0 && index < activeIndex}

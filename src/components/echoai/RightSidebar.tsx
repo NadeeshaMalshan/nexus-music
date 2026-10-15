@@ -529,7 +529,7 @@ export function RightSidebar({
                               words={lineItem?.words}
                               lineText={line}
                               syncedLine={lineItem ? { text: line, start: lineItem.at, end: lineItem.at + 4, words: lineItem.words } : null}
-                              nextLine={effectiveLines[index + 1] ? { text: effectiveLines[index + 1].line, start: effectiveLines[index + 1].at, end: effectiveLines[index + 1].at + 4, words: effectiveLines[index + 1].words } : null}
+                              nextLine={effectiveLines[index + 1] ? { text: effectiveLines[index + 1].text, start: effectiveLines[index + 1].at, end: effectiveLines[index + 1].at + 4, words: effectiveLines[index + 1].words } : null}
                               currentTimeSec={currentTimeSec}
                               isActive={isActive}
                               isPastLine={hasSynced && activeIndex >= 0 && index < activeIndex}

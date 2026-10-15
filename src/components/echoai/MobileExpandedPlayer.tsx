@@ -1085,7 +1085,7 @@ export function MobileExpandedPlayer({
                 style={{ backgroundColor: palette?.primary || "#18181b" }}
               >
                 {/* UPPER SECTION: Full Bleed Animated Motion Cover */}
-                <div className="relative w-full h-[60dvh] overflow-hidden shrink-0 select-none">
+                <div className="relative w-full h-[68dvh] overflow-hidden shrink-0 select-none">
                   <AnimatedCanvasArtwork
                     title={liveMetadata?.title || currentSong.title}
                     artist={currentSong.artist}
@@ -1098,9 +1098,9 @@ export function MobileExpandedPlayer({
 
                   {/* Soft bottom gradient fade into matching bottom cover color */}
                   <div
-                    className="absolute inset-x-0 bottom-0 h-32 pointer-events-none z-10"
+                    className="absolute inset-x-0 bottom-0 h-28 pointer-events-none z-10"
                     style={{
-                      background: `linear-gradient(to bottom, transparent 0%, transparent 50%, ${palette?.primary || "#18181b"} 100%)`,
+                      background: `linear-gradient(to bottom, transparent 0%, transparent 60%, ${palette?.primary || "#18181b"} 100%)`,
                     }}
                   />
 
@@ -1140,14 +1140,14 @@ export function MobileExpandedPlayer({
 
                 {/* LOWER SECTION: Track info, actions & controls with cover-matching color */}
                 <div
-                  className="relative z-20 flex flex-1 flex-col justify-between px-7 pb-3 pt-1"
+                  className="relative z-20 flex flex-1 flex-col justify-between px-7 pb-2 pt-1"
                   style={{ backgroundColor: palette?.primary || "#18181b" }}
                 >
                   {/* Track Info & Action Buttons */}
-                  <div className="flex items-center justify-between gap-3 mt-1">
+                  <div className="flex items-center justify-between gap-3 mt-0.5">
                     <div className="flex-1 min-w-0 pr-2">
                       <div className="flex items-center gap-2">
-                        <h2 className="text-[25px] sm:text-[27px] font-bold text-white tracking-tight leading-tight truncate">
+                        <h2 className="text-[23px] sm:text-[26px] font-bold text-white tracking-tight leading-tight truncate">
                           {liveMetadata?.title || currentSong.title}
                         </h2>
                         {/explicit/i.test(currentSong.title) && (
@@ -1160,20 +1160,20 @@ export function MobileExpandedPlayer({
                         <ArtistLinks
                           artist={liveMetadata?.artist || currentSong.artist}
                           onArtistClick={onArtistClick}
-                          className="text-[17px] font-medium text-white/60 tracking-normal hover:text-white/90 transition-colors"
+                          className="text-[15px] sm:text-[17px] font-medium text-white/60 tracking-normal hover:text-white/90 transition-colors"
                         />
                       </div>
                     </div>
 
                     {/* Action buttons (Favorite & More) */}
-                    <div className="flex items-center gap-2.5 shrink-0 relative">
+                    <div className="flex items-center gap-2 shrink-0 relative">
                       <button
                         type="button"
                         onClick={handleToggleLike}
                         aria-label={isLiked ? "Unlike" : "Favorite"}
-                        className="h-11 w-11 rounded-full bg-white/10 hover:bg-white/15 active:scale-90 backdrop-blur-md border border-white/10 flex items-center justify-center text-white transition-all shadow-sm"
+                        className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 active:scale-90 backdrop-blur-md border border-white/10 flex items-center justify-center text-white transition-all shadow-sm"
                       >
-                        <Star size={20} className={isLiked ? "fill-white text-white" : "text-white/80"} />
+                        <Star size={19} className={isLiked ? "fill-white text-white" : "text-white/80"} />
                       </button>
 
                       <div className="relative">
@@ -1181,9 +1181,9 @@ export function MobileExpandedPlayer({
                           type="button"
                           onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
                           aria-label="More options"
-                          className="h-11 w-11 rounded-full bg-white/10 hover:bg-white/15 active:scale-90 backdrop-blur-md border border-white/10 flex items-center justify-center text-white transition-all shadow-sm"
+                          className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 active:scale-90 backdrop-blur-md border border-white/10 flex items-center justify-center text-white transition-all shadow-sm"
                         >
-                          <MoreHorizontal size={22} className="text-white/80" />
+                          <MoreHorizontal size={20} className="text-white/80" />
                         </button>
 
                         {/* More Menu Dropdown */}
@@ -1244,7 +1244,7 @@ export function MobileExpandedPlayer({
                   </div>
 
                   {/* Progress Bar & Timestamps with Lossless Badge */}
-                  <div className="space-y-2 mt-3">
+                  <div className="space-y-1.5 mt-2">
                     <div onClick={handleSeekClick} className="group relative h-1 w-full cursor-pointer rounded-full bg-white/20 overflow-hidden">
                       <m.div
                         className="absolute inset-y-0 left-0 bg-white/70 rounded-full"
@@ -1260,46 +1260,46 @@ export function MobileExpandedPlayer({
                   </div>
 
                   {/* Playback Controls */}
-                  <div className="flex items-center justify-center gap-14 py-2">
+                  <div className="flex items-center justify-center gap-12 py-1.5">
                     <m.button
                       whileTap={{ scale: 0.85 }}
                       onClick={onPrev}
-                      className="text-white active:scale-90 transition-transform p-3"
+                      className="text-white active:scale-90 transition-transform p-2.5"
                       aria-label="Previous track"
                     >
-                      <SkipBack size={38} fill="white" strokeWidth={0} />
+                      <SkipBack size={34} fill="white" strokeWidth={0} />
                     </m.button>
                     <m.button
                       whileTap={{ scale: 0.92 }}
                       onClick={onTogglePlay}
-                      className="flex h-20 w-20 items-center justify-center text-white active:scale-95 transition-transform"
+                      className="flex h-16 w-16 items-center justify-center text-white active:scale-95 transition-transform"
                       aria-label={isPlaying ? "Pause" : "Play"}
                     >
                       {isPlaying ? (
-                        <Pause size={56} fill="white" strokeWidth={0} />
+                        <Pause size={48} fill="white" strokeWidth={0} />
                       ) : (
-                        <Play size={56} fill="white" strokeWidth={0} className="ml-1" />
+                        <Play size={48} fill="white" strokeWidth={0} className="ml-1" />
                       )}
                     </m.button>
                     <m.button
                       whileTap={{ scale: 0.85 }}
                       onClick={onNext}
-                      className="text-white active:scale-90 transition-transform p-3"
+                      className="text-white active:scale-90 transition-transform p-2.5"
                       aria-label="Next track"
                     >
-                      <SkipForward size={38} fill="white" strokeWidth={0} />
+                      <SkipForward size={34} fill="white" strokeWidth={0} />
                     </m.button>
                   </div>
 
                   {/* Volume Tactical Bar */}
-                  <div className="flex items-center gap-4 px-2 mt-1">
-                    <Volume2 size={16} className="text-white/40 shrink-0" />
+                  <div className="flex items-center gap-4 px-2 mt-0.5">
+                    <Volume2 size={15} className="text-white/40 shrink-0" />
                     <div className="relative h-1.5 flex-1 flex items-center group cursor-pointer" onClick={handleVolumeClick}>
                       <div className="relative h-1.5 w-full rounded-full bg-white/15 overflow-hidden backdrop-blur-sm">
                         <div className="absolute inset-y-0 left-0 bg-white/70 rounded-full" style={{ width: `${volume}%` }} />
                       </div>
                     </div>
-                    <Volume2 size={20} className="text-white/60 shrink-0" />
+                    <Volume2 size={18} className="text-white/60 shrink-0" />
                   </div>
                 </div>
               </m.div>
@@ -1657,7 +1657,7 @@ export function MobileExpandedPlayer({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={MOTION_CONFIG.transition}
-            className={`relative z-50 flex flex-col gap-6 pt-4 pb-10 animate-gpu ${activeTab !== 'controls' ? 'bg-linear-to-t from-black/60 to-transparent' : ''}`}
+            className={`relative z-50 flex flex-col gap-6 animate-gpu ${activeTab !== 'controls' ? 'bg-linear-to-t from-black/60 to-transparent pt-4 pb-10' : 'pt-1 pb-7'}`}
           >
             {activeTab !== "controls" && (
               <div className="w-full">

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
 import YouTube from "react-youtube";
-import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus, PlaySquare, Maximize, MoreHorizontal, User, Disc, Info, Link2, X, Copy } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Heart, Star, Volume2, ListMusic, Mic2, ChevronDown, Trash2, GripVertical, BookOpen, Music, Video, Sparkles, Plus, PlaySquare, Maximize, MoreHorizontal, User, Disc, Info, Link2, X, Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { m, AnimatePresence, Reorder, useDragControls } from "motion/react";
 import { APPLE_EASE, SLIDE_UP_VARIANTS, EXPO_OUT, MOTION_CONFIG, APPLE_LYRICS_TRANSITION } from "@/lib/animations";
@@ -140,15 +140,13 @@ const LyricLine = React.memo(({
       ref={el => { if (elementsRef.current) elementsRef.current[index] = el; }}
       onClick={() => hasSynced && syncedLine && onSeek(syncedLine.start)}
       style={lineStyle}
-      className={`group flex items-center origin-left transform-gpu ${
-        hasSynced ? "cursor-pointer" : "cursor-default"
-      } ${
-        isInstrumental
+      className={`group flex items-center origin-left transform-gpu ${hasSynced ? "cursor-pointer" : "cursor-default"
+        } ${isInstrumental
           ? (isActive ? "h-16" : "h-9")
           : !line || !line.trim()
             ? "h-8"
             : "py-5"
-      } ${!isActive && hasSynced ? "hover:opacity-75 hover:filter-none hover:scale-[0.99]" : ""}`}
+        } ${!isActive && hasSynced ? "hover:opacity-75 hover:filter-none hover:scale-[0.99]" : ""}`}
     >
       {isInstrumental ? (
         <div className={`flex gap-3 items-center h-full transition-opacity duration-500 ${isActive ? "opacity-100" : "opacity-30"}`}>
@@ -168,9 +166,8 @@ const LyricLine = React.memo(({
           sizeVariant="mobile"
         />
       ) : (
-        <p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] text-[38px] leading-[1.08] ${
-          isActive ? "text-white" : "text-white/90"
-        }`}>
+        <p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] text-[38px] leading-[1.08] ${isActive ? "text-white" : "text-white/90"
+          }`}>
           {line}
         </p>
       )}
@@ -238,6 +235,34 @@ export function MobileExpandedPlayer({
   const [jamWarning, setJamWarning] = useState<string | null>(null);
   const [liveLikeToast, setLiveLikeToast] = useState<{ title: string; artist: string; artwork?: string | null } | null>(null);
   const [hasOpened, setHasOpened] = useState(false);
+  const [hasAnimatedCover, setHasAnimatedCover] = useState(false);
+
+  useEffect(() => {
+    setHasAnimatedCover(false);
+  }, [currentSong.id]);
+
+  const handleToggleLike = () => {
+    if (isLiked) {
+      void onRateSong(resolveLikedLibraryRateVideoId(currentSong), "none");
+    } else {
+      const liveTitle = liveMetadata?.title;
+      const liveArtist = liveMetadata?.artist;
+      void (async () => {
+        await onRateSong(
+          currentSong.id,
+          "like",
+          liveTitle && liveArtist
+            ? { title: liveTitle, artist: liveArtist }
+            : { title: currentSong.title, artist: currentSong.artist }
+        );
+        setLiveLikeToast({
+          title: liveTitle && liveArtist ? liveTitle : currentSong.title,
+          artist: liveTitle && liveArtist ? liveArtist : currentSong.artist,
+          artwork: liveMetadata?.artwork ?? currentSong.artwork,
+        });
+      })();
+    }
+  };
 
   const isMountedRef = useRef(false);
   useEffect(() => {
@@ -271,6 +296,7 @@ export function MobileExpandedPlayer({
     }
   }, [jamWarning]);
   const [activeTab, setActiveTab] = useState<"lyrics" | "queue" | "ai" | "controls" | "jam">("controls");
+  const isAnimatedFullView = Boolean(hasAnimatedCover && activeTab === "controls" && viewMode === "music");
   const [imageError, setImageError] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const dragControls = useDragControls();
@@ -757,6 +783,7 @@ export function MobileExpandedPlayer({
         }
       }}
       className="fixed inset-0 z-[60] flex flex-col bg-black overflow-hidden"
+      style={{ backgroundColor: isAnimatedFullView ? (palette?.primary || "#18181b") : "#000000" }}
     >
       <AnimatePresence>
         {jamWarning && (
@@ -773,19 +800,23 @@ export function MobileExpandedPlayer({
       </AnimatePresence>
 
       {/* Background */}
-      <FlowingBackground palette={palette} artwork={liveMetadata?.artwork || currentSong.artwork} animate={hasOpened} />
+      {!isAnimatedFullView && (
+        <FlowingBackground palette={palette} artwork={liveMetadata?.artwork || currentSong.artwork} animate={hasOpened} />
+      )}
 
       {/* Top Grabber */}
-      <div
-        className="relative z-50 flex justify-center pt-[max(0.75rem,env(safe-area-inset-top))] pb-1 cursor-grab active:cursor-grabbing"
-        onPointerDown={(e) => dragControls.start(e)}
-      >
-        <div className="h-1.5 w-12 rounded-full bg-white/20" onClick={onClose} />
-      </div>
+      {!isAnimatedFullView && (
+        <div
+          className="relative z-50 flex justify-center pt-[max(0.75rem,env(safe-area-inset-top))] pb-1 cursor-grab active:cursor-grabbing"
+          onPointerDown={(e) => dragControls.start(e)}
+        >
+          <div className="h-1.5 w-12 rounded-full bg-white/20" onClick={onClose} />
+        </div>
+      )}
 
       {/* Mobile Top Bar */}
       <AnimatePresence mode="wait">
-        {isControlsVisible && (
+        {!isAnimatedFullView && isControlsVisible && (
           <m.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -1043,83 +1074,349 @@ export function MobileExpandedPlayer({
 
         <AnimatePresence mode="wait">
           {activeTab === "controls" ? (
-            <m.div
-              key="controls"
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92 }}
-              transition={{ duration: 0.7, ease: EXPO_OUT }}
-              className="flex flex-1 flex-col items-center justify-between pb-12 animate-gpu"
-            >
-              {/* Artwork Section */}
-              <div className="w-full flex-[1.4] flex items-center justify-center px-10">
-                <m.div
-                  className={`relative w-full overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.6)] animate-gpu transform-gpu transition-all duration-500 ${viewMode === 'video' ? 'aspect-video max-w-[360px] rounded-[16px] border border-white/5' : 'aspect-square max-w-[340px] rounded-[20px] border border-white/10'}`}
-                >
-                  {viewMode === "music" && (
-                    <AnimatedCanvasArtwork title={liveMetadata?.title || currentSong.title} artist={currentSong.artist} src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={64} />
-                  )}
-                </m.div>
-              </div>
+            isAnimatedFullView ? (
+              <m.div
+                key="animated-full-controls"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5, ease: EXPO_OUT }}
+                className="flex flex-1 flex-col overflow-hidden animate-gpu"
+                style={{ backgroundColor: palette?.primary || "#18181b" }}
+              >
+                {/* UPPER SECTION: Full Bleed Animated Motion Cover */}
+                <div className="relative w-full h-[52dvh] overflow-hidden shrink-0 select-none">
+                  <AnimatedCanvasArtwork
+                    title={liveMetadata?.title || currentSong.title}
+                    artist={currentSong.artist}
+                    src={liveMetadata?.artwork || currentSong.artwork}
+                    alt={liveMetadata?.title || currentSong.title}
+                    iconSize={64}
+                    onHasCanvasChange={setHasAnimatedCover}
+                    className="h-full w-full object-cover"
+                  />
 
-              {/* Info & Switches Section */}
-              <div className="w-full flex flex-col px-10 mt-2 mb-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    {liveMetadata && (
-                      <m.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="mb-2 flex items-center gap-1.5"
-                      >
-                        <span className="px-2 py-0.5 rounded-[4px] bg-red-600 text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-red-500/20">
-                          <div className="h-1 w-1 rounded-full bg-white animate-pulse" />
-                          Live Radio
-                        </span>
-                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] line-clamp-1">{liveMetadata.source}</span>
-                      </m.div>
-                    )}
-                    <MarqueeText
-                      text={liveMetadata?.title || currentSong.title}
-                      className="text-[28px] leading-none font-black text-white tracking-tight mb-1"
+                  {/* Soft bottom gradient fade into matching bottom cover color */}
+                  <div
+                    className="absolute inset-x-0 bottom-0 h-44 pointer-events-none z-10"
+                    style={{
+                      background: `linear-gradient(to bottom, transparent 0%, transparent 40%, ${palette?.primary || "#18181b"} 100%)`,
+                    }}
+                  />
+
+                  {/* Top Overlay: Drag Handle + Audio/Video Toggle */}
+                  <div className="absolute inset-x-0 top-0 z-30 flex flex-col items-center pt-[max(0.75rem,env(safe-area-inset-top))] px-6 pointer-events-auto">
+                    <div
+                      className="h-1.5 w-10 rounded-full bg-white/40 mb-3 cursor-grab active:cursor-grabbing hover:bg-white/60 transition-colors"
+                      onClick={onClose}
+                      onPointerDown={(e) => dragControls.start(e)}
                     />
-                    <div className="w-full text-left mt-1.5">
-                      <ArtistLinks
-                        artist={liveMetadata?.artist || currentSong.artist}
-                        onArtistClick={onArtistClick}
-                        className="text-[19px] font-bold text-white/40"
-                      />
+
+                    {/* Audio / Video Toggle Pill */}
+                    <div className="bg-black/35 backdrop-blur-xl border border-white/15 p-1 rounded-full inline-flex items-center gap-1 shadow-lg">
+                      <button
+                        type="button"
+                        onClick={() => setViewMode("music")}
+                        className="px-5 py-1.5 rounded-full text-xs font-bold transition-all bg-white text-black shadow-md scale-100"
+                      >
+                        Audio
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (jamState.roomId) {
+                            setJamWarning("Video mode disabled in Jam");
+                            return;
+                          }
+                          setViewMode("video");
+                        }}
+                        className="px-5 py-1.5 rounded-full text-xs font-bold transition-all text-white/80 hover:text-white"
+                      >
+                        Video
+                      </button>
                     </div>
                   </div>
-                  <div className="flex shrink-0 bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-2xl">
-                    <button
-                      onClick={() => setViewMode("music")}
-                      className={`p-2 rounded-full transition-all ${viewMode === "music" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
+                </div>
+
+                {/* LOWER SECTION: Track info, actions & controls with cover-matching color */}
+                <div
+                  className="relative z-20 flex flex-1 flex-col justify-between px-7 pb-8 pt-1"
+                  style={{ backgroundColor: palette?.primary || "#18181b" }}
+                >
+                  {/* Track Info & Action Buttons */}
+                  <div className="flex items-center justify-between gap-3 mt-1">
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-[25px] sm:text-[27px] font-bold text-white tracking-tight leading-tight truncate">
+                          {liveMetadata?.title || currentSong.title}
+                        </h2>
+                        {/explicit/i.test(currentSong.title) && (
+                          <span className="shrink-0 px-1.5 py-0.5 rounded-[4px] bg-white/20 text-[10px] font-bold text-white/90">
+                            E
+                          </span>
+                        )}
+                      </div>
+                      <div className="w-full text-left mt-0.5 truncate">
+                        <ArtistLinks
+                          artist={liveMetadata?.artist || currentSong.artist}
+                          onArtistClick={onArtistClick}
+                          className="text-[17px] font-medium text-white/60 tracking-normal hover:text-white/90 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Action buttons (Favorite & More) */}
+                    <div className="flex items-center gap-2.5 shrink-0 relative">
+                      <button
+                        type="button"
+                        onClick={handleToggleLike}
+                        aria-label={isLiked ? "Unlike" : "Favorite"}
+                        className="h-11 w-11 rounded-full bg-white/10 hover:bg-white/15 active:scale-90 backdrop-blur-md border border-white/10 flex items-center justify-center text-white transition-all shadow-sm"
+                      >
+                        <Star size={20} className={isLiked ? "fill-white text-white" : "text-white/80"} />
+                      </button>
+
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                          aria-label="More options"
+                          className="h-11 w-11 rounded-full bg-white/10 hover:bg-white/15 active:scale-90 backdrop-blur-md border border-white/10 flex items-center justify-center text-white transition-all shadow-sm"
+                        >
+                          <MoreHorizontal size={22} className="text-white/80" />
+                        </button>
+
+                        {/* More Menu Dropdown */}
+                        {isMoreMenuOpen && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setIsMoreMenuOpen(false)} />
+                            <div className="absolute right-0 bottom-full mb-3 z-50 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#1c1c1e] p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.7)] text-left">
+                              <button
+                                onClick={() => {
+                                  setIsMoreMenuOpen(false);
+                                  onClose();
+                                  onArtistClick?.(liveMetadata?.artist || currentSong.artist);
+                                }}
+                                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white"
+                              >
+                                <User size={18} className="text-white/40" />
+                                <span>Go to Artist</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setIsMoreMenuOpen(false);
+                                  onClose();
+                                  router.push(`/search?q=${encodeURIComponent(liveMetadata?.artist || currentSong.artist)} ${encodeURIComponent(liveMetadata?.title || currentSong.title)}`);
+                                }}
+                                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white"
+                              >
+                                <Disc size={18} className="text-white/40" />
+                                <span>Go to Album / Search</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setIsMoreMenuOpen(false);
+                                  setIsInfoModalOpen(true);
+                                }}
+                                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white"
+                              >
+                                <Info size={18} className="text-white/40" />
+                                <span>Song Info</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const shareUrl = `${window.location.origin}/?watch=${currentSong.id}`;
+                                  navigator.clipboard.writeText(shareUrl);
+                                  setIsCopied(true);
+                                  setTimeout(() => setIsCopied(false), 2000);
+                                  setIsMoreMenuOpen(false);
+                                }}
+                                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white"
+                              >
+                                <Link2 size={18} className="text-white/40" />
+                                <span>Copy Song Link</span>
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar & Timestamps with Lossless Badge */}
+                  <div className="space-y-2 mt-3">
+                    <div onClick={handleSeekClick} className="group relative h-1 w-full cursor-pointer rounded-full bg-white/20 overflow-hidden">
+                      <m.div
+                        className="absolute inset-y-0 left-0 bg-white/70 rounded-full"
+                        animate={{ width: `${progress}%` }}
+                        transition={{ type: "tween", duration: 0.2 }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-xs font-semibold text-white/50 tracking-tight">
+                      <span className="w-12 text-left tabular-nums">{formatSeconds(currentTimeSec)}</span>
+
+                      <span className="w-12 text-right tabular-nums">-{formatSeconds(safeDuration - currentTimeSec)}</span>
+                    </div>
+                  </div>
+
+                  {/* Playback Controls */}
+                  <div className="flex items-center justify-center gap-14 py-2">
+                    <m.button
+                      whileTap={{ scale: 0.85 }}
+                      onClick={onPrev}
+                      className="text-white active:scale-90 transition-transform p-3"
+                      aria-label="Previous track"
                     >
-                      <Music size={15} />
+                      <SkipBack size={38} fill="white" strokeWidth={0} />
+                    </m.button>
+                    <m.button
+                      whileTap={{ scale: 0.92 }}
+                      onClick={onTogglePlay}
+                      className="flex h-20 w-20 items-center justify-center text-white active:scale-95 transition-transform"
+                      aria-label={isPlaying ? "Pause" : "Play"}
+                    >
+                      {isPlaying ? (
+                        <Pause size={56} fill="white" strokeWidth={0} />
+                      ) : (
+                        <Play size={56} fill="white" strokeWidth={0} className="ml-1" />
+                      )}
+                    </m.button>
+                    <m.button
+                      whileTap={{ scale: 0.85 }}
+                      onClick={onNext}
+                      className="text-white active:scale-90 transition-transform p-3"
+                      aria-label="Next track"
+                    >
+                      <SkipForward size={38} fill="white" strokeWidth={0} />
+                    </m.button>
+                  </div>
+
+                  {/* Volume Tactical Bar */}
+                  <div className="flex items-center gap-4 px-2 mt-1">
+                    <Volume2 size={16} className="text-white/40 shrink-0" />
+                    <div className="relative h-1.5 flex-1 flex items-center group cursor-pointer" onClick={handleVolumeClick}>
+                      <div className="relative h-1.5 w-full rounded-full bg-white/15 overflow-hidden backdrop-blur-sm">
+                        <div className="absolute inset-y-0 left-0 bg-white/70 rounded-full" style={{ width: `${volume}%` }} />
+                      </div>
+                    </div>
+                    <Volume2 size={20} className="text-white/60 shrink-0" />
+                  </div>
+
+                  {/* Bottom Tab Selectors (Lyrics, Queue, AI) */}
+                  <div className="flex w-full items-center justify-around pt-2 border-t border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("lyrics")}
+                      className="p-2.5 rounded-full transition-all text-white/40 hover:text-white"
+                      aria-label="Lyrics"
+                    >
+                      <Mic2 size={22} />
                     </button>
                     <button
-                      onClick={() => {
-                        if (jamState.roomId) {
-                          setJamWarning("Video mode disabled in Jam");
-                          return;
-                        }
-                        setViewMode("video");
-                      }}
-                      className={`p-2 rounded-full transition-all ${viewMode === "video" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
+                      type="button"
+                      onClick={() => setActiveTab("queue")}
+                      className="p-2.5 rounded-full transition-all text-white/40 hover:text-white"
+                      aria-label="Queue"
                     >
-                      <Video size={15} />
+                      <ListMusic size={22} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("ai")}
+                      className="p-2.5 rounded-full transition-all text-white/40 hover:text-white"
+                      aria-label="Song insights"
+                    >
+                      <BookOpen size={22} />
                     </button>
                   </div>
                 </div>
-              </div>
+              </m.div>
+            ) : (
+              <m.div
+                key="controls"
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.92 }}
+                transition={{ duration: 0.7, ease: EXPO_OUT }}
+                className="flex flex-1 flex-col items-center justify-between pb-12 animate-gpu"
+              >
+                {/* Artwork Section */}
+                <div className="w-full flex-[1.4] flex items-center justify-center px-10">
+                  <m.div
+                    className={`relative w-full overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.6)] animate-gpu transform-gpu transition-all duration-500 ${viewMode === 'video' ? 'aspect-video max-w-[360px] rounded-[16px] border border-white/5' : 'aspect-square max-w-[340px] rounded-[20px] border border-white/10'}`}
+                  >
+                    {viewMode === "music" && (
+                      <AnimatedCanvasArtwork
+                        title={liveMetadata?.title || currentSong.title}
+                        artist={currentSong.artist}
+                        src={liveMetadata?.artwork || currentSong.artwork}
+                        alt={liveMetadata?.title || currentSong.title}
+                        iconSize={64}
+                        onHasCanvasChange={setHasAnimatedCover}
+                      />
+                    )}
+                  </m.div>
+                </div>
 
-              {/* Controls Section */}
-              <div className="w-full">
-                {renderControls()}
-              </div>
+                {/* Info & Switches Section */}
+                <div className="w-full flex flex-col px-10 mt-2 mb-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      {liveMetadata && (
+                        <m.div
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="mb-2 flex items-center gap-1.5"
+                        >
+                          <span className="px-2 py-0.5 rounded-[4px] bg-red-600 text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-red-500/20">
+                            <div className="h-1 w-1 rounded-full bg-white animate-pulse" />
+                            Live Radio
+                          </span>
+                          <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] line-clamp-1">{liveMetadata.source}</span>
+                        </m.div>
+                      )}
+                      <MarqueeText
+                        text={liveMetadata?.title || currentSong.title}
+                        className="text-[28px] leading-none font-black text-white tracking-tight mb-1"
+                      />
+                      <div className="w-full text-left mt-1.5">
+                        <ArtistLinks
+                          artist={liveMetadata?.artist || currentSong.artist}
+                          onArtistClick={onArtistClick}
+                          className="text-[19px] font-bold text-white/40"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-2xl">
+                      <button
+                        onClick={() => setViewMode("music")}
+                        className={`p-2 rounded-full transition-all ${viewMode === "music" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
+                      >
+                        <Music size={15} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (jamState.roomId) {
+                            setJamWarning("Video mode disabled in Jam");
+                            return;
+                          }
+                          setViewMode("video");
+                        }}
+                        className={`p-2 rounded-full transition-all ${viewMode === "video" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"}`}
+                      >
+                        <Video size={15} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
-            </m.div>
+                {/* Controls Section */}
+                <div className="w-full">
+                  {renderControls()}
+                </div>
+
+              </m.div>
+            )
           ) : (
             <m.div
               key="immersive"

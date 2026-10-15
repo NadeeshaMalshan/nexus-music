@@ -18,6 +18,7 @@ interface AnimatedCanvasArtworkProps {
   className?: string;
   iconSize?: number;
   enabled?: boolean;
+  onHasCanvasChange?: (hasCanvas: boolean) => void;
 }
 
 /** Fetches a motion cover when available and gracefully falls back to the regular artwork. */
@@ -30,6 +31,7 @@ export function AnimatedCanvasArtwork({
   className = "",
   iconSize = 24,
   enabled = true,
+  onHasCanvasChange,
 }: AnimatedCanvasArtworkProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [canvasUrl, setCanvasUrl] = useState<string | null>(null);
@@ -49,6 +51,7 @@ export function AnimatedCanvasArtwork({
   useEffect(() => {
     if (!enabled || !title.trim() || !artist.trim()) {
       setCanvasUrl(null);
+      onHasCanvasChange?.(false);
       return;
     }
     const controller = new AbortController();
@@ -57,12 +60,19 @@ export function AnimatedCanvasArtwork({
     setVideoReady(false);
     fetch(`/api/canvas?${query}`, { signal: controller.signal })
       .then((response) => response.ok ? response.json() as Promise<CanvasResult> : null)
-      .then((data) => setCanvasUrl(data?.hasCanvas ? data.animatedCover?.url ?? null : null))
+      .then((data) => {
+        const has = Boolean(data?.hasCanvas && data.animatedCover?.url);
+        setCanvasUrl(has ? data!.animatedCover!.url : null);
+        onHasCanvasChange?.(has);
+      })
       .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) setCanvasUrl(null);
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setCanvasUrl(null);
+          onHasCanvasChange?.(false);
+        }
       });
     return () => controller.abort();
-  }, [enabled, query, title, artist]);
+  }, [enabled, query, title, artist, onHasCanvasChange]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -121,10 +131,10 @@ export function AnimatedCanvasArtwork({
           loop
           preload="auto"
           aria-label={`${alt ?? title} animated album artwork`}
-          onCanPlay={() => setVideoReady(true)}
-          onLoadedData={() => setVideoReady(true)}
-          onPlaying={() => setVideoReady(true)}
-          onError={() => { setVideoFailed(true); setVideoReady(false); }}
+          onCanPlay={() => { setVideoReady(true); onHasCanvasChange?.(true); }}
+          onLoadedData={() => { setVideoReady(true); onHasCanvasChange?.(true); }}
+          onPlaying={() => { setVideoReady(true); onHasCanvasChange?.(true); }}
+          onError={() => { setVideoFailed(true); setVideoReady(false); onHasCanvasChange?.(false); }}
           className={`absolute inset-0 h-full w-full object-cover rounded-[inherit] transition-opacity duration-500 ${showVideo ? "opacity-100" : "opacity-0"}`}
         />
       )}

@@ -681,3 +681,71 @@ describe("All 10 Lyrics Providers & Word-Sync Priority", () => {
   });
 });
 
+// 10. WORD-SYNC BRACKET SEGMENTATION FOR APPLE MUSIC KARAOKE
+import { groupWordsByBracket } from "../src/components/echoai/KaraokeWordLine";
+
+describe("Karaoke Word-Sync Bracket Segmentation", () => {
+  test("returns empty array for empty words", () => {
+    assert.deepEqual(groupWordsByBracket([]), []);
+  });
+
+  test("keeps standard unbracketed line in a single segment", () => {
+    const words = [
+      { text: "Io", start: 0, end: 0.5 },
+      { text: "sono", start: 0.5, end: 1.0 },
+      { text: "il", start: 1.0, end: 1.2 },
+      { text: "meglio", start: 1.2, end: 2.0 },
+    ];
+    const segments = groupWordsByBracket(words);
+    assert.equal(segments.length, 1);
+    assert.equal(segments[0].isBracketed, false);
+    assert.equal(segments[0].words.length, 4);
+    assert.equal(segments[0].words.map((w) => w.text).join(" "), "Io sono il meglio");
+  });
+
+  test("separates trailing bracketed ad-libs to a new segment", () => {
+    const words = [
+      { text: "Blinded", start: 0, end: 0.5 },
+      { text: "by", start: 0.5, end: 0.8 },
+      { text: "the", start: 0.8, end: 1.0 },
+      { text: "lights", start: 1.0, end: 1.5 },
+      { text: "(by", start: 1.6, end: 1.8 },
+      { text: "the", start: 1.8, end: 2.0 },
+      { text: "lights)", start: 2.0, end: 2.5 },
+    ];
+    const segments = groupWordsByBracket(words);
+    assert.equal(segments.length, 2);
+    assert.equal(segments[0].isBracketed, false);
+    assert.equal(segments[0].words.map((w) => w.text).join(" "), "Blinded by the lights");
+    assert.equal(segments[1].isBracketed, true);
+    assert.equal(segments[1].words.map((w) => w.text).join(" "), "(by the lights)");
+  });
+
+  test("handles fully bracketed line as a single bracketed segment", () => {
+    const words = [
+      { text: "(No,", start: 0, end: 0.5 },
+      { text: "I", start: 0.5, end: 0.8 },
+      { text: "can't", start: 0.8, end: 1.2 },
+      { text: "sleep)", start: 1.2, end: 1.8 },
+    ];
+    const segments = groupWordsByBracket(words);
+    assert.equal(segments.length, 1);
+    assert.equal(segments[0].isBracketed, true);
+    assert.equal(segments[0].words.map((w) => w.text).join(" "), "(No, I can't sleep)");
+  });
+
+  test("handles square brackets [backing vocals] correctly", () => {
+    const words = [
+      { text: "Lead", start: 0, end: 0.5 },
+      { text: "[Backing]", start: 0.6, end: 1.0 },
+    ];
+    const segments = groupWordsByBracket(words);
+    assert.equal(segments.length, 2);
+    assert.equal(segments[0].isBracketed, false);
+    assert.equal(segments[0].words[0].text, "Lead");
+    assert.equal(segments[1].isBracketed, true);
+    assert.equal(segments[1].words[0].text, "[Backing]");
+  });
+});
+
+

@@ -8,6 +8,7 @@ import { AudioVisualizer } from "./AudioVisualizer";
 import { motion, Reorder, AnimatePresence } from "motion/react";
 import { SessionFriendsPanel } from "./SessionFriendsPanel";
 import { MusicArtwork } from "./MusicArtwork";
+import { KaraokeWordLine } from "./KaraokeWordLine";
 
 
 interface RightSidebarProps {
@@ -141,23 +142,93 @@ export function RightSidebar({
 
   const lines = hasSynced ? effectiveLines.map((l) => l.text) : plainLines;
 
+  const scrollAnimRef = useRef<number | null>(null);
+  const isUserScrollingRef = useRef(false);
+  const userScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Smooth vertical scrolling when active lyric changes (Effect 4)
   useEffect(() => {
     if (!hasSynced || activeIndex < 0 || !scrollRef.current) return;
     if (activeTab !== "lyrics") return;
-    
-    requestAnimationFrame(() => {
-      const activeEl = elementsRef.current[activeIndex];
-      if (activeEl && scrollRef.current) {
-        const containerHeight = scrollRef.current.clientHeight;
-        const targetScroll = activeEl.offsetTop - (containerHeight * 0.15);
-        
-        scrollRef.current.scrollTo({
-          top: Math.max(0, targetScroll),
-          behavior: "smooth"
-        });
+    if (isUserScrollingRef.current) return;
+
+    const container = scrollRef.current;
+    const activeEl = elementsRef.current[activeIndex];
+    if (!activeEl) return;
+
+    const containerHeight = container.clientHeight;
+    // Align active line around 35% from top of sidebar container (Apple Music focal point)
+    const targetScroll = Math.max(
+      0,
+      activeEl.offsetTop - (containerHeight * 0.35) + (activeEl.clientHeight / 2)
+    );
+
+    if (scrollAnimRef.current) {
+      cancelAnimationFrame(scrollAnimRef.current);
+      scrollAnimRef.current = null;
+    }
+
+    const startScroll = container.scrollTop;
+    const diff = targetScroll - startScroll;
+    if (Math.abs(diff) < 2) return;
+
+    const duration = 650; // ms
+    const startTime = performance.now();
+    // Quartic ease out curve (Apple-smooth fluid motion)
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 4);
+
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      container.scrollTop = startScroll + diff * easeOut(progress);
+
+      if (progress < 1) {
+        scrollAnimRef.current = requestAnimationFrame(step);
+      } else {
+        scrollAnimRef.current = null;
       }
-    });
+    };
+
+    scrollAnimRef.current = requestAnimationFrame(step);
+
+    return () => {
+      if (scrollAnimRef.current) {
+        cancelAnimationFrame(scrollAnimRef.current);
+        scrollAnimRef.current = null;
+      }
+    };
   }, [activeIndex, hasSynced, activeTab]);
+
+  // Pause auto-scroll briefly when user manually scrolls
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const onUserInteraction = () => {
+      isUserScrollingRef.current = true;
+      if (scrollAnimRef.current) {
+        cancelAnimationFrame(scrollAnimRef.current);
+        scrollAnimRef.current = null;
+      }
+      if (userScrollTimeoutRef.current) {
+        clearTimeout(userScrollTimeoutRef.current);
+      }
+      userScrollTimeoutRef.current = setTimeout(() => {
+        isUserScrollingRef.current = false;
+      }, 3500);
+    };
+
+    container.addEventListener("wheel", onUserInteraction, { passive: true });
+    container.addEventListener("touchmove", onUserInteraction, { passive: true });
+
+    return () => {
+      container.removeEventListener("wheel", onUserInteraction);
+      container.removeEventListener("touchmove", onUserInteraction);
+      if (userScrollTimeoutRef.current) {
+        clearTimeout(userScrollTimeoutRef.current);
+      }
+    };
+  }, [activeTab]);
 
   return (
     <AnimatePresence>
@@ -343,13 +414,13 @@ export function RightSidebar({
               <div className="flex h-full w-full flex-col relative">
                 <div 
                   ref={scrollRef} 
-                  className="flex-1 overflow-y-auto px-6 py-[30%] custom-scrollbar scroll-smooth no-scrollbar"
+                  className="flex-1 overflow-y-auto px-6 pt-[32vh] pb-[48vh] custom-scrollbar no-scrollbar select-none"
                   style={{
                     maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
                     WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
                   }}
                 >
-                  <div className={`max-w-2xl mx-auto ${!hasSynced ? "space-y-6" : "space-y-2 pb-32"}`}>
+                  <div className={`max-w-2xl mx-auto ${!hasSynced ? "space-y-6" : "space-y-2 pb-24"}`}>
                     {lines.map((line, index) => {
                       const isActive = hasSynced && index === activeIndex;
                       const lineItem = effectiveLines[index];
@@ -368,68 +439,113 @@ export function RightSidebar({
                       const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
                       const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
 
+                      // 4 Apple Music animation effects:
+                      // 1. Active lyric line: Bright white, bold text that stands out clearly
+                      // 2. Upcoming lyrics: Dimmed text with a subtle blur effect
+                      // 3. Previous lyrics: Move upward smoothly while gradually fading out and becoming more blurred
+                      let lineStyle: React.CSSProperties = {
+                        opacity: 0.8,
+                        filter: "blur(0px)",
+                        transform: "scale(1) translate3d(0, 0, 0)",
+                        transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
+                        willChange: "transform, opacity, filter",
+                      };
+
+                      if (hasSynced && activeIndex >= 0) {
+                        if (isActive) {
+                          lineStyle = {
+                            opacity: 1,
+                            filter: "blur(0px)",
+                            transform: "scale(1.02) translate3d(4px, 0, 0)",
+                            transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
+                            willChange: "transform, opacity, filter",
+                          };
+                        } else if (index > activeIndex) {
+                          lineStyle = {
+                            opacity: 0.35,
+                            filter: "blur(1.5px)",
+                            transform: "scale(0.98) translate3d(0, 0, 0)",
+                            transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
+                            willChange: "transform, opacity, filter",
+                          };
+                        } else {
+                          const diff = activeIndex - index;
+                          let op = 0.02;
+                          let blurPx = 6.5;
+                          let scaleVal = 0.92;
+                          let yOffset = -6;
+
+                          if (diff === 1) {
+                            op = 0.28;
+                            blurPx = 2;
+                            scaleVal = 0.97;
+                            yOffset = -2;
+                          } else if (diff === 2) {
+                            op = 0.16;
+                            blurPx = 3.5;
+                            scaleVal = 0.95;
+                            yOffset = -3;
+                          } else if (diff === 3) {
+                            op = 0.08;
+                            blurPx = 5;
+                            scaleVal = 0.93;
+                            yOffset = -5;
+                          }
+
+                          lineStyle = {
+                            opacity: op,
+                            filter: `blur(${blurPx}px)`,
+                            transform: `scale(${scaleVal}) translate3d(0, ${yOffset}px, 0)`,
+                            transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
+                            willChange: "transform, opacity, filter",
+                          };
+                        }
+                      }
+
                       return (
                         <div 
                           key={`${index}`} 
                           ref={(el) => { elementsRef.current[index] = el; }}
                           onClick={() => { if (hasSynced && onSeek && lineItem) onSeek(lineItem.at); }}
-                          className={`group flex items-center transition-all duration-700 ease-out origin-left transform ${
-                            hasSynced ? 'cursor-pointer' : ''
+                          style={lineStyle}
+                          className={`group flex items-center origin-left transform-gpu ${
+                            hasSynced ? 'cursor-pointer' : 'cursor-default'
                           } ${
                             isInstrumental 
-                                ? (isActive ? "h-[60px] opacity-100" : "h-0 opacity-0 overflow-hidden") 
-                                : "min-h-[48px] py-3.5"
-                          } ${
-                            isActive 
-                                ? "opacity-100 scale-100 blur-0 translate-x-1" 
-                                : "opacity-25 scale-[0.96] blur-[0.4px] hover:opacity-60 hover:blur-0 hover:translate-x-0.5"
-                          }`}
+                                ? (isActive ? "h-[54px]" : "h-[32px]") 
+                                : !line || !line.trim()
+                                  ? "h-[28px]"
+                                  : "min-h-[44px] py-3"
+                          } ${!isActive && hasSynced ? "hover:opacity-75 hover:filter-none hover:scale-[0.99]" : ""}`}
                         >
                           {isInstrumental ? (
-                            <div className={`flex gap-2 origin-left transition-all duration-500 ${isActive ? "opacity-100" : "opacity-0"}`}>
-                                <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.1 }} />
-                                <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.1 }} />
-                                <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.1 }} />
+                            <div className={`flex gap-2 origin-left transition-opacity duration-500 ${isActive ? "opacity-100" : "opacity-30"}`}>
+                                <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.2 }} />
+                                <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.2 }} />
+                                <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.2 }} />
                              </div>
+                          ) : lineItem?.words && lineItem.words.length > 0 ? (
+                            <KaraokeWordLine
+                              words={lineItem.words}
+                              currentTimeSec={currentTimeSec}
+                              isActive={isActive}
+                              isPastLine={hasSynced && activeIndex >= 0 && index < activeIndex}
+                              isUpcomingLine={hasSynced && activeIndex >= 0 && index > activeIndex}
+                              sizeVariant="sidebar"
+                            />
                           ) : (
                             <p
-                              className={`w-full origin-left whitespace-pre-wrap break-words text-balance transition-all duration-700 font-extrabold tracking-tight ${
+                              className={`w-full origin-left whitespace-pre-wrap break-words text-balance tracking-tight ${
                                 !hasSynced
                                   ? (line.includes("not available") || line.includes("Loading")
-                                      ? "text-[24px] leading-[1.2] text-white/40"
-                                      : "text-[24px] leading-[1.2] text-white/80 scale-100 group-hover:text-white")
-                                  : "text-[24px] leading-[1.2] text-white"
+                                      ? "text-[24px] leading-[1.2] text-white/40 font-medium"
+                                      : "text-[24px] leading-[1.2] text-white/80 font-extrabold")
+                                  : isActive
+                                    ? "text-[24px] leading-[1.2] text-white font-extrabold drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
+                                    : "text-[24px] leading-[1.2] text-white font-extrabold"
                               }`}
                             >
-                              {lineItem?.words && lineItem.words.length > 0 ? (
-                                <span className="inline">
-                                  {lineItem.words.map((w: LyricsWord, wIdx: number) => {
-                                    const isWordActive = isActive && (
-                                      currentTimeSec >= w.start &&
-                                      (w.end !== undefined ? currentTimeSec <= w.end : true)
-                                    );
-                                    const isWordPassed = isActive && (
-                                      w.end !== undefined ? currentTimeSec > w.end : currentTimeSec > w.start
-                                    );
-                                    return (
-                                      <span
-                                        key={wIdx}
-                                        className={`transition-all duration-200 ${
-                                          isWordActive
-                                            ? "text-white font-black"
-                                            : isWordPassed || isActive
-                                              ? "text-white/80"
-                                              : "text-white/30"
-                                        }`}
-                                      >
-                                        {w.text}{" "}
-                                      </span>
-                                    );
-                                  })}
-                                </span>
-                              ) : (
-                                line
-                              )}
+                              {line}
                             </p>
                           )}
                         </div>

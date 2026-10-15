@@ -448,7 +448,7 @@ export function RightSidebar({
                         filter: "blur(0px)",
                         transform: "scale(1) translate3d(0, 0, 0)",
                         transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
-                        willChange: "transform, opacity, filter",
+                        willChange: "transform, opacity",
                       };
 
                       if (hasSynced && activeIndex >= 0) {
@@ -458,7 +458,7 @@ export function RightSidebar({
                             filter: "blur(0px)",
                             transform: "scale(1.02) translate3d(4px, 0, 0)",
                             transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
-                            willChange: "transform, opacity, filter",
+                            willChange: "transform, opacity",
                           };
                         } else if (index > activeIndex) {
                           lineStyle = {
@@ -466,7 +466,7 @@ export function RightSidebar({
                             filter: "blur(1.5px)",
                             transform: "scale(0.98) translate3d(0, 0, 0)",
                             transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
-                            willChange: "transform, opacity, filter",
+                            willChange: "transform, opacity",
                           };
                         } else {
                           const diff = activeIndex - index;
@@ -497,7 +497,7 @@ export function RightSidebar({
                             filter: `blur(${blurPx}px)`,
                             transform: `scale(${scaleVal}) translate3d(0, ${yOffset}px, 0)`,
                             transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
-                            willChange: "transform, opacity, filter",
+                            willChange: "transform, opacity",
                           };
                         }
                       }
@@ -529,6 +529,7 @@ export function RightSidebar({
                               words={lineItem?.words}
                               lineText={line}
                               syncedLine={lineItem ? { text: line, start: lineItem.at, end: lineItem.at + 4, words: lineItem.words } : null}
+                              nextLine={effectiveLines[index + 1] ? { text: effectiveLines[index + 1].line, start: effectiveLines[index + 1].at, end: effectiveLines[index + 1].at + 4, words: effectiveLines[index + 1].words } : null}
                               currentTimeSec={currentTimeSec}
                               isActive={isActive}
                               isPastLine={hasSynced && activeIndex >= 0 && index < activeIndex}

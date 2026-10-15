@@ -166,6 +166,7 @@ const LyricLine = React.memo(({
           words={words}
           lineText={line}
           syncedLine={syncedLine}
+          nextLine={syncedLines[index + 1] ?? null}
           currentTimeSec={currentTimeSec}
           isActive={isActive}
           isPastLine={hasSynced && activeIndex >= 0 && index < activeIndex}

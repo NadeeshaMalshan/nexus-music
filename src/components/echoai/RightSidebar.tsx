@@ -427,6 +427,7 @@ export function RightSidebar({
                       const isActive = hasSynced && index === activeIndex;
                       const lineItem = effectiveLines[index];
                       const isInstrumental = hasSynced && lineItem?.isInstrumental;
+                      const hasWordSync = Boolean(hasSynced && lineItem?.words && lineItem.words.length > 0);
 
                       let instProgress = 0;
                       if (isInstrumental && isActive && lineItem) {
@@ -526,7 +527,7 @@ export function RightSidebar({
                                 <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.2 }} />
                                 <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.2 }} />
                              </div>
-                          ) : hasSynced ? (
+                          ) : hasWordSync ? (
                             <KaraokeWordLine
                               words={lineItem?.words}
                               lineText={line}
@@ -547,8 +548,8 @@ export function RightSidebar({
                                       ? "text-[24px] leading-[1.2] text-white/40 font-medium"
                                       : "text-[24px] leading-[1.2] text-white/80 font-extrabold")
                                   : isActive
-                                    ? "text-[24px] leading-[1.2] text-white font-extrabold drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
-                                    : "text-[24px] leading-[1.2] text-white font-extrabold"
+                                    ? "text-[24px] leading-[1.25] text-white font-extrabold"
+                                    : "text-[24px] leading-[1.25] text-white/40 font-extrabold"
                               }`}
                             >
                               {line}

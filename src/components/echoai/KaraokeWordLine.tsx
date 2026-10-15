@@ -299,6 +299,34 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
     return <div className="w-full h-4" />;
   }
 
+  const hasWordTimestamps = Boolean(words && words.length > 0);
+
+  const getMainClasses = () => {
+    switch (sizeVariant) {
+      case "desktop":
+        return "text-[44px] leading-[1.18] font-extrabold tracking-tight";
+      case "mobile":
+        return "text-[38px] leading-[1.15] font-black tracking-tight";
+      case "sidebar":
+      default:
+        return "text-[24px] leading-[1.25] font-extrabold tracking-tight";
+    }
+  };
+
+  // If no genuine word timestamps from provider, render plain line without word-by-word animation
+  if (!hasWordTimestamps) {
+    const segClasses = getMainClasses();
+    return (
+      <p
+        className={`w-full origin-left text-left whitespace-normal break-words text-balance transform-gpu ${segClasses} ${
+          isActive ? "text-white" : "text-white/40"
+        }`}
+      >
+        {text}
+      </p>
+    );
+  }
+
   const lineStart = words && words.length > 0 && words[0].start != null
     ? words[0].start
     : (syncedLine?.start ?? 0);
@@ -397,18 +425,6 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
       cancelAnimationFrame(animId);
     };
   }, [isActive, effectiveWords]);
-
-  const getMainClasses = () => {
-    switch (sizeVariant) {
-      case "desktop":
-        return "text-[44px] leading-[1.18] font-extrabold tracking-tight";
-      case "mobile":
-        return "text-[38px] leading-[1.15] font-black tracking-tight";
-      case "sidebar":
-      default:
-        return "text-[24px] leading-[1.25] font-extrabold tracking-tight";
-    }
-  };
 
   const getBracketClasses = () => {
     switch (sizeVariant) {

@@ -6,7 +6,7 @@ import { MusicArtwork } from "./MusicArtwork";
 
 type CanvasResult = {
   hasCanvas: boolean;
-  animatedCover: { url: string; format?: "hls" | "mp4" | "unknown" } | null;
+  animatedCover: { url: string; format?: "hls" | "mp4" | "unknown"; bgColor?: string } | null;
 };
 
 interface AnimatedCanvasArtworkProps {
@@ -18,7 +18,7 @@ interface AnimatedCanvasArtworkProps {
   className?: string;
   iconSize?: number;
   enabled?: boolean;
-  onHasCanvasChange?: (hasCanvas: boolean) => void;
+  onHasCanvasChange?: (hasCanvas: boolean, bgColor?: string | null) => void;
 }
 
 /** Fetches a motion cover when available and gracefully falls back to the regular artwork. */
@@ -51,7 +51,7 @@ export function AnimatedCanvasArtwork({
   useEffect(() => {
     if (!enabled || !title.trim() || !artist.trim()) {
       setCanvasUrl(null);
-      onHasCanvasChange?.(false);
+      onHasCanvasChange?.(false, null);
       return;
     }
     const controller = new AbortController();
@@ -62,13 +62,14 @@ export function AnimatedCanvasArtwork({
       .then((response) => response.ok ? response.json() as Promise<CanvasResult> : null)
       .then((data) => {
         const has = Boolean(data?.hasCanvas && data.animatedCover?.url);
+        const bg = data?.animatedCover?.bgColor || null;
         setCanvasUrl(has ? data!.animatedCover!.url : null);
-        onHasCanvasChange?.(has);
+        onHasCanvasChange?.(has, bg);
       })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
           setCanvasUrl(null);
-          onHasCanvasChange?.(false);
+          onHasCanvasChange?.(false, null);
         }
       });
     return () => controller.abort();

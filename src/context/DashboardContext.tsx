@@ -7,7 +7,7 @@ import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { useSession } from "next-auth/react";
 import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
 import { readResponseJson } from "@/lib/readResponseJson";
-import { useArtworkColors } from "@/lib/useArtworkColors";
+import { useArtworkColors, type ArtworkPalette } from "@/lib/useArtworkColors";
 import { useSettings } from "./SettingsContext";
 import { type LiveMetadata } from "@/lib/live-tracker";
 import { useDeviceSync } from "./DeviceSyncContext";
@@ -108,7 +108,7 @@ type DashboardContextType = {
   rightSidebarMode: "queue" | "jam" | "lyrics";
   isExpandedPlayerOpen: boolean;
   selectedPlaylist: YouTubePlaylist | null;
-  palette: { primary: string; secondary: string; accent: string };
+  palette: ArtworkPalette;
 
   // Actions
   setIsPlaying: (playing: boolean) => void;

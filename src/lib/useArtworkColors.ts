@@ -3,18 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export interface ArtworkPalette {
-  /** 60% – dominant background color (darkened for UI use) */
+  /** Dominant background color (calibrated rich background, never pitch black) */
   primary: string;
-  /** 30% – secondary/mid color */
+  /** Secondary/mid color */
   secondary: string;
-  /** 10% – vibrant accent used for highlights / buttons */
+  /** Vibrant accent used for highlights / buttons */
   accent: string;
+  /** True cover color preserving the actual hue and tone of the album cover */
+  coverTone: string;
 }
 
 const DEFAULT_PALETTE: ArtworkPalette = {
-  primary: "#0d0b14",
-  secondary: "#1a1528",
-  accent: "#a855f7",
+  primary: "#1b1427",
+  secondary: "#291f3d",
+  accent: "#c084fc",
+  coverTone: "#382854",
 };
 
 function hexToRgb(hex: string): [number, number, number] | null {
@@ -28,13 +31,15 @@ export function paletteFromAccent(accentHex: string): ArtworkPalette {
   const rgb = hexToRgb(accentHex.trim() || "#FA233B");
   if (!rgb) return DEFAULT_PALETTE;
   const [h, s, l] = rgbToHsl(rgb[0], rgb[1], rgb[2]);
-  const [ph, ps, pl] = darkenHsl(h, s, l, 58);
-  const [sh, ss, sl] = darkenHsl(h, Math.min(s, 34), l, 42);
+  const [ph, ps, pl] = darkenHsl(h, s, l, 35);
+  const [sh, ss, sl] = darkenHsl(h, Math.min(s, 50), l, 22);
   const [ah, as2, al] = vibrifyHsl(h, s, l);
+  const [cth, cts, ctl] = coverToneHsl(h, s, l);
   return {
     primary: hslToHex(ph, ps, pl),
     secondary: hslToHex(sh, ss, sl),
     accent: hslToHex(ah, as2, al),
+    coverTone: hslToHex(cth, cts, ctl),
   };
 }
 
@@ -66,9 +71,18 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
 }
 
-/** Darken a color for readability as a background */
-function darkenHsl(h: number, s: number, l: number, amount = 60): [number, number, number] {
-  return [h, Math.min(s, 30), Math.max(4, l - amount)];
+/** Darken a color for readability while preserving rich color saturation and tone (NOT pitch black) */
+function darkenHsl(h: number, s: number, l: number, amount = 35): [number, number, number] {
+  const targetL = Math.max(16, Math.min(26, l > 45 ? l - amount : l * 0.65));
+  const targetS = Math.max(35, Math.min(75, s * 0.85));
+  return [h, targetS, targetL];
+}
+
+/** Medium cover tone for bottom panels and cards (rich, legible, matching cover) */
+function coverToneHsl(h: number, s: number, l: number): [number, number, number] {
+  const targetL = Math.max(24, Math.min(36, l > 48 ? 32 : l));
+  const targetS = Math.max(30, Math.min(80, s));
+  return [h, targetS, targetL];
 }
 
 /** Boost saturation + lightness so the accent pops */
@@ -136,22 +150,32 @@ async function extractPalette(
   imageUrl: string,
   fallbackOnError: ArtworkPalette = DEFAULT_PALETTE,
 ): Promise<ArtworkPalette> {
-  const tryExtract = (url: string, useProxy = false): Promise<ArtworkPalette | null> => {
+  const tryExtract = (targetUrl: string): Promise<ArtworkPalette | null> => {
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
-      
-      const finalUrl = useProxy 
-        ? `https://images.weserv.nl/?url=${encodeURIComponent(url.replace(/^https?:\/\//, ""))}&w=200&h=200&fit=cover`
-        : url;
+      let done = false;
+      const timer = setTimeout(() => {
+        if (!done) {
+          done = true;
+          resolve(null);
+        }
+      }, 4000);
 
       img.onload = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
         try {
           const SIZE = 80;
           const canvas = document.createElement("canvas");
-          canvas.width = SIZE; canvas.height = SIZE;
+          canvas.width = SIZE;
+          canvas.height = SIZE;
           const ctx = canvas.getContext("2d");
-          if (!ctx) { resolve(null); return; }
+          if (!ctx) {
+            resolve(null);
+            return;
+          }
           ctx.drawImage(img, 0, 0, SIZE, SIZE);
           const { data } = ctx.getImageData(0, 0, SIZE, SIZE);
 
@@ -160,7 +184,10 @@ async function extractPalette(
             return l > 5 && l < 95 && s > 8;
           });
 
-          if (pixels.length < 10) { resolve(null); return; }
+          if (pixels.length < 10) {
+            resolve(null);
+            return;
+          }
           const centers = kmeans(pixels, 6);
           const hslCenters = centers.map(([r, g, b]) => {
             const [h, s, l] = rgbToHsl(r, g, b);
@@ -169,31 +196,49 @@ async function extractPalette(
           hslCenters.sort((a, b) => b.score - a.score);
 
           const p = hslCenters[0] ?? { h: 270, s: 20, l: 10 };
-          const [ph, ps, pl] = darkenHsl(p.h, p.s, p.l, 55);
+          const [ph, ps, pl] = darkenHsl(p.h, p.s, p.l, 36);
           const s2 = hslCenters[1] ?? hslCenters[0];
-          const [sh, ss, sl] = darkenHsl(s2.h, s2.s, s2.l, 40);
+          const [sh, ss, sl] = darkenHsl(s2.h, s2.s, s2.l, 25);
           const ac = hslCenters[0] ?? hslCenters[0];
           const [ah, as2, al] = vibrifyHsl(ac.h, ac.s, ac.l);
+          const [cth, cts, ctl] = coverToneHsl(p.h, p.s, p.l);
 
           resolve({
             primary: hslToHex(ph, ps, pl),
             secondary: hslToHex(sh, ss, sl),
             accent: hslToHex(ah, as2, al),
+            coverTone: hslToHex(cth, cts, ctl),
           });
         } catch {
           resolve(null);
         }
       };
-      img.onerror = () => resolve(null);
-      img.src = finalUrl;
+      img.onerror = () => {
+        if (!done) {
+          done = true;
+          clearTimeout(timer);
+          resolve(null);
+        }
+      };
+      img.src = targetUrl;
     });
   };
 
-  // Try direct first, then fallback to proxy for CORS issues
-  const direct = await tryExtract(imageUrl, false);
+  // 1. Try direct first (instant if host supports CORS like Apple Music)
+  const direct = await tryExtract(imageUrl);
   if (direct) return direct;
-  
-  return (await tryExtract(imageUrl, true)) || fallbackOnError;
+
+  // 2. Try internal same-origin image proxy (bypasses CORS restrictions seamlessly)
+  const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+  const proxied = await tryExtract(proxyUrl);
+  if (proxied) return proxied;
+
+  // 3. Fallback to external weserv proxy
+  const weservUrl = `https://images.weserv.nl/?url=${encodeURIComponent(imageUrl.replace(/^https?:\/\//, ""))}&w=200&h=200&fit=cover`;
+  const weserv = await tryExtract(weservUrl);
+  if (weserv) return weserv;
+
+  return fallbackOnError;
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────

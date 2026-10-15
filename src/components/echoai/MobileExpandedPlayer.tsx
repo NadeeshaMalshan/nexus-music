@@ -156,7 +156,7 @@ const LyricLine = React.memo(({
           <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.25 }} />
           <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.25 }} />
         </div>
-      ) : hasSynced ? (
+      ) : hasWordSync ? (
         <KaraokeWordLine
           words={words}
           lineText={line}
@@ -170,8 +170,13 @@ const LyricLine = React.memo(({
           sizeVariant="mobile"
         />
       ) : (
-        <p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] text-[38px] leading-[1.08] ${isActive ? "text-white" : "text-white/90"
-          }`}>
+        <p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-black tracking-tight drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] text-[38px] leading-[1.08] ${
+          !hasSynced
+            ? "text-white/90"
+            : isActive
+              ? "text-white"
+              : "text-white/40"
+        }`}>
           {line}
         </p>
       )}
@@ -241,10 +246,66 @@ export function MobileExpandedPlayer({
   const [liveLikeToast, setLiveLikeToast] = useState<{ title: string; artist: string; artwork?: string | null } | null>(null);
   const [hasOpened, setHasOpened] = useState(false);
   const [hasAnimatedCover, setHasAnimatedCover] = useState(false);
+  const [canvasBgColor, setCanvasBgColor] = useState<string | null>(null);
 
   useEffect(() => {
     setHasAnimatedCover(false);
+    setCanvasBgColor(null);
   }, [currentSong.id]);
+
+  // Cover-matching color for the player bottom area (never dark black, always color-coordinated with cover)
+  const bottomMatchColor = useMemo(() => {
+    const rawColor = canvasBgColor || palette?.coverTone || palette?.primary;
+    if (!rawColor || rawColor === "#000000" || rawColor === "#18181b") {
+      return "#241b30";
+    }
+
+    const h = rawColor.replace(/^#/, "").trim();
+    if (h.length === 6 && /^[a-f\d]+$/i.test(h)) {
+      const r = parseInt(h.slice(0, 2), 16) / 255;
+      const g = parseInt(h.slice(2, 4), 16) / 255;
+      const b = parseInt(h.slice(4, 6), 16) / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let hue = 0, sat = 0;
+      const light = (max + min) / 2;
+      if (max !== min) {
+        const d = max - min;
+        sat = light > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: hue = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+          case g: hue = ((b - r) / d + 2) / 6; break;
+          case b: hue = ((r - g) / d + 4) / 6; break;
+        }
+      }
+      const hueDeg = hue * 360;
+      const satPct = sat * 100;
+      const lightPct = light * 100;
+
+      let targetL = lightPct;
+      let targetS = satPct;
+
+      if (lightPct > 44) {
+        targetL = Math.max(26, Math.min(34, lightPct * 0.58));
+        targetS = Math.max(35, Math.min(80, satPct * 1.1));
+      } else if (lightPct < 14) {
+        targetL = Math.max(18, Math.min(26, lightPct + 12));
+        targetS = Math.max(35, Math.min(75, satPct * 1.2));
+      } else {
+        targetL = Math.max(20, Math.min(36, lightPct));
+        targetS = Math.max(30, Math.min(80, satPct));
+      }
+
+      const sNorm = targetS / 100;
+      const lNorm = targetL / 100;
+      const k = (n: number) => (n + hueDeg / 30) % 12;
+      const a = sNorm * Math.min(lNorm, 1 - lNorm);
+      const f = (n: number) => lNorm - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+      const toHex = (x: number) => Math.round(x * 255).toString(16).padStart(2, "0");
+      return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+    }
+
+    return rawColor;
+  }, [canvasBgColor, palette]);
 
   const handleToggleLike = () => {
     if (isLiked) {
@@ -787,7 +848,7 @@ export function MobileExpandedPlayer({
         }
       }}
       className="fixed inset-0 z-[60] flex flex-col bg-black overflow-hidden"
-      style={{ backgroundColor: isAnimatedFullView ? (palette?.primary || "#18181b") : "#000000" }}
+      style={{ backgroundColor: isAnimatedFullView ? bottomMatchColor : "#000000" }}
     >
       <AnimatePresence>
         {jamWarning && (
@@ -1086,25 +1147,28 @@ export function MobileExpandedPlayer({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5, ease: EXPO_OUT }}
                 className="flex flex-1 flex-col overflow-hidden animate-gpu"
-                style={{ backgroundColor: palette?.primary || "#18181b" }}
+                style={{ backgroundColor: bottomMatchColor }}
               >
                 {/* UPPER SECTION: Full Bleed Animated Motion Cover */}
-                <div className="relative w-full h-[68dvh] overflow-hidden shrink-0 select-none">
+                <div className="relative w-full h-[60dvh] overflow-hidden shrink-0 select-none">
                   <AnimatedCanvasArtwork
                     title={liveMetadata?.title || currentSong.title}
                     artist={currentSong.artist}
                     src={liveMetadata?.artwork || currentSong.artwork}
                     alt={liveMetadata?.title || currentSong.title}
                     iconSize={64}
-                    onHasCanvasChange={setHasAnimatedCover}
+                    onHasCanvasChange={(has, bg) => {
+                      setHasAnimatedCover(has);
+                      setCanvasBgColor(bg || null);
+                    }}
                     className="h-full w-full object-cover"
                   />
 
                   {/* Soft bottom gradient fade into matching bottom cover color */}
                   <div
-                    className="absolute inset-x-0 bottom-0 h-28 pointer-events-none z-10"
+                    className="absolute inset-x-0 bottom-0 h-32 pointer-events-none z-10"
                     style={{
-                      background: `linear-gradient(to bottom, transparent 0%, transparent 60%, ${palette?.primary || "#18181b"} 100%)`,
+                      background: `linear-gradient(to bottom, transparent 0%, ${bottomMatchColor}40 40%, ${bottomMatchColor}cc 80%, ${bottomMatchColor} 100%)`,
                     }}
                   />
 
@@ -1145,7 +1209,7 @@ export function MobileExpandedPlayer({
                 {/* LOWER SECTION: Track info, actions & controls with cover-matching color */}
                 <div
                   className="relative z-20 flex flex-1 flex-col justify-between px-7 pb-2 pt-1"
-                  style={{ backgroundColor: palette?.primary || "#18181b" }}
+                  style={{ backgroundColor: bottomMatchColor }}
                 >
                   {/* Track Info & Action Buttons */}
                   <div className="flex items-center justify-between gap-3 mt-0.5">
@@ -1327,7 +1391,10 @@ export function MobileExpandedPlayer({
                         src={liveMetadata?.artwork || currentSong.artwork}
                         alt={liveMetadata?.title || currentSong.title}
                         iconSize={64}
-                        onHasCanvasChange={setHasAnimatedCover}
+                        onHasCanvasChange={(has, bg) => {
+                          setHasAnimatedCover(has);
+                          setCanvasBgColor(bg || null);
+                        }}
                       />
                     )}
                   </m.div>

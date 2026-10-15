@@ -27,6 +27,7 @@ interface CanvasResponse {
     matchedTitle?: string;
     matchedArtist?: string;
     album?: string;
+    bgColor?: string;
   };
   fallbackRequired: boolean;
   source: "apple-music" | null;
@@ -220,6 +221,7 @@ export async function GET(request: Request) {
     const inlineVideo = obj(attributes.editorialVideo);
     let url = videoUrl(inlineVideo);
     let matchedAlbum = string(attributes.albumName);
+    let matchedBgColor = string(obj(attributes.artwork)?.bgColor);
 
     if (!url) {
       let albumId = "";
@@ -242,6 +244,9 @@ export async function GET(request: Request) {
           const detailAlbumAttr = obj(detailAlbumItem?.attributes);
           url = videoUrl(obj(detailAlbumAttr?.editorialVideo));
           matchedAlbum = string(detailAlbumAttr?.name) || matchedAlbum;
+          if (!matchedBgColor) {
+            matchedBgColor = string(obj(detailAlbumAttr?.artwork)?.bgColor);
+          }
         }
       }
 
@@ -253,6 +258,9 @@ export async function GET(request: Request) {
         const albumAttributes = obj(albumRecord?.attributes);
         url = videoUrl(obj(albumAttributes?.editorialVideo));
         matchedAlbum = string(albumAttributes?.name) || matchedAlbum;
+        if (!matchedBgColor) {
+          matchedBgColor = string(obj(albumAttributes?.artwork)?.bgColor);
+        }
       }
 
       // Fallback: If still no video, search albums directly by artist and album name
@@ -276,6 +284,9 @@ export async function GET(request: Request) {
             if (v) {
               url = v;
               matchedAlbum = string(aAttr?.name) || matchedAlbum;
+              if (!matchedBgColor) {
+                matchedBgColor = string(obj(aAttr?.artwork)?.bgColor);
+              }
               break;
             }
           }
@@ -285,6 +296,9 @@ export async function GET(request: Request) {
 
     if (!url) continue;
     const format = /\.m3u8(?:\?|$)/i.test(url) ? "hls" : /\.mp4(?:\?|$)/i.test(url) ? "mp4" : "unknown";
+    const cleanBgColor = matchedBgColor
+      ? (matchedBgColor.startsWith("#") ? matchedBgColor : `#${matchedBgColor}`)
+      : undefined;
     const response: CanvasResponse = {
       hasCanvas: true,
       animatedCover: {
@@ -297,6 +311,7 @@ export async function GET(request: Request) {
         matchedTitle: string(attributes.name),
         matchedArtist: string(attributes.artistName),
         album: matchedAlbum || undefined,
+        bgColor: cleanBgColor,
       },
       fallbackRequired: false,
       source: "apple-music",

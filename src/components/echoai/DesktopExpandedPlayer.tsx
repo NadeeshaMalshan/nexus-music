@@ -163,7 +163,7 @@ const LyricLine = React.memo(({
           <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.25 }} />
           <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.25 }} />
         </div>
-      ) : hasSynced ? (
+      ) : hasWordSync ? (
         <KaraokeWordLine
           words={words}
           lineText={line}
@@ -178,7 +178,11 @@ const LyricLine = React.memo(({
         />
       ) : (
         <p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-[0_4px_24px_rgba(0,0,0,0.5)] text-[44px] leading-[1.15] ${
-          isActive ? "text-white" : "text-white/90"
+          !hasSynced
+            ? "text-white/90"
+            : isActive
+              ? "text-white"
+              : "text-white/40"
         }`}>
           {line}
         </p>
@@ -192,6 +196,7 @@ const LyricLine = React.memo(({
   if (prev.index !== next.index) return false;
   if (prev.isInstrumental !== next.isInstrumental) return false;
   if (prev.syncedLine !== next.syncedLine) return false;
+  if (prev.isPlaying !== next.isPlaying) return false;
   if (next.isActive && next.hasSynced) {
     return prev.currentTimeSec === next.currentTimeSec;
   }

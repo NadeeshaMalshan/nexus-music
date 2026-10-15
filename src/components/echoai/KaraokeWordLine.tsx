@@ -61,6 +61,118 @@ export function groupWordsByBracket(words: LyricsWord[]): WordSegment[] {
   return segments;
 }
 
+/**
+ * Estimates word-level timing for line-synced lyrics based on character count.
+ * This guarantees that even when line-synced lyrics wrap across multiple visual lines,
+ * Line 2 stays dim until Line 1 has finished filling.
+ */
+export function estimateWordsForLine(text: string, lineStart: number, lineEnd: number): LyricsWord[] {
+  if (!text || !text.trim()) return [];
+  const rawWords = text.trim().split(/\s+/).filter(Boolean);
+  if (rawWords.length === 0) return [];
+
+  const lineDuration = Math.max(0.4, lineEnd - lineStart);
+  const totalChars = rawWords.reduce((acc, w) => acc + w.length, 0) + Math.max(0, rawWords.length - 1);
+  let accumulatedChars = 0;
+
+  return rawWords.map((wordStr) => {
+    const startRatio = totalChars > 0 ? accumulatedChars / totalChars : 0;
+    accumulatedChars += wordStr.length;
+    const endRatio = totalChars > 0 ? accumulatedChars / totalChars : 1;
+    accumulatedChars += 1; // account for space between words
+
+    return {
+      text: wordStr,
+      start: lineStart + startRatio * lineDuration,
+      end: lineStart + endRatio * lineDuration,
+    };
+  });
+}
+
+interface KaraokeWordItemProps {
+  word: LyricsWord;
+  nextWord?: LyricsWord;
+  isPastLine: boolean;
+  isUpcomingLine: boolean;
+  isActive: boolean;
+  currentTimeSec: number;
+  weightClass: string;
+}
+
+const KaraokeWordItem = React.memo(function KaraokeWordItem({
+  word,
+  nextWord,
+  isPastLine,
+  isUpcomingLine,
+  isActive,
+  currentTimeSec,
+  weightClass,
+}: KaraokeWordItemProps) {
+  const wText = (word.text || "").trim();
+  if (!wText) return null;
+
+  const wStart = word.start;
+  const wEnd = word.end !== undefined && word.end > wStart
+    ? word.end
+    : nextWord && nextWord.start > wStart
+    ? nextWord.start
+    : wStart + 0.45;
+  const wDuration = Math.max(0.04, wEnd - wStart);
+
+  let wordFillPercent = 0;
+  let isWordFilling = false;
+
+  if (isPastLine) {
+    wordFillPercent = 100;
+  } else if (isUpcomingLine) {
+    wordFillPercent = 0;
+  } else if (isActive) {
+    if (currentTimeSec >= wEnd) {
+      wordFillPercent = 100;
+    } else if (currentTimeSec < wStart) {
+      wordFillPercent = 0;
+    } else {
+      isWordFilling = true;
+      const progress = (currentTimeSec - wStart) / wDuration;
+      wordFillPercent = Math.max(0, Math.min(100, progress * 100));
+    }
+  }
+
+  return (
+    <span className="relative inline-block whitespace-nowrap mr-[0.24em] last:mr-0 align-baseline select-none">
+      {/* Base unplayed word (dimmed white) */}
+      <span className={`transition-colors duration-200 ${weightClass} ${
+        isActive ? "text-white/35" : "text-white/40"
+      }`}>
+        {wText}
+      </span>
+
+      {/* Active filled word (pure bright white with glow), smoothly wiped left-to-right */}
+      {wordFillPercent > 0 && (
+        <span
+          className="absolute top-0 left-0 w-full h-full pointer-events-none select-none overflow-hidden"
+          style={{
+            clipPath: `inset(0 ${Math.max(0, 100 - wordFillPercent)}% 0 0)`,
+            WebkitClipPath: `inset(0 ${Math.max(0, 100 - wordFillPercent)}% 0 0)`,
+            transition: isWordFilling
+              ? "clip-path 0.08s linear, -webkit-clip-path 0.08s linear"
+              : wordFillPercent === 100
+              ? "clip-path 0.15s ease-out, -webkit-clip-path 0.15s ease-out"
+              : "none",
+            willChange: "clip-path",
+          }}
+          aria-hidden="true"
+        >
+          <span className={`text-white drop-shadow-[0_0_16px_rgba(255,255,255,0.45)] whitespace-nowrap ${weightClass}`}>
+            {wText}
+          </span>
+        </span>
+      )}
+    </span>
+  );
+});
+KaraokeWordItem.displayName = "KaraokeWordItem";
+
 interface KaraokeWordLineProps {
   words?: LyricsWord[];
   lineText?: string;
@@ -109,147 +221,68 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
     }
   };
 
-  // 1. WORD-SYNC LYRICS: Left-to-right smooth fill across the line/segment
+  const mainWeight = sizeVariant === "mobile" ? "font-black" : "font-extrabold";
+  const bracketWeight = "font-bold";
+
+  // 1. WORD-SYNC LYRICS: Render word-by-word with bracket ad-libs on a new line
   if (hasWordSync && segments.length > 0) {
     return (
       <div className="w-full flex flex-col items-start select-none">
         {segments.map((segment, segIdx) => {
           const segClasses = segment.isBracketed ? getBracketClasses() : getMainClasses();
+          const segWeight = segment.isBracketed ? bracketWeight : mainWeight;
           const segWords = segment.words;
-          const segmentText = segWords.map((w) => w.text).join(" ");
-          const segStart = segWords[0]?.start ?? 0;
-          const segEnd = segWords[segWords.length - 1]?.end ?? (segStart + 3.0);
-
-          let segFillPercent = 0;
-          let isFilling = false;
-
-          if (isPastLine) {
-            segFillPercent = 100;
-          } else if (isUpcomingLine) {
-            segFillPercent = 0;
-          } else if (isActive) {
-            if (currentTimeSec >= segEnd) {
-              segFillPercent = 100;
-            } else if (currentTimeSec < segStart) {
-              segFillPercent = 0;
-            } else {
-              isFilling = true;
-              // Character-weighted vocal sweep across the line
-              let charOffset = 0;
-              const totalChars = Math.max(1, segmentText.length);
-
-              for (let i = 0; i < segWords.length; i++) {
-                const w = segWords[i];
-                const wStart = w.start;
-                const wEnd = w.end !== undefined && w.end > wStart ? w.end : wStart + 0.45;
-                const wLen = w.text.length;
-
-                if (currentTimeSec >= wEnd) {
-                  charOffset += wLen + 1; // word + space
-                } else if (currentTimeSec >= wStart && currentTimeSec < wEnd) {
-                  const wProg = (currentTimeSec - wStart) / Math.max(0.04, wEnd - wStart);
-                  charOffset += wLen * Math.min(1, Math.max(0, wProg));
-                  break;
-                } else {
-                  break;
-                }
-              }
-
-              segFillPercent = Math.max(0, Math.min(100, (charOffset / totalChars) * 100));
-            }
-          }
 
           return (
-            <div
+            <p
               key={segIdx}
-              className={`w-full origin-left whitespace-pre-wrap break-words text-balance transform-gpu ${segClasses}`}
+              className={`w-full origin-left text-left whitespace-normal break-words text-balance transform-gpu ${segClasses}`}
             >
-              <div className="relative inline-block text-left origin-left">
-                {/* Layer 1: Base unplayed line (dimmed white) */}
-                <p className={`select-none ${isActive ? "text-white/35" : "text-white/40"}`}>
-                  {segmentText}
-                </p>
-
-                {/* Layer 2: Filled active line (pure bright white), smoothly wiped from left to right */}
-                <div
-                  className="absolute top-0 left-0 w-full h-full pointer-events-none select-none overflow-hidden"
-                  style={{
-                    clipPath: `inset(0 ${Math.max(0, 100 - segFillPercent)}% 0 0)`,
-                    WebkitClipPath: `inset(0 ${Math.max(0, 100 - segFillPercent)}% 0 0)`,
-                    transition: isFilling
-                      ? "clip-path 0.12s linear, -webkit-clip-path 0.12s linear"
-                      : segFillPercent === 100 || segFillPercent === 0
-                      ? "clip-path 0.2s ease-out, -webkit-clip-path 0.2s ease-out"
-                      : "none",
-                    willChange: "clip-path",
-                  }}
-                  aria-hidden="true"
-                >
-                  <p className="text-white font-black drop-shadow-[0_0_16px_rgba(255,255,255,0.45)] whitespace-pre-wrap">
-                    {segmentText}
-                  </p>
-                </div>
-              </div>
-            </div>
+              {segWords.map((w, wIdx) => (
+                <KaraokeWordItem
+                  key={wIdx}
+                  word={w}
+                  nextWord={segWords[wIdx + 1]}
+                  isPastLine={isPastLine}
+                  isUpcomingLine={isUpcomingLine}
+                  isActive={isActive}
+                  currentTimeSec={currentTimeSec}
+                  weightClass={segWeight}
+                />
+              ))}
+            </p>
           );
         })}
       </div>
     );
   }
 
-  // 2. LINE-SYNC LYRICS: Left-to-right smooth fill across the entire line
-  const text = lineText || syncedLine?.text || "";
-  const lineStart = syncedLine?.start ?? 0;
-  const lineEnd = syncedLine?.end ?? (lineStart + 4.0);
-  const lineDuration = Math.max(0.3, lineEnd - lineStart);
-
-  let fillPercent = 0;
-  let isFilling = false;
-
-  if (isPastLine) {
-    fillPercent = 100;
-  } else if (isUpcomingLine) {
-    fillPercent = 0;
-  } else if (isActive) {
-    if (currentTimeSec >= lineEnd) {
-      fillPercent = 100;
-    } else if (currentTimeSec < lineStart) {
-      fillPercent = 0;
-    } else {
-      isFilling = true;
-      fillPercent = Math.max(0, Math.min(100, ((currentTimeSec - lineStart) / lineDuration) * 100));
-    }
+  // 2. LINE-SYNC LYRICS: Estimate word timings so wrapped lines fill sequentially word-by-word
+  const text = (lineText || syncedLine?.text || "").trim();
+  if (!text) {
+    return <div className="w-full h-4" />;
   }
 
-  return (
-    <div className={`w-full origin-left whitespace-pre-wrap break-words text-balance transform-gpu ${getMainClasses()}`}>
-      <div className="relative inline-block text-left origin-left">
-        {/* Layer 1: Base unplayed line (dimmed white) */}
-        <p className={`select-none ${isActive ? "text-white/35" : "text-white/40"}`}>
-          {text}
-        </p>
+  const lineStart = syncedLine?.start ?? 0;
+  const lineEnd = syncedLine?.end ?? (lineStart + 4.0);
+  const estimatedWords = estimateWordsForLine(text, lineStart, lineEnd);
+  const segClasses = getMainClasses();
 
-        {/* Layer 2: Filled active line (pure bright white), smoothly wiped from left to right */}
-        <div
-          className="absolute top-0 left-0 w-full h-full pointer-events-none select-none overflow-hidden"
-          style={{
-            clipPath: `inset(0 ${Math.max(0, 100 - fillPercent)}% 0 0)`,
-            WebkitClipPath: `inset(0 ${Math.max(0, 100 - fillPercent)}% 0 0)`,
-            transition: isFilling
-              ? "clip-path 0.12s linear, -webkit-clip-path 0.12s linear"
-              : fillPercent === 100 || fillPercent === 0
-              ? "clip-path 0.2s ease-out, -webkit-clip-path 0.2s ease-out"
-              : "none",
-            willChange: "clip-path",
-          }}
-          aria-hidden="true"
-        >
-          <p className="text-white font-black drop-shadow-[0_0_16px_rgba(255,255,255,0.45)] whitespace-pre-wrap">
-            {text}
-          </p>
-        </div>
-      </div>
-    </div>
+  return (
+    <p className={`w-full origin-left text-left whitespace-normal break-words text-balance transform-gpu ${segClasses}`}>
+      {estimatedWords.map((w, wIdx) => (
+        <KaraokeWordItem
+          key={wIdx}
+          word={w}
+          nextWord={estimatedWords[wIdx + 1]}
+          isPastLine={isPastLine}
+          isUpcomingLine={isUpcomingLine}
+          isActive={isActive}
+          currentTimeSec={currentTimeSec}
+          weightClass={mainWeight}
+        />
+      ))}
+    </p>
   );
 });
 

@@ -681,8 +681,7 @@ describe("All 10 Lyrics Providers & Word-Sync Priority", () => {
   });
 });
 
-// 10. WORD-SYNC BRACKET SEGMENTATION FOR APPLE MUSIC KARAOKE
-import { groupWordsByBracket } from "../src/components/echoai/KaraokeWordLine";
+import { groupWordsByBracket, estimateWordsForLine } from "../src/components/echoai/KaraokeWordLine";
 
 describe("Karaoke Word-Sync Bracket Segmentation", () => {
   test("returns empty array for empty words", () => {
@@ -745,6 +744,38 @@ describe("Karaoke Word-Sync Bracket Segmentation", () => {
     assert.equal(segments[0].words[0].text, "Lead");
     assert.equal(segments[1].isBracketed, true);
     assert.equal(segments[1].words[0].text, "[Backing]");
+  });
+
+  test("estimateWordsForLine generates strictly sequential word timings for line-synced lyrics", () => {
+    const text = "You could have anyone else you wanted to";
+    const words = estimateWordsForLine(text, 10.0, 14.0);
+    assert.equal(words.length, 8);
+    assert.equal(words[0].text, "You");
+    assert.equal(words[7].text, "to");
+    assert.equal(words[0].start, 10.0);
+    assert.equal(words[7].end, 14.0);
+
+    // Verify strictly increasing timestamps
+    for (let i = 0; i < words.length - 1; i++) {
+      assert.ok(words[i].start < words[i + 1].start, `word[${i}] start must be < word[${i + 1}] start`);
+      assert.ok(words[i].end <= words[i + 1].start + 0.001, `word[${i}] end must be <= word[${i + 1}] start`);
+    }
+
+    // Verify line 1 words finish before line 2 words begin
+    // (Line 1: "You could have anyone", Line 2: "else you wanted to")
+    const line1End = words[3].end;
+    const line2Start = words[4].start;
+    assert.ok(line2Start >= line1End, "Line 2 start must be after Line 1 end");
+  });
+
+  test("estimateWordsForLine handles empty and single-word strings safely", () => {
+    assert.deepEqual(estimateWordsForLine("", 0, 5), []);
+    assert.deepEqual(estimateWordsForLine("   ", 0, 5), []);
+    const single = estimateWordsForLine("Hello", 2.0, 4.0);
+    assert.equal(single.length, 1);
+    assert.equal(single[0].text, "Hello");
+    assert.equal(single[0].start, 2.0);
+    assert.equal(single[0].end, 4.0);
   });
 });
 

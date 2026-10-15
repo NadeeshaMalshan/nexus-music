@@ -1,5 +1,6 @@
 import { parseLyrics } from "../parsers";
 import { ILyricsProvider, LyricsQuery, LyricsResult } from "../types";
+import { isTitleMatch } from "../matchUtils";
 
 export class PaxSenixProvider implements ILyricsProvider {
   readonly name = "PaxSenix";
@@ -16,7 +17,7 @@ export class PaxSenixProvider implements ILyricsProvider {
       const itunesUrl = new URL("https://itunes.apple.com/search");
       itunesUrl.searchParams.set("term", `${track} ${artist}`);
       itunesUrl.searchParams.set("entity", "song");
-      itunesUrl.searchParams.set("limit", "1");
+      itunesUrl.searchParams.set("limit", "5");
 
       const itunesRes = await fetch(itunesUrl.toString(), {
         headers: { "User-Agent": "Nexus/1.0" },
@@ -30,7 +31,8 @@ export class PaxSenixProvider implements ILyricsProvider {
         results?: Array<{ trackId?: number; trackName?: string; artistName?: string; collectionName?: string }>;
       };
 
-      const trackId = itunesData.results?.[0]?.trackId;
+      const matchingResult = itunesData.results?.find((r) => isTitleMatch(track, r.trackName));
+      const trackId = matchingResult?.trackId;
       if (!trackId) return null;
 
       // 2. Fetch TTML from PaxSenix Apple Music endpoint

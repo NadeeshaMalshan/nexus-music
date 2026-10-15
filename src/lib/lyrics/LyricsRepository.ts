@@ -1,5 +1,6 @@
 import { Redis } from "@upstash/redis";
 import { ILyricsProvider, LyricsQuery, LyricsResult } from "./types";
+import { isTitleMatch } from "./matchUtils";
 import {
   BetterLyricsProvider,
   BiniLyricsProvider,
@@ -27,6 +28,8 @@ try {
 
 export interface UnifiedLyricsResponse {
   success: boolean;
+  track?: string;
+  artist?: string;
   lyrics: {
     isSynced: boolean;
     isWordSynced: boolean;
@@ -134,7 +137,11 @@ export class LyricsRepository {
     // 1. Check in-memory cache
     const mem = this.memoryCache.get(cacheKey);
     if (mem && mem.expiresAt > Date.now()) {
-      return mem.data;
+      if (mem.data.track && !isTitleMatch(track, mem.data.track)) {
+        this.memoryCache.delete(cacheKey);
+      } else {
+        return mem.data;
+      }
     }
 
     // 2. Check Redis cache
@@ -142,8 +149,12 @@ export class LyricsRepository {
       try {
         const cached = await redisClient.get<UnifiedLyricsResponse>(cacheKey);
         if (cached) {
-          this.memoryCache.set(cacheKey, { data: cached, expiresAt: Date.now() + 60 * 60_000 });
-          return cached;
+          if (cached.track && !isTitleMatch(track, cached.track)) {
+            // Invalidate stale mismatched cached item
+          } else {
+            this.memoryCache.set(cacheKey, { data: cached, expiresAt: Date.now() + 60 * 60_000 });
+            return cached;
+          }
         }
       } catch {
         // Continue to fetch if Redis fails
@@ -192,6 +203,13 @@ export class LyricsRepository {
         const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
         const res = await provider.search({ ...query, signal: combinedSignal });
         if (res && res.success && res.lines && res.lines.length > 0) {
+          // Reject lyrics if the returned title is for a completely different song
+          if (res.metadata?.title && !isTitleMatch(query.track, res.metadata.title)) {
+            console.warn(
+              `[LyricsRepository] Rejecting mismatched lyrics from ${provider.name}: expected "${query.track}", got "${res.metadata.title}"`
+            );
+            return null;
+          }
           return res;
         }
         return null;
@@ -313,6 +331,8 @@ export class LyricsRepository {
 
     const response: UnifiedLyricsResponse = {
       success: true,
+      track: bestResult?.metadata?.title || track,
+      artist: bestResult?.metadata?.artist || artist,
       lyrics: {
         isSynced,
         isWordSynced,

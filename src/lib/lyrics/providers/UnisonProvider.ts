@@ -1,5 +1,6 @@
 import { parseLyrics } from "../parsers";
 import { ILyricsProvider, LyricsQuery, LyricsResult } from "../types";
+import { isTitleMatch } from "../matchUtils";
 
 interface UnisonItem {
   id: number;
@@ -43,7 +44,7 @@ export class UnisonProvider implements ILyricsProvider {
 
         if (directRes.ok) {
           const directData = (await directRes.json()) as { success?: boolean; data?: UnisonItem };
-          if (directData.data) {
+          if (directData.data && isTitleMatch(track, directData.data.song)) {
             if (directData.data.lyrics) {
               directLyrics = directData.data.lyrics;
             } else if (directData.data.id) {
@@ -70,7 +71,10 @@ export class UnisonProvider implements ILyricsProvider {
         if (searchRes.ok) {
           const searchData = (await searchRes.json()) as { success?: boolean; data?: UnisonItem[] };
           if (Array.isArray(searchData.data) && searchData.data.length > 0) {
-            lyricId = searchData.data[0].id;
+            const matchingItem = searchData.data.find((item) => isTitleMatch(track, item.song));
+            if (matchingItem?.id) {
+              lyricId = matchingItem.id;
+            }
           }
         }
       }

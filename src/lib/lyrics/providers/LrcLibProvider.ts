@@ -1,5 +1,6 @@
 import { parseLyrics } from "../parsers";
 import { ILyricsProvider, LyricsQuery, LyricsResult } from "../types";
+import { isTitleMatch } from "../matchUtils";
 
 const LRCLIB_HEADERS = {
   "User-Agent": "Nexus/1.0 (music dashboard)",
@@ -69,6 +70,7 @@ export class LrcLibProvider implements ILyricsProvider {
           });
 
           for (const rec of sorted) {
+            if (!isTitleMatch(track, rec.trackName)) continue;
             const parsed = this.parseRecord(rec);
             if (parsed) return parsed;
           }

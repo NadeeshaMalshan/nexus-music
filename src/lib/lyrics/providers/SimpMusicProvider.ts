@@ -1,5 +1,6 @@
 import { parseLyrics } from "../parsers";
 import { ILyricsProvider, LyricsQuery, LyricsResult } from "../types";
+import { isTitleMatch } from "../matchUtils";
 
 interface SimpMusicSearchItem {
   id: string;
@@ -55,9 +56,10 @@ export class SimpMusicProvider implements ILyricsProvider {
         return null;
       }
 
-      // Check first candidate videoId
-      const firstHit = searchData.data[0];
-      if (!firstHit.videoId) return null;
+      // Check candidate videoId matching the track title
+      const matchingHit = searchData.data.find((item) => isTitleMatch(track, item.songTitle));
+      if (!matchingHit?.videoId) return null;
+      const firstHit = matchingHit;
 
       // 2. Fetch lyrics details by videoId
       const lyricRes = await fetch(`https://api-lyrics.simpmusic.org/v1/${encodeURIComponent(firstHit.videoId)}`, {

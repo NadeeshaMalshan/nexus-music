@@ -1,5 +1,6 @@
 import { parseLyrics } from "../parsers";
 import { ILyricsProvider, LyricsQuery, LyricsResult } from "../types";
+import { isTitleMatch } from "../matchUtils";
 
 export class BiniLyricsProvider implements ILyricsProvider {
   readonly name = "BiniLyrics";
@@ -30,8 +31,12 @@ export class BiniLyricsProvider implements ILyricsProvider {
 
       if (!Array.isArray(data.hits) || data.hits.length === 0) return null;
 
-      // Check first candidate with ISRC
-      for (const hit of data.hits.slice(0, 2)) {
+      // Filter hits to only candidates whose title matches the requested track
+      const validHits = data.hits.filter((h) => isTitleMatch(track, h.title));
+      if (validHits.length === 0) return null;
+
+      // Check matching candidates with ISRC
+      for (const hit of validHits.slice(0, 3)) {
         if (!hit.isrc) continue;
 
         // Try TTML for word-level sync

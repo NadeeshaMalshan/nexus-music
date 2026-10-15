@@ -1,5 +1,6 @@
 import { parseLyrics } from "../parsers";
 import { ILyricsProvider, LyricsQuery, LyricsResult } from "../types";
+import { isTitleMatch } from "../matchUtils";
 
 interface LrcRedHit {
   isrc?: string;
@@ -66,8 +67,12 @@ export class LrcRedProvider implements ILyricsProvider {
 
       if (hits.length === 0) return null;
 
-      // Try the first 2 candidates for TTML (word sync) or LRC
-      for (const hit of hits.slice(0, 2)) {
+      // Filter hits to only candidates whose title matches the requested track
+      const validHits = hits.filter((h) => isTitleMatch(track, h.title));
+      if (validHits.length === 0) return null;
+
+      // Try matching candidates for TTML (word sync) or LRC
+      for (const hit of validHits.slice(0, 3)) {
         if (!hit.isrc) continue;
 
         // Try TTML first for word-level sync

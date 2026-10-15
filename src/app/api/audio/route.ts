@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchSongsRobust, searchVideosRobust } from "@/lib/ytmSearchService";
+import { isTitleMatch } from "@/lib/lyrics/matchUtils";
 
 interface VideoSearchResult {
   youtubeId: string;
@@ -153,14 +154,21 @@ export async function GET(request: Request) {
       // Fetch refined metadata from YouTube Music based on the query
       const searchResults = await searchSongsRobust(query || "");
       
-      // Try to find an exact ID match, but fallback to the first result for metadata if needed
+      // Try to find an exact ID match or title match, avoid blindly picking a different song
       const exactMatch = directVideoId ? searchResults.find((r: any) => r.youtubeId === directVideoId) : null;
-      const metadataSource = exactMatch || searchResults[0];
+      const targetTitle = passedTitle || query || "";
+      const titleMatch = searchResults.find((r: any) => isTitleMatch(targetTitle, r.title));
+      const metadataSource = exactMatch || titleMatch || (directVideoId ? null : searchResults[0]);
 
       if (metadataSource) {
         if (!directVideoId) videoId = metadataSource.youtubeId?.trim();
         
-        trackName = metadataSource.title?.trim() || trackName;
+        // Only update trackName if metadataSource matches or if we didn't have a reliable passedTitle
+        if (isTitleMatch(trackName, metadataSource.title)) {
+          trackName = metadataSource.title?.trim() || trackName;
+        } else if (!passedTitle) {
+          trackName = metadataSource.title?.trim() || trackName;
+        }
         artist = metadataSource.artist || 
                  metadataSource.artists?.map((a: any) => a.name).filter(Boolean).join(", ") || 
                  "Unknown Artist";

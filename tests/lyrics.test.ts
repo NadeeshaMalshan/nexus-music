@@ -748,4 +748,33 @@ describe("Karaoke Word-Sync Bracket Segmentation", () => {
   });
 });
 
+// 11. SONG TITLE MATCHING & ACCURACY VALIDATION
+import { isTitleMatch, normalizeSongTitle } from "../src/lib/lyrics/matchUtils";
+
+describe("Song Title Matching & Accuracy Validation", () => {
+  test("correctly matches identical and near-identical titles", () => {
+    assert.equal(isTitleMatch("run for the hills", "run for the hills"), true);
+    assert.equal(isTitleMatch("Run For The Hills", "run for the hills"), true);
+    assert.equal(isTitleMatch("run for the hills", "Run For The Hills (Official Video)"), true);
+    assert.equal(isTitleMatch("run for the hills", "Tate McRae - run for the hills (Lyrics)"), true);
+    assert.equal(isTitleMatch("run for the hills", "run for the hills - sped up"), true);
+  });
+
+  test("strictly REJECTS mismatched songs by the same artist", () => {
+    // Specifically verify the user's reported bug
+    assert.equal(isTitleMatch("run for the hills", "you broke me first"), false);
+    assert.equal(isTitleMatch("run for the hills", "It's ok I'm ok"), false);
+    assert.equal(isTitleMatch("run for the hills", "greedy"), false);
+    assert.equal(isTitleMatch("run for the hills", "exes"), false);
+    assert.equal(isTitleMatch("Blinding Lights", "Save Your Tears"), false);
+    assert.equal(isTitleMatch("Shape of You", "Bad Habits"), false);
+  });
+
+  test("normalizes punctuation and noise words cleanly", () => {
+    assert.equal(normalizeSongTitle("It's ok I'm ok (Official Music Video)"), "its ok im ok");
+    assert.equal(normalizeSongTitle("Don't Start Now [Live Edition]"), "dont start now");
+  });
+});
+
+
 

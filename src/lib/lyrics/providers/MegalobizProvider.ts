@@ -1,5 +1,6 @@
 import { parseLyrics } from "../parsers";
 import { ILyricsProvider, LyricsQuery, LyricsResult } from "../types";
+import { isTitleMatch } from "../matchUtils";
 
 interface MegalobizResultItem {
   id: number;
@@ -50,8 +51,9 @@ export class MegalobizProvider implements ILyricsProvider {
         return null;
       }
 
-      const bestItem = searchData.results[0];
-      if (!bestItem.id) return null;
+      const matchingItem = searchData.results.find((item) => isTitleMatch(track, item.title));
+      if (!matchingItem?.id) return null;
+      const bestItem = matchingItem;
 
       const lrcUrl = `https://api.megalobiz.com/api/public/v1/lrc/${bestItem.id}?format=lrc`;
       const lrcRes = await fetch(lrcUrl, {

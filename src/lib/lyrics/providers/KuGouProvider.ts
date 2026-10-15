@@ -1,6 +1,7 @@
 import { inflateSync } from "node:zlib";
 import { parseLyrics } from "../parsers";
 import { ILyricsProvider, LyricsLine, LyricsQuery, LyricsResult, LyricsWord } from "../types";
+import { isTitleMatch } from "../matchUtils";
 
 const KRC_XOR_KEY = [64, 71, 97, 119, 94, 50, 116, 71, 81, 54, 49, 45, 206, 210, 110, 105];
 
@@ -55,8 +56,9 @@ export class KuGouProvider implements ILyricsProvider {
         return null;
       }
 
-      const candidate = searchData.candidates[0];
-      if (!candidate.id || !candidate.accesskey) return null;
+      const matchingCandidate = searchData.candidates.find((c) => isTitleMatch(track, c.song));
+      if (!matchingCandidate?.id || !matchingCandidate?.accesskey) return null;
+      const candidate = matchingCandidate;
 
       // 2. First attempt: Download KRC format (syllable-level word synchronization)
       try {

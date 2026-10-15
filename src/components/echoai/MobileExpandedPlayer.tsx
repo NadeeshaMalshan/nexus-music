@@ -1085,7 +1085,7 @@ export function MobileExpandedPlayer({
                 style={{ backgroundColor: palette?.primary || "#18181b" }}
               >
                 {/* UPPER SECTION: Full Bleed Animated Motion Cover */}
-                <div className="relative w-full h-[52dvh] overflow-hidden shrink-0 select-none">
+                <div className="relative w-full h-[60dvh] overflow-hidden shrink-0 select-none">
                   <AnimatedCanvasArtwork
                     title={liveMetadata?.title || currentSong.title}
                     artist={currentSong.artist}
@@ -1098,9 +1098,9 @@ export function MobileExpandedPlayer({
 
                   {/* Soft bottom gradient fade into matching bottom cover color */}
                   <div
-                    className="absolute inset-x-0 bottom-0 h-44 pointer-events-none z-10"
+                    className="absolute inset-x-0 bottom-0 h-32 pointer-events-none z-10"
                     style={{
-                      background: `linear-gradient(to bottom, transparent 0%, transparent 40%, ${palette?.primary || "#18181b"} 100%)`,
+                      background: `linear-gradient(to bottom, transparent 0%, transparent 50%, ${palette?.primary || "#18181b"} 100%)`,
                     }}
                   />
 

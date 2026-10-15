@@ -1140,7 +1140,7 @@ export function MobileExpandedPlayer({
 
                 {/* LOWER SECTION: Track info, actions & controls with cover-matching color */}
                 <div
-                  className="relative z-20 flex flex-1 flex-col justify-between px-7 pb-8 pt-1"
+                  className="relative z-20 flex flex-1 flex-col justify-between px-7 pb-3 pt-1"
                   style={{ backgroundColor: palette?.primary || "#18181b" }}
                 >
                   {/* Track Info & Action Buttons */}
@@ -1300,34 +1300,6 @@ export function MobileExpandedPlayer({
                       </div>
                     </div>
                     <Volume2 size={20} className="text-white/60 shrink-0" />
-                  </div>
-
-                  {/* Bottom Tab Selectors (Lyrics, Queue, AI) */}
-                  <div className="flex w-full items-center justify-around pt-2 border-t border-white/5">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("lyrics")}
-                      className="p-2.5 rounded-full transition-all text-white/40 hover:text-white"
-                      aria-label="Lyrics"
-                    >
-                      <Mic2 size={22} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("queue")}
-                      className="p-2.5 rounded-full transition-all text-white/40 hover:text-white"
-                      aria-label="Queue"
-                    >
-                      <ListMusic size={22} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("ai")}
-                      className="p-2.5 rounded-full transition-all text-white/40 hover:text-white"
-                      aria-label="Song insights"
-                    >
-                      <BookOpen size={22} />
-                    </button>
                   </div>
                 </div>
               </m.div>

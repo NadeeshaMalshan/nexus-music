@@ -34,6 +34,7 @@ interface LyricLineProps {
   onSeek: (time: number) => void;
   syncedLines: LyricsLine[];
   hasSynced: boolean;
+  isPlaying?: boolean;
   elementsRef: React.RefObject<(HTMLDivElement | null)[]>;
 }
 
@@ -48,6 +49,7 @@ const LyricLine = React.memo(({
   onSeek,
   syncedLines,
   hasSynced,
+  isPlaying,
   elementsRef
 }: LyricLineProps) => {
   let instProgress = 0;
@@ -161,6 +163,7 @@ const LyricLine = React.memo(({
           syncedLine={syncedLine}
           nextLine={syncedLines[index + 1] ?? null}
           currentTimeSec={currentTimeSec}
+          isPlaying={isPlaying}
           isActive={isActive}
           isPastLine={hasSynced && activeIndex >= 0 && index < activeIndex}
           isUpcomingLine={hasSynced && activeIndex >= 0 && index > activeIndex}
@@ -180,6 +183,7 @@ const LyricLine = React.memo(({
   if (prev.line !== next.line) return false;
   if (prev.index !== next.index) return false;
   if (prev.isInstrumental !== next.isInstrumental) return false;
+  if (prev.isPlaying !== next.isPlaying) return false;
   if (prev.syncedLine !== next.syncedLine) return false;
   if (next.isActive && next.hasSynced) {
     return prev.currentTimeSec === next.currentTimeSec;
@@ -1430,6 +1434,7 @@ export function MobileExpandedPlayer({
                             }}
                             syncedLines={syncedLines}
                             hasSynced={displayHasSynced}
+                            isPlaying={isPlaying}
                             elementsRef={elementsRef}
                           />
                         ))}

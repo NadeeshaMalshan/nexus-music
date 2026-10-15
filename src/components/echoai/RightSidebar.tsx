@@ -21,6 +21,7 @@ interface RightSidebarProps {
   lyricsLines?: LyricsLine[];
   lyricsSyncType?: LyricsSyncType;
   currentTimeSec: number;
+  isPlaying?: boolean;
   currentArtist: string;
   lyricsSource: string | null;
   aiInsights: string;
@@ -45,6 +46,7 @@ export function RightSidebar({
   lyricsLines,
   lyricsSyncType,
   currentTimeSec,
+  isPlaying = true,
   currentArtist,
   lyricsSource,
   // aiInsights omitted to avoid unused warning
@@ -531,6 +533,7 @@ export function RightSidebar({
                               syncedLine={lineItem ? { text: line, start: lineItem.at, end: lineItem.at + 4, words: lineItem.words } : null}
                               nextLine={effectiveLines[index + 1] ? { text: effectiveLines[index + 1].text, start: effectiveLines[index + 1].at, end: effectiveLines[index + 1].at + 4, words: effectiveLines[index + 1].words } : null}
                               currentTimeSec={currentTimeSec}
+                              isPlaying={isPlaying}
                               isActive={isActive}
                               isPastLine={hasSynced && activeIndex >= 0 && index < activeIndex}
                               isUpcomingLine={hasSynced && activeIndex >= 0 && index > activeIndex}

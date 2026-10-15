@@ -508,6 +508,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         lyricsSyncType={lyricsData?.lyrics.syncType}
         lyricsSource={lyricsData?.lyrics.source || null}
         currentTimeSec={currentTimeSec}
+        isPlaying={isPlaying}
         aiInsights={lyricsData?.geniusData.found ? "Genius metadata found for this song." : "AI insights are not available yet."}
         aiLoading={aiLoading}
         onSeek={onSeek}

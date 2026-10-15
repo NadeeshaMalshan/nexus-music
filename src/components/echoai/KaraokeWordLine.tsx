@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import { LyricsWord, LyricsLine } from "@/lib/lyrics/types";
+import { getContinuousPlaybackTime, PlaybackSyncMeta } from "@/lib/lyrics/synchronizer/playbackClock";
 
 export interface WordSegment {
   isBracketed: boolean;
@@ -87,12 +88,194 @@ export function estimateWordsForLine(text: string, lineStart: number, lineEnd: n
   });
 }
 
+export interface SyllableProgress {
+  text: string;
+  start: number;
+  end: number;
+  charLen: number;
+}
+
+export interface RenderWord {
+  globalIndex: number;
+  text: string;
+  start: number;
+  end: number;
+  isBracketed: boolean;
+  syllables?: SyllableProgress[];
+}
+
+function cleanNorm(str: string): string {
+  return str.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+/**
+ * Normalizes words with genuine provider timestamps:
+ * 1. Merges syllables into full target words matching lineText.
+ * 2. Enforces strictly monotonic non-overlapping timings so transitions have no visible flicker, gaps, or sudden jumps.
+ */
+function processLineWords(
+  lineText: string,
+  rawWords: LyricsWord[] | undefined,
+  lineStart: number,
+  lineEnd: number
+): RenderWord[] {
+  const text = (lineText || "").trim();
+  if (!text) return [];
+
+  const targetTokens = text.split(/\s+/).filter(Boolean);
+  if (targetTokens.length === 0) return [];
+
+  let resultWords: RenderWord[] = [];
+
+  if (rawWords && rawWords.length > 0) {
+    let rawIdx = 0;
+    let inBracket = false;
+
+    for (let tIdx = 0; tIdx < targetTokens.length; tIdx++) {
+      const targetToken = targetTokens[tIdx];
+      const targetClean = cleanNorm(targetToken);
+
+      if (/^[(\[]/.test(targetToken)) inBracket = true;
+      const isBracketed = inBracket || /[)\]]/.test(targetToken);
+      if (/[)\]]/.test(targetToken)) inBracket = false;
+
+      const matchedSyllables: SyllableProgress[] = [];
+      let accumulatedClean = "";
+
+      while (rawIdx < rawWords.length) {
+        const rw = rawWords[rawIdx];
+        const rwClean = cleanNorm(rw.text);
+        if (!rwClean && rw.text.trim()) {
+          rawIdx++;
+          continue;
+        }
+
+        matchedSyllables.push({
+          text: rw.text,
+          start: rw.start,
+          end: rw.end,
+          charLen: rw.text.length,
+        });
+        accumulatedClean += rwClean;
+        rawIdx++;
+
+        if (accumulatedClean.length >= targetClean.length || accumulatedClean === targetClean) {
+          break;
+        }
+      }
+
+      if (matchedSyllables.length > 0) {
+        const wStart = matchedSyllables[0].start;
+        const wEnd = matchedSyllables[matchedSyllables.length - 1].end;
+        resultWords.push({
+          globalIndex: tIdx,
+          text: targetToken,
+          start: wStart,
+          end: Math.max(wStart + 0.05, wEnd),
+          isBracketed,
+          syllables: matchedSyllables.length > 1 ? matchedSyllables : undefined,
+        });
+      } else {
+        resultWords.push({
+          globalIndex: tIdx,
+          text: targetToken,
+          start: lineStart,
+          end: lineEnd,
+          isBracketed,
+        });
+      }
+    }
+  }
+
+  // Fallback to character-proportional estimation if no raw words or mapping empty
+  if (resultWords.length === 0) {
+    const lineDur = Math.max(0.4, lineEnd - lineStart);
+    const totalChars = targetTokens.reduce((s, w) => s + w.length, 0) + Math.max(0, targetTokens.length - 1);
+    let curChars = 0;
+    let inBracket = false;
+
+    resultWords = targetTokens.map((w, idx) => {
+      const sRatio = totalChars > 0 ? curChars / totalChars : 0;
+      curChars += w.length;
+      const eRatio = totalChars > 0 ? curChars / totalChars : 1;
+      curChars += 1;
+
+      if (/^[(\[]/.test(w)) inBracket = true;
+      const isBracketed = inBracket || /[)\]]/.test(w);
+      if (/[)\]]/.test(w)) inBracket = false;
+
+      return {
+        globalIndex: idx,
+        text: w,
+        start: lineStart + sRatio * lineDur,
+        end: lineStart + eRatio * lineDur,
+        isBracketed,
+      };
+    });
+  }
+
+  // Enforce STRICT monotonic non-overlapping timings
+  for (let i = 0; i < resultWords.length; i++) {
+    if (i > 0) {
+      if (resultWords[i - 1].end > resultWords[i].start) {
+        resultWords[i - 1].end = resultWords[i].start;
+      }
+      if (resultWords[i].start < resultWords[i - 1].end) {
+        resultWords[i].start = resultWords[i - 1].end;
+      }
+    }
+    if (resultWords[i].end <= resultWords[i].start) {
+      const nextBound = i + 1 < resultWords.length ? resultWords[i + 1].start : lineEnd;
+      const span = Math.min(0.3, Math.max(0.05, nextBound - resultWords[i].start));
+      resultWords[i].end = resultWords[i].start + span;
+    }
+  }
+
+  return resultWords;
+}
+
+function calculateWordFill(word: RenderWord, currentTimeSec: number): number {
+  if (currentTimeSec >= word.end) return 100;
+  if (currentTimeSec <= word.start) return 0;
+
+  if (word.syllables && word.syllables.length > 1) {
+    const totalChars = word.text.length;
+    let accumulatedChars = 0;
+
+    for (const syl of word.syllables) {
+      const sylStartRatio = accumulatedChars / totalChars;
+      accumulatedChars += syl.charLen;
+      const sylEndRatio = accumulatedChars / totalChars;
+
+      if (currentTimeSec < syl.start) {
+        return sylStartRatio * 100;
+      }
+      if (currentTimeSec <= syl.end) {
+        const sylDur = Math.max(0.01, syl.end - syl.start);
+        const subProg = Math.max(0, Math.min(1, (currentTimeSec - syl.start) / sylDur));
+        const totalProg = sylStartRatio + subProg * (sylEndRatio - sylStartRatio);
+        return Math.max(0, Math.min(100, totalProg * 100));
+      }
+    }
+    return 100;
+  }
+
+  const dur = Math.max(0.01, word.end - word.start);
+  return Math.max(0, Math.min(100, ((currentTimeSec - word.start) / dur) * 100));
+}
+
+function applyClip(el: HTMLElement, clipVal: string) {
+  el.style.clipPath = clipVal;
+  (el.style as any).webkitClipPath = clipVal;
+}
+
 export interface KaraokeWordLineProps {
   words?: LyricsWord[];
   lineText?: string;
   syncedLine?: LyricsLine | null;
   nextLine?: LyricsLine | null;
   currentTimeSec: number;
+  isPlaying?: boolean;
   isActive: boolean;
   isPastLine: boolean;
   isUpcomingLine: boolean;
@@ -105,6 +288,7 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
   syncedLine,
   nextLine,
   currentTimeSec,
+  isPlaying = true,
   isActive,
   isPastLine,
   isUpcomingLine,
@@ -115,9 +299,6 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
     return <div className="w-full h-4" />;
   }
 
-  // Derive precise line timing boundaries using Lyrics Providers' real Word-Sync Timings:
-  // lineStart = first word's start timestamp (e.g. 19.2s)
-  // lineEnd = last word's end timestamp (e.g. 23.03s)
   const lineStart = words && words.length > 0 && words[0].start != null
     ? words[0].start
     : (syncedLine?.start ?? 0);
@@ -129,18 +310,93 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
         ? lastWordEnd
         : (syncedLine?.end && syncedLine.end > lineStart ? syncedLine.end : lineStart + 4.5));
 
-  const lineDuration = Math.max(0.4, lineEnd - lineStart);
+  const effectiveWords = useMemo(
+    () => processLineWords(text, words, lineStart, lineEnd),
+    [text, words, lineStart, lineEnd]
+  );
 
-  // Smooth continuous line progression from 0% to 100% across the line duration
-  let lineProgress = 0;
-  if (isPastLine) {
-    lineProgress = 100;
-  } else if (isUpcomingLine) {
-    lineProgress = 0;
-  } else if (isActive) {
-    const progressRatio = (currentTimeSec - lineStart) / lineDuration;
-    lineProgress = Math.max(0, Math.min(100, progressRatio * 100));
-  }
+  // Group words into segments for bracket ad-libs
+  const segments = useMemo(() => {
+    const segs: { isBracketed: boolean; words: RenderWord[] }[] = [];
+    let curSeg: { isBracketed: boolean; words: RenderWord[] } | null = null;
+
+    for (const w of effectiveWords) {
+      if (!curSeg || curSeg.isBracketed !== w.isBracketed) {
+        if (curSeg && curSeg.words.length > 0) segs.push(curSeg);
+        curSeg = { isBracketed: w.isBracketed, words: [w] };
+      } else {
+        curSeg.words.push(w);
+      }
+    }
+    if (curSeg && curSeg.words.length > 0) segs.push(curSeg);
+    return segs;
+  }, [effectiveWords]);
+
+  // DOM refs to filled overlay spans for 60fps/120fps rAF animation outside React state
+  const fillSpanRefs = useRef<Map<number, HTMLElement>>(new Map());
+
+  // High-precision clock sync state
+  const currentTimeRef = useRef(currentTimeSec);
+  const isPlayingRef = useRef(isPlaying);
+  const syncMetaRef = useRef<PlaybackSyncMeta>({
+    lastSyncTime: currentTimeSec,
+    lastSyncPerf: typeof performance !== "undefined" ? performance.now() : 0,
+  });
+
+  useEffect(() => {
+    currentTimeRef.current = currentTimeSec;
+    syncMetaRef.current.lastSyncTime = currentTimeSec;
+    syncMetaRef.current.lastSyncPerf = performance.now();
+  }, [currentTimeSec]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  // Continuous 60fps/120fps highlight animation loop for active line
+  useEffect(() => {
+    if (!isActive) return;
+
+    let animId: number;
+
+    const updateFrame = () => {
+      const t = getContinuousPlaybackTime(
+        currentTimeRef.current,
+        isPlayingRef.current,
+        syncMetaRef.current
+      );
+
+      for (let i = 0; i < effectiveWords.length; i++) {
+        const el = fillSpanRefs.current.get(i);
+        if (!el) continue;
+
+        const w = effectiveWords[i];
+        let fill = 0;
+        if (t >= w.end) {
+          fill = 100;
+        } else if (t <= w.start) {
+          fill = 0;
+        } else {
+          fill = calculateWordFill(w, t);
+        }
+
+        const clipPct = Math.max(0, 100 - fill).toFixed(2);
+        const clipVal = `inset(0 ${clipPct}% 0 0)`;
+
+        if (el.style.clipPath !== clipVal) {
+          applyClip(el, clipVal);
+        }
+      }
+
+      animId = requestAnimationFrame(updateFrame);
+    };
+
+    animId = requestAnimationFrame(updateFrame);
+
+    return () => {
+      cancelAnimationFrame(animId);
+    };
+  }, [isActive, effectiveWords]);
 
   const getMainClasses = () => {
     switch (sizeVariant) {
@@ -169,54 +425,6 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
   const mainWeight = sizeVariant === "mobile" ? "font-black" : "font-extrabold";
   const bracketWeight = "font-bold";
 
-  // Build clean sequential words with strictly monotonic line percentage boundaries
-  const wordsWithProgression = useMemo(() => {
-    const rawWords = text.split(/\s+/).filter(Boolean);
-    if (rawWords.length === 0) return [];
-
-    const totalChars = rawWords.reduce((sum, w) => sum + w.length, 0) + Math.max(0, rawWords.length - 1);
-    let currentChars = 0;
-    let inBracket = false;
-
-    return rawWords.map((word) => {
-      const startRatio = totalChars > 0 ? currentChars / totalChars : 0;
-      currentChars += word.length;
-      const endRatio = totalChars > 0 ? currentChars / totalChars : 1;
-      currentChars += 1; // space between words
-
-      const startPct = startRatio * 100;
-      const endPct = endRatio * 100;
-
-      if (/^[(\[]/.test(word)) inBracket = true;
-      const isBracketed = inBracket || /[)\]]/.test(word);
-      if (/[)\]]/.test(word)) inBracket = false;
-
-      return {
-        text: word,
-        startPct,
-        endPct,
-        isBracketed,
-      };
-    });
-  }, [text]);
-
-  // Group words into segments so bracket ad-libs format cleanly
-  const segments = useMemo(() => {
-    const segs: { isBracketed: boolean; words: typeof wordsWithProgression }[] = [];
-    let curSeg: { isBracketed: boolean; words: typeof wordsWithProgression } | null = null;
-
-    for (const w of wordsWithProgression) {
-      if (!curSeg || curSeg.isBracketed !== w.isBracketed) {
-        if (curSeg && curSeg.words.length > 0) segs.push(curSeg);
-        curSeg = { isBracketed: w.isBracketed, words: [w] };
-      } else {
-        curSeg.words.push(w);
-      }
-    }
-    if (curSeg && curSeg.words.length > 0) segs.push(curSeg);
-    return segs;
-  }, [wordsWithProgression]);
-
   return (
     <div className="w-full flex flex-col items-start select-none">
       {segments.map((seg, sIdx) => {
@@ -228,20 +436,17 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
             key={sIdx}
             className={`w-full origin-left text-left whitespace-normal break-words text-balance transform-gpu ${segClasses}`}
           >
-            {seg.words.map((w, idx) => {
-              let wordFill = 0;
-              if (isPastLine || lineProgress >= w.endPct) {
-                wordFill = 100;
-              } else if (isUpcomingLine || lineProgress <= w.startPct) {
-                wordFill = 0;
-              } else {
-                const span = Math.max(0.01, w.endPct - w.startPct);
-                wordFill = Math.max(0, Math.min(100, ((lineProgress - w.startPct) / span) * 100));
-              }
+            {seg.words.map((w) => {
+              const initialFill = isPastLine
+                ? 100
+                : isUpcomingLine
+                ? 0
+                : calculateWordFill(w, currentTimeSec);
+              const initialClip = `inset(0 ${Math.max(0, 100 - initialFill).toFixed(2)}% 0 0)`;
 
               return (
                 <span
-                  key={idx}
+                  key={w.globalIndex}
                   className="relative inline-block whitespace-nowrap mr-[0.24em] last:mr-0 align-baseline select-none"
                 >
                   {/* Base dimmed word */}
@@ -253,24 +458,31 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
                     {w.text}
                   </span>
 
-                  {/* Active filled word - pure crisp white with NO drop shadow and NO background overlay */}
-                  {wordFill > 0 && (
-                    <span
-                      className="absolute top-0 left-0 w-full h-full pointer-events-none select-none"
-                      style={{
-                        clipPath: `inset(0 ${Math.max(0, 100 - wordFill).toFixed(2)}% 0 0)`,
-                        WebkitClipPath: `inset(0 ${Math.max(0, 100 - wordFill).toFixed(2)}% 0 0)`,
-                        transition: isActive && wordFill > 0 && wordFill < 100
-                          ? "clip-path 0.08s linear, -webkit-clip-path 0.08s linear"
-                          : "none",
-                      }}
-                      aria-hidden="true"
-                    >
-                      <span className={`text-white whitespace-nowrap ${segWeight}`}>
-                        {w.text}
-                      </span>
+                  {/* Active filled word - pure crisp white with zero layout cost and 60fps/120fps rAF clipping */}
+                  <span
+                    ref={(el) => {
+                      if (el) {
+                        fillSpanRefs.current.set(w.globalIndex, el);
+                        // Ensure immediate visual state if not active
+                        if (!isActive) {
+                          applyClip(el, initialClip);
+                        }
+                      } else {
+                        fillSpanRefs.current.delete(w.globalIndex);
+                      }
+                    }}
+                    className="absolute top-0 left-0 w-full h-full pointer-events-none select-none"
+                    style={{
+                      clipPath: initialClip,
+                      WebkitClipPath: initialClip,
+                      willChange: isActive ? "clip-path" : "auto",
+                    }}
+                    aria-hidden="true"
+                  >
+                    <span className={`text-white whitespace-nowrap ${segWeight}`}>
+                      {w.text}
                     </span>
-                  )}
+                  </span>
                 </span>
               );
             })}

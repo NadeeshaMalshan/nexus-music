@@ -81,7 +81,14 @@ export function AnimatedCanvasArtwork({
     let hls: Hls | null = null;
     if (/\.m3u8(?:\?|$)/i.test(canvasUrl)) {
       if (Hls.isSupported()) {
-        hls = new Hls({ enableWorker: true, lowLatencyMode: false, maxBufferLength: 12 });
+        hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+          maxBufferLength: 4,
+          maxMaxBufferLength: 8,
+          maxBufferSize: 2 * 1024 * 1024,
+          backBufferLength: 0,
+        });
         hls.loadSource(canvasUrl);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {

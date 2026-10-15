@@ -82,7 +82,7 @@ const LyricLine = React.memo(({
         filter: "blur(0px)",
         transform: "scale(1) translate3d(0, 0, 0)",
         transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
-        willChange: "transform, opacity, filter",
+        willChange: "transform, opacity",
       };
     }
 
@@ -92,7 +92,7 @@ const LyricLine = React.memo(({
         filter: "blur(0px)",
         transform: "scale(1.02) translate3d(8px, 0, 0)",
         transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
-        willChange: "transform, opacity, filter",
+        willChange: "transform, opacity",
       };
     }
 
@@ -103,7 +103,7 @@ const LyricLine = React.memo(({
         filter: "blur(1.5px)",
         transform: "scale(0.98) translate3d(0, 0, 0)",
         transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
-        willChange: "transform, opacity, filter",
+        willChange: "transform, opacity",
       };
     }
 
@@ -136,7 +136,7 @@ const LyricLine = React.memo(({
       filter: `blur(${blurPx}px)`,
       transform: `scale(${scaleVal}) translate3d(0, ${yOffset}px, 0)`,
       transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
-      willChange: "transform, opacity, filter",
+      willChange: "transform, opacity",
     };
   }, [hasSynced, activeIndex, index, isActive]);
 
@@ -816,10 +816,9 @@ export function DesktopExpandedPlayer({
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
           />
           <div className="relative h-1.5 w-full rounded-full bg-white/10 z-10 pointer-events-none overflow-hidden">
-            <m.div
-              className="absolute inset-y-0 left-0 bg-white/90"
-              animate={{ width: `${volume}%` }}
-              transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.5 }}
+            <div
+              className="absolute inset-y-0 left-0 bg-white/90 transition-[width] duration-75 ease-out"
+              style={{ width: `${volume}%` }}
             />
           </div>
           <m.div

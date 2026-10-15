@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDashboard } from "@/context/DashboardContext";
 import { LeftSidebar } from "./LeftSidebar";
 import { RightSidebar } from "./RightSidebar";
@@ -80,28 +80,27 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Listen to ?watch=songId URLs to trigger direct playback on load
+  const initialWatchHandledRef = useRef(false);
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || initialWatchHandledRef.current) return;
     const params = new URLSearchParams(window.location.search);
     const watchId = params.get("watch");
     if (!watchId) return;
 
-    // Clear parameter to keep URL clean and prevent loop
-    params.delete("watch");
-    const queryStr = params.toString() ? `?${params.toString()}` : "";
-    const newUrl = `${window.location.pathname}${queryStr}`;
-    window.history.replaceState({}, "", newUrl);
+    initialWatchHandledRef.current = true;
 
     void (async () => {
       try {
         const { songFromYouTubeVideoId } = await import("@/lib/parseYouTubeUrl");
         const song = await songFromYouTubeVideoId(watchId, "var(--art-accent, #FA233B)", false, false);
         onSongClick(song);
+        setIsExpandedPlayerOpen(true);
       } catch (err) {
         console.error("Failed to load watch query song:", err);
       }
     })();
-  }, [onSongClick]);
+  }, [onSongClick, setIsExpandedPlayerOpen]);
+
 
   // Global Context Menu & Long Press Listeners
   useEffect(() => {
@@ -239,6 +238,27 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
     return songIsInLikedLibrary(mergedCurrentSong, audioData);
   }, [mergedCurrentSong, audioData, songIsInLikedLibrary]);
 
+  // Sync ?watch={id} in the URL with ExpandedPlayer state (Mobile and PC)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const currentWatch = params.get("watch");
+    const targetSongId = mergedCurrentSong?.id || currentSong?.id;
+
+    if (isExpandedPlayerOpen && targetSongId) {
+      if (currentWatch !== targetSongId) {
+        params.set("watch", targetSongId);
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState(window.history.state, "", newUrl);
+      }
+    } else if (!isExpandedPlayerOpen && currentWatch) {
+      params.delete("watch");
+      const queryStr = params.toString() ? `?${params.toString()}` : "";
+      const newUrl = `${window.location.pathname}${queryStr}`;
+      window.history.replaceState(window.history.state, "", newUrl);
+    }
+  }, [isExpandedPlayerOpen, mergedCurrentSong?.id, currentSong?.id]);
+
   // Sync PWA status bar/theme color with artwork accent
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -330,13 +350,13 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
       <div
         className="pointer-events-none absolute -inset-16 scale-110 transition-opacity duration-[1200ms] ease-out"
         style={{
-          opacity: currentSong ? 1 : 0,
+          opacity: currentSong && !isExpandedPlayerOpen ? 1 : 0,
         }}
       >
         <div
           className="w-full h-full bg-gradient-animate animate-gpu"
           style={{
-            backgroundImage: currentSong ? `
+            backgroundImage: currentSong && !isExpandedPlayerOpen ? `
               radial-gradient(circle at 0% 0%, ${palette.primary}33 0%, ${palette.primary}0a 45%, transparent 75%),
               radial-gradient(circle at 100% 100%, ${palette.secondary}29 0%, ${palette.secondary}08 45%, transparent 75%)
             ` : "none",
@@ -347,6 +367,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
       <div className="pointer-events-none absolute inset-0 bg-black/[0.08]" />
       <main
         className="relative z-10 flex h-full min-h-0 w-full min-w-0"
+        style={{ visibility: isExpandedPlayerOpen ? "hidden" : "visible" }}
       >
         <LeftSidebar
           activeView={activeView}

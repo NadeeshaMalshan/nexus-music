@@ -77,7 +77,7 @@ const LyricLine = React.memo(({
         filter: "blur(0px)",
         transform: "scale(1) translate3d(0, 0, 0)",
         transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
-        willChange: "transform, opacity, filter",
+        willChange: "transform, opacity",
       };
     }
 
@@ -87,7 +87,7 @@ const LyricLine = React.memo(({
         filter: "blur(0px)",
         transform: "scale(1.02) translate3d(6px, 0, 0)",
         transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
-        willChange: "transform, opacity, filter",
+        willChange: "transform, opacity",
       };
     }
 
@@ -98,7 +98,7 @@ const LyricLine = React.memo(({
         filter: "blur(1.5px)",
         transform: "scale(0.98) translate3d(0, 0, 0)",
         transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
-        willChange: "transform, opacity, filter",
+        willChange: "transform, opacity",
       };
     }
 
@@ -131,7 +131,7 @@ const LyricLine = React.memo(({
       filter: `blur(${blurPx}px)`,
       transform: `scale(${scaleVal}) translate3d(0, ${yOffset}px, 0)`,
       transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s cubic-bezier(0.25, 1, 0.5, 1), filter 0.65s cubic-bezier(0.25, 1, 0.5, 1)",
-      willChange: "transform, opacity, filter",
+      willChange: "transform, opacity",
     };
   }, [hasSynced, activeIndex, index, isActive]);
 
@@ -676,10 +676,9 @@ export function MobileExpandedPlayer({
       {!isReallyLive && (
         <div className="space-y-4 mb-2">
           <div onClick={handleSeekClick} className="group relative h-1.5 w-full cursor-pointer rounded-full bg-white/10 overflow-hidden">
-            <m.div
-              className="absolute inset-y-0 left-0 bg-white/60"
-              animate={{ width: `${progress}%` }}
-              transition={{ type: "tween", duration: 0.5 }}
+            <div
+              className="absolute inset-y-0 left-0 bg-white/60 transition-[width] duration-200 ease-linear rounded-full"
+              style={{ width: `${progress}%` }}
             />
           </div>
           <div className="flex justify-between text-[13px] font-black tracking-tight text-white/20">
@@ -1246,10 +1245,9 @@ export function MobileExpandedPlayer({
                   {/* Progress Bar & Timestamps with Lossless Badge */}
                   <div className="space-y-1.5 mt-2">
                     <div onClick={handleSeekClick} className="group relative h-1 w-full cursor-pointer rounded-full bg-white/20 overflow-hidden">
-                      <m.div
-                        className="absolute inset-y-0 left-0 bg-white/70 rounded-full"
-                        animate={{ width: `${progress}%` }}
-                        transition={{ type: "tween", duration: 0.2 }}
+                      <div
+                        className="absolute inset-y-0 left-0 bg-white/70 rounded-full transition-[width] duration-200 ease-linear"
+                        style={{ width: `${progress}%` }}
                       />
                     </div>
                     <div className="flex items-center justify-between text-xs font-semibold text-white/50 tracking-tight">

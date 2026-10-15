@@ -1,8 +1,20 @@
 import { Redis } from "@upstash/redis";
 import { ILyricsProvider, LyricsQuery, LyricsResult } from "./types";
-import { LrcLibProvider } from "./providers/LrcLibProvider";
-import { LyricsOvhProvider } from "./providers/LyricsOvhProvider";
-import { GeniusMetadata, GeniusProvider } from "./providers/GeniusProvider";
+import {
+  BetterLyricsProvider,
+  BiniLyricsProvider,
+  GeniusMetadata,
+  GeniusProvider,
+  KuGouProvider,
+  LrcLibProvider,
+  LrcRedProvider,
+  LyricsOvhProvider,
+  LyricsPlusProvider,
+  MegalobizProvider,
+  PaxSenixProvider,
+  SimpMusicProvider,
+  UnisonProvider,
+} from "./providers";
 
 let redisClient: Redis | null = null;
 try {
@@ -30,13 +42,29 @@ export interface UnifiedLyricsResponse {
 export class LyricsRepository {
   private static instance: LyricsRepository;
   private providers: ILyricsProvider[];
+  private isCustomProviders: boolean;
   private geniusProvider: GeniusProvider;
   private inFlightRequests: Map<string, Promise<UnifiedLyricsResponse>>;
   private memoryCache: Map<string, { data: UnifiedLyricsResponse; expiresAt: number }>;
 
   public constructor(providers?: ILyricsProvider[], geniusProvider?: GeniusProvider) {
+    this.isCustomProviders = Boolean(providers);
     this.providers = providers || [
+      // 1. Primary Word-Sync Providers (TTML word timing, richsync, syllable karaoke)
+      new BetterLyricsProvider(),
+      new LrcRedProvider(),
+      new BiniLyricsProvider(),
+      new LyricsPlusProvider(),
+      new PaxSenixProvider(),
+      new UnisonProvider(),
+      new KuGouProvider(),
+
+      // 2. Line-Sync Providers
       new LrcLibProvider(),
+      new MegalobizProvider(),
+      new SimpMusicProvider(),
+
+      // 3. Plain Text Fallback
       new LyricsOvhProvider(),
     ];
     this.geniusProvider = geniusProvider || new GeniusProvider();
@@ -46,6 +74,7 @@ export class LyricsRepository {
 
   public setProviders(providers: ILyricsProvider[]) {
     this.providers = providers;
+    this.isCustomProviders = true;
   }
 
   public static getInstance(): LyricsRepository {
@@ -155,21 +184,34 @@ export class LyricsRepository {
     // Concurrently fetch Genius details (for credits, descriptions, writers)
     const geniusPromise = this.geniusProvider.fetchGeniusDetails(track, artist, signal);
 
-    // Query providers in priority order:
-    // First candidate that provides "word" sync wins immediately.
-    // If only "line" sync is found, we retain it as the best candidate.
-    // If only "unsynced" is found, we retain it as fallback.
+    // Query helper for a single provider
+    const queryProvider = async (provider: ILyricsProvider): Promise<LyricsResult | null> => {
+      if (signal?.aborted) return null;
+      try {
+        const timeoutSignal = AbortSignal.timeout(4500);
+        const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+        const res = await provider.search({ ...query, signal: combinedSignal });
+        if (res && res.success && res.lines && res.lines.length > 0) {
+          return res;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    };
+
     let bestResult: LyricsResult | null = null;
 
-    for (const provider of this.providers) {
-      if (signal?.aborted) break;
-      try {
-        const res = await provider.search(query);
-        if (!res || !res.success || res.lines.length === 0) continue;
+    if (this.isCustomProviders) {
+      // Custom providers (e.g. in test suites) - evaluate sequentially with word-sync priority
+      for (const provider of this.providers) {
+        if (signal?.aborted) break;
+        const res = await queryProvider(provider);
+        if (!res) continue;
 
         if (res.syncType === "word") {
           bestResult = res;
-          break; // Found word-level sync, stop early
+          break; // Found word-level sync, highest priority, stop early
         }
 
         if (res.syncType === "line" && (!bestResult || bestResult.syncType === "unsynced")) {
@@ -177,13 +219,83 @@ export class LyricsRepository {
         } else if (!bestResult) {
           bestResult = res;
         }
-      } catch {
-        // Continue with next provider
+      }
+    } else {
+      // Default Multi-Provider Staged Pipeline
+      // STAGE 1: Top Word-Sync Candidates (Fastest Richsync/TTML Providers)
+      const stage1Providers = [
+        this.providers[0], // BetterLyrics
+        this.providers[1], // lrc.red
+        this.providers[3], // LyricsPlus
+      ].filter(Boolean);
+
+      const stage1Results = await Promise.all(stage1Providers.map(queryProvider));
+
+      // Check if any Stage 1 provider gave word sync
+      for (const res of stage1Results) {
+        if (res && res.syncType === "word") {
+          bestResult = res;
+          break;
+        }
+        if (res && res.syncType === "line" && (!bestResult || bestResult.syncType === "unsynced")) {
+          bestResult = res;
+        }
+      }
+
+      // STAGE 2: Secondary Word-Sync Candidates (PaxSenix, Unison, KuGou, BiniLyrics)
+      if (!bestResult || bestResult.syncType !== "word") {
+        if (!signal?.aborted) {
+          const stage2Providers = [
+            this.providers[4], // PaxSenix
+            this.providers[5], // Unison
+            this.providers[6], // KuGou
+            this.providers[2], // BiniLyrics
+          ].filter(Boolean);
+
+          const stage2Results = await Promise.all(stage2Providers.map(queryProvider));
+
+          for (const res of stage2Results) {
+            if (res && res.syncType === "word") {
+              bestResult = res; // Word sync wins immediately!
+              break;
+            }
+            if (res && res.syncType === "line" && (!bestResult || bestResult.syncType === "unsynced")) {
+              bestResult = res;
+            }
+          }
+        }
+      }
+
+      // STAGE 3: Line-Sync Candidates (LRCLIB, Megalobiz, SimpMusic)
+      // Only needed if no word-sync was found and we don't yet have high confidence line-sync
+      if (!bestResult && !signal?.aborted) {
+        const stage3Providers = [
+          this.providers[7], // LRCLIB
+          this.providers[8], // Megalobiz
+          this.providers[9], // SimpMusic
+        ].filter(Boolean);
+
+        const stage3Results = await Promise.all(stage3Providers.map(queryProvider));
+
+        for (const res of stage3Results) {
+          if (res && (res.syncType === "word" || res.syncType === "line")) {
+            bestResult = res;
+            break;
+          }
+        }
+      }
+
+      // STAGE 4: Plain Text Fallbacks
+      if (!bestResult && !signal?.aborted) {
+        const plainProvider = this.providers[10]; // LyricsOvh
+        if (plainProvider) {
+          bestResult = await queryProvider(plainProvider);
+        }
       }
     }
 
     // Fall back to Genius plain lyrics if providers failed to return anything
-    if (!bestResult) {
+    if (!bestResult && !signal?.aborted) {
       try {
         const geniusLyrics = await this.geniusProvider.search(query);
         if (geniusLyrics && geniusLyrics.lines.length > 0) {

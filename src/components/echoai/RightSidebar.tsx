@@ -3,7 +3,7 @@ import { X, Play, Sparkles, Trash2, GripVertical, Plus, Loader2 } from "lucide-r
 import { type Song } from "./types";
 import { parseLrcContent } from "@/lib/lrc";
 import { type LyricsLine, type LyricsSyncType, type LyricsWord } from "@/lib/lyrics/types";
-import { findActiveLineIndex, getWordCharactersSync } from "@/lib/lyrics/synchronizer/playbackSynchronizer";
+import { findActiveLineIndex } from "@/lib/lyrics/synchronizer/playbackSynchronizer";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { motion, Reorder, AnimatePresence } from "motion/react";
 import { SessionFriendsPanel } from "./SessionFriendsPanel";
@@ -411,44 +411,18 @@ export function RightSidebar({
                                     const isWordPassed = isActive && (
                                       w.end !== undefined ? currentTimeSec > w.end : currentTimeSec > w.start
                                     );
-                                    const hasTrailingSpace = w.text.endsWith(" ");
-                                    const needsSpace = !hasTrailingSpace && wIdx < lineItem.words!.length - 1;
-
-                                    if (isWordActive) {
-                                      const charSync = getWordCharactersSync(w, currentTimeSec);
-                                      return (
-                                        <span key={wIdx} className="inline">
-                                          {charSync.map((c, cIdx) => (
-                                            <span
-                                              key={cIdx}
-                                              className={`transition-all duration-75 ${
-                                                c.isActive
-                                                  ? "text-cyan-300 font-black drop-shadow-[0_0_8px_rgba(103,232,249,0.8)]"
-                                                  : c.isPast
-                                                    ? "text-white font-bold"
-                                                    : "text-white/40"
-                                              }`}
-                                            >
-                                              {c.char}
-                                            </span>
-                                          ))}
-                                          {needsSpace ? " " : ""}
-                                        </span>
-                                      );
-                                    }
-
                                     return (
                                       <span
                                         key={wIdx}
                                         className={`transition-all duration-200 ${
-                                          isWordPassed
-                                            ? "text-white/90"
-                                            : isActive
-                                              ? "text-white/40"
+                                          isWordActive
+                                            ? "text-white font-black"
+                                            : isWordPassed || isActive
+                                              ? "text-white/80"
                                               : "text-white/30"
                                         }`}
                                       >
-                                        {w.text}{needsSpace ? " " : ""}
+                                        {w.text}{" "}
                                       </span>
                                     );
                                   })}

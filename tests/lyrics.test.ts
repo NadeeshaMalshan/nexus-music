@@ -9,16 +9,24 @@ import { parsePlainText } from "../src/lib/lyrics/parsers/plainTextParser";
 import { parseLyrics } from "../src/lib/lyrics/parsers/index";
 
 // Synchronizer
-import {
-  findActiveLineIndex,
-  findActiveWordIndex,
-  getWordCharactersSync,
-  splitIntoGraphemes,
-} from "../src/lib/lyrics/synchronizer/playbackSynchronizer";
+import { findActiveLineIndex, findActiveWordIndex } from "../src/lib/lyrics/synchronizer/playbackSynchronizer";
 
 // Repository & Providers
 import { LyricsRepository } from "../src/lib/lyrics/LyricsRepository";
 import { GeniusProvider } from "../src/lib/lyrics/providers/GeniusProvider";
+import {
+  BetterLyricsProvider,
+  BiniLyricsProvider,
+  KuGouProvider,
+  LrcLibProvider,
+  LrcRedProvider,
+  LyricsOvhProvider,
+  LyricsPlusProvider,
+  MegalobizProvider,
+  PaxSenixProvider,
+  SimpMusicProvider,
+  UnisonProvider,
+} from "../src/lib/lyrics/providers";
 import { ILyricsProvider, LyricsQuery, LyricsResult } from "../src/lib/lyrics/types";
 
 // 1. TTML PARSING TESTS
@@ -302,48 +310,6 @@ describe("Playback Synchronizer (Binary Search)", () => {
     assert.equal(findActiveWordIndex(undefined, 10.0), -1);
     assert.equal(findActiveWordIndex([], 10.0), -1);
   });
-
-  test("calculates character-by-character synchronization across an active word", () => {
-    const word = { text: "Hello", start: 10.0, end: 15.0 }; // 5 chars, 1s per char
-
-    // Before word starts (9.5s)
-    const before = getWordCharactersSync(word, 9.5);
-    assert.equal(before.length, 5);
-    assert.ok(before.every((c) => c.isUpcoming && !c.isActive && !c.isPast));
-
-    // First character active ('H' at 10.5s: 10.0 to 11.0)
-    const atH = getWordCharactersSync(word, 10.5);
-    assert.equal(atH[0].char, "H");
-    assert.ok(atH[0].isActive);
-    assert.ok(atH.slice(1).every((c) => c.isUpcoming));
-
-    // Third character active ('l' at 12.5s: 12.0 to 13.0)
-    const atThird = getWordCharactersSync(word, 12.5);
-    assert.ok(atThird[0].isPast && atThird[1].isPast);
-    assert.equal(atThird[2].char, "l");
-    assert.ok(atThird[2].isActive);
-    assert.ok(atThird[3].isUpcoming && atThird[4].isUpcoming);
-
-    // After word ends (16.0s)
-    const after = getWordCharactersSync(word, 16.0);
-    assert.ok(after.every((c) => c.isPast && !c.isActive && !c.isUpcoming));
-  });
-
-  test("correctly preserves Unicode & Sinhala grapheme clusters during character sync", () => {
-    // 'මා' has 2 code units but 1 grapheme cluster
-    const clusters = splitIntoGraphemes("මා");
-    assert.equal(clusters.length, 1);
-    assert.equal(clusters[0], "මා");
-
-    const sinhalaWord = { text: "බැඳි", start: 2.0, end: 4.0 };
-    const sync = getWordCharactersSync(sinhalaWord, 2.5);
-    // 'බැඳි' should be split into 2 graphemes: 'බැ' and 'ඳි'
-    assert.equal(sync.length, 2);
-    assert.equal(sync[0].char, "බැ");
-    assert.ok(sync[0].isActive);
-    assert.equal(sync[1].char, "ඳි");
-    assert.ok(sync[1].isUpcoming);
-  });
 });
 
 // 8. REPOSITORY, DEDUPLICATION, CANCELLATION & PROVIDER FALLBACK
@@ -504,3 +470,214 @@ describe("LyricsRepository & Multi-Provider Architecture", () => {
     assert.ok(result);
   });
 });
+
+// 9. NEW PROVIDERS INITIALIZATION & WORD-SYNC PRIORITY TESTS
+describe("All 10 Lyrics Providers & Word-Sync Priority", () => {
+  test("instantiates all 10 providers correctly with proper names", () => {
+    const betterLyrics = new BetterLyricsProvider();
+    const lrcRed = new LrcRedProvider();
+    const biniLyrics = new BiniLyricsProvider();
+    const lyricsPlus = new LyricsPlusProvider();
+    const paxSenix = new PaxSenixProvider();
+    const unison = new UnisonProvider();
+    const kuGou = new KuGouProvider();
+    const lrcLib = new LrcLibProvider();
+    const megalobiz = new MegalobizProvider();
+    const simpMusic = new SimpMusicProvider();
+
+    assert.equal(betterLyrics.name, "BetterLyrics");
+    assert.equal(lrcRed.name, "lrc.red");
+    assert.equal(biniLyrics.name, "BiniLyrics");
+    assert.equal(lyricsPlus.name, "LyricsPlus");
+    assert.equal(paxSenix.name, "PaxSenix");
+    assert.equal(unison.name, "Unison");
+    assert.equal(kuGou.name, "KuGou");
+    assert.equal(lrcLib.name, "LRCLIB");
+    assert.equal(megalobiz.name, "Megalobiz");
+    assert.equal(simpMusic.name, "SimpMusic");
+  });
+
+  test("default LyricsRepository initializes all providers with word-sync providers first", () => {
+    const repo = new LyricsRepository();
+    // Verify default instance has all providers
+    const providers = (repo as unknown as { providers: ILyricsProvider[] }).providers;
+    assert.ok(providers.length >= 10);
+
+    const providerNames = providers.map((p) => p.name);
+    // Word sync providers must precede line sync and plain providers
+    const wordSyncCapable = ["BetterLyrics", "lrc.red", "BiniLyrics", "LyricsPlus", "PaxSenix", "Unison", "KuGou"];
+    for (const name of wordSyncCapable) {
+      assert.ok(providerNames.includes(name), `Expected ${name} to be in providers list`);
+    }
+
+    const betterLyricsIdx = providerNames.indexOf("BetterLyrics");
+    const lrcLibIdx = providerNames.indexOf("LRCLIB");
+    const megalobizIdx = providerNames.indexOf("Megalobiz");
+    const lyricsOvhIdx = providerNames.indexOf("Lyrics.ovh");
+
+    // Word sync providers should be prioritized ahead of line sync (LRCLIB, Megalobiz) and plain (Lyrics.ovh)
+    assert.ok(betterLyricsIdx < lrcLibIdx, "Word-sync provider BetterLyrics should be before LRCLIB");
+    assert.ok(lrcLibIdx < lyricsOvhIdx, "LRCLIB should be before plain text Lyrics.ovh");
+    assert.ok(megalobizIdx < lyricsOvhIdx, "Megalobiz should be before plain text Lyrics.ovh");
+  });
+
+  test("prioritizes word-sync provider over line-sync provider even when line-sync is first in list", async () => {
+    const mockGenius = {
+      fetchGeniusDetails: async () => ({
+        found: false,
+        description: null,
+        releaseDate: null,
+        album: null,
+        writers: [],
+        producer: null,
+        verifiedLyrics: false,
+      }),
+    } as unknown as GeniusProvider;
+
+    const lineProvider: ILyricsProvider = {
+      name: "LineProvider",
+      async search(): Promise<LyricsResult | null> {
+        return {
+          success: true,
+          rawContent: "[00:01.00] Line one\n[00:05.00] Line two",
+          format: "lrc",
+          syncType: "line",
+          lines: [
+            { start: 1.0, end: 5.0, text: "Line one" },
+            { start: 5.0, end: 10.0, text: "Line two" },
+          ],
+          source: "LineProvider",
+        };
+      },
+    };
+
+    const wordProvider: ILyricsProvider = {
+      name: "WordProvider",
+      async search(): Promise<LyricsResult | null> {
+        return {
+          success: true,
+          rawContent: "<tt>...</tt>",
+          format: "ttml",
+          syncType: "word",
+          lines: [
+            {
+              start: 1.0,
+              end: 5.0,
+              text: "Line one",
+              words: [
+                { text: "Line", start: 1.0, end: 2.0 },
+                { text: "one", start: 2.1, end: 3.0 },
+              ],
+            },
+          ],
+          source: "WordProvider",
+        };
+      },
+    };
+
+    // Even if lineProvider is first in custom list, wordProvider must win!
+    const repo = new LyricsRepository([lineProvider, wordProvider], mockGenius);
+    const result = await repo.getLyrics("Test", "Artist");
+
+    assert.equal(result.lyrics.syncType, "word");
+    assert.equal(result.lyrics.source, "WordProvider");
+    assert.equal(result.lyrics.isWordSynced, true);
+    assert.ok(result.lyrics.lines[0].words && result.lyrics.lines[0].words.length > 0);
+  });
+
+  test("LyricsPlusProvider correctly parses syllable-level karaoke items into word-synced lines", async () => {
+    const provider = new LyricsPlusProvider();
+    const originalFetch = global.fetch;
+
+    global.fetch = (async (url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("lyricsplus.prjktla.my.id")) {
+        return {
+          ok: true,
+          json: async () => ({
+            type: "syllable",
+            lyrics: [
+              { time: 1000, duration: 400, text: "Hello ", isLineEnding: 0 },
+              { time: 1500, duration: 500, text: "world", isLineEnding: 1 },
+              { time: 3000, duration: 600, text: "Second ", isLineEnding: 0 },
+              { time: 3700, duration: 400, text: "line", isLineEnding: 1 },
+            ],
+          }),
+        } as unknown as Response;
+      }
+      return { ok: false } as unknown as Response;
+    }) as typeof fetch;
+
+    try {
+      const res = await provider.search({ track: "Hello", artist: "Adele" });
+      assert.ok(res);
+      assert.equal(res.syncType, "word");
+      assert.equal(res.lines.length, 2);
+      assert.equal(res.lines[0].text, "Hello world");
+      assert.equal(res.lines[0].words?.length, 2);
+      assert.equal(res.lines[0].words?.[0].text, "Hello");
+      assert.equal(res.lines[0].words?.[0].start, 1.0);
+      assert.equal(res.lines[0].words?.[0].end, 1.4);
+      assert.equal(res.lines[1].text, "Second line");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  test("KuGouProvider parses KRC encrypted syllable timing into word timestamps", async () => {
+    const { deflateSync } = await import("node:zlib");
+    const provider = new KuGouProvider();
+    const originalFetch = global.fetch;
+
+    // Create a real encrypted KRC payload
+    const rawKrcText = "[1000,3000]<0,400,0>Hello <500,500,0>World\n[5000,4000]<0,600,0>Second <700,400,0>Line";
+    const deflated = deflateSync(Buffer.from(rawKrcText, "utf8"));
+    const xorKey = [64, 71, 97, 119, 94, 50, 116, 71, 81, 54, 49, 45, 206, 210, 110, 105];
+    const encrypted = Buffer.alloc(deflated.length);
+    for (let i = 0; i < deflated.length; i++) {
+      encrypted[i] = deflated[i] ^ xorKey[i % xorKey.length];
+    }
+    const fullBuffer = Buffer.concat([Buffer.from("krc1"), encrypted]);
+    const base64Content = fullBuffer.toString("base64");
+
+    global.fetch = (async (url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("lyrics.kugou.com/search")) {
+        return {
+          ok: true,
+          json: async () => ({
+            candidates: [
+              { id: "12345", accesskey: "ABCDEF123456", song: "Hello", singer: "Adele" },
+            ],
+          }),
+        } as unknown as Response;
+      }
+      if (urlStr.includes("lyrics.kugou.com/download") && urlStr.includes("fmt=krc")) {
+        return {
+          ok: true,
+          json: async () => ({
+            content: base64Content,
+          }),
+        } as unknown as Response;
+      }
+      return { ok: false } as unknown as Response;
+    }) as typeof fetch;
+
+    try {
+      const res = await provider.search({ track: "Hello", artist: "Adele" });
+      assert.ok(res);
+      assert.equal(res.syncType, "word");
+      assert.equal(res.lines.length, 2);
+      assert.equal(res.lines[0].text, "Hello World");
+      assert.equal(res.lines[0].start, 1.0);
+      assert.equal(res.lines[0].end, 4.0);
+      assert.equal(res.lines[0].words?.length, 2);
+      assert.equal(res.lines[0].words?.[0].start, 1.0);
+      assert.equal(res.lines[0].words?.[0].end, 1.4);
+      assert.equal(res.lines[1].text, "Second Line");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+});
+

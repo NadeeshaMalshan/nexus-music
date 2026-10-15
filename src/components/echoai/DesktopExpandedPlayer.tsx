@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "motion/react";
 import { MOTION_CONFIG, APPLE_LYRICS_TRANSITION } from "@/lib/animations";
 import { type ExpandedPlayerProps } from "./types";
-import { parseLyrics, findActiveLineIndex, findActiveWordIndex, type LyricsLine } from "@/lib/lrc";
+import { parseLyrics, findActiveLineIndex, findActiveWordIndex, getWordCharactersSync, type LyricsLine } from "@/lib/lrc";
 import { MusicArtwork } from "./MusicArtwork";
 import { AnimatedCanvasArtwork } from "./AnimatedCanvasArtwork";
 import { useSettings } from "@/context/SettingsContext";
@@ -95,15 +95,55 @@ const LyricLine = React.memo(({
           {words.map((w, wIndex) => {
             const isWordActive = wIndex === activeWordIndex;
             const isWordPast = activeWordIndex >= 0 && wIndex < activeWordIndex;
-            const state = isWordActive
-              ? "text-cyan-200 drop-shadow-[0_0_14px_rgba(165,243,252,0.45)] scale-[1.03]"
-              : isWordPast
-                ? "text-white"
-                : "text-white/35";
+            const hasTrailingSpace = w.text.endsWith(" ");
+            const needsSpace = !hasTrailingSpace && wIndex < words.length - 1;
+
+            if (isWordPast) {
+              return (
+                <span
+                  key={wIndex}
+                  className={`inline-block transition-all duration-150 transform-gpu text-white ${
+                    needsSpace ? "mr-[0.28em]" : ""
+                  }`}
+                >
+                  {w.text}
+                </span>
+              );
+            }
+
+            if (isWordActive) {
+              const charSync = getWordCharactersSync(w, currentTimeSec);
+              return (
+                <span
+                  key={wIndex}
+                  className={`inline-block transition-all duration-150 transform-gpu ${
+                    needsSpace ? "mr-[0.28em]" : ""
+                  }`}
+                >
+                  {charSync.map((c, cIdx) => (
+                    <span
+                      key={cIdx}
+                      className={`inline-block transition-all duration-75 transform-gpu ${
+                        c.isActive
+                          ? "text-cyan-200 drop-shadow-[0_0_16px_rgba(165,243,252,0.9)] scale-[1.08] font-black"
+                          : c.isPast
+                            ? "text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.35)]"
+                            : "text-white/35"
+                      }`}
+                    >
+                      {c.char}
+                    </span>
+                  ))}
+                </span>
+              );
+            }
+
             return (
               <span
                 key={wIndex}
-                className={`inline-block transition-all duration-150 transform-gpu ${state}`}
+                className={`inline-block transition-all duration-150 transform-gpu text-white/35 ${
+                  needsSpace ? "mr-[0.28em]" : ""
+                }`}
               >
                 {w.text}
               </span>

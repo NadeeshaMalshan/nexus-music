@@ -9,7 +9,12 @@ import { parsePlainText } from "../src/lib/lyrics/parsers/plainTextParser";
 import { parseLyrics } from "../src/lib/lyrics/parsers/index";
 
 // Synchronizer
-import { findActiveLineIndex, findActiveWordIndex } from "../src/lib/lyrics/synchronizer/playbackSynchronizer";
+import {
+  findActiveLineIndex,
+  findActiveWordIndex,
+  getWordCharactersSync,
+  splitIntoGraphemes,
+} from "../src/lib/lyrics/synchronizer/playbackSynchronizer";
 
 // Repository & Providers
 import { LyricsRepository } from "../src/lib/lyrics/LyricsRepository";
@@ -296,6 +301,48 @@ describe("Playback Synchronizer (Binary Search)", () => {
   test("returns -1 when words array is undefined or empty", () => {
     assert.equal(findActiveWordIndex(undefined, 10.0), -1);
     assert.equal(findActiveWordIndex([], 10.0), -1);
+  });
+
+  test("calculates character-by-character synchronization across an active word", () => {
+    const word = { text: "Hello", start: 10.0, end: 15.0 }; // 5 chars, 1s per char
+
+    // Before word starts (9.5s)
+    const before = getWordCharactersSync(word, 9.5);
+    assert.equal(before.length, 5);
+    assert.ok(before.every((c) => c.isUpcoming && !c.isActive && !c.isPast));
+
+    // First character active ('H' at 10.5s: 10.0 to 11.0)
+    const atH = getWordCharactersSync(word, 10.5);
+    assert.equal(atH[0].char, "H");
+    assert.ok(atH[0].isActive);
+    assert.ok(atH.slice(1).every((c) => c.isUpcoming));
+
+    // Third character active ('l' at 12.5s: 12.0 to 13.0)
+    const atThird = getWordCharactersSync(word, 12.5);
+    assert.ok(atThird[0].isPast && atThird[1].isPast);
+    assert.equal(atThird[2].char, "l");
+    assert.ok(atThird[2].isActive);
+    assert.ok(atThird[3].isUpcoming && atThird[4].isUpcoming);
+
+    // After word ends (16.0s)
+    const after = getWordCharactersSync(word, 16.0);
+    assert.ok(after.every((c) => c.isPast && !c.isActive && !c.isUpcoming));
+  });
+
+  test("correctly preserves Unicode & Sinhala grapheme clusters during character sync", () => {
+    // 'මා' has 2 code units but 1 grapheme cluster
+    const clusters = splitIntoGraphemes("මා");
+    assert.equal(clusters.length, 1);
+    assert.equal(clusters[0], "මා");
+
+    const sinhalaWord = { text: "බැඳි", start: 2.0, end: 4.0 };
+    const sync = getWordCharactersSync(sinhalaWord, 2.5);
+    // 'බැඳි' should be split into 2 graphemes: 'බැ' and 'ඳි'
+    assert.equal(sync.length, 2);
+    assert.equal(sync[0].char, "බැ");
+    assert.ok(sync[0].isActive);
+    assert.equal(sync[1].char, "ඳි");
+    assert.ok(sync[1].isUpcoming);
   });
 });
 

@@ -9,6 +9,7 @@ import {
   selectDiversePlaylists,
   deduplicateArtists,
   parseRefreshOffset,
+  isArtistMatch,
   type CandidateTrack,
 } from "../src/lib/recommendations/recommendationEngine";
 
@@ -1014,6 +1015,245 @@ describe("Personalized Artists & Playlists Route Handlers", () => {
       }
     } finally {
       ytm.searchPlaylists = origSearchPlaylists;
+      global.fetch = originalFetch;
+    }
+  });
+});
+
+describe("Recommendation Engine: False Artist Matching Prevention & Explicit Title Collaborations", () => {
+  test("does not treat 'Channuka' appearing in a song title by another artist as performed by Channuka", () => {
+    // Song 1: "The Channuka Song" by Adam Sandler
+    const artists1 = extractConstituentArtists("Adam Sandler", "The Channuka Song");
+    assert.deepEqual(artists1, ["adam sandler"]);
+    assert.equal(isArtistMatch("Adam Sandler", "The Channuka Song", "Channuka"), false);
+
+    // Song 2: "Channuka Miracle" by Rabbi Shlomo
+    const artists2 = extractConstituentArtists("Rabbi Shlomo", "Channuka Miracle");
+    assert.deepEqual(artists2, ["rabbi shlomo"]);
+    assert.equal(isArtistMatch("Rabbi Shlomo", "Channuka Miracle", "Channuka"), false);
+
+    // Song 3: "Happy Channuka" by The Maccabeats
+    const artists3 = extractConstituentArtists("The Maccabeats", "Happy Channuka");
+    assert.deepEqual(artists3, ["the maccabeats"]);
+    assert.equal(isArtistMatch("The Maccabeats", "Happy Channuka", "Channuka"), false);
+  });
+
+  test("correctly identifies songs actually performed by Channuka", () => {
+    // Official single
+    const artists1 = extractConstituentArtists("Channuka", "Aloke");
+    assert.deepEqual(artists1, ["channuka"]);
+    assert.equal(isArtistMatch("Channuka", "Aloke", "Channuka"), true);
+
+    // Topic channel variant
+    const artists2 = extractConstituentArtists("Channuka - Topic", "Sandawatha");
+    assert.deepEqual(artists2, ["channuka"]);
+    assert.equal(isArtistMatch("Channuka - Topic", "Sandawatha", "Channuka"), true);
+
+    // Multi-artist collaboration in artist field
+    const artists3 = extractConstituentArtists("Channuka & Chamath Sangeeth", "Neth Mane");
+    assert.deepEqual(artists3, ["channuka", "chamath sangeeth"]);
+    assert.equal(isArtistMatch("Channuka & Chamath Sangeeth", "Neth Mane", "Channuka"), true);
+  });
+
+  test("correctly identifies collaborations explicitly featuring Channuka", () => {
+    // Parenthetical "(feat. Channuka)"
+    const artists1 = extractConstituentArtists("Chamath Sangeeth", "Dewani Inima (feat. Channuka)");
+    assert.deepEqual(artists1, ["chamath sangeeth", "channuka"]);
+    assert.equal(isArtistMatch("Chamath Sangeeth", "Dewani Inima (feat. Channuka)", "Channuka"), true);
+
+    // Unbracketed "ft. Channuka"
+    const artists2 = extractConstituentArtists("Chamath Sangeeth", "Dewani Inima ft. Channuka");
+    assert.deepEqual(artists2, ["chamath sangeeth", "channuka"]);
+    assert.equal(isArtistMatch("Chamath Sangeeth", "Dewani Inima ft. Channuka", "Channuka"), true);
+
+    // Square brackets "[featuring Channuka]"
+    const artists3 = extractConstituentArtists("Chamath Sangeeth", "Dewani Inima [featuring Channuka]");
+    assert.deepEqual(artists3, ["chamath sangeeth", "channuka"]);
+    assert.equal(isArtistMatch("Chamath Sangeeth", "Dewani Inima [featuring Channuka]", "Channuka"), true);
+  });
+
+  test("does not extract artist names from unrelated titles without explicit collaboration markers", () => {
+    // Interlude naming another artist
+    const artists1 = extractConstituentArtists("Kendrick Lamar", "Taylor Swift (Interlude)");
+    assert.deepEqual(artists1, ["kendrick lamar"]);
+    assert.equal(isArtistMatch("Kendrick Lamar", "Taylor Swift (Interlude)", "Taylor Swift"), false);
+
+    // Prince in title
+    const artists2 = extractConstituentArtists("Will Smith", "The Fresh Prince of Bel-Air");
+    assert.deepEqual(artists2, ["will smith"]);
+    assert.equal(isArtistMatch("Will Smith", "The Fresh Prince of Bel-Air", "Prince"), false);
+
+    // Song referencing Drake
+    const artists3 = extractConstituentArtists("Another Artist", "Song for Drake");
+    assert.deepEqual(artists3, ["another artist"]);
+    assert.equal(isArtistMatch("Another Artist", "Song for Drake", "Drake"), false);
+
+    // Non-collaboration title tags: "with" does not extract non-artist words
+    const artists4 = extractConstituentArtists("Artist A", "Channuka (Live with Audience)");
+    assert.deepEqual(artists4, ["artist a"]);
+    assert.equal(artists4.includes("audience"), false);
+    assert.equal(artists4.includes("channuka"), false);
+
+    const artists5 = extractConstituentArtists("Artist A", "Channuka (Official Video with Lyrics)");
+    assert.deepEqual(artists5, ["artist a"]);
+    assert.equal(artists5.includes("lyrics"), false);
+  });
+
+  test("selectDiverseRecommendations does not assign songs with 'Channuka' in the title to the Channuka queue", () => {
+    const candidates: CandidateTrack[] = [
+      {
+        videoId: "sandler_vid",
+        title: "The Channuka Song",
+        artist: "Adam Sandler",
+      },
+      {
+        videoId: "channuka_real_1",
+        title: "Aloke",
+        artist: "Channuka",
+      },
+      {
+        videoId: "channuka_real_2",
+        title: "Sandawatha",
+        artist: "Channuka",
+      },
+      {
+        videoId: "taylor_vid_1",
+        title: "Blank Space",
+        artist: "Taylor Swift",
+      },
+    ];
+
+    const result = selectDiverseRecommendations(candidates, {
+      preferredArtists: ["Channuka", "Taylor Swift"],
+      targetCount: 4,
+      maxPerArtist: 2,
+    });
+
+    // "The Channuka Song" must NOT be treated as a song by Channuka
+    const channukaSongs = result.filter(
+      (t) => t.artist.toLowerCase() === "channuka"
+    );
+    assert.equal(channukaSongs.length, 2);
+    assert.ok(channukaSongs.every((t) => t.title !== "The Channuka Song"));
+  });
+
+  test("GET /api/audio/personalized rejects false keyword matches returned by artist search", async () => {
+    const originalFetch = global.fetch;
+    const ytm = await getPublicYTMusic();
+    const origGetUpNexts = ytm.getUpNexts;
+    const origSearchSongs = ytm.searchSongs;
+
+    try {
+      // Simulate empty UpNext
+      ytm.getUpNexts = async () => [];
+
+      // Simulate searchSongs for "Channuka audio" returning 1 genuine song and 2 false title matches
+      ytm.searchSongs = (async (q: string) => {
+        if (q.toLowerCase().includes("channuka")) {
+          return [
+            {
+              videoId: "false_match_1",
+              title: "The Channuka Song",
+              artists: [{ name: "Adam Sandler" }],
+              duration: "3:40",
+            },
+            {
+              videoId: "false_match_2",
+              title: "Channuka Miracle",
+              artists: [{ name: "Rabbi Shlomo" }],
+              duration: "2:50",
+            },
+            {
+              videoId: "genuine_channuka_1",
+              title: "Aloke",
+              artists: [{ name: "Channuka" }],
+              duration: "3:30",
+            },
+          ];
+        }
+        return [
+          {
+            videoId: `other_vid_1`,
+            title: "Other Song",
+            artists: [{ name: "Other Artist" }],
+            duration: "3:00",
+          },
+        ];
+      }) as any;
+
+      // Mock liked songs feed indicating user's top artist is "Channuka"
+      global.fetch = async (url: string | URL | Request) => {
+        const u = String(url);
+        if (u.includes("channels?part=contentDetails")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              items: [{ contentDetails: { relatedPlaylists: { likes: "LL123" } } }],
+            }),
+          } as any;
+        }
+        if (u.includes("playlistItems")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              items: [
+                {
+                  contentDetails: { videoId: "chan_hist_1" },
+                  snippet: { title: "Neth Mane", videoOwnerChannelTitle: "Channuka" },
+                },
+              ],
+            }),
+          } as any;
+        }
+        if (u.includes("videos?part=")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              items: [
+                {
+                  id: "chan_hist_1",
+                  snippet: { title: "Neth Mane", channelTitle: "Channuka", categoryId: "10" },
+                  contentDetails: { duration: "PT3M30S" },
+                },
+              ],
+            }),
+          } as any;
+        }
+        return { ok: true, status: 200, json: async () => ({ items: [] }) } as any;
+      };
+
+      const req = new Request("http://localhost/api/audio/personalized", {
+        headers: { authorization: "Bearer test_token" },
+      });
+
+      const res = await getAudioPersonalized(req);
+      assert.equal(res.status, 200);
+
+      const data = await res.json();
+      assert.ok(Array.isArray(data.items));
+
+      // Neither "The Channuka Song" by Adam Sandler nor "Channuka Miracle" by Rabbi Shlomo should be in recommendations!
+      const adamSandlerSong = data.items.find(
+        (t: any) => t.author.toLowerCase() === "adam sandler"
+      );
+      assert.equal(adamSandlerSong, undefined, "Adam Sandler should not be recommended for Channuka taste");
+
+      const rabbiShlomoSong = data.items.find(
+        (t: any) => t.author.toLowerCase() === "rabbi shlomo"
+      );
+      assert.equal(rabbiShlomoSong, undefined, "Rabbi Shlomo should not be recommended for Channuka taste");
+
+      // The genuine Channuka track should be present
+      const genuineTrack = data.items.find(
+        (t: any) => t.videoId === "genuine_channuka_1"
+      );
+      assert.ok(genuineTrack, "Genuine Channuka track must be recommended");
+    } finally {
+      ytm.getUpNexts = origGetUpNexts;
+      ytm.searchSongs = origSearchSongs;
       global.fetch = originalFetch;
     }
   });

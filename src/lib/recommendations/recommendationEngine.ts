@@ -37,9 +37,15 @@ export interface DiverseSelectionOptions {
 }
 
 const COLLAB_SPLIT_REGEX =
-  /\s*(?:&|,|\bfeat\.?\b|\bfeaturing\b|\bft\.?\b|\bwith\b|\band\b|;|\/|\\)\s*/i;
-const TITLE_FEAT_REGEX =
-  /[\(\[][^\)\]]*(?:feat\.?|ft\.?|featuring|with)\s+([^\)\]]+)[\)\]]/gi;
+  /\s*(?:&|,|\bfeat\.?\b|\bfeaturing\b|\bft\.?\b|\band\b|;|\/|\\)\s*/i;
+
+// Match explicit featured artists enclosed in parentheses/brackets e.g. "(feat. Artist)" or "[ft. Artist]"
+const TITLE_BRACKETED_FEAT_REGEX =
+  /[\(\[][^\)\]]*\b(?:feat\.?|ft\.?|featuring)\s+([^\)\]]+)[\)\]]/gi;
+
+// Match unbracketed explicit featured artists e.g. "Song Name feat. Artist" or "Song Name ft. Artist - Audio"
+const TITLE_UNBRACKETED_FEAT_REGEX =
+  /(?:^|\s+)\b(?:feat\.?|ft\.?|featuring)\s+([^(\[\-\|\n\r]+)/gi;
 
 /**
  * Normalizes an artist name for comparison and deduplication.
@@ -65,8 +71,15 @@ export function normalizeArtistName(raw: string | null | undefined): string {
 
 /**
  * Extracts all constituent individual artists from an artist string and/or song title.
- * Identifies featured artists and collaborators so that songs like "Artist A feat. Artist B"
- * are properly recognized as containing both Artist A and Artist B.
+ *
+ * Rules:
+ * 1. Primary source: Artist metadata field from YouTube Music or YouTube Data API.
+ * 2. Title parsing: ONLY extracts featured artists when explicit collaboration markers
+ *    are present: `(feat. Artist Name)`, `[ft. Artist Name]`, `ft. Artist Name`, or `featuring Artist Name`.
+ * 3. Does NOT treat an artist name appearing anywhere in a song title as proof that the artist
+ *    performed the song (e.g. "The Channuka Song" by Adam Sandler or "Taylor Swift (Interlude)"
+ *    by Kendrick Lamar do NOT extract Channuka or Taylor Swift as performers).
+ * 4. Ignores non-collaboration title tags like `(Live with Orchestra)` or `(Official Video with Lyrics)`.
  */
 export function extractConstituentArtists(
   artistStr: string | null | undefined,
@@ -87,7 +100,7 @@ export function extractConstituentArtists(
     }
   };
 
-  // 1. Split artist string on common collaboration delimiters
+  // 1. Primary source: Split artist string on common collaboration delimiters
   if (artistStr) {
     const parts = artistStr.split(COLLAB_SPLIT_REGEX);
     for (const part of parts) {
@@ -95,11 +108,27 @@ export function extractConstituentArtists(
     }
   }
 
-  // 2. Extract featured artists from parenthetical title tags (e.g. "(feat. Artist B)")
+  // 2. Parse title-based featured artists ONLY when explicit collaboration markers are present
   if (titleStr) {
-    const regex = new RegExp(TITLE_FEAT_REGEX);
+    // 2a. Check bracketed features first (e.g. "(feat. Artist B)" or "[ft. Artist B]")
+    const bracketedRegex = new RegExp(TITLE_BRACKETED_FEAT_REGEX);
     let match: RegExpExecArray | null;
-    while ((match = regex.exec(titleStr)) !== null) {
+    while ((match = bracketedRegex.exec(titleStr)) !== null) {
+      if (match[1]) {
+        const featParts = match[1].split(COLLAB_SPLIT_REGEX);
+        for (const fp of featParts) {
+          addArtist(fp);
+        }
+      }
+    }
+
+    // 2b. Check unbracketed features after stripping bracketed sections (e.g. "Song ft. Artist B")
+    const titleWithoutBrackets = titleStr.replace(
+      new RegExp(TITLE_BRACKETED_FEAT_REGEX),
+      " "
+    );
+    const unbracketedRegex = new RegExp(TITLE_UNBRACKETED_FEAT_REGEX);
+    while ((match = unbracketedRegex.exec(titleWithoutBrackets)) !== null) {
       if (match[1]) {
         const featParts = match[1].split(COLLAB_SPLIT_REGEX);
         for (const fp of featParts) {
@@ -110,6 +139,42 @@ export function extractConstituentArtists(
   }
 
   return artists;
+}
+
+/**
+ * Determines whether a track is legitimately performed by or explicitly features a target artist.
+ *
+ * Rules:
+ * 1. Uses reliable artist metadata from YouTube Music or YouTube Data API as primary source.
+ * 2. Parses title-based featured artists ONLY when explicit collaboration markers are present:
+ *    `(feat. Artist)`, `ft. Artist`, or `featuring Artist`.
+ * 3. Does NOT treat an artist name appearing in a song title as proof of performance
+ *    (e.g. "The Channuka Song" by Adam Sandler does NOT match Channuka).
+ */
+export function isArtistMatch(
+  trackArtist: string | null | undefined,
+  trackTitle: string | null | undefined,
+  targetArtist: string | null | undefined
+): boolean {
+  if (!targetArtist) return false;
+  const normTarget = normalizeArtistName(targetArtist);
+  if (!normTarget || normTarget === "unknown" || normTarget === "unknown artist") {
+    return false;
+  }
+
+  // 1. Check constituent artists from artist metadata and explicit title features
+  const constituent = extractConstituentArtists(trackArtist, trackTitle);
+  if (constituent.includes(normTarget)) {
+    return true;
+  }
+
+  // 2. Direct normalized artist comparison
+  const normArtist = normalizeArtistName(trackArtist);
+  if (normArtist && normArtist === normTarget) {
+    return true;
+  }
+
+  return false;
 }
 
 /**

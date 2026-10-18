@@ -11,6 +11,7 @@ import { appendUniqueTaste } from "@/lib/mergeTasteHistory";
 import {
   selectDiverseRecommendations,
   parseRefreshOffset,
+  isArtistMatch,
   type CandidateTrack,
 } from "@/lib/recommendations/recommendationEngine";
 
@@ -139,11 +140,35 @@ export async function GET(request: Request) {
     ]);
 
     const candidates: CandidateTrack[] = [];
-    for (const group of [...relatedResults, ...searchResults]) {
+
+    // Related video candidates from seeds
+    for (const group of relatedResults) {
       for (const t of group) {
         if (!t?.videoId) continue;
         const sec = durationLabelToSeconds(t.duration);
         if (sec > MAX_MUSIC_VIDEO_SECONDS) continue;
+        candidates.push({
+          videoId: t.videoId,
+          title: t.title || "Unknown title",
+          artist: t.artist || "Unknown Artist",
+          duration: t.duration || "0:00",
+          durationSeconds: sec,
+          thumbnail: t.thumbnailUrl?.trim() || `https://i.ytimg.com/vi/${t.videoId}/hqdefault.jpg`,
+        });
+      }
+    }
+
+    // Artist-search video candidates: verify that the video is ACTUALLY performed by or explicitly features the target artist
+    for (let i = 0; i < artistsToUse.length; i++) {
+      const targetArtist = artistsToUse[i];
+      const group = searchResults[i] || [];
+      for (const t of group) {
+        if (!t?.videoId) continue;
+        const sec = durationLabelToSeconds(t.duration);
+        if (sec > MAX_MUSIC_VIDEO_SECONDS) continue;
+        if (!isArtistMatch(t.artist, t.title, targetArtist)) {
+          continue;
+        }
         candidates.push({
           videoId: t.videoId,
           title: t.title || "Unknown title",
@@ -166,6 +191,9 @@ export async function GET(request: Request) {
         if (!row?.videoId) continue;
         const sec = durationLabelToSeconds(row.duration);
         if (sec > MAX_MUSIC_VIDEO_SECONDS) continue;
+        if (!isArtistMatch(row.artist, row.title, topArtists[0])) {
+          continue;
+        }
         candidates.push({
           videoId: row.videoId,
           title: row.title || "Unknown title",

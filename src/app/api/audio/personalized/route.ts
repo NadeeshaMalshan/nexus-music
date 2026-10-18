@@ -11,6 +11,7 @@ import { getPublicYTMusic } from "@/lib/ytmClient";
 import {
   selectDiverseRecommendations,
   parseRefreshOffset,
+  isArtistMatch,
   type CandidateTrack,
 } from "@/lib/recommendations/recommendationEngine";
 
@@ -200,12 +201,37 @@ export async function GET(request: Request) {
     ]);
 
     const candidates: CandidateTrack[] = [];
-    for (const group of [...relatedResults, ...searchResults]) {
+
+    // Related audio candidates from seeds
+    for (const group of relatedResults) {
       for (const t of group) {
         if (!t?.youtubeId) continue;
         if (isProbablyMusicVideo(t)) continue;
         const sec = t.durationSeconds || durationLabelToSeconds(t.duration);
         if (sec > MAX_SONG_LIST_SECONDS) continue;
+        candidates.push({
+          videoId: t.youtubeId,
+          title: t.title,
+          artist: t.artist,
+          duration: t.duration,
+          durationSeconds: sec,
+          thumbnail: t.thumbnailUrl || `https://i.ytimg.com/vi/${t.youtubeId}/hqdefault.jpg`,
+        });
+      }
+    }
+
+    // Artist-search candidates: verify that the song is ACTUALLY performed by or explicitly features the target artist
+    for (let i = 0; i < artistsToUse.length; i++) {
+      const targetArtist = artistsToUse[i];
+      const group = searchResults[i] || [];
+      for (const t of group) {
+        if (!t?.youtubeId) continue;
+        if (isProbablyMusicVideo(t)) continue;
+        const sec = t.durationSeconds || durationLabelToSeconds(t.duration);
+        if (sec > MAX_SONG_LIST_SECONDS) continue;
+        if (!isArtistMatch(t.artist, t.title, targetArtist)) {
+          continue;
+        }
         candidates.push({
           videoId: t.youtubeId,
           title: t.title,
@@ -225,6 +251,9 @@ export async function GET(request: Request) {
         if (isProbablyMusicVideo(row)) continue;
         const sec = row.durationSeconds || durationLabelToSeconds(row.duration);
         if (sec > MAX_SONG_LIST_SECONDS) continue;
+        if (!isArtistMatch(row.artist, row.title, topArtists[0])) {
+          continue;
+        }
         candidates.push({
           videoId: row.youtubeId,
           title: row.title,

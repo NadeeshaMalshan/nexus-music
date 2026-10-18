@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "node node_modules/next/dist/bin/next start",
     "lint": "eslint",
-    "test": "tsx --test tests/lyrics.test.ts"
+    "test": "tsx --test tests/lyrics.test.ts tests/recommendations.test.ts"
   },
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",

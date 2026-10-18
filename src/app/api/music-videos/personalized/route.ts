@@ -8,6 +8,11 @@ import {
 } from "@/lib/youtubeData";
 import { getRequestAccessToken } from "@/lib/requestAccessToken";
 import { appendUniqueTaste } from "@/lib/mergeTasteHistory";
+import {
+  selectDiverseRecommendations,
+  parseRefreshOffset,
+  type CandidateTrack,
+} from "@/lib/recommendations/recommendationEngine";
 
 export const dynamic = "force-dynamic";
 
@@ -30,18 +35,6 @@ function durationLabelToSeconds(label: string | undefined): number {
   if (p.length === 2) return p[0] * 60 + p[1];
   if (p.length === 3) return p[0] * 3600 + p[1] * 60 + p[2];
   return 0;
-}
-
-function trackToSearchItem(t: YouTubeTrack): SearchItem {
-  const id = t.videoId;
-  const thumb = t.thumbnailUrl?.trim() || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-  return {
-    videoId: id,
-    title: t.title || "Unknown title",
-    author: t.artist || "Unknown Artist",
-    duration: t.duration || "0:00",
-    thumbnail: thumb,
-  };
 }
 
 function normArtistName(raw: string | undefined | null): string {
@@ -69,6 +62,7 @@ function topArtistsFromTracks(tracks: YouTubeTrack[], max = 8): string[] {
 
 /**
  * YouTube Data API (OAuth) only: activity + liked taste, `search` + `related` for music. No YTM / cookies.
+ * Enforces artist diversity with max 3 per artist and round-robin interleaving.
  */
 export async function GET(request: Request) {
   const accessToken = await getRequestAccessToken(request);
@@ -84,18 +78,24 @@ export async function GET(request: Request) {
 
     const history = activities;
     const tasteTracks = appendUniqueTaste(history, liked);
+
+    if (tasteTracks.length === 0) {
+      return NextResponse.json({
+        items: [] as SearchItem[],
+        topArtists: [] as string[],
+        historySeeds: 0,
+        mode: "youtube_data_api",
+        signals: {
+          youtubeActivityRows: activities.length,
+          likedRows: liked.length,
+          historyMergedForSeeds: history.length,
+        },
+        hint: "No music-tagged activity or liked videos in range; play/like more on YouTube to tune this row.",
+      });
+    }
+
+    const refreshOffset = parseRefreshOffset(request);
     const topArtists = topArtistsFromTracks(tasteTracks, 8);
-
-    const seen = new Set<string>();
-    const out: SearchItem[] = [];
-
-    const pushIfOk = (t: YouTubeTrack) => {
-      if (!t.videoId || seen.has(t.videoId)) return;
-      const sec = durationLabelToSeconds(t.duration);
-      if (sec > MAX_MUSIC_VIDEO_SECONDS) return;
-      seen.add(t.videoId);
-      out.push(trackToSearchItem(t));
-    };
 
     const hisIds = history
       .map((t) => t.videoId)
@@ -109,43 +109,95 @@ export async function GET(request: Request) {
       if (seenSeed.has(id)) continue;
       seenSeed.add(id);
       uniqueSeeds.push(id);
-      if (uniqueSeeds.length >= 4) break;
     }
 
-    for (const videoId of uniqueSeeds) {
-      if (out.length >= 12) break;
-      const related = await fetchRelatedVideos(accessToken, videoId);
-      for (const r of related) {
-        pushIfOk(r);
-        if (out.length >= 12) break;
+    // Select up to 4 seeds, rotating with refresh offset if multiple seeds exist
+    const seedOffset = uniqueSeeds.length > 0 ? refreshOffset % uniqueSeeds.length : 0;
+    const seedsToUse = [
+      ...uniqueSeeds.slice(seedOffset),
+      ...uniqueSeeds.slice(0, seedOffset),
+    ].slice(0, 4);
+
+    const artistsToUse = topArtists.slice(0, 4);
+
+    // Fetch candidates from related-video requests and artist-based official music video searches concurrently
+    const [relatedResults, searchResults] = await Promise.all([
+      Promise.all(
+        seedsToUse.map((id) =>
+          fetchRelatedVideos(accessToken, id).catch(() => [] as YouTubeTrack[])
+        )
+      ),
+      Promise.all(
+        artistsToUse.map((artist) =>
+          searchYouTubeMusicCategoryVideos(
+            accessToken,
+            `${artist} official music video`,
+            12
+          ).catch(() => [] as YouTubeTrack[])
+        )
+      ),
+    ]);
+
+    const candidates: CandidateTrack[] = [];
+    for (const group of [...relatedResults, ...searchResults]) {
+      for (const t of group) {
+        if (!t?.videoId) continue;
+        const sec = durationLabelToSeconds(t.duration);
+        if (sec > MAX_MUSIC_VIDEO_SECONDS) continue;
+        candidates.push({
+          videoId: t.videoId,
+          title: t.title || "Unknown title",
+          artist: t.artist || "Unknown Artist",
+          duration: t.duration || "0:00",
+          durationSeconds: sec,
+          thumbnail: t.thumbnailUrl?.trim() || `https://i.ytimg.com/vi/${t.videoId}/hqdefault.jpg`,
+        });
       }
     }
 
-    for (const artist of topArtists.slice(0, 3)) {
-      if (out.length >= 12) break;
-      const found = await searchYouTubeMusicCategoryVideos(
+    // If candidate pool is sparse, fetch fallback official videos from top artist
+    if (candidates.length < 8 && topArtists[0]) {
+      const more = await searchYouTubeMusicCategoryVideos(
         accessToken,
-        `${artist} official music video`,
+        `${topArtists[0]} music video`,
         12
-      );
-      for (const row of found) {
-        pushIfOk(row);
-        if (out.length >= 12) break;
+      ).catch(() => [] as YouTubeTrack[]);
+      for (const row of more) {
+        if (!row?.videoId) continue;
+        const sec = durationLabelToSeconds(row.duration);
+        if (sec > MAX_MUSIC_VIDEO_SECONDS) continue;
+        candidates.push({
+          videoId: row.videoId,
+          title: row.title || "Unknown title",
+          artist: row.artist || "Unknown Artist",
+          duration: row.duration || "0:00",
+          durationSeconds: sec,
+          thumbnail: row.thumbnailUrl?.trim() || `https://i.ytimg.com/vi/${row.videoId}/hqdefault.jpg`,
+        });
       }
     }
 
-    if (out.length < 4 && topArtists[0]) {
-      const more = await searchYouTubeMusicCategoryVideos(accessToken, `${topArtists[0]} music video`, 12);
-      for (const row of more) {
-        pushIfOk(row);
-        if (out.length >= 12) break;
-      }
-    }
+    // Apply artist diversity: round-robin, max 3 per artist, preferred 2, collaborator-aware
+    const diverseTracks = selectDiverseRecommendations(candidates, {
+      preferredArtists: topArtists,
+      targetCount: 12,
+      maxPerArtist: 3,
+      preferredMaxPerArtist: 2,
+      offset: refreshOffset,
+    });
+
+    const items: SearchItem[] = diverseTracks.map((t) => ({
+      videoId: t.videoId,
+      title: t.title,
+      author: t.artist,
+      duration: t.duration || "0:00",
+      thumbnail: t.thumbnail || `https://i.ytimg.com/vi/${t.videoId}/hqdefault.jpg`,
+    }));
 
     return NextResponse.json({
-      items: out.slice(0, 12),
+      items,
       topArtists: topArtists.slice(0, 5),
-      historySeeds: uniqueSeeds.length,
+      historySeeds: seedsToUse.length,
       mode: "youtube_data_api",
       signals: {
         youtubeActivityRows: activities.length,

@@ -581,7 +581,7 @@ export function CenterPanel(props: CenterPanelProps) {
     try {
       // Taste comes from the signed-in YouTube account; results come from public YT Music songs/Up Next.
       const pr = await fetch(
-        "/api/audio/personalized",
+        `/api/audio/personalized?t=${Date.now()}`,
         youtubeApiFetchInit(session?.accessToken, { cache: "no-store" })
       );
       if (pr.ok) {
@@ -637,7 +637,7 @@ export function CenterPanel(props: CenterPanelProps) {
       // YouTube / YT Music only: history, top artists, related + YT Music search (no generative model).
       if (session?.accessToken) {
         const pr = await fetch(
-          "/api/music-videos/personalized",
+          `/api/music-videos/personalized?t=${Date.now()}`,
           youtubeApiFetchInit(session.accessToken, { cache: "no-store" })
         );
         if (pr.ok) {

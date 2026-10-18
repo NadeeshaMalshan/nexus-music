@@ -8,6 +8,11 @@ import { getRequestAccessToken } from "@/lib/requestAccessToken";
 import { appendUniqueTaste } from "@/lib/mergeTasteHistory";
 import { formatDuration } from "@/lib/format";
 import { getPublicYTMusic } from "@/lib/ytmClient";
+import {
+  selectDiverseRecommendations,
+  parseRefreshOffset,
+  type CandidateTrack,
+} from "@/lib/recommendations/recommendationEngine";
 
 export const dynamic = "force-dynamic";
 
@@ -162,24 +167,8 @@ export async function GET(request: Request) {
       });
     }
 
+    const refreshOffset = parseRefreshOffset(request);
     const topArtists = topArtistsFromTracks(tasteTracks, 8);
-    const seen = new Set<string>();
-    const out: SearchItem[] = [];
-
-    const pushIfOk = (t: YtmAudioResult) => {
-      if (!t.youtubeId || seen.has(t.youtubeId)) return;
-      if (isProbablyMusicVideo(t)) return;
-      const sec = t.durationSeconds || durationLabelToSeconds(t.duration);
-      if (sec > MAX_SONG_LIST_SECONDS) return;
-      seen.add(t.youtubeId);
-      out.push({
-        videoId: t.youtubeId,
-        title: t.title,
-        author: t.artist,
-        duration: t.duration,
-        thumbnail: t.thumbnailUrl || `https://i.ytimg.com/vi/${t.youtubeId}/hqdefault.jpg`,
-      });
-    };
 
     const hisIds = history
       .map((t) => t.videoId)
@@ -193,39 +182,81 @@ export async function GET(request: Request) {
       if (seenSeed.has(id)) continue;
       seenSeed.add(id);
       uniqueSeeds.push(id);
-      if (uniqueSeeds.length >= 4) break;
     }
 
-    for (const videoId of uniqueSeeds) {
-      if (out.length >= 12) break;
-      const related = await getYtmRelatedAudio(videoId);
-      for (const r of related) {
-        pushIfOk(r);
-        if (out.length >= 12) break;
+    // Select up to 4 seeds, rotating with refresh offset if multiple seeds exist
+    const seedOffset = uniqueSeeds.length > 0 ? refreshOffset % uniqueSeeds.length : 0;
+    const seedsToUse = [
+      ...uniqueSeeds.slice(seedOffset),
+      ...uniqueSeeds.slice(0, seedOffset),
+    ].slice(0, 4);
+
+    const artistsToUse = topArtists.slice(0, 4);
+
+    // Fetch related audio and artist songs concurrently to build candidate pool
+    const [relatedResults, searchResults] = await Promise.all([
+      Promise.all(seedsToUse.map((id) => getYtmRelatedAudio(id))),
+      Promise.all(artistsToUse.map((artist) => searchYtmSongs(`${artist} audio`))),
+    ]);
+
+    const candidates: CandidateTrack[] = [];
+    for (const group of [...relatedResults, ...searchResults]) {
+      for (const t of group) {
+        if (!t?.youtubeId) continue;
+        if (isProbablyMusicVideo(t)) continue;
+        const sec = t.durationSeconds || durationLabelToSeconds(t.duration);
+        if (sec > MAX_SONG_LIST_SECONDS) continue;
+        candidates.push({
+          videoId: t.youtubeId,
+          title: t.title,
+          artist: t.artist,
+          duration: t.duration,
+          durationSeconds: sec,
+          thumbnail: t.thumbnailUrl || `https://i.ytimg.com/vi/${t.youtubeId}/hqdefault.jpg`,
+        });
       }
     }
 
-    for (const artist of topArtists.slice(0, 3)) {
-      if (out.length >= 12) break;
-      const found = await searchYtmSongs(`${artist} audio`);
-      for (const row of found) {
-        pushIfOk(row);
-        if (out.length >= 12) break;
-      }
-    }
-
-    if (out.length < 4 && topArtists[0]) {
+    // If candidate pool is shallow, fetch fallback candidates from primary artist
+    if (candidates.length < 8 && topArtists[0]) {
       const more = await searchYtmSongs(`${topArtists[0]} official audio`);
       for (const row of more) {
-        pushIfOk(row);
-        if (out.length >= 12) break;
+        if (!row?.youtubeId) continue;
+        if (isProbablyMusicVideo(row)) continue;
+        const sec = row.durationSeconds || durationLabelToSeconds(row.duration);
+        if (sec > MAX_SONG_LIST_SECONDS) continue;
+        candidates.push({
+          videoId: row.youtubeId,
+          title: row.title,
+          artist: row.artist,
+          duration: row.duration,
+          durationSeconds: sec,
+          thumbnail: row.thumbnailUrl || `https://i.ytimg.com/vi/${row.youtubeId}/hqdefault.jpg`,
+        });
       }
     }
 
+    // Apply artist diversity: round-robin, max 3 per artist, preferred 2, collaborator-aware
+    const diverseTracks = selectDiverseRecommendations(candidates, {
+      preferredArtists: topArtists,
+      targetCount: 12,
+      maxPerArtist: 3,
+      preferredMaxPerArtist: 2,
+      offset: refreshOffset,
+    });
+
+    const items: SearchItem[] = diverseTracks.map((t) => ({
+      videoId: t.videoId,
+      title: t.title,
+      author: t.artist,
+      duration: t.duration || "0:00",
+      thumbnail: t.thumbnail || `https://i.ytimg.com/vi/${t.videoId}/hqdefault.jpg`,
+    }));
+
     return NextResponse.json({
-      items: out.slice(0, 12),
+      items,
       topArtists: topArtists.slice(0, 5),
-      historySeeds: uniqueSeeds.length,
+      historySeeds: seedsToUse.length,
       mode: "youtube_history_to_ytm_audio",
       source: "music.youtube.com",
       signals: {

@@ -613,10 +613,27 @@ export function CenterPanel(props: CenterPanelProps) {
   const fetchLiveNow = useCallback(async () => {
     setLiveNowLoading(true);
     try {
+      if (session?.accessToken) {
+        const pr = await fetch(
+          `/api/live/personalized?t=${Date.now()}`,
+          youtubeApiFetchInit(session.accessToken, { cache: "no-store" })
+        );
+        if (pr.ok) {
+          const pdata = await readResponseJson<{ items?: SearchItem[] }>(pr);
+          const pitems = (pdata?.items || []).filter((x) => !!x?.videoId);
+          if (pitems.length > 0) {
+            setLiveNow(pitems.slice(0, 12));
+            return;
+          }
+        }
+      }
+
       const seeds = seedQueries();
-      const queryValue = seeds[0] === "__FALLBACK_SEED__" ? liveSeed : seeds[0];
+      const liveList = ["Electronic Set", "Live Acoustic", "Jazz Session", "Synthwave", "Chillout Live", "Festival Set", "Piano Live"];
+      const randomSeed = liveList[Math.floor(Math.random() * liveList.length)];
+      const queryValue = seeds[0] === "__FALLBACK_SEED__" ? randomSeed : seeds[0];
       const q = `${queryValue} live`;
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=live`, { cache: "no-store" });
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=live&t=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) return;
       const data = await readResponseJson<{ items?: SearchItem[] }>(res);
       if (!data) return;
@@ -629,7 +646,7 @@ export function CenterPanel(props: CenterPanelProps) {
     } finally {
       setLiveNowLoading(false);
     }
-  }, [seedQueries, liveSeed]);
+  }, [seedQueries, session?.accessToken]);
 
   const fetchVideoPicks = useCallback(async () => {
     setVideoPicksLoading(true);

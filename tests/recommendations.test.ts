@@ -527,5 +527,218 @@ describe("Personalized Recommendation Route Handlers", () => {
       global.fetch = originalFetch;
     }
   });
+
+  test("GET /api/live/personalized respects channel diversity and filters non-music streams", async () => {
+    const { GET: getLivePersonalized } = await import("../src/app/api/live/personalized/route");
+    const originalFetch = global.fetch;
+
+    try {
+      global.fetch = async (url: string | URL | Request) => {
+        const u = String(url);
+        if (u.includes("channels?part=contentDetails")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ items: [{ contentDetails: { relatedPlaylists: { likes: "LL123" } } }] }),
+          } as any;
+        }
+        if (u.includes("playlistItems")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              items: [
+                {
+                  contentDetails: { videoId: "seed_vid_789" },
+                  snippet: { title: "Starboy", videoOwnerChannelTitle: "The Weeknd" },
+                },
+              ],
+            }),
+          } as any;
+        }
+        if (u.includes("videos?part=")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              items: [
+                {
+                  id: "seed_vid_789",
+                  snippet: { title: "Starboy", channelTitle: "The Weeknd", categoryId: "10" },
+                  contentDetails: { duration: "PT3M50S" },
+                },
+              ],
+            }),
+          } as any;
+        }
+        // Return 6 live streams from "PESIARnet" and 4 from "Lofi Girl"
+        if (u.includes("search?")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              items: [
+                ...Array.from({ length: 6 }, (_, i) => ({
+                  id: { videoId: `pesiar_live_${i}` },
+                  snippet: {
+                    title: `🔴 LIVE 🌴 Beautiful Beach 🏖️ Chill Music Vol ${i}`,
+                    channelTitle: "PESIARnet",
+                    thumbnails: { high: { url: "" } },
+                  },
+                })),
+                ...Array.from({ length: 4 }, (_, i) => ({
+                  id: { videoId: `lofi_live_${i}` },
+                  snippet: {
+                    title: `lofi hip hop radio - beats to relax/study to ${i}`,
+                    channelTitle: "Lofi Girl",
+                    thumbnails: { high: { url: "" } },
+                  },
+                })),
+              ],
+            }),
+          } as any;
+        }
+        return { ok: true, status: 200, json: async () => ({ items: [] }) } as any;
+      };
+
+      const req = new Request("http://localhost/api/live/personalized", {
+        headers: { authorization: "Bearer test_token" },
+      });
+
+      const res = await getLivePersonalized(req);
+      assert.equal(res.status, 200);
+
+      const data = await res.json();
+      assert.ok(Array.isArray(data.items));
+      assert.ok(data.items.length > 0);
+
+      // Channel diversity: PESIARnet must be limited to at most 2 streams!
+      const pesiarStreams = data.items.filter((t: any) =>
+        t.author.toLowerCase().includes("pesiarnet")
+      );
+      assert.ok(
+        pesiarStreams.length <= 2,
+        `Expected PESIARnet to have at most 2 streams, got ${pesiarStreams.length}`
+      );
+
+      // All items must be marked as isLive
+      assert.ok(data.items.every((t: any) => t.isLive === true));
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
+
+import { isLikelyMusicLiveStream } from "../src/lib/recommendations/recommendationEngine";
+
+describe("Live Stream Content Quality & Music Relevance Filter", () => {
+  test("strictly rejects live view count and subscriber counter streams", () => {
+    assert.equal(
+      isLikelyMusicLiveStream({
+        title: "Most Viewed Music Videos on YouTube 2026 - Live count",
+        author: "DSC Top music charts",
+      }),
+      false
+    );
+
+    assert.equal(
+      isLikelyMusicLiveStream({
+        title: "TOP 50 ... LIVE count",
+        author: "SubGalaxy",
+      }),
+      false
+    );
+
+    assert.equal(
+      isLikelyMusicLiveStream({
+        title: "Realtime Subscriber Count Live",
+        author: "LiveStats",
+      }),
+      false
+    );
+  });
+
+  test("strictly rejects celebrity gossip, red carpet news, and paparazzi streams", () => {
+    assert.equal(
+      isLikelyMusicLiveStream({
+        title: "Priyanka Chopra, Taylor Swift, Kim Kardashian & More Make Academy Museum Carpet",
+        author: "zoom",
+      }),
+      false
+    );
+
+    assert.equal(
+      isLikelyMusicLiveStream({
+        title: "Celebrity Gossip and Red Carpet Arrivals LIVE",
+        author: "E! News",
+      }),
+      false
+    );
+  });
+
+  test("strictly rejects cartoons, animations, and kids swimming pool content", () => {
+    assert.equal(
+      isLikelyMusicLiveStream({
+        title: "🔴 LIVE 24/7 | What Happened at the Swimming Pool? 😱",
+        author: "Family Life English",
+      }),
+      false
+    );
+
+    assert.equal(
+      isLikelyMusicLiveStream({
+        title: "Cocomelon Nursery Rhymes Cartoon for Kids Live",
+        author: "Kids Animation World",
+      }),
+      false
+    );
+  });
+
+  test("strictly rejects gaming streams", () => {
+    assert.equal(
+      isLikelyMusicLiveStream({
+        title: "Roblox Live 24/7 with Viewers",
+        author: "GamerPro",
+      }),
+      false
+    );
+  });
+
+  test("accepts genuine music live streams, acoustic sessions, and DJ sets", () => {
+    assert.equal(
+      isLikelyMusicLiveStream({
+        title: "🔴 LIVE 🌴 Beautiful Beach 🏖️ Chill, Healing & Relaxing Music",
+        author: "PESIARnet",
+        categoryId: "10",
+      }),
+      true
+    );
+
+    assert.equal(
+      isLikelyMusicLiveStream({
+        title: "lofi hip hop radio - beats to relax/study to",
+        author: "Lofi Girl",
+        categoryId: "10",
+      }),
+      true
+    );
+
+    assert.equal(
+      isLikelyMusicLiveStream({
+        title: "Live Acoustic Guitar & Vocals Session",
+        author: "Acoustic Morning",
+      }),
+      true
+    );
+
+    assert.equal(
+      isLikelyMusicLiveStream({
+        title: "Electronic DJ Set Live at Tomorrowland",
+        author: "Festival Live",
+      }),
+      true
+    );
+  });
+});
+
 

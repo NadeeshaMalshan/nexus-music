@@ -357,3 +357,84 @@ export function parseRefreshOffset(request: Request): number {
   }
   return 0;
 }
+
+/**
+ * Validates whether a live stream item is genuine music content rather than
+ * subscriber counters, kids cartoons, celebrity gossip, or gaming streams.
+ */
+export function isLikelyMusicLiveStream(item: {
+  title: string;
+  author: string;
+  categoryId?: string;
+}): boolean {
+  const title = (item.title || "").toLowerCase();
+  const author = (item.author || "").toLowerCase();
+
+  // 1. Explicit reject: Live subscriber, view, and stats counter streams
+  if (
+    /\b(sub\s*count|subscriber\s*count|view\s*count|live\s*count|realtime|live\s*sub|live\s*counter|stats\s*live|counter\s*live|live\s*stream\s*count)\b/i.test(
+      title
+    )
+  ) {
+    return false;
+  }
+
+  // 2. Explicit reject: News, celebrity gossip, paparazzi, and red carpet
+  if (
+    /\b(breaking\s*news|news\s*live|paparazzi|red\s*carpet|gossip|press\s*conference|interview\s*live|media\s*briefing|weather\s*live|academy\s*museum)\b/i.test(
+      title
+    ) ||
+    /^(zoom|e!\s*news|entertainment\s*tonight|tmz|hollywood\s*fix|access\s*hollywood)$/i.test(
+      author
+    )
+  ) {
+    return false;
+  }
+
+  // 3. Explicit reject: Kids, cartoons, nursery rhymes, and family animations
+  if (
+    /\b(cartoon|nursery|rhymes|for\s*kids|kindergarten|toddler|swimming\s*pool|baby\s*songs|cocomelon|chuchu|peppa|diana\s*and\s*roma)\b/i.test(
+      title
+    ) ||
+    /\b(kids|family\s*life|nursery|cartoon|animation|baby|toddler|toys?)\b/i.test(
+      author
+    )
+  ) {
+    return false;
+  }
+
+  // 4. Explicit reject: Gaming streams
+  if (
+    /\b(gameplay|roblox|minecraft|fortnite|gta\s*v|gta\s*5|valorant|pubg|warzone|league\s*of\s*legends|genshin|gaming\s*live)\b/i.test(
+      title
+    )
+  ) {
+    return false;
+  }
+
+  // 5. If categoryId is available from YouTube Data API:
+  // Category 10 is Music.
+  if (item.categoryId) {
+    if (item.categoryId === "10") {
+      return true;
+    }
+    // If not categorized under Music, require clear music keywords in title or author
+    const hasMusicKeywords =
+      /\b(music|songs?|live\s*(set|session|concert|performance|acoustic|band|orchestra)|dj\s*set|lofi|chillout|beats|radio|synthwave|jazz|ambient|piano|guitar|orchestra|festival|edm|techno|house|rap|hip\s*hop|r&b|pop|rock|blues)\b/i.test(
+        title
+      ) ||
+      /\b(music|records|sound|vevo|lofi|dj|band|orchestra|radio)\b/i.test(author);
+
+    return hasMusicKeywords;
+  }
+
+  // 6. For items where categoryId is not provided, verify presence of music indicators
+  const isMusicContent =
+    /\b(music|songs?|live\s*(set|session|concert|performance|acoustic|stream|band)|dj\s*set|lofi|chillout|relaxing|beats|radio|synthwave|jazz|ambient|piano|guitar|orchestra|festival|edm|techno|house|hip\s*hop|pop|rock|r&b|acoustic)\b/i.test(
+      title
+    ) ||
+    /\b(music|records|sound|vevo|official|lofi|dj|band|radio)\b/i.test(author);
+
+  return isMusicContent;
+}
+

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { searchSongsRobust } from "@/lib/ytmSearchService";
 import { fetchYoutubeDataApiWithKeyRotation } from "@/lib/youtubeDataApiFetch";
+import {
+  selectDiverseRecommendations,
+  isLikelyMusicLiveStream,
+  type CandidateTrack,
+} from "@/lib/recommendations/recommendationEngine";
 import https from "https";
 
 function fetchHtmlForceIpv4(urlStr: string): Promise<string> {
@@ -189,17 +194,24 @@ export async function GET(request: Request) {
     }
 
     const cacheKey = `${type}:${q}`;
-    const cached = searchCache.get(cacheKey);
-    if (cached && cached.expiry > Date.now()) {
-      console.log(`[Search Cache] Hit: ${cacheKey}`);
-      return NextResponse.json(cached.data);
+    const shouldBypassCache = type === "live" || searchParams.has("t") || searchParams.has("refresh");
+    if (!shouldBypassCache) {
+      const cached = searchCache.get(cacheKey);
+      if (cached && cached.expiry > Date.now()) {
+        console.log(`[Search Cache] Hit: ${cacheKey}`);
+        return NextResponse.json(cached.data);
+      }
     }
 
     const sendResponse = (data: any) => {
-      searchCache.set(cacheKey, { data, expiry: Date.now() + CACHE_TTL_MS });
+      if (!shouldBypassCache) {
+        searchCache.set(cacheKey, { data, expiry: Date.now() + CACHE_TTL_MS });
+      }
       return NextResponse.json(data, {
         headers: {
-          "Cache-Control": "public, max-age=900, s-maxage=900, stale-while-revalidate=300"
+          "Cache-Control": shouldBypassCache
+            ? "no-store"
+            : "public, max-age=900, s-maxage=900, stale-while-revalidate=300"
         }
       });
     };
@@ -242,7 +254,7 @@ export async function GET(request: Request) {
             url.searchParams.set("type", "video");
             url.searchParams.set("eventType", "live");
             url.searchParams.set("videoCategoryId", "10");
-            url.searchParams.set("maxResults", "12");
+            url.searchParams.set("maxResults", "25");
             if (apiKey) url.searchParams.set("key", apiKey);
             return url.toString();
           },
@@ -265,7 +277,7 @@ export async function GET(request: Request) {
               url.searchParams.set("q", q);
               url.searchParams.set("type", "video");
               url.searchParams.set("eventType", "live");
-              url.searchParams.set("maxResults", "12");
+              url.searchParams.set("maxResults", "25");
               if (apiKey) url.searchParams.set("key", apiKey);
               return url.toString();
             },
@@ -296,36 +308,53 @@ export async function GET(request: Request) {
             const detailsData = await detailsRes.json();
             const detailsItems = detailsData.items || [];
 
-            finalItems = detailsItems.map((item: any) => {
+            const liveCandidates: CandidateTrack[] = [];
+            for (const item of detailsItems) {
               const id = item.id;
               const title = item.snippet?.title || "Unknown Title";
               const author = (item.snippet?.channelTitle || "Unknown Artist").replace(/\s*-\s*Topic$/, "");
 
-              let duration = "LIVE";
-              const ytDuration = item.contentDetails?.duration;
-              if (ytDuration) {
-                if (ytDuration === "PT0S" || ytDuration === "P0D" || ytDuration === "PT0H0M0S") {
-                  duration = "LIVE";
-                } else {
-                  duration = parseISO8601Duration(ytDuration);
-                }
+              // Filter out subscriber counters, cartoons, gaming, celebrity gossip
+              if (
+                !isLikelyMusicLiveStream({
+                  title,
+                  author,
+                  categoryId: item.snippet?.categoryId,
+                })
+              ) {
+                continue;
               }
 
-              const thumbnail = item.snippet?.thumbnails?.maxres?.url ||
-                                item.snippet?.thumbnails?.high?.url ||
-                                item.snippet?.thumbnails?.medium?.url ||
-                                youtubeHqThumbnail(id);
+              const thumbnail =
+                item.snippet?.thumbnails?.maxres?.url ||
+                item.snippet?.thumbnails?.high?.url ||
+                item.snippet?.thumbnails?.medium?.url ||
+                youtubeHqThumbnail(id);
 
-              return {
+              liveCandidates.push({
                 videoId: id,
                 title,
-                author,
-                duration,
+                artist: author,
+                duration: "LIVE",
                 thumbnail,
-                views: item.statistics?.viewCount || "0",
-                isLive: true,
-              };
+              });
+            }
+
+            const diverse = selectDiverseRecommendations(liveCandidates, {
+              targetCount: 12,
+              maxPerArtist: 2,
+              preferredMaxPerArtist: 1,
             });
+
+            finalItems = diverse.map((t) => ({
+              videoId: t.videoId,
+              title: t.title,
+              author: t.artist,
+              duration: "LIVE",
+              thumbnail: t.thumbnail,
+              views: "0",
+              isLive: true,
+            }));
           } else {
             ytSearchSuccess = false;
           }
@@ -335,63 +364,90 @@ export async function GET(request: Request) {
         ytSearchSuccess = false;
       }
 
-      if (!ytSearchSuccess) {
+      if (!ytSearchSuccess || finalItems.length === 0) {
         // Fallback 1: Scrape standard YouTube search page with the "Live" filter
         let scrapedItems: any[] = [];
         try {
           const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=EgJAAQ%253D%253D`;
           const html = await fetchHtmlForceIpv4(url);
-            const match = html.match(/(?:var\s+)?ytInitialData\s*=\s*({.+?});/);
-            if (match) {
-              const data = JSON.parse(match[1]);
-              const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents
-                || data.contents?.twoColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents;
+          const match = html.match(/(?:var\s+)?ytInitialData\s*=\s*({.+?});/);
+          if (match) {
+            const data = JSON.parse(match[1]);
+            const contents =
+              data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents ||
+              data.contents?.twoColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents;
 
-              if (contents) {
-                for (const content of contents) {
-                  const itemSection = content.itemSectionRenderer;
-                  if (!itemSection?.contents) continue;
-                  for (const item of itemSection.contents) {
-                    const video = item.videoRenderer;
-                    if (!video) continue;
-                    const videoId = video.videoId;
-                    const title = video.title?.runs?.[0]?.text || "Unknown Stream";
-                    const author = video.ownerText?.runs?.[0]?.text || "Unknown Channel";
-                    const duration = video.lengthText?.simpleText || "LIVE";
-                    const thumbnail = video.thumbnail?.thumbnails?.[0]?.url || youtubeHqThumbnail(videoId);
-                    const isLive = checkIfVideoIsLive(video);
+            if (contents) {
+              for (const content of contents) {
+                const itemSection = content.itemSectionRenderer;
+                if (!itemSection?.contents) continue;
+                for (const item of itemSection.contents) {
+                  const video = item.videoRenderer;
+                  if (!video) continue;
+                  const videoId = video.videoId;
+                  const title = video.title?.runs?.[0]?.text || "Unknown Stream";
+                  const author = video.ownerText?.runs?.[0]?.text || "Unknown Channel";
+                  const thumbnail = video.thumbnail?.thumbnails?.[0]?.url || youtubeHqThumbnail(videoId);
+                  const isLive = checkIfVideoIsLive(video);
 
-                    if (isLive) {
-                      scrapedItems.push({
-                        videoId,
-                        title,
-                        author,
-                        duration: "LIVE",
-                        thumbnail,
-                        isLive: true
-                      });
-                    }
+                  if (isLive && isLikelyMusicLiveStream({ title, author })) {
+                    scrapedItems.push({
+                      videoId,
+                      title,
+                      author,
+                      duration: "LIVE",
+                      thumbnail,
+                      isLive: true,
+                    });
                   }
                 }
               }
             }
+          }
         } catch (err) {
           console.warn("[Search API] YouTube Web live scraping failed:", err);
         }
 
         if (scrapedItems.length > 0) {
+          const diverseScraped = selectDiverseRecommendations(
+            scrapedItems.map((s) => ({
+              videoId: s.videoId,
+              title: s.title,
+              artist: s.author,
+              duration: "LIVE",
+              thumbnail: s.thumbnail,
+            })),
+            { targetCount: 12, maxPerArtist: 2, preferredMaxPerArtist: 1 }
+          );
+
           return sendResponse({
-            items: scrapedItems.slice(0, 12),
+            items: diverseScraped.map((d) => ({ ...d, author: d.artist, isLive: true })),
             source: "youtube.com",
           });
         }
 
         // Fallback 2: YTM Scraper search as last resort
         const liveQuery = q.toLowerCase().includes("live") ? q : `${q} live`;
-        finalItems = await searchYouTubeMusicVideos(liveQuery);
-        finalItems = finalItems.map((item) => ({
+        const ytmItems = await searchYouTubeMusicVideos(liveQuery);
+        const ytmMusic = ytmItems.filter((i) =>
+          isLikelyMusicLiveStream({ title: i.title, author: i.author })
+        );
+        const diverseYtm = selectDiverseRecommendations(
+          ytmMusic.map((y) => ({
+            videoId: y.videoId,
+            title: y.title,
+            artist: y.author,
+            duration: "LIVE",
+            thumbnail: y.thumbnail,
+          })),
+          { targetCount: 12, maxPerArtist: 2, preferredMaxPerArtist: 1 }
+        );
+
+        finalItems = diverseYtm.map((item) => ({
           ...item,
-          isLive: item.duration === "0:00" || item.duration === "LIVE",
+          author: item.artist,
+          duration: "LIVE",
+          isLive: true,
         }));
       }
 

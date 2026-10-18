@@ -6,6 +6,8 @@ import {
   extractConstituentArtists,
   getPrimaryArtist,
   selectDiverseRecommendations,
+  selectDiversePlaylists,
+  deduplicateArtists,
   parseRefreshOffset,
   type CandidateTrack,
 } from "../src/lib/recommendations/recommendationEngine";
@@ -341,7 +343,7 @@ describe("Recommendation Engine: Artist Diversity & Round-Robin Selection", () =
 
 import { GET as getAudioPersonalized } from "../src/app/api/audio/personalized/route";
 import { GET as getVideoPersonalized } from "../src/app/api/music-videos/personalized/route";
-import { getPublicYTMusic } from "../src/lib/ytmClient";
+import { getPublicYTMusic, getYTMusic } from "../src/lib/ytmClient";
 
 describe("Personalized Recommendation Route Handlers", () => {
   test("GET /api/audio/personalized respects per-artist limit when pool is dominated by one artist", async () => {
@@ -738,6 +740,282 @@ describe("Live Stream Content Quality & Music Relevance Filter", () => {
       }),
       true
     );
+  });
+});
+
+describe("Recommendation Engine: Artist Deduplication (deduplicateArtists)", () => {
+  test("eliminates duplicates and normalizes artist variations like - Topic", () => {
+    const rawArtists = [
+      { id: "1", name: "The Weeknd" },
+      { id: "2", name: "The Weeknd - Topic" },
+      { id: "3", name: "THE WEEKND" },
+      { id: "4", name: "Kendrick Lamar" },
+      { id: "5", name: "Kendrick Lamar - Topic" },
+      { id: "6", name: "Taylor Swift" },
+    ];
+
+    const result = deduplicateArtists(rawArtists);
+    assert.equal(result.length, 3);
+    assert.deepEqual(
+      result.map((a) => a.name),
+      ["The Weeknd", "Kendrick Lamar", "Taylor Swift"]
+    );
+  });
+
+  test("discards unknown, empty, and generic artist names", () => {
+    const rawArtists = [
+      { id: "1", name: "" },
+      { id: "2", name: "Unknown" },
+      { id: "3", name: "Unknown Artist" },
+      { id: "4", name: "Various Artists" },
+      { id: "5", name: "Billie Eilish" },
+    ];
+
+    const result = deduplicateArtists(rawArtists);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].name, "Billie Eilish");
+  });
+
+  test("respects targetCount and rotates candidates with offset on refresh", () => {
+    const artists = [
+      { id: "1", name: "Artist 1" },
+      { id: "2", name: "Artist 2" },
+      { id: "3", name: "Artist 3" },
+      { id: "4", name: "Artist 4" },
+      { id: "5", name: "Artist 5" },
+    ];
+
+    const resOffset0 = deduplicateArtists(artists, { targetCount: 3, offset: 0 });
+    assert.equal(resOffset0.length, 3);
+    assert.deepEqual(
+      resOffset0.map((a) => a.name),
+      ["Artist 1", "Artist 2", "Artist 3"]
+    );
+
+    const resOffset2 = deduplicateArtists(artists, { targetCount: 3, offset: 2 });
+    assert.equal(resOffset2.length, 3);
+    assert.deepEqual(
+      resOffset2.map((a) => a.name),
+      ["Artist 3", "Artist 4", "Artist 5"]
+    );
+  });
+});
+
+describe("Recommendation Engine: Playlist Diversity (selectDiversePlaylists)", () => {
+  test("caps dominance by a single curator or channel at max 2 playlists", () => {
+    const candidates = [
+      { id: "pl_1", title: "Mix 1", author: "SuperCurator" },
+      { id: "pl_2", title: "Mix 2", author: "SuperCurator" },
+      { id: "pl_3", title: "Mix 3", author: "SuperCurator" },
+      { id: "pl_4", title: "Mix 4", author: "SuperCurator" },
+      { id: "pl_5", title: "Indie Mix", author: "IndieVibes" },
+      { id: "pl_6", title: "Rock Mix", author: "RockWorld" },
+    ];
+
+    const result = selectDiversePlaylists(candidates, {
+      targetCount: 12,
+      maxPerAuthor: 2,
+    });
+
+    const superCuratorCount = result.filter(
+      (p) => p.author === "SuperCurator"
+    ).length;
+    assert.equal(superCuratorCount, 2);
+    assert.equal(result.length, 4);
+  });
+
+  test("eliminates duplicate playlist IDs and near-duplicate normalized titles", () => {
+    const candidates = [
+      { id: "pl_dup", title: "Today's Top Hits", author: "Curator A" },
+      { id: "pl_dup", title: "Today's Top Hits (Re-uploaded)", author: "Curator B" },
+      { id: "pl_unique_1", title: "Todays Top Hits!", author: "Curator C" },
+      { id: "pl_unique_2", title: "Acoustic Afternoon", author: "Curator D" },
+    ];
+
+    const result = selectDiversePlaylists(candidates, { targetCount: 12 });
+    // Should drop identical ID and duplicate normalized title "todays top hits"
+    assert.equal(result.length, 2);
+    assert.equal(result[0].id, "pl_dup");
+    assert.equal(result[1].id, "pl_unique_2");
+  });
+
+  test("rotates playlist selection with offset for refresh variety", () => {
+    const candidates = Array.from({ length: 10 }, (_, i) => ({
+      id: `pl_${i}`,
+      title: `Unique Playlist Title ${i}`,
+      author: `Author ${i}`,
+    }));
+
+    const page1 = selectDiversePlaylists(candidates, { targetCount: 4, offset: 0 });
+    const page2 = selectDiversePlaylists(candidates, { targetCount: 4, offset: 4 });
+
+    assert.equal(page1.length, 4);
+    assert.equal(page2.length, 4);
+    assert.notDeepEqual(
+      page1.map((p) => p.id),
+      page2.map((p) => p.id)
+    );
+    assert.deepEqual(
+      page2.map((p) => p.id),
+      ["pl_4", "pl_5", "pl_6", "pl_7"]
+    );
+  });
+});
+
+import { GET as getArtistsPersonalized } from "../src/app/api/artists/personalized/route";
+import { GET as getPlaylistsPersonalized } from "../src/app/api/playlists/personalized/route";
+
+describe("Personalized Artists & Playlists Route Handlers", () => {
+  test("GET /api/artists/personalized returns 401 when unauthorized", async () => {
+    const req = new Request("http://localhost/api/artists/personalized");
+    const res = await getArtistsPersonalized(req);
+    assert.equal(res.status, 401);
+  });
+
+  test("GET /api/artists/personalized returns diverse deduplicated artists", async () => {
+    const originalFetch = global.fetch;
+    const ytm = await getYTMusic();
+    const origSearchArtists = ytm.searchArtists;
+
+    try {
+      ytm.searchArtists = (async (q: string) => [
+        {
+          artistId: `id_${q.toLowerCase().replace(/\s+/g, "_")}`,
+          name: q,
+          thumbnails: [{ url: `https://example.com/${q}.jpg` }],
+        },
+      ]) as any;
+
+      global.fetch = async (url: string | URL | Request) => {
+        const u = String(url);
+        if (u.includes("channels?part=contentDetails")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              items: [{ contentDetails: { relatedPlaylists: { likes: "LL123" } } }],
+            }),
+          } as any;
+        }
+        if (u.includes("playlistItems")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              items: [
+                {
+                  contentDetails: { videoId: "art_vid_1" },
+                  snippet: { title: "Song 1", videoOwnerChannelTitle: "The Weeknd" },
+                },
+                {
+                  contentDetails: { videoId: "art_vid_2" },
+                  snippet: { title: "Song 2", videoOwnerChannelTitle: "Kendrick Lamar" },
+                },
+                {
+                  contentDetails: { videoId: "art_vid_3" },
+                  snippet: { title: "Song 3", videoOwnerChannelTitle: "Dua Lipa" },
+                },
+              ],
+            }),
+          } as any;
+        }
+        return { ok: true, status: 200, json: async () => ({ items: [] }) } as any;
+      };
+
+      const req = new Request("http://localhost/api/artists/personalized", {
+        headers: { authorization: "Bearer test_token" },
+      });
+
+      const res = await getArtistsPersonalized(req);
+      assert.equal(res.status, 200);
+
+      const data = await res.json();
+      assert.ok(Array.isArray(data.items));
+      // Artists must be deduplicated
+      const names = data.items.map((a: any) => a.name.toLowerCase());
+      const uniqueNames = new Set(names);
+      assert.equal(names.length, uniqueNames.size);
+    } finally {
+      ytm.searchArtists = origSearchArtists;
+      global.fetch = originalFetch;
+    }
+  });
+
+  test("GET /api/playlists/personalized returns 401 when unauthorized", async () => {
+    const req = new Request("http://localhost/api/playlists/personalized");
+    const res = await getPlaylistsPersonalized(req);
+    assert.equal(res.status, 401);
+  });
+
+  test("GET /api/playlists/personalized returns diverse playlists", async () => {
+    const originalFetch = global.fetch;
+    const ytm = await getYTMusic();
+    const origSearchPlaylists = ytm.searchPlaylists;
+
+    try {
+      ytm.searchPlaylists = (async (q: string) => [
+        {
+          playlistId: `pl_${q.toLowerCase().replace(/\s+/g, "_")}`,
+          name: `${q} Mix`,
+          author: "Curator",
+          thumbnails: [{ url: `https://example.com/${q}.jpg` }],
+        },
+      ]) as any;
+
+      global.fetch = async (url: string | URL | Request) => {
+        const u = String(url);
+        if (u.includes("channels?part=contentDetails")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              items: [{ contentDetails: { relatedPlaylists: { likes: "LL123" } } }],
+            }),
+          } as any;
+        }
+        if (u.includes("playlistItems")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              items: [
+                {
+                  contentDetails: { videoId: "pl_vid_1" },
+                  snippet: { title: "Starboy", videoOwnerChannelTitle: "The Weeknd" },
+                },
+              ],
+            }),
+          } as any;
+        }
+        return { ok: true, status: 200, json: async () => ({ items: [] }) } as any;
+      };
+
+      const req = new Request("http://localhost/api/playlists/personalized", {
+        headers: { authorization: "Bearer test_token" },
+      });
+
+      const res = await getPlaylistsPersonalized(req);
+      assert.equal(res.status, 200);
+
+      const data = await res.json();
+      assert.ok(Array.isArray(data.items));
+      // Playlists must be capped per curator
+      const authorMap = new Map<string, number>();
+      for (const pl of data.items) {
+        if (pl.author && pl.author !== "YouTube Music") {
+          authorMap.set(pl.author, (authorMap.get(pl.author) || 0) + 1);
+        }
+      }
+      for (const [author, count] of authorMap.entries()) {
+        assert.ok(
+          count <= 2,
+          `Expected curator ${author} to have at most 2 playlists, got ${count}`
+        );
+      }
+    } finally {
+      ytm.searchPlaylists = origSearchPlaylists;
+      global.fetch = originalFetch;
+    }
   });
 });
 

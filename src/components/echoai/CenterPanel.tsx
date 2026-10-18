@@ -685,10 +685,41 @@ export function CenterPanel(props: CenterPanelProps) {
   const fetchPlaylistRecs = useCallback(async () => {
     setPlaylistRecsLoading(true);
     try {
+      if (session?.accessToken) {
+        const pr = await fetch(
+          `/api/playlists/personalized?t=${Date.now()}`,
+          youtubeApiFetchInit(session.accessToken, { cache: "no-store" })
+        );
+        if (pr.ok) {
+          const pdata = await readResponseJson<{ items?: PlaylistSearchItem[] }>(pr);
+          const pitems = (pdata?.items || []).filter((x) => x?.type === "PLAYLIST" && x?.id);
+          if (pitems.length > 0) {
+            setPlaylistRecs(pitems.slice(0, 12));
+            return;
+          }
+        }
+      }
+
       const seeds = seedQueries();
-      const queryValue = seeds[0] === "__FALLBACK_SEED__" ? playlistSeed : seeds[0];
+      const playlistList = [
+        "Party Mix",
+        "Workout Hits",
+        "Focus Study",
+        "Sleep Ambient",
+        "Dance Hits",
+        "Summer Vibes",
+        "Sad Acoustic",
+        "Chill Vibes",
+        "Night Drive",
+        "Synthwave Sunset",
+      ];
+      const randomSeed = playlistList[Math.floor(Math.random() * playlistList.length)];
+      const queryValue = seeds[0] === "__FALLBACK_SEED__" ? randomSeed : seeds[0];
       const q = `${queryValue} mix playlist`;
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=playlists`, { cache: "no-store" });
+      const res = await fetch(
+        `/api/search?q=${encodeURIComponent(q)}&type=playlists&t=${Date.now()}`,
+        { cache: "no-store" }
+      );
       if (!res.ok) return;
       const data = await readResponseJson<{ items?: PlaylistSearchItem[] }>(res);
       if (!data) return;
@@ -701,15 +732,46 @@ export function CenterPanel(props: CenterPanelProps) {
     } finally {
       setPlaylistRecsLoading(false);
     }
-  }, [seedQueries, playlistSeed]);
+  }, [seedQueries, session?.accessToken]);
 
   const fetchArtistRecs = useCallback(async () => {
     setArtistRecsLoading(true);
     try {
+      if (session?.accessToken) {
+        const pr = await fetch(
+          `/api/artists/personalized?t=${Date.now()}`,
+          youtubeApiFetchInit(session.accessToken, { cache: "no-store" })
+        );
+        if (pr.ok) {
+          const pdata = await readResponseJson<{ items?: ArtistSearchItem[] }>(pr);
+          const pitems = (pdata?.items || []).filter(
+            (x) => x?.type === "ARTIST" && (x as ArtistSearchItem).name
+          );
+          if (pitems.length > 0) {
+            setArtistRecs(pitems.slice(0, 12));
+            return;
+          }
+        }
+      }
+
       const seeds = seedQueries();
-      const queryValue = seeds[0] === "__FALLBACK_SEED__" ? artistSeed : seeds[0];
+      const genreList = [
+        "Pop Music",
+        "R&B Hits",
+        "Hip Hop Artists",
+        "Indie Pop",
+        "Alternative Rock",
+        "Electronic Dance",
+        "Latin Music",
+        "Top Artists",
+      ];
+      const randomGenre = genreList[Math.floor(Math.random() * genreList.length)];
+      const queryValue = seeds[0] === "__FALLBACK_SEED__" ? randomGenre : seeds[0];
       const q = queryValue;
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=artists`, { cache: "no-store" });
+      const res = await fetch(
+        `/api/search?q=${encodeURIComponent(q)}&type=artists&t=${Date.now()}`,
+        { cache: "no-store" }
+      );
       if (!res.ok) return;
       const data = await readResponseJson<{ items?: ArtistSearchItem[] }>(res);
       if (!data) return;
@@ -722,7 +784,7 @@ export function CenterPanel(props: CenterPanelProps) {
     } finally {
       setArtistRecsLoading(false);
     }
-  }, [seedQueries, artistSeed]);
+  }, [seedQueries, session?.accessToken]);
 
   const fetchLikedTracks = useCallback(async () => {
     if (!session?.accessToken) return;

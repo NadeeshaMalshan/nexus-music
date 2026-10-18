@@ -3,6 +3,8 @@ import { searchSongsRobust } from "@/lib/ytmSearchService";
 import { fetchYoutubeDataApiWithKeyRotation } from "@/lib/youtubeDataApiFetch";
 import {
   selectDiverseRecommendations,
+  selectDiversePlaylists,
+  deduplicateArtists,
   isLikelyMusicLiveStream,
   type CandidateTrack,
 } from "@/lib/recommendations/recommendationEngine";
@@ -219,13 +221,15 @@ export async function GET(request: Request) {
     if (type === "artists") {
        const { searchArtistsRobust } = await import("@/lib/ytmSearchService");
        const artists = await searchArtistsRobust(q);
-       return sendResponse({ items: artists, source: "music.youtube.com" });
+       const diverseArtists = deduplicateArtists(artists, { targetCount: 12 });
+       return sendResponse({ items: diverseArtists, source: "music.youtube.com" });
     }
 
     if (type === "playlists") {
        const { searchPlaylistsRobust } = await import("@/lib/ytmSearchService");
        const playlists = await searchPlaylistsRobust(q);
-       return sendResponse({ items: playlists, source: "music.youtube.com" });
+       const diversePlaylists = selectDiversePlaylists(playlists, { targetCount: 12, maxPerAuthor: 2 });
+       return sendResponse({ items: diversePlaylists, source: "music.youtube.com" });
     }
 
     if (type === "albums") {

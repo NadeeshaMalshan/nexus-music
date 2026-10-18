@@ -438,3 +438,128 @@ export function isLikelyMusicLiveStream(item: {
   return isMusicContent;
 }
 
+/**
+ * Deduplicates artist objects by normalized name.
+ * Strips "- Topic" noise from display names, drops invalid/unknown entries,
+ * and guarantees each artist appears at most once.
+ * Supports offset rotation for fresh variety on refresh.
+ */
+export function deduplicateArtists<T extends { name?: string; id?: string }>(
+  artists: T[],
+  options?: { targetCount?: number; offset?: number }
+): T[] {
+  const targetCount = options?.targetCount ?? 12;
+  const offset = options?.offset ?? 0;
+
+  const seen = new Set<string>();
+  const cleanList: T[] = [];
+
+  for (const a of artists) {
+    if (!a || !a.name) continue;
+    const cleanName = a.name.replace(/\s*-\s*Topic$/i, "").trim();
+    const norm = normalizeArtistName(cleanName);
+    if (
+      !norm ||
+      norm === "unknown" ||
+      norm === "unknown artist" ||
+      norm === "various artists"
+    ) {
+      continue;
+    }
+    if (seen.has(norm)) continue;
+    seen.add(norm);
+
+    cleanList.push({
+      ...a,
+      name: cleanName,
+    });
+  }
+
+  if (cleanList.length <= targetCount || offset === 0) {
+    return cleanList.slice(0, targetCount);
+  }
+
+  // Rotate list when offset is provided for refresh variety
+  const shift = offset % cleanList.length;
+  const rotated = [...cleanList.slice(shift), ...cleanList.slice(0, shift)];
+  return rotated.slice(0, targetCount);
+}
+
+export interface CandidatePlaylist {
+  id: string;
+  title: string;
+  author?: string;
+  thumbnail?: string;
+  type?: string;
+}
+
+export interface DiversePlaylistOptions {
+  targetCount?: number;
+  maxPerAuthor?: number;
+  offset?: number;
+}
+
+/**
+ * Enforces diversity across playlists:
+ * 1. Deduplicates playlist IDs
+ * 2. Normalizes titles to prevent near-identical duplicate mixes
+ * 3. Caps playlists per creator/curator (default max 2)
+ * 4. Supports offset rotation for fresh variety on refresh
+ */
+export function selectDiversePlaylists<T extends CandidatePlaylist>(
+  playlists: T[],
+  options?: DiversePlaylistOptions
+): T[] {
+  const targetCount = options?.targetCount ?? 12;
+  const maxPerAuthor = options?.maxPerAuthor ?? 2;
+  const offset = options?.offset ?? 0;
+
+  const seenIds = new Set<string>();
+  const seenTitles = new Set<string>();
+  const authorCounts = new Map<string, number>();
+
+  const normTitle = (t: string) =>
+    t
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  // If offset is provided, rotate initial candidates
+  let candidatePool = playlists.filter((p) => p && p.id);
+  if (offset > 0 && candidatePool.length > targetCount) {
+    const shift = offset % candidatePool.length;
+    candidatePool = [
+      ...candidatePool.slice(shift),
+      ...candidatePool.slice(0, shift),
+    ];
+  }
+
+  const selected: T[] = [];
+
+  for (const pl of candidatePool) {
+    if (seenIds.has(pl.id)) continue;
+
+    const tKey = normTitle(pl.title || "");
+    if (tKey && seenTitles.has(tKey)) continue;
+
+    const author = pl.author || "YouTube Music";
+    const authorKey = normalizeArtistName(author) || "unknown";
+
+    const count = authorCounts.get(authorKey) || 0;
+    if (
+      count < maxPerAuthor ||
+      authorKey === "youtube music" ||
+      authorKey === "various artists"
+    ) {
+      seenIds.add(pl.id);
+      if (tKey) seenTitles.add(tKey);
+      authorCounts.set(authorKey, count + 1);
+      selected.push(pl);
+      if (selected.length >= targetCount) break;
+    }
+  }
+
+  return selected.slice(0, targetCount);
+}
+

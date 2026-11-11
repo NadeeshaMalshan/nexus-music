@@ -1003,6 +1003,7 @@ export function DesktopExpandedPlayer({
               <AnimatedCanvasArtwork
                 title={liveMetadata?.title || currentSong.title}
                 artist={liveMetadata?.artist || currentSong.artist}
+                album={currentSong.album}
                 src={liveMetadata?.artwork || currentSong.artwork}
                 alt={liveMetadata?.title || currentSong.title}
                 iconSize={48}

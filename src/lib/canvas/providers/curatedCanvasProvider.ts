@@ -1,5 +1,5 @@
 import { CanvasQuery, CanvasResponse, ICanvasProvider } from "../types";
-import { cleanCanvasArtist, cleanCanvasTitle, isArtistMatch, isTitleMatch } from "../matching";
+import { cleanCanvasArtist, cleanCanvasTitle, isArtistMatch, isTitleMatch, isAlbumMatch } from "../matching";
 
 interface CuratedItem {
   title: string;
@@ -159,13 +159,16 @@ export class CuratedCanvasProvider implements ICanvasProvider {
   public async getCanvas(query: CanvasQuery): Promise<CanvasResponse | null> {
     const cleanTitle = cleanCanvasTitle(query.title, query.artist);
     const cleanArtist = cleanCanvasArtist(query.artist);
-    if (!cleanTitle || !cleanArtist) return null;
+    if ((!cleanTitle && !query.album) || !cleanArtist) return null;
 
     for (const item of CURATED_CANVASES) {
-      const titleMatch = isTitleMatch(cleanTitle, item.title);
+      const titleMatch = cleanTitle ? isTitleMatch(cleanTitle, item.title) : { isMatch: false, score: 0 };
       const artistMatch = isArtistMatch(cleanArtist, item.artist);
+      const albumMatch = item.album
+        ? (query.album && isAlbumMatch(query.album, item.album)) || isAlbumMatch(cleanTitle, item.album)
+        : false;
 
-      if (titleMatch.isMatch && artistMatch.isMatch) {
+      if ((titleMatch.isMatch || albumMatch) && artistMatch.isMatch) {
         return {
           hasCanvas: true,
           animatedCover: {

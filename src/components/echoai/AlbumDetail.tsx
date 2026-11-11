@@ -5,6 +5,7 @@ import { type Song } from "./types";
 import { Play, Shuffle, Loader2, Disc, Music2, Clock, Calendar, User, ChevronLeft } from "lucide-react";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { MusicArtwork } from "./MusicArtwork";
+import { AnimatedCanvasArtwork } from "./AnimatedCanvasArtwork";
 import { m, AnimatePresence } from "motion/react";
 import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { useDashboard } from "@/context/DashboardContext";
@@ -76,6 +77,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
         id: t.videoId,
         title: t.title,
         artist: t.artist || artistName,
+        album: albumData.name,
         artwork: t.artwork,
         duration: t.duration || "0:00",
         color: accentColor,
@@ -86,6 +88,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
         id: track.videoId,
         title: track.title,
         artist: track.artist || artistName,
+        album: albumData.name,
         artwork: track.artwork,
         duration: track.duration || "0:00",
         color: accentColor
@@ -99,6 +102,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
       id: t.videoId,
       title: t.title,
       artist: t.artist || artistName,
+      album: albumData.name,
       artwork: t.artwork,
       duration: t.duration || "0:00",
       color: accentColor,
@@ -118,6 +122,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
       id: t.videoId,
       title: t.title,
       artist: t.artist || artistName,
+      album: albumData.name,
       artwork: t.artwork,
       duration: t.duration || "0:00",
       color: accentColor,
@@ -150,13 +155,14 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
             animate={{ opacity: 1, y: 0, scale: 1 }}
             className="relative w-64 h-64 md:w-56 md:h-56 lg:w-72 lg:h-72 shrink-0 shadow-[0_40px_100px_rgba(0,0,0,0.7)] rounded-[2.5rem] overflow-hidden group border border-white/10 animate-gpu bg-zinc-900/40"
           >
-            <MusicArtwork
+            <AnimatedCanvasArtwork
+              title={albumData.name}
+              artist={artistName}
+              album={albumData.name}
               src={albumData.thumbnails?.[albumData.thumbnails.length - 1]?.url}
               alt={albumData.name}
               iconSize={56}
-              variant="track"
-              rounded="none"
-              className="group-hover:scale-110"
+              className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-700"
             />
           </m.div>
 

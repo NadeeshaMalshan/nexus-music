@@ -10,10 +10,10 @@ export async function GET(request: Request) {
   const rawArtist = params.get("artist")?.trim() ?? "";
   const album = params.get("album")?.trim() || undefined;
 
-  if (!rawTitle || !rawArtist) {
+  if ((!rawTitle && !album) || !rawArtist) {
     return NextResponse.json(
       {
-        error: "title and artist are required",
+        error: "artist and either title or album are required",
         hasCanvas: false,
         animatedCover: null,
         fallbackRequired: true,
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
   }
 
   const result = await canvasService.getCanvas({
-    title: rawTitle,
+    title: rawTitle || album || "",
     artist: rawArtist,
     album,
   });

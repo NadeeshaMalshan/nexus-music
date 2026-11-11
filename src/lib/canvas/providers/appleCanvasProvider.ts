@@ -147,12 +147,62 @@ export class AppleCanvasProvider implements ICanvasProvider {
   public async getCanvas(query: CanvasQuery): Promise<CanvasResponse | null> {
     const cleanTitle = cleanCanvasTitle(query.title, query.artist);
     const cleanArtist = cleanCanvasArtist(query.artist);
-    if (!cleanTitle || !cleanArtist) return null;
+    const cleanAlbum = query.album ? cleanCanvasTitle(query.album, query.artist) : "";
+    if ((!cleanTitle && !cleanAlbum) || !cleanArtist) return null;
 
     const token = await this.getToken();
     if (!token) return null;
 
-    // Search Apple Music Catalog for songs
+    // 1. Direct Album Motion Art Search
+    const isDirectAlbumSearch = Boolean(cleanAlbum && (!cleanTitle || cleanTitle.toLowerCase() === cleanAlbum.toLowerCase()));
+    if (isDirectAlbumSearch) {
+      const albSearchUrl = new URL(`${APPLE_API}/us/search`);
+      albSearchUrl.searchParams.set("term", `${cleanArtist} ${cleanAlbum}`.trim());
+      albSearchUrl.searchParams.set("types", "albums");
+      albSearchUrl.searchParams.set("limit", "5");
+      albSearchUrl.searchParams.set("extend", "editorialVideo");
+
+      const albSearch = await this.appleGet(albSearchUrl.toString(), token);
+      const albResults = obj(albSearch?.results);
+      const albContainer = obj(albResults?.albums);
+      const albData = arr(albContainer?.data).map(obj).filter((a): a is JsonObject => Boolean(a));
+
+      for (const alb of albData) {
+        const aAttr = obj(alb.attributes);
+        const gotAlbTitle = string(aAttr?.name);
+        const gotAlbArtist = string(aAttr?.artistName);
+
+        if (isAlbumMatch(cleanAlbum, gotAlbTitle) && isArtistMatch(cleanArtist, gotAlbArtist).isMatch) {
+          const video = extractVideoUrl(obj(aAttr?.editorialVideo));
+          if (video) {
+            const rawBg = string(obj(aAttr?.artwork)?.bgColor);
+            const cleanBgColor = rawBg ? (rawBg.startsWith("#") ? rawBg : `#${rawBg}`) : undefined;
+            const format = /\.m3u8(?:\?|$)/i.test(video) ? "hls" : /\.mp4(?:\?|$)/i.test(video) ? "mp4" : "unknown";
+
+            return {
+              hasCanvas: true,
+              animatedCover: {
+                url: video,
+                width: 720,
+                height: 720,
+                durationMs: null,
+                format,
+                source: "apple-music",
+                matchedTitle: gotAlbTitle,
+                matchedArtist: gotAlbArtist,
+                album: gotAlbTitle,
+                bgColor: cleanBgColor,
+              },
+              fallbackRequired: false,
+              source: "apple-music",
+            };
+          }
+        }
+      }
+      return null;
+    }
+
+    // 2. Search Apple Music Catalog for songs
     const term = `${cleanArtist} ${cleanTitle}`.trim();
     const searchUrl = new URL(`${APPLE_API}/us/search`);
     searchUrl.searchParams.set("term", term);

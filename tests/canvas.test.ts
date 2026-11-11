@@ -203,6 +203,18 @@ describe("CuratedCanvasProvider", () => {
     assert.ok(result.animatedCover?.url.includes(".m3u8"));
   });
 
+  test("returns verified animated album artwork when queried by album name", async () => {
+    const result = await provider.getCanvas({
+      title: "",
+      artist: "The Weeknd",
+      album: "After Hours",
+    });
+    assert.ok(result);
+    assert.equal(result.hasCanvas, true);
+    assert.equal(result.source, "curated");
+    assert.equal(result.animatedCover?.album, "After Hours");
+  });
+
   test("returns null for non-curated songs without fabricating matches", async () => {
     const result = await provider.getCanvas({
       title: "Random Indie Track",

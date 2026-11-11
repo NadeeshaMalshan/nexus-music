@@ -277,7 +277,7 @@ describe("CanvasService Orchestration & Caching", () => {
   });
 
   test("handles pure album queries with empty title in CanvasService", async () => {
-    let queriedQuery: CanvasQuery | null = null;
+    let queriedQuery: any = null;
     const albumMockProvider: ICanvasProvider = {
       name: "album-mock",
       async getCanvas(query: CanvasQuery): Promise<CanvasResponse | null> {
@@ -309,5 +309,13 @@ describe("CanvasService Orchestration & Caching", () => {
     assert.equal(res.hasCanvas, true);
     assert.equal(queriedQuery?.album, "you seem pretty sad for a girl so in love");
     assert.equal(res.animatedCover?.url, "https://example.com/album.m3u8");
+  });
+
+  test("generates tinted Apple Music background gradient", () => {
+    const { getAppleMusicBackground } = require("../src/lib/useArtworkColors");
+    const bg = getAppleMusicBackground("#7c939f");
+    assert.ok(bg.includes("radial-gradient"));
+    assert.ok(bg.includes("linear-gradient"));
+    assert.ok(bg.includes("rgb("));
   });
 });

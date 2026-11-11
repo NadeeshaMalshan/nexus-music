@@ -295,3 +295,37 @@ export function useArtworkColors(
 
   return palette;
 }
+
+/** Generates an Apple Music-style dynamic background gradient tinted with the album artwork's color. */
+export function getAppleMusicBackground(hexColor?: string | null): string {
+  const clean = (hexColor || "#2b3439").replace("#", "").trim();
+  let r = 43;
+  let g = 52;
+  let b = 57;
+
+  if (clean.length === 3) {
+    r = parseInt(clean[0] + clean[0], 16) || r;
+    g = parseInt(clean[1] + clean[1], 16) || g;
+    b = parseInt(clean[2] + clean[2], 16) || b;
+  } else if (clean.length === 6) {
+    r = parseInt(clean.slice(0, 2), 16) || r;
+    g = parseInt(clean.slice(2, 4), 16) || g;
+    b = parseInt(clean.slice(4, 6), 16) || b;
+  }
+
+  // Smooth blending ratios with dark bases
+  const topR = Math.round(r * 0.30 + 12 * 0.70);
+  const topG = Math.round(g * 0.30 + 14 * 0.70);
+  const topB = Math.round(b * 0.30 + 18 * 0.70);
+
+  const midR = Math.round(r * 0.15 + 10 * 0.85);
+  const midG = Math.round(g * 0.15 + 12 * 0.85);
+  const midB = Math.round(b * 0.15 + 15 * 0.85);
+
+  const botR = Math.round(r * 0.05 + 8 * 0.95);
+  const botG = Math.round(g * 0.05 + 9 * 0.95);
+  const botB = Math.round(b * 0.05 + 11 * 0.95);
+
+  return `radial-gradient(ellipse 130% 70% at 20% -10%, rgba(${r}, ${g}, ${b}, 0.22) 0%, transparent 75%), linear-gradient(180deg, rgb(${topR}, ${topG}, ${topB}) 0%, rgb(${midR}, ${midG}, ${midB}) 420px, rgb(${botR}, ${botG}, ${botB}) 100%)`;
+}
+

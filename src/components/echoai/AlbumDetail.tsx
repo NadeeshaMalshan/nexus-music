@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { type Song } from "./types";
-import { Play, Shuffle, Loader2, Disc, Music2, Clock, Calendar, User, ChevronLeft } from "lucide-react";
+import { Play, Shuffle, ChevronLeft, Share2, MoreHorizontal, Check } from "lucide-react";
 import { AudioVisualizer } from "./AudioVisualizer";
-import { MusicArtwork } from "./MusicArtwork";
 import { AnimatedCanvasArtwork } from "./AnimatedCanvasArtwork";
 import { m, AnimatePresence } from "motion/react";
-import { APPLE_EASE, MOTION_CONFIG } from "@/lib/animations";
 import { useDashboard } from "@/context/DashboardContext";
 import { SwipeableSongRow } from "./SwipeableSongRow";
+import { SongMenu } from "./SongMenu";
+import { useArtworkColors, getAppleMusicBackground } from "@/lib/useArtworkColors";
 
 interface AlbumDetailProps {
   albumId: string;
@@ -24,10 +24,26 @@ interface AlbumDetailProps {
   onPlayPlaylist?: (songs: Song[], startIndex: number) => void;
 }
 
-export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNavigateArtist, accentColor, currentSongId, onAddToQueue, onPlayNext, onPlayPlaylist }: AlbumDetailProps) {
-  const { setOverrideArtwork, isRightSidebarOpen, setPageTitle, setPageFavicon } = useDashboard();
+export function AlbumDetail({
+  albumId,
+  onSongClick,
+  onQueueReplace,
+  onBack,
+  onNavigateArtist,
+  accentColor,
+  currentSongId,
+  onAddToQueue,
+  onPlayNext,
+  onPlayPlaylist,
+}: AlbumDetailProps) {
+  const { setOverrideArtwork, isRightSidebarOpen, setPageTitle, setPageFavicon, songIsInLikedLibrary, onRateSong } = useDashboard();
   const [albumData, setAlbumData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [canvasBgColor, setCanvasBgColor] = useState<string | null>(null);
+  const [openMenuSongId, setOpenMenuSongId] = useState<string | null>(null);
+  const [hoveredTrackIndex, setHoveredTrackIndex] = useState<number | null>(null);
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [copiedShare, setCopiedShare] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -38,13 +54,13 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
           const data = await res.json();
           setAlbumData(data);
 
-          // Set the global dashboard background based on the artwork
+          // Set the global dashboard background and tab metadata
           const artworkUrl = data.thumbnails?.[data.thumbnails.length - 1]?.url || data.thumbnails?.[0]?.url;
           if (artworkUrl) {
             setOverrideArtwork(artworkUrl);
             setPageFavicon(artworkUrl);
           }
-          setPageTitle(data.title || "Album");
+          setPageTitle(data.name || data.title || "Album");
         }
       } catch (err) {
         console.error("Failed to load album details:", err);
@@ -54,7 +70,6 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
     }
     loadData();
 
-    // Reset background and metadata when leaving the page (on unmount)
     return () => {
       setOverrideArtwork(null);
       setPageTitle(null);
@@ -62,14 +77,71 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
     };
   }, [albumId, setOverrideArtwork, setPageTitle, setPageFavicon]);
 
-  if (loading) {
-    return <div className="flex-1 h-full bg-transparent" />;
-  }
+  const tracks = useMemo(() => albumData?.songs || [], [albumData]);
+  const artistName = albumData?.artist?.name || "Unknown Artist";
+  const artworkUrl = useMemo(
+    () => albumData?.thumbnails?.[albumData.thumbnails.length - 1]?.url || albumData?.thumbnails?.[0]?.url || "",
+    [albumData]
+  );
 
-  if (!albumData) return null;
+  // Dynamic Apple Music tinted background
+  const palette = useArtworkColors(artworkUrl, accentColor);
+  const effectiveBgColor = canvasBgColor || palette.coverTone || palette.primary || "#2b3439";
+  const backgroundStyle = useMemo(() => getAppleMusicBackground(effectiveBgColor), [effectiveBgColor]);
 
-  const tracks = albumData.songs || [];
-  const artistName = albumData.artist?.name || "Unknown Artist";
+  // Total runtime calculation
+  const totalRuntime = useMemo(() => {
+    if (!tracks.length) return "";
+    const totalSec = tracks.reduce((acc: number, t: any) => {
+      const [m, s] = (t.duration || "0:00").split(":").map(Number);
+      return acc + (m * 60 + (s || 0));
+    }, 0);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    return h > 0 ? `${h} hr ${m} min` : `${m} minutes`;
+  }, [tracks]);
+
+  // Editorial description extraction
+  const { editorialHeadline, editorialBody } = useMemo(() => {
+    if (albumData?.description) {
+      const desc = albumData.description.trim();
+      const dotIndex = desc.indexOf(". ");
+      if (dotIndex > 0) {
+        return {
+          editorialHeadline: desc.slice(0, dotIndex + 1),
+          editorialBody: desc.slice(dotIndex + 2),
+        };
+      }
+      return {
+        editorialHeadline: desc,
+        editorialBody: "",
+      };
+    }
+    return {
+      editorialHeadline: `An essential album release by ${artistName}.`,
+      editorialBody: `Featuring ${tracks.length} tracks including "${tracks[0]?.title || "lead singles"}". Available in lossless high-fidelity audio on Nexus.`,
+    };
+  }, [albumData, artistName, tracks]);
+
+  // Explicit badge check
+  const isAlbumExplicit = useMemo(() => {
+    if (!albumData) return false;
+    if (albumData.explicit) return true;
+    return tracks.some(
+      (t: any) =>
+        t.explicit ||
+        /\b(explicit|dirty|advisory)\b/i.test(t.title || "") ||
+        /shit|fuck|bitch|damn/i.test(t.title || "")
+    );
+  }, [albumData, tracks]);
+
+  const handleShare = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(window.location.href);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2000);
+    }
+  };
 
   const handleTrackClick = (track: any, index: number) => {
     if (onPlayPlaylist) {
@@ -77,8 +149,8 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
         id: t.videoId,
         title: t.title,
         artist: t.artist || artistName,
-        album: albumData.name,
-        artwork: t.artwork,
+        album: albumData?.name,
+        artwork: t.artwork || artworkUrl,
         duration: t.duration || "0:00",
         color: accentColor,
       }));
@@ -88,10 +160,10 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
         id: track.videoId,
         title: track.title,
         artist: track.artist || artistName,
-        album: albumData.name,
-        artwork: track.artwork,
+        album: albumData?.name,
+        artwork: track.artwork || artworkUrl,
         duration: track.duration || "0:00",
-        color: accentColor
+        color: accentColor,
       });
     }
   };
@@ -102,8 +174,8 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
       id: t.videoId,
       title: t.title,
       artist: t.artist || artistName,
-      album: albumData.name,
-      artwork: t.artwork,
+      album: albumData?.name,
+      artwork: t.artwork || artworkUrl,
       duration: t.duration || "0:00",
       color: accentColor,
     }));
@@ -122,8 +194,8 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
       id: t.videoId,
       title: t.title,
       artist: t.artist || artistName,
-      album: albumData.name,
-      artwork: t.artwork,
+      album: albumData?.name,
+      artwork: t.artwork || artworkUrl,
       duration: t.duration || "0:00",
       color: accentColor,
     }));
@@ -135,199 +207,280 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
     }
   };
 
-  return (
-    <div className={`flex-1 h-full overflow-y-auto bg-transparent custom-scrollbar pb-40 transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
-      }`}>
-      {/* Navigation & Header */}
-      <div className="relative px-6 py-8 lg:px-12">
-        <button
-          onClick={onBack}
-          className="mb-8 p-3 rounded-full bg-white/5 hover:bg-white/10 text-white flex items-center gap-2 pr-5 border border-white/5"
-        >
-          <ChevronLeft size={20} />
-          <span className="text-xs font-black uppercase tracking-widest">Back</span>
-        </button>
+  if (loading) {
+    return <div className="flex-1 h-full bg-transparent" />;
+  }
 
-        <header className="flex flex-col md:flex-row items-center md:items-end gap-8 md:gap-12 text-center md:text-left">
+  if (!albumData) return null;
+
+  return (
+    <div
+      style={{ background: backgroundStyle }}
+      className={`flex-1 h-full overflow-y-auto custom-scrollbar pb-40 transition-[padding-right,background] duration-700 ease-out ${
+        isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 py-6">
+        {/* Top Bar: Back & Share */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white/80 hover:text-white text-xs font-semibold backdrop-blur-md transition-all border border-white/5 active:scale-95"
+            aria-label="Back"
+          >
+            <ChevronLeft size={16} />
+            <span>Back</span>
+          </button>
+
+          <button
+            onClick={handleShare}
+            className="p-2 rounded-full bg-white/10 hover:bg-white/15 text-white/70 hover:text-white transition-all border border-white/5 backdrop-blur-md active:scale-95 flex items-center gap-1.5 text-xs font-medium"
+            title="Share Album"
+            aria-label="Share Album"
+          >
+            {copiedShare ? (
+              <>
+                <Check size={16} className="text-emerald-400" />
+                <span className="text-emerald-400 font-semibold pr-1">Copied</span>
+              </>
+            ) : (
+              <Share2 size={16} />
+            )}
+          </button>
+        </div>
+
+        {/* Apple Music Header */}
+        <header className="flex flex-col md:flex-row items-center md:items-start gap-8 lg:gap-10 pb-4">
+          {/* Album Cover / Motion Video Canvas */}
           <m.div
             initial={false}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="relative w-64 h-64 md:w-56 md:h-56 lg:w-72 lg:h-72 shrink-0 shadow-[0_40px_100px_rgba(0,0,0,0.7)] rounded-[2.5rem] overflow-hidden group border border-white/10 animate-gpu bg-zinc-900/40"
+            className="relative w-56 h-56 sm:w-64 sm:h-64 lg:w-72 lg:h-72 shrink-0 rounded-2xl md:rounded-3xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] border border-white/10 bg-black/40 group"
           >
             <AnimatedCanvasArtwork
               title={albumData.name}
               artist={artistName}
               album={albumData.name}
-              src={albumData.thumbnails?.[albumData.thumbnails.length - 1]?.url}
+              src={artworkUrl}
               alt={albumData.name}
               iconSize={56}
+              onHasCanvasChange={(hasCanvas, bg) => {
+                if (bg) setCanvasBgColor(bg);
+              }}
               className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-700"
             />
           </m.div>
 
-          <div className="flex-1 space-y-4 md:space-y-6 w-full max-w-xl">
-
-
-            <h1 className="text-4xl md:text-5xl lg:text-7xl font-black text-white tracking-tighter leading-[0.9] drop-shadow-2xl">
-              {albumData.name}
-            </h1>
-
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-3 pt-2">
-              <div
-                className="flex items-center gap-3 group cursor-pointer"
-                onClick={() => onNavigateArtist?.(artistName)}
-              >
-                <div className="p-2.5 rounded-full bg-white/5 text-white/40 group-hover:text-white group-hover:bg-white/10 border border-white/5">
-                  <User size={18} />
-                </div>
-                <span className="text-xl md:text-2xl font-bold text-white/90 group-hover:text-white group-hover:underline underline-offset-8 decoration-2 decoration-red-500/50">
-                  {artistName}
+          {/* Right Details Panel */}
+          <div className="flex-1 flex flex-col justify-center text-center md:text-left min-w-0 space-y-3">
+            {/* Title with Explicit Badge */}
+            <div className="flex flex-wrap items-baseline justify-center md:justify-start gap-2">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-white tracking-tight leading-[1.1] drop-shadow-sm">
+                {albumData.name}
+              </h1>
+              {isAlbumExplicit && (
+                <span
+                  className="inline-flex items-center justify-center w-4 h-4 rounded-[3px] bg-white/20 text-white text-[9px] font-bold tracking-normal shrink-0 select-none align-middle"
+                  title="Explicit"
+                >
+                  E
                 </span>
-              </div>
-
-              <div className="flex items-center gap-2.5 text-white/30 font-bold bg-white/5 px-4 py-1.5 rounded-full border border-white/5">
-                <Calendar size={14} className="opacity-50" />
-                <span className="text-xs uppercase tracking-widest">{albumData.year || "Release"}</span>
-              </div>
-
-              <div className="flex items-center gap-2.5 text-white/30 font-bold bg-white/5 px-4 py-1.5 rounded-full border border-white/5">
-                <Disc size={14} className="opacity-50" />
-                <span className="text-xs uppercase tracking-widest">{tracks.length} Songs</span>
-              </div>
+              )}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-8 md:pt-4">
+            {/* Artist Name */}
+            <div>
+              <button
+                onClick={() => onNavigateArtist?.(artistName)}
+                className="text-lg sm:text-xl md:text-2xl font-semibold text-white/90 hover:text-white transition-colors cursor-pointer text-left"
+              >
+                {artistName}
+              </button>
+            </div>
+
+            {/* Genre & Year Metadata */}
+            <div className="text-xs sm:text-sm font-medium text-white/50 tracking-wide">
+              {albumData.genre || "Pop"} · {albumData.year || "2026"}
+            </div>
+
+            {/* Editorial Description with Apple-style MORE toggle */}
+            <div className="pt-1 max-w-2xl text-left">
+              <p className="text-sm font-semibold text-white/90 leading-snug">
+                {editorialHeadline}
+              </p>
+              {editorialBody && (
+                <div className="text-xs sm:text-sm text-white/55 leading-relaxed mt-1">
+                  {isDescExpanded ? (
+                    <div>
+                      <p className="whitespace-pre-line">{editorialBody}</p>
+                      <button
+                        onClick={() => setIsDescExpanded(false)}
+                        className="mt-1.5 text-white font-bold text-xs uppercase hover:underline inline-block"
+                      >
+                        LESS
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="line-clamp-2">
+                      {editorialBody}{" "}
+                      <button
+                        onClick={() => setIsDescExpanded(true)}
+                        className="text-white font-bold text-xs uppercase hover:underline inline ml-1"
+                      >
+                        MORE
+                      </button>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons: Preview / Play & Shuffle */}
+            <div className="flex items-center justify-center md:justify-start gap-3 pt-3">
               <button
                 onClick={handlePlayAll}
-                className="flex-1 sm:flex-initial px-10 py-5 bg-white text-black font-black rounded-2xl flex items-center justify-center gap-3 shadow-2xl"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-black font-semibold text-sm hover:bg-white/90 active:scale-95 transition shadow-lg shrink-0"
               >
-                <Play size={22} fill="black" />
+                <Play size={16} fill="black" className="ml-0.5" />
                 <span>Play All</span>
               </button>
               <button
                 onClick={handleShuffle}
-                className="flex-1 sm:flex-initial px-10 py-5 bg-white/10 text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:bg-white/20 border border-white/10"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-white/10 hover:bg-white/15 text-white font-semibold text-sm border border-white/10 active:scale-95 transition backdrop-blur-md shrink-0"
               >
-                <Shuffle size={20} />
+                <Shuffle size={16} />
                 <span>Shuffle</span>
               </button>
             </div>
           </div>
         </header>
-      </div>
 
-      {/* Tracklist Container */}
-      <div className="px-4 md:px-6 lg:px-12 mt-12 md:mt-16">
-        <div className="hidden md:flex items-center gap-4 py-4 border-b border-white/5 text-zinc-500 font-black text-[10px] uppercase tracking-[0.2em] mb-4 px-4">
-          <span className="w-12 text-center">#</span>
-          <span className="flex-1">Track Name</span>
-          <span className="w-20 flex justify-end px-4"><Clock size={16} /></span>
-        </div>
+        {/* Minimal Apple Music Divider */}
+        <div className="border-t border-white/10 my-6 sm:my-8" />
 
-        <div className="space-y-2 md:space-y-1.5">
+        {/* Tracklist Container */}
+        <div className="space-y-0.5">
           {tracks.map((track: any, i: number) => {
             const isActive = track.videoId === currentSongId;
+            const isHovered = hoveredTrackIndex === i;
+            const isTopTrack = i === 0 || i === 1; // Apple Music bullet for popular tracks
             const song: Song = {
               id: track.videoId,
               title: track.title,
               artist: track.artist || artistName,
-              artwork: track.artwork,
+              album: albumData.name,
+              artwork: track.artwork || artworkUrl,
               duration: track.duration || "0:00",
               color: accentColor,
             };
+
             return (
               <SwipeableSongRow
                 key={track.videoId + i}
                 onSwipeRight={() => onPlayNext?.(song)}
                 onSwipeLeft={() => onAddToQueue?.(song)}
               >
-                <m.div
-                  initial={false}
-                  animate={{ opacity: 1, y: 0 }}
+                <div
                   onClick={() => handleTrackClick(track, i)}
+                  onMouseEnter={() => setHoveredTrackIndex(i)}
+                  onMouseLeave={() => setHoveredTrackIndex(null)}
                   data-song-id={song.id}
                   data-song-title={song.title}
                   data-song-artist={song.artist}
                   data-song-artwork={song.artwork || ""}
                   data-song-duration={song.duration || ""}
-                  className={`group flex items-center gap-4 p-3 md:p-4 rounded-2xl cursor-pointer border ${isActive ? "bg-white/10 border-white/10 shadow-2xl" : "hover:bg-white/5 border-transparent hover:border-white/10"
-                    }`}
+                  className={`group flex items-center px-3 sm:px-4 py-3 rounded-xl border-b border-white/[0.04] transition-colors duration-150 cursor-pointer select-none ${
+                    isActive ? "bg-white/10 text-white" : "hover:bg-white/[0.06] text-white/90"
+                  }`}
                 >
-                  <div className={`w-8 md:w-12 text-center font-black text-sm ${isActive ? "text-red-500" : "text-white/20 group-hover:text-white/60"}`}>
-                    {isActive ? (
-                      <div className="flex justify-center">
-                        <AudioVisualizer active={isActive} barCount={4} color="#ef4444" width="20px" />
-                      </div>
-                    ) : String(i + 1).padStart(2, "0")}
+                  {/* Left Column: Popular bullet & Track Number / Play icon / Visualizer */}
+                  <div className="flex items-center gap-1.5 w-10 sm:w-12 shrink-0">
+                    <span className="w-2.5 text-center text-xs text-white/40">
+                      {isTopTrack ? "•" : ""}
+                    </span>
+
+                    <div className="w-6 flex justify-center items-center">
+                      {isActive ? (
+                        <AudioVisualizer active={isActive} barCount={3} color={palette.accent || "#ef4444"} width="14px" />
+                      ) : isHovered ? (
+                        <Play size={13} fill="white" className="text-white ml-0.5" />
+                      ) : (
+                        <span className="text-white/40 text-sm font-normal tabular-nums">{i + 1}</span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex-1 flex items-center gap-4 md:gap-5 min-w-0">
-                    <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden shrink-0 bg-zinc-900 shadow-xl border border-white/10">
-                      <MusicArtwork src={track.artwork} alt={track.title} iconSize={22} variant="track" rounded="xl" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className={`text-[16px] md:text-[17px] font-bold truncate leading-tight ${isActive ? "text-red-500" : "text-white"}`}>
-                        {track.title}
+                  {/* Middle Column: Title & Subtitle */}
+                  <div className="flex-1 min-w-0 pr-3 sm:pr-4 flex items-center gap-2">
+                    <span
+                      className={`text-sm sm:text-[15px] font-medium truncate ${
+                        isActive ? "text-white font-semibold" : "text-white"
+                      }`}
+                    >
+                      {track.title}
+                    </span>
+                    {track.explicit && (
+                      <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-[2px] bg-white/20 text-white text-[8px] font-bold tracking-normal shrink-0">
+                        E
                       </span>
-                      <span
+                    )}
+                  </div>
+
+                  {/* Right Column: Duration & SongMenu Trigger */}
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <span className="text-xs sm:text-sm font-normal text-white/45 tabular-nums font-mono">
+                      {track.duration || "0:00"}
+                    </span>
+
+                    <div className="relative">
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onNavigateArtist?.(track.artist || artistName);
+                          setOpenMenuSongId(openMenuSongId === track.videoId ? null : track.videoId);
                         }}
-                        className="text-[12px] md:text-[13px] text-white/30 font-bold tracking-tight hover:text-white cursor-pointer mt-0.5"
+                        className="p-1.5 rounded-full text-white/40 hover:text-white hover:bg-white/10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all"
+                        aria-label="More options"
                       >
-                        {track.artist || artistName}
-                      </span>
+                        <MoreHorizontal size={18} />
+                      </button>
+
+                      {openMenuSongId === track.videoId && (
+                        <SongMenu
+                          song={song}
+                          isOpen={openMenuSongId === track.videoId}
+                          onClose={() => setOpenMenuSongId(null)}
+                          onAddToQueue={() => {
+                            onAddToQueue?.(song);
+                            setOpenMenuSongId(null);
+                          }}
+                          onPlayNext={() => {
+                            onPlayNext?.(song);
+                            setOpenMenuSongId(null);
+                          }}
+                          onLike={() => {
+                            const isLiked = songIsInLikedLibrary(song);
+                            onRateSong(song.id, isLiked ? "none" : "like", { title: song.title, artist: song.artist });
+                            setOpenMenuSongId(null);
+                          }}
+                          isLiked={songIsInLikedLibrary(song)}
+                        />
+                      )}
                     </div>
                   </div>
-
-                  <span className="text-xs font-black text-white/25 tracking-widest pr-2 md:pr-4">{track.duration || "0:00"}</span>
-                </m.div>
+                </div>
               </SwipeableSongRow>
             );
           })}
         </div>
-      </div>
 
-      <div className="px-6 md:px-12 mt-20 mb-32 border-t border-white/5 pt-16">
-        <div className="max-w-4xl space-y-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-10">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-3">Released</p>
-              <p className="text-base font-bold text-white/80">{albumData.year || "2024"}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-3">Songs</p>
-              <p className="text-base font-bold text-white/80">{tracks.length} Tracks</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-3">Duration</p>
-              <p className="text-base font-bold text-white/80">
-                {(() => {
-                  const totalSec = tracks.reduce((acc: number, t: any) => {
-                    const [m, s] = (t.duration || "0:00").split(":").map(Number);
-                    return acc + (m * 60 + (s || 0));
-                  }, 0);
-                  const h = Math.floor(totalSec / 3600);
-                  const m = Math.floor((totalSec % 3600) / 60);
-                  return h > 0 ? `${h} hr ${m} min` : `${m} min`;
-                })()}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-3">Genre</p>
-              <p className="text-base font-bold text-white/80">Pop / Modern</p>
-            </div>
-          </div>
-
-          <div className="pt-12 border-t border-white/5">
-            <div className="flex items-center gap-4 text-[12px] font-black uppercase tracking-widest text-white/20 italic">
-              <span>℗ {albumData.year || "2024"} Official Album Profile</span>
-            </div>
-            <p className="text-[11px] text-white/10 mt-4 font-medium max-w-xl leading-relaxed">
-              All music and recordings are provided by the official artist profile and managed by their respective record labels. Content metadata and licensing are distributed via Nexus Services.
-            </p>
-          </div>
+        {/* Footer Metadata */}
+        <div className="mt-12 pt-6 border-t border-white/5 text-xs text-white/40 space-y-1.5">
+          <p className="font-medium text-white/50">
+            {tracks.length} songs, {totalRuntime}
+          </p>
+          <p className="tracking-wide">
+            ℗ {albumData.year || "2026"} {artistName}. Distributed via Nexus Services.
+          </p>
         </div>
       </div>
     </div>

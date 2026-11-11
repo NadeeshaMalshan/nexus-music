@@ -3,7 +3,7 @@
 import { Home, Compass, Settings, Music2, Search, ListMusic, Loader2, PlayCircle, Clock, Mic2, Album, UserCircle, LayoutGrid, Plus, ChevronDown, MoreHorizontal, Mic, X, ArrowUpRight, Play, Sparkles, User, LogIn, ListPlus } from "lucide-react";
 import { SidebarAuth } from "./SidebarAuth";
 import { useSession, signIn, signOut } from "next-auth/react";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { type YouTubePlaylist } from "@/lib/youtubeData";
 import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
 import Link from "next/link";
@@ -49,9 +49,22 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
   const pathname = usePathname();
   const activeView = pathname === "/" ? "home" : pathname.split("/")[1] || "home";
 
-  const { setSelectedPlaylist, onSongClick, onAddToQueue, onPlayNext } = useDashboard();
+  const { setSelectedPlaylist, onSongClick, onAddToQueue, onPlayNext, palette } = useDashboard();
   const [playlists, setPlaylists] = useState<YouTubePlaylist[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Dynamic Apple Music tinted sidebar background matching the active artwork
+  const sidebarBackground = useMemo(() => {
+    const color = palette?.coverTone || palette?.primary || "#1c1e22";
+    return `
+      radial-gradient(ellipse 130% 60% at 50% -10%, ${color}26 0%, transparent 70%),
+      linear-gradient(180deg, 
+        color-mix(in srgb, ${color} 14%, #121417) 0%, 
+        color-mix(in srgb, ${color} 7%, #0e0f12) 420px, 
+        #090a0d 100%
+      )
+    `.trim();
+  }, [palette?.coverTone, palette?.primary]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -129,11 +142,12 @@ export function LeftSidebar({ activeView: propActiveView, onViewChange, accentCo
   return (
     <>
       <m.div
-        className="hidden h-full w-[360px] shrink-0 flex-col px-6 py-10 overflow-hidden lg:flex relative border-r border-white/5 bg-[#0D0D0D]"
+        style={{ background: sidebarBackground }}
+        className="hidden h-full w-[360px] shrink-0 flex-col px-6 py-10 overflow-hidden lg:flex relative border-r border-white/[0.08] backdrop-blur-3xl transition-[background] duration-700 ease-out"
       >
         {/* Search Bar */}
         <div className="mb-12 relative z-50">
-          <div className={`relative flex items-center overflow-hidden rounded-2xl ${isSearchFocused ? "bg-white/15 ring-2 shadow-2xl" : "bg-white/5"}`} style={isSearchFocused ? { boxShadow: `0 0 0 2px ${accentColor}33`, borderColor: accentColor } : {}}>
+          <div className={`relative flex items-center overflow-hidden rounded-2xl transition-all ${isSearchFocused ? "bg-white/15 ring-2 shadow-2xl" : "bg-white/[0.06] hover:bg-white/[0.08] border border-white/[0.05]"}`} style={isSearchFocused ? { boxShadow: `0 0 0 2px ${accentColor}33`, borderColor: accentColor } : {}}>
             <div className="pl-4 pr-2 text-white/20">
               <Search size={20} />
             </div>

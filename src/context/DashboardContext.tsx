@@ -211,19 +211,23 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [lastSeedFetched, setLastSeedFetched] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      return window.localStorage.getItem("nexus_right_sidebar_open") === "true";
-    }
-    return false;
-  });
-  const [rightSidebarMode, setRightSidebarMode] = useState<"queue" | "jam" | "lyrics">((() => {
-    if (typeof window !== "undefined") {
-      const saved = window.localStorage.getItem("nexus_right_sidebar_mode");
-      if (saved === "queue" || saved === "jam" || saved === "lyrics") return saved;
-    }
-    return "queue";
-  }) as any);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState<boolean>(false);
+  const [rightSidebarMode, setRightSidebarMode] = useState<"queue" | "jam" | "lyrics">("queue");
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const savedOpen = window.localStorage.getItem("nexus_right_sidebar_open");
+        if (savedOpen !== null) {
+          setIsRightSidebarOpen(savedOpen === "true");
+        }
+        const savedMode = window.localStorage.getItem("nexus_right_sidebar_mode");
+        if (savedMode === "queue" || savedMode === "jam" || savedMode === "lyrics") {
+          setRightSidebarMode(savedMode);
+        }
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {

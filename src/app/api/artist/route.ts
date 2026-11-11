@@ -1,16 +1,6 @@
 import { NextResponse } from "next/server";
-import YTMusic from "ytmusic-api";
-
-// ─── YTMusic Instance Cache ───────────────────────────────────────────────────
-let ytmusicInstance: any = null;
-
-async function getYTMusic() {
-  if (!ytmusicInstance) {
-    ytmusicInstance = new YTMusic();
-    await ytmusicInstance.initialize();
-  }
-  return ytmusicInstance;
-}
+import { getYTMusic } from "@/lib/ytmClient";
+import { getAppleArtistInfo } from "@/lib/appleArtistService";
 
 // ─── GET /api/artist?name=<artistName> ───────────────────────────────────────
 export async function GET(request: Request) {
@@ -80,13 +70,15 @@ export async function GET(request: Request) {
       }
     }
 
-    // 2. Fetch full artist details & all songs
+    // 2. Fetch full artist details & all songs & Apple Music artist assets
     let details: any;
     let allArtistSongs: any[] = [];
+    let appleInfo: any = null;
     try {
-      [details, allArtistSongs] = await Promise.all([
+      [details, allArtistSongs, appleInfo] = await Promise.all([
         api.getArtist(artistId),
-        api.getArtistSongs(artistId).catch(() => [])
+        api.getArtistSongs(artistId).catch(() => []),
+        getAppleArtistInfo(name).catch(() => null),
       ]);
     } catch (err) {
       console.error(`[Artist API] Failed to getArtist for ID ${artistId}:`, err);
@@ -284,12 +276,30 @@ export async function GET(request: Request) {
       }
     }
 
+    // Enrich top related artists with Apple Music artist logos/icons
+    const enrichedRelated = await Promise.all(
+      relatedArtists.map(async (ra: any) => {
+        try {
+          const appleRel = await getAppleArtistInfo(ra.name);
+          return {
+            ...ra,
+            logo: appleRel?.logoUrl || null,
+          };
+        } catch {
+          return ra;
+        }
+      })
+    );
+
     // Final response
     return NextResponse.json({
       id: artistId,
       name: details.name,
       image: mainImage,
       smallImage: smallImage,
+      artistLogo: appleInfo?.logoUrl || null,
+      artistBio: appleInfo?.bio || null,
+      heroArtwork: appleInfo?.heroArtwork || null,
       genres: [], 
       followers: ytStats?.statistics?.subscriberCount ? String(ytStats.statistics.subscriberCount) : "Artist Profile",
       followersRaw: parseInt(ytStats?.statistics?.subscriberCount || "0"),
@@ -297,7 +307,7 @@ export async function GET(request: Request) {
       worldRank: "Official Artist",
       verified: true,
       topTracks,
-      relatedArtists,
+      relatedArtists: enrichedRelated,
       albums,
       singles,
       videos,

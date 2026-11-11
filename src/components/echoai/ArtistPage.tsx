@@ -47,6 +47,7 @@ interface RelatedArtist {
   id: string;
   name: string;
   image: string;
+  logo?: string | null;
   genres: string[];
   followers: string;
   popularity: number;
@@ -57,6 +58,9 @@ interface ArtistData {
   name: string;
   image: string;
   smallImage: string;
+  artistLogo?: string | null;
+  artistBio?: string | null;
+  heroArtwork?: string | null;
   genres: string[];
   followers: string;
   followersRaw: number;
@@ -473,6 +477,22 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                     </span>
                   ))}
                 </div>
+
+                {/* Apple Music Artist Wordmark / Logo Icon */}
+                {data.artistLogo && (
+                  <m.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={MOTION_CONFIG.transition}
+                    className="mb-3 max-w-[260px] sm:max-w-[340px] md:max-w-[400px]"
+                  >
+                    <img
+                      src={data.artistLogo}
+                      alt={data.name}
+                      className="max-h-16 sm:max-h-20 md:max-h-24 w-auto object-contain filter drop-shadow-[0_10px_24px_rgba(0,0,0,0.85)] select-none pointer-events-none"
+                    />
+                  </m.div>
+                )}
 
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white tracking-tighter leading-none mb-4">
                   {data.name}
@@ -957,6 +977,11 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                           rounded="full"
                           className="h-full w-full transition-transform duration-500 group-hover:scale-110"
                         />
+                        {artist.logo && (
+                          <div className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md p-1 border border-white/10 shadow-lg flex items-center justify-center pointer-events-none">
+                            <img src={artist.logo} alt="" className="w-full h-full object-contain" />
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                           <ChevronRight size={28} className="text-white" />
                         </div>

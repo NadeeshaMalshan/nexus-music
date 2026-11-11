@@ -289,14 +289,14 @@ export function PlaylistDetail({
     >
       <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 py-6">
         {/* Top Bar: Back & Share */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           {onBack ? (
             <button
               onClick={onBack}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white/80 hover:text-white text-xs font-semibold backdrop-blur-md transition-all border border-white/5 active:scale-95"
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 text-white/90 hover:text-white text-sm font-semibold backdrop-blur-md transition-all border border-white/5 active:scale-95"
               aria-label="Back"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={18} />
               <span>Back</span>
             </button>
           ) : (
@@ -305,33 +305,33 @@ export function PlaylistDetail({
 
           <button
             onClick={handleShare}
-            className="p-2 rounded-full bg-white/10 hover:bg-white/15 text-white/70 hover:text-white transition-all border border-white/5 backdrop-blur-md active:scale-95 flex items-center gap-1.5 text-xs font-medium"
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/15 text-white/80 hover:text-white transition-all border border-white/5 backdrop-blur-md active:scale-95 flex items-center gap-1.5 text-sm font-medium"
             title="Share Playlist"
             aria-label="Share Playlist"
           >
             {copiedShare ? (
               <>
-                <Check size={16} className="text-emerald-400" />
+                <Check size={18} className="text-emerald-400" />
                 <span className="text-emerald-400 font-semibold pr-1">Copied</span>
               </>
             ) : (
-              <Share2 size={16} />
+              <Share2 size={18} />
             )}
           </button>
         </div>
 
         {/* Apple Music Header */}
-        <header className="flex flex-col md:flex-row items-center md:items-start gap-8 lg:gap-10 pb-4">
+        <header className="flex flex-col md:flex-row items-center md:items-start gap-8 lg:gap-12 pb-6">
           {/* Playlist Artwork */}
           <m.div
             initial={false}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="relative w-56 h-56 sm:w-64 sm:h-64 lg:w-72 lg:h-72 shrink-0 rounded-2xl md:rounded-3xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] border border-white/10 bg-black/40 group"
+            className="relative w-60 h-60 sm:w-72 sm:h-72 lg:w-80 lg:h-80 shrink-0 rounded-2xl md:rounded-3xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] border border-white/10 bg-black/40 group"
           >
             <MusicArtwork
               src={artworkUrl}
               alt={displayPlaylist.title}
-              iconSize={56}
+              iconSize={64}
               variant="track"
               rounded="none"
               className="group-hover:scale-105 transition-transform duration-700"
@@ -339,35 +339,35 @@ export function PlaylistDetail({
           </m.div>
 
           {/* Right Details Panel */}
-          <div className="flex-1 flex flex-col justify-center text-center md:text-left min-w-0 space-y-3">
+          <div className="flex-1 flex flex-col justify-center text-center md:text-left min-w-0 space-y-4">
             {/* Tag / Category */}
-            <div className="text-xs font-bold text-white/50 uppercase tracking-widest">
+            <div className="text-sm font-bold text-white/60 uppercase tracking-widest">
               PLAYLIST
             </div>
 
             {/* Title */}
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-white tracking-tight leading-[1.1] drop-shadow-sm">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[48px] font-black text-white tracking-tight leading-[1.08] drop-shadow-sm">
               {displayPlaylist.title}
             </h1>
 
             {/* Metadata Line */}
-            <div className="text-xs sm:text-sm font-medium text-white/50 tracking-wide">
+            <div className="text-sm sm:text-base font-semibold text-white/60 tracking-wide">
               {tracks.length} Songs {totalRuntime ? `· ${totalRuntime}` : ""}
             </div>
 
             {/* Editorial Description with Apple-style MORE toggle */}
             <div className="pt-1 max-w-2xl text-left">
-              <p className="text-sm font-semibold text-white/90 leading-snug">
+              <p className="text-base sm:text-lg font-bold text-white/95 leading-snug">
                 {editorialHeadline}
               </p>
               {editorialBody && (
-                <div className="text-xs sm:text-sm text-white/55 leading-relaxed mt-1">
+                <div className="text-sm sm:text-[15px] text-white/70 leading-relaxed font-normal mt-1.5">
                   {isDescExpanded ? (
-                    <div>
-                      <p className="whitespace-pre-line">{editorialBody}</p>
+                    <div className="space-y-2">
+                      <p className="whitespace-pre-line leading-relaxed">{editorialBody}</p>
                       <button
                         onClick={() => setIsDescExpanded(false)}
-                        className="mt-1.5 text-white font-bold text-xs uppercase hover:underline inline-block"
+                        className="mt-2 text-white font-bold text-sm uppercase hover:underline inline-block"
                       >
                         LESS
                       </button>
@@ -377,7 +377,7 @@ export function PlaylistDetail({
                       {editorialBody}{" "}
                       <button
                         onClick={() => setIsDescExpanded(true)}
-                        className="text-white font-bold text-xs uppercase hover:underline inline ml-1"
+                        className="text-white font-bold text-sm uppercase hover:underline inline ml-1.5"
                       >
                         MORE
                       </button>
@@ -388,19 +388,19 @@ export function PlaylistDetail({
             </div>
 
             {/* Action Buttons: Play All & Shuffle */}
-            <div className="flex items-center justify-center md:justify-start gap-3 pt-3">
+            <div className="flex items-center justify-center md:justify-start gap-3.5 pt-3">
               <button
                 onClick={handlePlayAll}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-black font-semibold text-sm hover:bg-white/90 active:scale-95 transition shadow-lg shrink-0"
+                className="flex items-center gap-2.5 px-7 py-3 rounded-full bg-white text-black font-bold text-base sm:text-[16px] hover:bg-white/90 active:scale-95 transition shadow-xl shrink-0"
               >
-                <Play size={16} fill="black" className="ml-0.5" />
+                <Play size={18} fill="black" className="ml-0.5" />
                 <span>Play All</span>
               </button>
               <button
                 onClick={handleShuffle}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-white/10 hover:bg-white/15 text-white font-semibold text-sm border border-white/10 active:scale-95 transition backdrop-blur-md shrink-0"
+                className="flex items-center gap-2.5 px-7 py-3 rounded-full bg-white/10 hover:bg-white/15 text-white font-bold text-base sm:text-[16px] border border-white/10 active:scale-95 transition backdrop-blur-md shrink-0"
               >
-                <Shuffle size={16} />
+                <Shuffle size={18} />
                 <span>Shuffle</span>
               </button>
             </div>
@@ -408,16 +408,16 @@ export function PlaylistDetail({
         </header>
 
         {/* Minimal Apple Music Divider */}
-        <div className="border-t border-white/10 my-6 sm:my-8" />
+        <div className="border-t border-white/10 my-8" />
 
         {/* Tracklist Container */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 opacity-30">
-            <Loader2 className="w-8 h-8 animate-spin text-white mb-3" />
+            <Loader2 className="w-9 h-9 animate-spin text-white mb-3" />
             <span className="text-xs font-semibold uppercase tracking-widest text-white">Loading Tracks...</span>
           </div>
         ) : (
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {tracks.map((track, i) => {
               const isActive = track.videoId === currentSongId;
               const isHovered = hoveredTrackIndex === i;
@@ -446,37 +446,37 @@ export function PlaylistDetail({
                     data-song-artist={song.artist}
                     data-song-artwork={song.artwork || ""}
                     data-song-duration={song.duration || ""}
-                    className={`group flex items-center px-3 sm:px-4 py-2.5 rounded-xl border-b border-white/[0.04] transition-colors duration-150 cursor-pointer select-none ${
+                    className={`group flex items-center px-4 py-3 rounded-xl border-b border-white/[0.04] transition-colors duration-150 cursor-pointer select-none ${
                       isActive ? "bg-white/10 text-white" : "hover:bg-white/[0.06] text-white/90"
                     }`}
                   >
                     {/* Left: Popular Bullet & Track Number / Play icon / Visualizer */}
-                    <div className="flex items-center gap-1.5 w-10 sm:w-12 shrink-0">
-                      <span className="w-2.5 text-center text-xs text-white/40">
+                    <div className="flex items-center gap-2 w-12 sm:w-14 shrink-0">
+                      <span className="w-3 text-center text-sm font-bold text-white/50">
                         {isTopTrack ? "•" : ""}
                       </span>
 
-                      <div className="w-6 flex justify-center items-center">
+                      <div className="w-7 flex justify-center items-center">
                         {isActive ? (
-                          <AudioVisualizer active={isActive} barCount={3} color={palette.accent || "#ef4444"} width="14px" />
+                          <AudioVisualizer active={isActive} barCount={3} color={palette.accent || "#ef4444"} width="16px" />
                         ) : isHovered ? (
-                          <Play size={13} fill="white" className="text-white ml-0.5" />
+                          <Play size={15} fill="white" className="text-white ml-0.5" />
                         ) : (
-                          <span className="text-white/40 text-sm font-normal tabular-nums">{i + 1}</span>
+                          <span className="text-white/50 text-base font-medium tabular-nums">{i + 1}</span>
                         )}
                       </div>
                     </div>
 
                     {/* Middle: Artwork Thumbnail + Title & Artist */}
-                    <div className="flex-1 min-w-0 pr-3 sm:pr-4 flex items-center gap-3">
-                      <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-black/40 border border-white/5">
-                        <MusicArtwork src={track.thumbnailUrl} alt={track.title} iconSize={18} variant="track" rounded="md" />
+                    <div className="flex-1 min-w-0 pr-4 flex items-center gap-3.5">
+                      <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-black/40 border border-white/5">
+                        <MusicArtwork src={track.thumbnailUrl} alt={track.title} iconSize={20} variant="track" rounded="md" />
                       </div>
 
                       <div className="flex flex-col min-w-0">
                         <span
-                          className={`text-sm sm:text-[15px] font-medium truncate ${
-                            isActive ? "text-white font-semibold" : "text-white"
+                          className={`text-base sm:text-[17px] truncate leading-snug ${
+                            isActive ? "text-white font-bold" : "text-white font-semibold"
                           }`}
                         >
                           {track.title}
@@ -486,7 +486,7 @@ export function PlaylistDetail({
                             e.stopPropagation();
                             onNavigateArtist?.(track.artist);
                           }}
-                          className="text-xs text-white/45 truncate hover:text-white transition-colors cursor-pointer mt-0.5"
+                          className="text-sm sm:text-[14px] text-white/60 font-medium truncate hover:text-white transition-colors cursor-pointer mt-0.5"
                         >
                           {track.artist}
                         </span>
@@ -494,8 +494,8 @@ export function PlaylistDetail({
                     </div>
 
                     {/* Right: Duration & SongMenu Trigger */}
-                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                      <span className="text-xs sm:text-sm font-normal text-white/45 tabular-nums font-mono">
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-sm sm:text-[15px] font-medium text-white/60 tabular-nums font-mono">
                         {track.duration || "0:00"}
                       </span>
 
@@ -505,10 +505,10 @@ export function PlaylistDetail({
                             e.stopPropagation();
                             setOpenMenuSongId(openMenuSongId === track.videoId ? null : track.videoId);
                           }}
-                          className="p-1.5 rounded-full text-white/40 hover:text-white hover:bg-white/10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all"
+                          className="p-2 rounded-full text-white/50 hover:text-white hover:bg-white/10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all"
                           aria-label="More options"
                         >
-                          <MoreHorizontal size={18} />
+                          <MoreHorizontal size={20} />
                         </button>
 
                         {openMenuSongId === track.videoId && (
@@ -543,8 +543,8 @@ export function PlaylistDetail({
 
         {/* Footer Metadata */}
         {!loading && tracks.length > 0 && (
-          <div className="mt-12 pt-6 border-t border-white/5 text-xs text-white/40 space-y-1.5">
-            <p className="font-medium text-white/50">
+          <div className="mt-12 pt-8 border-t border-white/5 text-sm text-white/60 space-y-2 font-medium">
+            <p className="text-white/70 font-semibold">
               {tracks.length} songs, {totalRuntime}
             </p>
             <p className="tracking-wide">

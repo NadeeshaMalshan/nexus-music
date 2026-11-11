@@ -37,7 +37,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
         if (res.ok) {
           const data = await res.json();
           setAlbumData(data);
-          
+
           // Set the global dashboard background based on the artwork
           const artworkUrl = data.thumbnails?.[data.thumbnails.length - 1]?.url || data.thumbnails?.[0]?.url;
           if (artworkUrl) {
@@ -136,12 +136,11 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
   };
 
   return (
-    <div className={`flex-1 h-full overflow-y-auto bg-transparent custom-scrollbar pb-40 transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-      isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
-    }`}>
+    <div className={`flex-1 h-full overflow-y-auto bg-transparent custom-scrollbar pb-40 transition-[padding-right] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightSidebarOpen ? "lg:pr-[380px]" : "lg:pr-0"
+      }`}>
       {/* Navigation & Header */}
       <div className="relative px-6 py-8 lg:px-12">
-        <button 
+        <button
           onClick={onBack}
           className="mb-8 p-3 rounded-full bg-white/5 hover:bg-white/10 text-white flex items-center gap-2 pr-5 border border-white/5"
         >
@@ -150,7 +149,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
         </button>
 
         <header className="flex flex-col md:flex-row items-center md:items-end gap-8 md:gap-12 text-center md:text-left">
-          <m.div 
+          <m.div
             initial={false}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             className="relative w-64 h-64 md:w-56 md:h-56 lg:w-72 lg:h-72 shrink-0 shadow-[0_40px_100px_rgba(0,0,0,0.7)] rounded-[2.5rem] overflow-hidden group border border-white/10 animate-gpu bg-zinc-900/40"
@@ -167,18 +166,14 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
           </m.div>
 
           <div className="flex-1 space-y-4 md:space-y-6 w-full max-w-xl">
-            <div className="flex items-center justify-center md:justify-start gap-2">
-              <span className="px-3 py-1 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/50 border border-white/5">
-                {albumData.year ? "Full Album" : "EP / Single"}
-              </span>
-            </div>
+
 
             <h1 className="text-4xl md:text-5xl lg:text-7xl font-black text-white tracking-tighter leading-[0.9] drop-shadow-2xl">
               {albumData.name}
             </h1>
 
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-3 pt-2">
-              <div 
+              <div
                 className="flex items-center gap-3 group cursor-pointer"
                 onClick={() => onNavigateArtist?.(artistName)}
               >
@@ -189,7 +184,7 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
                   {artistName}
                 </span>
               </div>
-              
+
               <div className="flex items-center gap-2.5 text-white/30 font-bold bg-white/5 px-4 py-1.5 rounded-full border border-white/5">
                 <Calendar size={14} className="opacity-50" />
                 <span className="text-xs uppercase tracking-widest">{albumData.year || "Release"}</span>
@@ -202,14 +197,14 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-8 md:pt-4">
-              <button 
+              <button
                 onClick={handlePlayAll}
                 className="flex-1 sm:flex-initial px-10 py-5 bg-white text-black font-black rounded-2xl flex items-center justify-center gap-3 shadow-2xl"
               >
                 <Play size={22} fill="black" />
                 <span>Play All</span>
               </button>
-              <button 
+              <button
                 onClick={handleShuffle}
                 className="flex-1 sm:flex-initial px-10 py-5 bg-white/10 text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:bg-white/20 border border-white/10"
               >
@@ -255,9 +250,8 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
                   data-song-artist={song.artist}
                   data-song-artwork={song.artwork || ""}
                   data-song-duration={song.duration || ""}
-                  className={`group flex items-center gap-4 p-3 md:p-4 rounded-2xl cursor-pointer border ${
-                    isActive ? "bg-white/10 border-white/10 shadow-2xl" : "hover:bg-white/5 border-transparent hover:border-white/10"
-                  }`}
+                  className={`group flex items-center gap-4 p-3 md:p-4 rounded-2xl cursor-pointer border ${isActive ? "bg-white/10 border-white/10 shadow-2xl" : "hover:bg-white/5 border-transparent hover:border-white/10"
+                    }`}
                 >
                   <div className={`w-8 md:w-12 text-center font-black text-sm ${isActive ? "text-red-500" : "text-white/20 group-hover:text-white/60"}`}>
                     {isActive ? (
@@ -275,10 +269,10 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
                       <span className={`text-[16px] md:text-[17px] font-bold truncate leading-tight ${isActive ? "text-red-500" : "text-white"}`}>
                         {track.title}
                       </span>
-                      <span 
+                      <span
                         onClick={(e) => {
-                           e.stopPropagation();
-                           onNavigateArtist?.(track.artist || artistName);
+                          e.stopPropagation();
+                          onNavigateArtist?.(track.artist || artistName);
                         }}
                         className="text-[12px] md:text-[13px] text-white/30 font-bold tracking-tight hover:text-white cursor-pointer mt-0.5"
                       >
@@ -327,12 +321,12 @@ export function AlbumDetail({ albumId, onSongClick, onQueueReplace, onBack, onNa
           </div>
 
           <div className="pt-12 border-t border-white/5">
-             <div className="flex items-center gap-4 text-[12px] font-black uppercase tracking-widest text-white/20 italic">
-                <span>℗ {albumData.year || "2024"} Official Album Profile</span>
-             </div>
-             <p className="text-[11px] text-white/10 mt-4 font-medium max-w-xl leading-relaxed">
-                All music and recordings are provided by the official artist profile and managed by their respective record labels. Content metadata and licensing are distributed via Nexus Services.
-             </p>
+            <div className="flex items-center gap-4 text-[12px] font-black uppercase tracking-widest text-white/20 italic">
+              <span>℗ {albumData.year || "2024"} Official Album Profile</span>
+            </div>
+            <p className="text-[11px] text-white/10 mt-4 font-medium max-w-xl leading-relaxed">
+              All music and recordings are provided by the official artist profile and managed by their respective record labels. Content metadata and licensing are distributed via Nexus Services.
+            </p>
           </div>
         </div>
       </div>

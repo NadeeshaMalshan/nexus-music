@@ -43,15 +43,16 @@ export class CanvasService {
   private buildCacheKey(query: CanvasQuery): string {
     const cleanTitle = cleanCanvasTitle(query.title, query.artist);
     const cleanArtist = cleanCanvasArtist(query.artist);
-    const cleanAlbum = query.album?.trim() || "";
+    const cleanAlbum = query.album ? cleanCanvasTitle(query.album, query.artist) : "";
     return `${normalizeText(cleanArtist)}|${normalizeText(cleanTitle)}|${normalizeText(cleanAlbum)}`;
   }
 
   public async getCanvas(query: CanvasQuery): Promise<CanvasResponse> {
     const cleanTitle = cleanCanvasTitle(query.title, query.artist);
     const cleanArtist = cleanCanvasArtist(query.artist);
+    const cleanAlbum = query.album ? cleanCanvasTitle(query.album, query.artist) : "";
 
-    if (!cleanTitle || !cleanArtist) {
+    if ((!cleanTitle && !cleanAlbum) || !cleanArtist) {
       return this.emptyResponse();
     }
 
@@ -68,7 +69,7 @@ export class CanvasService {
     }
 
     const task = this.resolveCanvas({
-      title: cleanTitle,
+      title: cleanTitle || cleanAlbum,
       artist: cleanArtist,
       album: query.album,
     })

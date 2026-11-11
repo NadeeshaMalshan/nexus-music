@@ -42,8 +42,10 @@ export function AnimatedCanvasArtwork({
   });
 
   const query = useMemo(() => {
-    const params = new URLSearchParams({ title, artist });
-    if (album) params.set("album", album);
+    const params = new URLSearchParams();
+    if (title?.trim()) params.set("title", title.trim());
+    if (artist?.trim()) params.set("artist", artist.trim());
+    if (album?.trim()) params.set("album", album.trim());
     return params.toString();
   }, [title, artist, album]);
 
@@ -63,7 +65,11 @@ export function AnimatedCanvasArtwork({
     setVideoReady(false);
     setVideoFailed(false);
 
-    if (!enabled || !title.trim() || !artist.trim()) {
+    const hasTitle = Boolean(title?.trim());
+    const hasAlbum = Boolean(album?.trim());
+    const hasArtist = Boolean(artist?.trim());
+
+    if (!enabled || (!hasTitle && !hasAlbum) || !hasArtist) {
       setCanvasUrl(null);
       onHasCanvasChangeRef.current?.(false, null);
       return;
@@ -97,7 +103,7 @@ export function AnimatedCanvasArtwork({
       });
 
     return () => controller.abort();
-  }, [enabled, query, title, artist]);
+  }, [enabled, query, title, artist, album]);
 
   useEffect(() => {
     const video = videoRef.current;

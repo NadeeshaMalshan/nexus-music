@@ -275,4 +275,39 @@ describe("CanvasService Orchestration & Caching", () => {
     assert.equal(res.animatedCover, null);
     assert.equal(res.fallbackRequired, true);
   });
+
+  test("handles pure album queries with empty title in CanvasService", async () => {
+    let queriedQuery: CanvasQuery | null = null;
+    const albumMockProvider: ICanvasProvider = {
+      name: "album-mock",
+      async getCanvas(query: CanvasQuery): Promise<CanvasResponse | null> {
+        queriedQuery = query;
+        return {
+          hasCanvas: true,
+          animatedCover: {
+            url: "https://example.com/album.m3u8",
+            width: 720,
+            height: 720,
+            durationMs: null,
+            format: "hls",
+            source: "apple-music",
+            album: query.album,
+          },
+          fallbackRequired: false,
+          source: "apple-music",
+        };
+      },
+    };
+
+    const service = new CanvasService([albumMockProvider]);
+    const res = await service.getCanvas({
+      title: "",
+      artist: "Olivia Rodrigo",
+      album: "you seem pretty sad for a girl so in love",
+    });
+
+    assert.equal(res.hasCanvas, true);
+    assert.equal(queriedQuery?.album, "you seem pretty sad for a girl so in love");
+    assert.equal(res.animatedCover?.url, "https://example.com/album.m3u8");
+  });
 });

@@ -1000,7 +1000,13 @@ export function DesktopExpandedPlayer({
               </div>
             )}
             {viewMode === "music" && (
-              <AnimatedCanvasArtwork title={liveMetadata?.title || currentSong.title} artist={currentSong.artist} src={liveMetadata?.artwork || currentSong.artwork} alt={liveMetadata?.title || currentSong.title} iconSize={48} />
+              <AnimatedCanvasArtwork
+                title={liveMetadata?.title || currentSong.title}
+                artist={liveMetadata?.artist || currentSong.artist}
+                src={liveMetadata?.artwork || currentSong.artwork}
+                alt={liveMetadata?.title || currentSong.title}
+                iconSize={48}
+              />
             )}
           </m.div>
           <div className="mt-6 flex w-full justify-center gap-1 rounded-full border border-white/5 bg-black/20 p-1 backdrop-blur-md max-w-[200px] relative">

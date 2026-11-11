@@ -60,6 +60,9 @@ export function AnimatedCanvasArtwork({
   }, []);
 
   useEffect(() => {
+    setVideoReady(false);
+    setVideoFailed(false);
+
     if (!enabled || !title.trim() || !artist.trim()) {
       setCanvasUrl(null);
       onHasCanvasChangeRef.current?.(false, null);

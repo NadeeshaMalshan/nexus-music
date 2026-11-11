@@ -1156,7 +1156,7 @@ export function MobileExpandedPlayer({
                 <div className="relative w-full h-[60dvh] overflow-hidden shrink-0 select-none">
                   <AnimatedCanvasArtwork
                     title={liveMetadata?.title || currentSong.title}
-                    artist={currentSong.artist}
+                    artist={liveMetadata?.artist || currentSong.artist}
                     src={liveMetadata?.artwork || currentSong.artwork}
                     alt={liveMetadata?.title || currentSong.title}
                     onHasCanvasChange={handleHasCanvasChange}
@@ -1386,7 +1386,7 @@ export function MobileExpandedPlayer({
                     {viewMode === "music" && (
                       <AnimatedCanvasArtwork
                         title={liveMetadata?.title || currentSong.title}
-                        artist={currentSong.artist}
+                        artist={liveMetadata?.artist || currentSong.artist}
                         src={liveMetadata?.artwork || currentSong.artwork}
                         alt={liveMetadata?.title || currentSong.title}
                         iconSize={64}

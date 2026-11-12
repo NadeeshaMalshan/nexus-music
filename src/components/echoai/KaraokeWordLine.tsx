@@ -10,6 +10,16 @@ export interface WordSegment {
 }
 
 /**
+ * Removes wrapping brackets/parentheses from background vocals while preserving
+ * inner letters and trailing punctuation (e.g. "(You" -> "You", "it)" -> "it", "walk," -> "walk,").
+ */
+export function cleanDisplayWord(text: string, isBracketed: boolean): string {
+  if (!text) return "";
+  if (!isBracketed) return text;
+  return text.replace(/^[(\[{<]+/, "").replace(/[)\]}>]+([.,!?;:]*)$/, "$1").trim();
+}
+
+/**
  * Groups words into unbracketed and bracketed segments.
  * Bracketed words (e.g. ad-libs, backing vocals) will be rendered on a new line with a smaller font size.
  */
@@ -22,15 +32,18 @@ export function groupWordsByBracket(words: LyricsWord[]): WordSegment[] {
   for (const w of words) {
     const rawText = w.text || "";
     const trimmed = rawText.trim();
-    const startsBracket = /^[(\[]/.test(trimmed);
-    const endsBracket = /[)\]][.,!?;:]*$/.test(trimmed);
+    const startsBracket = /^[(\[{<]/.test(trimmed);
+    const endsBracket = /[)\]}>][.,!?;:]*$/.test(trimmed);
 
     if (!inBracket && startsBracket) {
       inBracket = true;
       if (currentSegment && currentSegment.words.length > 0) {
         segments.push(currentSegment);
       }
-      currentSegment = { isBracketed: true, words: [w] };
+      currentSegment = {
+        isBracketed: true,
+        words: [w],
+      };
       if (endsBracket) {
         inBracket = false;
       }
@@ -97,6 +110,7 @@ export interface SyllableProgress {
 
 export interface RenderWord {
   globalIndex: number;
+  wordIndex: number;
   text: string;
   start: number;
   end: number;
@@ -111,7 +125,7 @@ function cleanNorm(str: string): string {
 /**
  * Normalizes words with genuine provider timestamps:
  * 1. Merges syllables into full target words matching lineText.
- * 2. Enforces strictly monotonic non-overlapping timings so transitions have no visible flicker, gaps, or sudden jumps.
+ * 2. Enforces strictly monotonic non-overlapping timings WITHIN each vocal track.
  */
 function processLineWords(
   lineText: string,
@@ -122,22 +136,39 @@ function processLineWords(
   const text = (lineText || "").trim();
   if (!text) return [];
 
-  const targetTokens = text.split(/\s+/).filter(Boolean);
+  const rawTokens = text.split(/\s+/).filter(Boolean);
+  if (rawTokens.length === 0) return [];
+
+  // Parse bracket state and remove bracket punctuation from display text
+  const targetTokens: { rawToken: string; displayText: string; isBracketed: boolean }[] = [];
+  let inBracket = false;
+
+  for (const token of rawTokens) {
+    if (/^[(\[{<]/.test(token)) inBracket = true;
+    const isBracketed = inBracket || /[)\]}>]/.test(token);
+    if (/[)\]}>]/.test(token)) inBracket = false;
+
+    const display = cleanDisplayWord(token, isBracketed);
+    // Ignore standalone bracket tokens like "(" or ")" that produce empty display text
+    if (display.length > 0) {
+      targetTokens.push({
+        rawToken: token,
+        displayText: display,
+        isBracketed,
+      });
+    }
+  }
+
   if (targetTokens.length === 0) return [];
 
   let resultWords: RenderWord[] = [];
 
   if (rawWords && rawWords.length > 0) {
     let rawIdx = 0;
-    let inBracket = false;
 
     for (let tIdx = 0; tIdx < targetTokens.length; tIdx++) {
-      const targetToken = targetTokens[tIdx];
-      const targetClean = cleanNorm(targetToken);
-
-      if (/^[(\[]/.test(targetToken)) inBracket = true;
-      const isBracketed = inBracket || /[)\]]/.test(targetToken);
-      if (/[)\]]/.test(targetToken)) inBracket = false;
+      const item = targetTokens[tIdx];
+      const targetClean = cleanNorm(item.displayText);
 
       const matchedSyllables: SyllableProgress[] = [];
       let accumulatedClean = "";
@@ -169,19 +200,21 @@ function processLineWords(
         const wEnd = matchedSyllables[matchedSyllables.length - 1].end;
         resultWords.push({
           globalIndex: tIdx,
-          text: targetToken,
+          wordIndex: tIdx,
+          text: item.displayText,
           start: wStart,
           end: Math.max(wStart + 0.05, wEnd),
-          isBracketed,
+          isBracketed: item.isBracketed,
           syllables: matchedSyllables.length > 1 ? matchedSyllables : undefined,
         });
       } else {
         resultWords.push({
           globalIndex: tIdx,
-          text: targetToken,
+          wordIndex: tIdx,
+          text: item.displayText,
           start: lineStart,
           end: lineEnd,
-          isBracketed,
+          isBracketed: item.isBracketed,
         });
       }
     }
@@ -190,44 +223,46 @@ function processLineWords(
   // Fallback to character-proportional estimation if no raw words or mapping empty
   if (resultWords.length === 0) {
     const lineDur = Math.max(0.4, lineEnd - lineStart);
-    const totalChars = targetTokens.reduce((s, w) => s + w.length, 0) + Math.max(0, targetTokens.length - 1);
+    const totalChars = targetTokens.reduce((s, item) => s + item.displayText.length, 0) + Math.max(0, targetTokens.length - 1);
     let curChars = 0;
-    let inBracket = false;
 
-    resultWords = targetTokens.map((w, idx) => {
+    resultWords = targetTokens.map((item, idx) => {
       const sRatio = totalChars > 0 ? curChars / totalChars : 0;
-      curChars += w.length;
+      curChars += item.displayText.length;
       const eRatio = totalChars > 0 ? curChars / totalChars : 1;
       curChars += 1;
 
-      if (/^[(\[]/.test(w)) inBracket = true;
-      const isBracketed = inBracket || /[)\]]/.test(w);
-      if (/[)\]]/.test(w)) inBracket = false;
-
       return {
         globalIndex: idx,
-        text: w,
+        wordIndex: idx,
+        text: item.displayText,
         start: lineStart + sRatio * lineDur,
         end: lineStart + eRatio * lineDur,
-        isBracketed,
+        isBracketed: item.isBracketed,
       };
     });
   }
 
-  // Enforce STRICT monotonic non-overlapping timings
-  for (let i = 0; i < resultWords.length; i++) {
-    if (i > 0) {
-      if (resultWords[i - 1].end > resultWords[i].start) {
-        resultWords[i - 1].end = resultWords[i].start;
+  // Enforce STRICT monotonic non-overlapping timings WITHIN EACH VOCAL SEGMENT
+  // (Main vocal and background vocal overlap in time, so they must be adjusted independently)
+  for (let i = 1; i < resultWords.length; i++) {
+    const prev = resultWords[i - 1];
+    const curr = resultWords[i];
+
+    if (prev.isBracketed === curr.isBracketed) {
+      if (prev.end > curr.start) {
+        prev.end = curr.start;
       }
-      if (resultWords[i].start < resultWords[i - 1].end) {
-        resultWords[i].start = resultWords[i - 1].end;
+      if (curr.start < prev.end) {
+        curr.start = prev.end;
       }
-    }
-    if (resultWords[i].end <= resultWords[i].start) {
-      const nextBound = i + 1 < resultWords.length ? resultWords[i + 1].start : lineEnd;
-      const span = Math.min(0.3, Math.max(0.05, nextBound - resultWords[i].start));
-      resultWords[i].end = resultWords[i].start + span;
+      if (curr.end <= curr.start) {
+        const nextBound = (i + 1 < resultWords.length && resultWords[i + 1].isBracketed === curr.isBracketed)
+          ? resultWords[i + 1].start
+          : lineEnd;
+        const span = Math.min(0.3, Math.max(0.05, nextBound - curr.start));
+        curr.end = curr.start + span;
+      }
     }
   }
 
@@ -313,17 +348,74 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
     }
   };
 
-  // If no genuine word timestamps from provider, render plain line without word-by-word animation
+  const getBracketClasses = () => {
+    switch (sizeVariant) {
+      case "desktop":
+        return "text-[28px] md:text-[30px] leading-[1.22] font-bold tracking-tight text-white/80 mt-1.5";
+      case "mobile":
+        return "text-[24px] leading-[1.2] font-bold tracking-tight text-white/80 mt-1";
+      case "sidebar":
+      default:
+        return "text-[17px] leading-[1.2] font-bold tracking-tight text-white/80 mt-0.5";
+    }
+  };
+
+  // If no genuine word timestamps from provider, render plain line with clean bracket parsing
   if (!hasWordTimestamps) {
-    const segClasses = getMainClasses();
+    const rawTokens = text.split(/\s+/).filter(Boolean);
+    const segs: { isBracketed: boolean; text: string }[] = [];
+    let curSeg: { isBracketed: boolean; words: string[] } | null = null;
+    let inB = false;
+
+    for (const token of rawTokens) {
+      if (/^[(\[{<]/.test(token)) inB = true;
+      const isB = inB || /[)\]}>]/.test(token);
+      if (/[)\]}>]/.test(token)) inB = false;
+
+      const clean = cleanDisplayWord(token, isB);
+      if (!clean) continue;
+
+      if (!curSeg || curSeg.isBracketed !== isB) {
+        if (curSeg && curSeg.words.length > 0) {
+          segs.push({ isBracketed: curSeg.isBracketed, text: curSeg.words.join(" ") });
+        }
+        curSeg = { isBracketed: isB, words: [clean] };
+      } else {
+        curSeg.words.push(clean);
+      }
+    }
+    if (curSeg && curSeg.words.length > 0) {
+      segs.push({ isBracketed: curSeg.isBracketed, text: curSeg.words.join(" ") });
+    }
+
+    const hasMain = segs.some((s) => !s.isBracketed);
+
     return (
-      <p
-        className={`w-full origin-left text-left whitespace-normal break-words text-balance transform-gpu ${segClasses} ${
-          isActive ? "text-white" : "text-white/40"
-        }`}
-      >
-        {text}
-      </p>
+      <div className="w-full flex flex-col items-start select-none">
+        {segs.map((seg, sIdx) => {
+          // Hide background vocal on upcoming lines when main line exists
+          if (seg.isBracketed && hasMain && isUpcomingLine) return null;
+          const segClasses = seg.isBracketed ? getBracketClasses() : getMainClasses();
+          return (
+            <p
+              key={sIdx}
+              className={`w-full origin-left text-left whitespace-normal break-words text-balance transform-gpu ${segClasses} ${
+                isActive ? (seg.isBracketed ? "text-white/80" : "text-white") : "text-white/40"
+              } ${seg.isBracketed ? "transition-all duration-500 ease-out" : ""}`}
+              style={
+                seg.isBracketed
+                  ? {
+                      opacity: isActive ? 0.9 : 0.45,
+                      transform: isActive ? "translate3d(0, 0, 0) scale(1)" : "translate3d(0, -2px, 0) scale(0.98)",
+                    }
+                  : undefined
+              }
+            >
+              {seg.text}
+            </p>
+          );
+        })}
+      </div>
     );
   }
 
@@ -343,7 +435,7 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
     [text, words, lineStart, lineEnd]
   );
 
-  // Group words into segments for bracket ad-libs
+  // Group words into segments for main vs background ad-libs
   const segments = useMemo(() => {
     const segs: { isBracketed: boolean; words: RenderWord[] }[] = [];
     let curSeg: { isBracketed: boolean; words: RenderWord[] } | null = null;
@@ -359,6 +451,8 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
     if (curSeg && curSeg.words.length > 0) segs.push(curSeg);
     return segs;
   }, [effectiveWords]);
+
+  const hasMainSegment = useMemo(() => segments.some((s) => !s.isBracketed), [segments]);
 
   // DOM refs to filled overlay spans for 60fps/120fps rAF animation outside React state
   const fillSpanRefs = useRef<Map<number, HTMLElement>>(new Map());
@@ -394,25 +488,34 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
         syncMetaRef.current
       );
 
-      for (let i = 0; i < effectiveWords.length; i++) {
-        const el = fillSpanRefs.current.get(i);
-        if (!el) continue;
+      // Enforce sequential fill within each segment (prevent middle words filling prematurely)
+      for (const seg of segments) {
+        let prevWordFinished = true;
 
-        const w = effectiveWords[i];
-        let fill = 0;
-        if (t >= w.end) {
-          fill = 100;
-        } else if (t <= w.start) {
-          fill = 0;
-        } else {
-          fill = calculateWordFill(w, t);
-        }
+        for (let j = 0; j < seg.words.length; j++) {
+          const w = seg.words[j];
+          const el = fillSpanRefs.current.get(w.wordIndex);
+          if (!el) continue;
 
-        const clipPct = Math.max(0, 100 - fill).toFixed(2);
-        const clipVal = `inset(0 ${clipPct}% 0 0)`;
+          let fill = 0;
+          if (t >= w.end) {
+            fill = 100;
+          } else if (t <= w.start || !prevWordFinished) {
+            fill = 0;
+          } else {
+            fill = calculateWordFill(w, t);
+          }
 
-        if (el.style.clipPath !== clipVal) {
-          applyClip(el, clipVal);
+          if (fill < 100) {
+            prevWordFinished = false;
+          }
+
+          const clipPct = Math.max(0, 100 - fill).toFixed(2);
+          const clipVal = `inset(0 ${clipPct}% 0 0)`;
+
+          if (el.style.clipPath !== clipVal) {
+            applyClip(el, clipVal);
+          }
         }
       }
 
@@ -424,19 +527,34 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
     return () => {
       cancelAnimationFrame(animId);
     };
-  }, [isActive, effectiveWords]);
+  }, [isActive, segments]);
 
-  const getBracketClasses = () => {
-    switch (sizeVariant) {
-      case "desktop":
-        return "text-[28px] md:text-[30px] leading-[1.22] font-bold tracking-tight text-white/80 mt-1";
-      case "mobile":
-        return "text-[24px] leading-[1.2] font-bold tracking-tight text-white/80 mt-1";
-      case "sidebar":
-      default:
-        return "text-[17px] leading-[1.2] font-bold tracking-tight text-white/80 mt-0.5";
+  const segWordFills = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const seg of segments) {
+      let prevFinished = true;
+      for (const w of seg.words) {
+        let fill = 0;
+        if (isPastLine) {
+          fill = 100;
+        } else if (isUpcomingLine) {
+          fill = 0;
+        } else if (currentTimeSec >= w.end) {
+          fill = 100;
+        } else if (currentTimeSec <= w.start || !prevFinished) {
+          fill = 0;
+        } else {
+          fill = calculateWordFill(w, currentTimeSec);
+        }
+
+        if (fill < 100) {
+          prevFinished = false;
+        }
+        map.set(w.wordIndex, fill);
+      }
     }
-  };
+    return map;
+  }, [segments, isPastLine, isUpcomingLine, currentTimeSec]);
 
   const mainWeight = sizeVariant === "mobile" ? "font-black" : "font-extrabold";
   const bracketWeight = "font-bold";
@@ -444,31 +562,43 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
   return (
     <div className="w-full flex flex-col items-start select-none">
       {segments.map((seg, sIdx) => {
+        // Only show background vocal when main lyric part appears (active or past line).
+        // Upcoming lines only show the main lyric part.
+        if (seg.isBracketed && hasMainSegment && isUpcomingLine) {
+          return null;
+        }
+
         const segClasses = seg.isBracketed ? getBracketClasses() : getMainClasses();
         const segWeight = seg.isBracketed ? bracketWeight : mainWeight;
 
         return (
           <p
             key={sIdx}
-            className={`w-full origin-left text-left whitespace-normal break-words text-balance transform-gpu ${segClasses}`}
+            className={`w-full origin-left text-left whitespace-normal break-words text-balance transform-gpu ${segClasses} ${
+              seg.isBracketed ? "transition-all duration-500 ease-out" : ""
+            }`}
+            style={
+              seg.isBracketed
+                ? {
+                    opacity: isActive ? 0.9 : 0.45,
+                    transform: isActive ? "translate3d(0, 0, 0) scale(1)" : "translate3d(0, -2px, 0) scale(0.98)",
+                  }
+                : undefined
+            }
           >
             {seg.words.map((w) => {
-              const initialFill = isPastLine
-                ? 100
-                : isUpcomingLine
-                ? 0
-                : calculateWordFill(w, currentTimeSec);
+              const initialFill = segWordFills.get(w.wordIndex) ?? 0;
               const initialClip = `inset(0 ${Math.max(0, 100 - initialFill).toFixed(2)}% 0 0)`;
 
               return (
                 <span
-                  key={w.globalIndex}
+                  key={w.wordIndex}
                   className="relative inline-block whitespace-nowrap mr-[0.24em] last:mr-0 align-baseline select-none"
                 >
                   {/* Base dimmed word */}
                   <span
                     className={`transition-colors duration-200 ${segWeight} ${
-                      isActive ? "text-white/35" : "text-white/40"
+                      isActive ? (seg.isBracketed ? "text-white/40" : "text-white/35") : "text-white/40"
                     }`}
                   >
                     {w.text}
@@ -478,13 +608,13 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
                   <span
                     ref={(el) => {
                       if (el) {
-                        fillSpanRefs.current.set(w.globalIndex, el);
+                        fillSpanRefs.current.set(w.wordIndex, el);
                         // Ensure immediate visual state if not active
                         if (!isActive) {
                           applyClip(el, initialClip);
                         }
                       } else {
-                        fillSpanRefs.current.delete(w.globalIndex);
+                        fillSpanRefs.current.delete(w.wordIndex);
                       }
                     }}
                     className="absolute top-0 left-0 w-full h-full pointer-events-none select-none"

@@ -53,8 +53,10 @@ export function parseTtml(content: string, source: string | null = null): Lyrics
       end = start + 5.0;
     }
 
-    // Check for inner word/syllable <span begin="..." end="...">
-    const spanRegex = /<(?:\w+:)?span\b([^>]*)>([\s\S]*?)<\/(?:\w+:)?span>/gi;
+    // Check for leaf word/syllable <span begin="..." end="...">
+    // By matching only spans that do not contain an inner <span, wrapper spans like
+    // <span ttm:role="x-bg" begin="..." end="..."> are not mistakenly treated as single words.
+    const spanRegex = /<(?:\w+:)?span\b([^>]*)>((?:(?!<(?:\w+:)?span\b)[\s\S])*?)<\/(?:\w+:)?span>/gi;
     const words: LyricsWord[] = [];
     let spanMatch: RegExpExecArray | null;
 

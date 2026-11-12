@@ -20,6 +20,7 @@ import { StatsProfile } from "./StatsProfile";
 import { PrivacyPolicy } from "./PrivacyPolicy";
 import { TermsOfService } from "./TermsOfService";
 import { AppBrandMark } from "./AppBrandMark";
+import { extractPrimaryArtist } from "@/lib/artistUtils";
 import { useRouter } from "next/navigation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -37,7 +38,7 @@ interface CenterPanelProps {
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
   onPlayPlaylist?: (songs: Song[], startIndex: number) => void;
-  onNavigateArtist?: (name: string) => void;
+  onNavigateArtist?: (name: string, id?: string) => void;
 }
 
 type ForYouTrack = {
@@ -150,7 +151,7 @@ function ForYouCard(props: {
   accentColor: string;
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
-  onNavigateArtist?: (name: string) => void;
+  onNavigateArtist?: (name: string, id?: string) => void;
   priority?: boolean;
 }) {
   const { track, index, onPlay, isPlaying, accentColor, onAddToQueue, onPlayNext, onNavigateArtist, priority } = props;
@@ -231,7 +232,7 @@ function ForYouCard(props: {
         <p
           onClick={(e) => {
             e.stopPropagation();
-            onNavigateArtist?.(track.artist);
+            onNavigateArtist?.(extractPrimaryArtist(track.artist).primary);
           }}
           className="text-[14px] text-white/40 font-medium truncate hover:text-white cursor-pointer"
         >
@@ -1247,7 +1248,7 @@ export function CenterPanel(props: CenterPanelProps) {
                       <div className="text-white/40 font-medium px-1">No artist matches yet.</div>
                     ) : (
                       artistRecs.map((a, i) => (
-                        <ArtistRecCard key={`${a.id}-${i}`} artist={a} index={i} onOpen={() => onNavigateArtist?.(a.name)} />
+                        <ArtistRecCard key={`${a.id}-${i}`} artist={a} index={i} onOpen={() => onNavigateArtist?.(a.name, a.id)} />
                       ))
                     )}
                   </Shelf>

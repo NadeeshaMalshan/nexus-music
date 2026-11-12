@@ -11,12 +11,14 @@ import { SwipeableSongRow } from "./SwipeableSongRow";
 import { SongMenu } from "./SongMenu";
 import { useArtworkColors, getAppleMusicBackground } from "@/lib/useArtworkColors";
 
+import { extractPrimaryArtist } from "@/lib/artistUtils";
+
 interface AlbumDetailProps {
   albumId: string;
   onSongClick: (song: Song) => void;
   onQueueReplace: (songs: Song[]) => void;
   onBack: () => void;
-  onNavigateArtist?: (name: string) => void;
+  onNavigateArtist?: (name: string, id?: string) => void;
   accentColor: string;
   currentSongId?: string;
   onAddToQueue?: (song: Song) => void;
@@ -291,7 +293,11 @@ export function AlbumDetail({
             {/* Artist Name */}
             <div>
               <button
-                onClick={() => onNavigateArtist?.(artistName)}
+                onClick={() => {
+                  const aid = (albumData as any)?.artist?.artistId || (albumData as any)?.artist?.channelId;
+                  const primary = extractPrimaryArtist(artistName).primary;
+                  onNavigateArtist?.(primary, aid);
+                }}
                 className="text-xl sm:text-2xl md:text-3xl font-bold text-white/95 hover:text-white transition-colors cursor-pointer text-left"
               >
                 {artistName}

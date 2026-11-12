@@ -9,7 +9,7 @@ import React from "react";
  * Delimiters preserved between names: ", ", " & ", " feat. ", " ft. ", " x ", " X "
  */
 
-const SPLIT_RE = /(\s*,\s*|\s+&\s+|\s+feat\.\s+|\s+ft\.\s+|\s+[xX]\s+)/i;
+const SPLIT_RE = /(\s*,\s*|\s+&\s+|\s+feat\.?\s+|\s+ft\.?\s+|\s+with\s+|\s+\/\s+|\s+[xX]\s+|\s+vs\.?\s+)/i;
 
 interface ArtistLinksProps {
   artist: string;
@@ -24,7 +24,12 @@ export function ArtistLinks({
   className = "",
   separatorClassName,
 }: ArtistLinksProps) {
-  const parts = artist.split(SPLIT_RE);
+  // Normalize parentheticals like "Artist A (feat. Artist B)" into "Artist A feat. Artist B"
+  const normalized = (artist || "")
+    .replace(/\s*\(\s*(?:feat\.?|ft\.?|with|featuring)\s+/gi, " feat. ")
+    .replace(/\s*\)/g, "");
+
+  const parts = normalized.split(SPLIT_RE);
   const sepClass = separatorClassName ?? className;
 
   return (
@@ -38,7 +43,10 @@ export function ArtistLinks({
             </span>
           );
         }
-        const trimmed = part.trim();
+        const trimmed = part
+          .replace(/^[([{'"]+/, "")
+          .replace(/[)\]}'",]+$/, "")
+          .trim();
         if (!trimmed) return null;
         return (
           <button

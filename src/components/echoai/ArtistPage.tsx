@@ -83,8 +83,9 @@ interface ArtistData {
 
 interface ArtistPageProps {
   artistName: string;
+  artistId?: string;
   onBack: () => void;
-  onNavigateArtist?: (artistName: string) => void;
+  onNavigateArtist?: (artistName: string, artistId?: string) => void;
   onNavigatePlaylist?: (playlistId: string) => void;
   onNavigateAlbum?: (albumId: string) => void;
 }
@@ -96,7 +97,7 @@ function fmtMs(ms: number) {
 }
 
 // ─── ArtistPage ───────────────────────────────────────────────────────────────
-export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePlaylist, onNavigateAlbum }: ArtistPageProps) {
+export function ArtistPage({ artistName, artistId, onBack, onNavigateArtist, onNavigatePlaylist, onNavigateAlbum }: ArtistPageProps) {
   const { data: session } = useSession();
   const { onSongClick, onAddToQueue, onPlayNext, currentSong, isPlaying, palette, setOverrideArtwork, isRightSidebarOpen } = useDashboard();
 
@@ -117,12 +118,15 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
   const visibleTracks = showAllTracks ? data?.topTracks : data?.topTracks.slice(0, 5);
 
   // ── Fetch artist data ──────────────────────────────────────────────────────
-  const fetchArtist = useCallback(async (name: string) => {
+  const fetchArtist = useCallback(async (name: string, id?: string) => {
     setLoading(true);
     setError(null);
     setData(null);
     try {
-      const res = await fetch(`/api/artist?name=${encodeURIComponent(name)}`, {
+      const url = id
+        ? `/api/artist?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`
+        : `/api/artist?name=${encodeURIComponent(name)}`;
+      const res = await fetch(url, {
         cache: "no-store",
       });
       if (!res.ok) {
@@ -141,16 +145,16 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setOverrideArtwork]);
 
   useEffect(() => {
-    fetchArtist(artistName);
+    fetchArtist(artistName, artistId);
 
     // Reset global theme when leaving artist page
     return () => {
       setOverrideArtwork(null);
     };
-  }, [artistName, fetchArtist, setOverrideArtwork]);
+  }, [artistName, artistId, fetchArtist, setOverrideArtwork]);
 
   // ── Fetch dynamic stats ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -979,7 +983,7 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.3 + i * 0.05, ...MOTION_CONFIG.transition }}
                       className="group flex flex-col items-center gap-3 shrink-0 w-[140px] md:w-[160px] cursor-pointer animate-gpu"
-                      onClick={() => onNavigateArtist?.(artist.name)}
+                      onClick={() => onNavigateArtist?.(artist.name, artist.id)}
                     >
                       <div className="relative w-full aspect-square rounded-full overflow-hidden bg-white/5 border-2 border-white/0 group-hover:border-(--art-accent,#FA243C) transition-all duration-300 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
                         <MusicArtwork

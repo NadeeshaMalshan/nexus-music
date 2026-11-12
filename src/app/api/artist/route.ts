@@ -2,15 +2,21 @@ import { NextResponse } from "next/server";
 import { getYTMusic } from "@/lib/ytmClient";
 import { getAppleArtistInfo } from "@/lib/appleArtistService";
 import { getKnownOAC } from "@/lib/knownOAC";
+import {
+  isYouTubeChannelId,
+  extractPrimaryArtist,
+  scoreArtistCandidate,
+} from "@/lib/artistUtils";
 
-// ─── GET /api/artist?name=<artistName> ───────────────────────────────────────
+// ─── GET /api/artist?name=<artistName>&id=<channelId> ─────────────────────────
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const name = searchParams.get("name")?.trim();
+    const rawId = searchParams.get("id")?.trim();
+    const rawName = searchParams.get("name")?.trim();
 
-    if (!name) {
-      return NextResponse.json({ error: "Missing name param" }, { status: 400 });
+    if (!rawId && !rawName) {
+      return NextResponse.json({ error: "Missing name or id param" }, { status: 400 });
     }
 
     const api = await getYTMusic();
@@ -19,48 +25,96 @@ export async function GET(request: Request) {
     const { authOptions } = await import("@/lib/auth");
     const session = await getServerSession(authOptions);
 
-    // 1. Search for the artist
-    const searchResults = await api.searchArtists(name);
-    
-    // Find a match that closely follows the name or just take the first
-    // PRIORITIZE Official Artist Channels if multiple results exist
-    let artistBasic = searchResults.find(
-      (a: any) => a.name.toLowerCase() === name.toLowerCase() && !a.name.includes("- Topic")
-    ) || searchResults.find(
-      (a: any) => a.name.toLowerCase().includes(name.toLowerCase()) && !a.name.includes("- Topic")
-    ) || searchResults[0];
+    let artistId: string = "";
+    let artistBasic: any = null;
+    let targetName: string = rawName || "";
 
-    if (!artistBasic) {
-      console.warn(`[Artist API] No artist found for query: ${name}`);
-      return NextResponse.json({ error: "Artist not found" }, { status: 404 });
+    // 1. Direct Channel ID fast path (e.g. /api/artist?id=UC... or /api/artist?name=UC...)
+    if (rawId && isYouTubeChannelId(rawId)) {
+      artistId = rawId;
+    } else if (rawName && isYouTubeChannelId(rawName)) {
+      artistId = rawName;
     }
 
-    let artistId = artistBasic.artistId;
+    // 2. If no direct channel ID, resolve via clean primary artist name & known OACs
+    if (!artistId && rawName) {
+      const { primary, cleanedFull } = extractPrimaryArtist(rawName);
+      targetName = primary || cleanedFull || rawName;
+
+      // Check curated high-authority fast path (0ms, 100% verified)
+      const known =
+        getKnownOAC(targetName) ||
+        getKnownOAC(cleanedFull) ||
+        getKnownOAC(rawName);
+
+      if (known) {
+        artistId = known.channelId;
+        targetName = known.name;
+        console.log(`[Artist API] Curated OAC fast-path for "${rawName}" -> ${artistId} (${known.name})`);
+      } else {
+        // Query YouTube Music with cleaned primary artist
+        const searchResults = await api.searchArtists(targetName);
+
+        // Score candidates against primary target
+        let bestCandidate: any = null;
+        let highestScore = -1;
+
+        for (const cand of searchResults || []) {
+          const candName = cand.name || "";
+          const isTopic = candName.includes("- Topic");
+          let score = scoreArtistCandidate(candName, targetName);
+          if (score === 0 && cleanedFull !== targetName) {
+            score = scoreArtistCandidate(candName, cleanedFull);
+          }
+          if (isTopic) score -= 5;
+
+          if (score > highestScore) {
+            highestScore = score;
+            bestCandidate = cand;
+          }
+        }
+
+        // If primary didn't match and cleanedFull is different, retry with cleanedFull
+        if (highestScore < 40 && cleanedFull !== targetName) {
+          const secondSearch = await api.searchArtists(cleanedFull);
+          for (const cand of secondSearch || []) {
+            const isTopic = (cand.name || "").includes("- Topic");
+            let score = scoreArtistCandidate(cand.name || "", cleanedFull);
+            if (isTopic) score -= 5;
+            if (score > highestScore) {
+              highestScore = score;
+              bestCandidate = cand;
+            }
+          }
+        }
+
+        // Accept bestCandidate if it scored >= 40, otherwise fall back to searchResults[0]
+        artistBasic = (highestScore >= 40 ? bestCandidate : null) || searchResults?.[0];
+
+        if (!artistBasic) {
+          console.warn(`[Artist API] No artist found for query: ${rawName}`);
+          return NextResponse.json({ error: "Artist not found" }, { status: 404 });
+        }
+
+        artistId = artistBasic.artistId;
+      }
+    }
 
     // ─── Authority Check & Upgrade ──────────────────────────────────────────
-    // Cross-reference with known OACs or YouTube Data API to find the TRUE Official Artist Channel (OAC)
-    // This resolves the issue where YTM returns a sub-optimal ID (e.g. 10K subs vs 25M subs).
-    
-    // 1. High-Authority Fast Path Mapping (Bypasses API Quotas & zero latency)
-    const known = getKnownOAC(name) || getKnownOAC(artistId);
+    const known = getKnownOAC(targetName) || getKnownOAC(artistId);
     if (known) {
       artistId = known.channelId;
-      console.log(`[Artist API] Fast-path OAC mapping for ${name} -> ${artistId}`);
     } else {
-      // 2. Dynamic Fallback Search (works with or without OAuth session)
       try {
         const { dynamicFindOAC, searchOfficialChannel } = await import("@/lib/youtubeData");
-        
         if (session?.accessToken) {
-          const official = await searchOfficialChannel(session.accessToken, name);
+          const official = await searchOfficialChannel(session.accessToken, targetName);
           if (official?.id?.channelId && official.id.channelId !== artistId) {
-            console.log(`[Artist API] UPGRADING ID (OAuth): ${name} (${artistId}) -> OAC (${official.id.channelId})`);
             artistId = official.id.channelId;
           }
         } else {
-          const dyn = await dynamicFindOAC(name);
+          const dyn = await dynamicFindOAC(targetName);
           if (dyn?.channelId && dyn.channelId !== artistId) {
-            console.log(`[Artist API] UPGRADING ID (Dynamic): ${name} (${artistId}) -> OAC (${dyn.channelId})`);
             artistId = dyn.channelId;
           }
         }
@@ -73,7 +127,7 @@ export async function GET(request: Request) {
     let details: any;
     let allArtistSongs: any[] = [];
     let appleInfo: any = null;
-    const canonicalName = artistBasic?.name || name;
+    const canonicalName = artistBasic?.name || targetName;
     try {
       [details, allArtistSongs, appleInfo] = await Promise.all([
         api.getArtist(artistId),

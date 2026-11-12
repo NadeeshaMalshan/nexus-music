@@ -12,6 +12,7 @@ import { m, AnimatePresence } from "motion/react";
 import { EchoAIDashboard } from "./EchoAIDashboard";
 import { ListPlus, PlaySquare, Disc, User, Info, X, Loader2 } from "lucide-react";
 import { type Song } from "./types";
+import { extractPrimaryArtist } from "@/lib/artistUtils";
 
 export function DashboardWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -414,7 +415,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
               onSetRightSidebarMode={setRightSidebarMode}
               volume={volume}
               onVolumeChange={setVolume}
-              onArtistClick={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
+              onArtistClick={(name) => router.push(`/artist/${encodeURIComponent(extractPrimaryArtist(name).primary)}`)}
               onSeek={onSeek}
             />
           </m.div>
@@ -483,7 +484,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
             setDurationSec={setDurationSec}
             onArtistClick={(name) => {
               setIsExpandedPlayerOpen(false);
-              router.push(`/artist/${encodeURIComponent(name)}`);
+              router.push(`/artist/${encodeURIComponent(extractPrimaryArtist(name).primary)}`);
             }}
           />
         </div>
@@ -517,7 +518,7 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
         onReorderUpNext={onReorderUpNext}
         onNavigateArtist={(name) => {
           setIsExpandedPlayerOpen(false);
-          router.push(`/artist/${encodeURIComponent(name)}`);
+          router.push(`/artist/${encodeURIComponent(extractPrimaryArtist(name).primary)}`);
         }}
       />
 
@@ -596,7 +597,8 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
 
                   <button
                     onClick={() => {
-                      router.push(`/artist/${encodeURIComponent(contextMenu.song.artist)}`);
+                      const primary = extractPrimaryArtist(contextMenu.song.artist).primary;
+                      router.push(`/artist/${encodeURIComponent(primary)}`);
                       setContextMenu(null);
                     }}
                     className="flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 text-base font-bold text-white/80 hover:text-white transition-all hover:bg-white/5 active:bg-white/10 group"
@@ -680,7 +682,8 @@ export function DashboardWrapper({ children }: { children: React.ReactNode }) {
 
               <button
                 onClick={() => {
-                  router.push(`/artist/${encodeURIComponent(contextMenu.song.artist)}`);
+                  const primary = extractPrimaryArtist(contextMenu.song.artist).primary;
+                  router.push(`/artist/${encodeURIComponent(primary)}`);
                   setContextMenu(null);
                 }}
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/80 hover:text-white transition-all hover:bg-white/10 group"

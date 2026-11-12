@@ -7,10 +7,20 @@ import { ArtistPage } from "./ArtistPage";
 import { usePathname, useRouter } from "next/navigation";
 import { m, AnimatePresence } from "motion/react";
 import { FADE_IN_VARIANTS, MOTION_CONFIG } from "@/lib/animations";
+import { extractPrimaryArtist } from "@/lib/artistUtils";
 
 export function EchoAIDashboard() {
   const pathname = usePathname();
   const router = useRouter();
+  const [artistIdFromUrl, setArtistIdFromUrl] = React.useState<string>("");
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      setArtistIdFromUrl(sp.get("id") || "");
+    }
+  }, [pathname]);
+
   const {
     currentSong,
     onSongClick,
@@ -27,8 +37,13 @@ export function EchoAIDashboard() {
     router.push("/");
   }, [router]);
 
-  const handleNavigateArtist = useCallback((name: string) => {
-    router.push(`/artist/${encodeURIComponent(name)}`);
+  const handleNavigateArtist = useCallback((name: string, id?: string) => {
+    const primary = extractPrimaryArtist(name).primary;
+    if (id) {
+      router.push(`/artist/${encodeURIComponent(primary)}?id=${encodeURIComponent(id)}`);
+    } else {
+      router.push(`/artist/${encodeURIComponent(primary)}`);
+    }
   }, [router]);
 
   // Determine active view based on pathname
@@ -79,8 +94,9 @@ export function EchoAIDashboard() {
         >
           <ArtistPage
             artistName={artistNameFromUrl}
+            artistId={artistIdFromUrl}
             onBack={() => router.back()}
-            onNavigateArtist={(name) => router.push(`/artist/${encodeURIComponent(name)}`)}
+            onNavigateArtist={handleNavigateArtist}
             onNavigatePlaylist={(id) => router.push(`/playlists/${id}`)}
             onNavigateAlbum={(id) => router.push(`/album/${id}`)}
           />

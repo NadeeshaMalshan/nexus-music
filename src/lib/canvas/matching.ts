@@ -138,8 +138,40 @@ export function cleanCanvasTitle(rawTitle: string, artistHint?: string): string 
 }
 
 /**
+ * Calculates Levenshtein edit distance between two strings.
+ */
+export function levenshteinDistance(s1: string, s2: string): number {
+  if (s1 === s2) return 0;
+  if (!s1.length) return s2.length;
+  if (!s2.length) return s1.length;
+
+  const row = Array.from({ length: s2.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= s1.length; i++) {
+    let prev = i;
+    for (let j = 1; j <= s2.length; j++) {
+      const val = s1[i - 1] === s2[j - 1] ? row[j - 1] : Math.min(row[j - 1], prev, row[j]) + 1;
+      row[j - 1] = prev;
+      prev = val;
+    }
+    row[s2.length] = prev;
+  }
+  return row[s2.length];
+}
+
+/**
+ * Calculates normalized similarity ratio between 0.0 and 1.0.
+ */
+export function stringSimilarity(s1: string, s2: string): number {
+  if (s1 === s2) return 1;
+  const maxLen = Math.max(s1.length, s2.length);
+  if (maxLen === 0) return 1;
+  const dist = levenshteinDistance(s1, s2);
+  return 1 - dist / maxLen;
+}
+
+/**
  * Checks whether candidateArtist strictly matches wantedArtist.
- * Supports multi-artist collaborations.
+ * Supports multi-artist collaborations, typo tolerance, and strict surname protection.
  */
 export function isArtistMatch(
   wantedArtist: string,
@@ -152,31 +184,56 @@ export function isArtistMatch(
     return { isMatch: false, score: 0 };
   }
 
-  // Exact normalized match
+  // 1. Exact normalized match
   if (normWanted === normCandidate) {
     return { isMatch: true, score: 1.0 };
   }
 
-  // Substring match for single tokens
-  if (normWanted.includes(normCandidate) || normCandidate.includes(normWanted)) {
-    const ratio = Math.min(normWanted.length, normCandidate.length) / Math.max(normWanted.length, normCandidate.length);
-    if (ratio >= 0.7) {
-      return { isMatch: true, score: 0.9 * ratio };
-    }
-  }
-
-  // Check multi-artist overlap
+  // 2. Check multi-artist collaboration overlap first
   const wantedParts = parseArtists(wantedArtist);
   const candidateParts = parseArtists(candidateArtist);
 
-  for (const w of wantedParts) {
-    for (const c of candidateParts) {
-      if (w === c) {
-        return { isMatch: true, score: 0.88 };
+  if (wantedParts.length > 1 || candidateParts.length > 1) {
+    for (const w of wantedParts) {
+      for (const c of candidateParts) {
+        if (w === c) {
+          return { isMatch: true, score: 0.88 };
+        }
+        const sim = stringSimilarity(w, c);
+        if (sim >= 0.82) {
+          return { isMatch: true, score: 0.85 * sim };
+        }
       }
-      if (w.length > 3 && c.length > 3 && (w.includes(c) || c.includes(w))) {
-        return { isMatch: true, score: 0.82 };
-      }
+    }
+    return { isMatch: false, score: 0 };
+  }
+
+  const wordsW = normWanted.split(" ").filter(Boolean);
+  const wordsC = normCandidate.split(" ").filter(Boolean);
+
+  // 3. Strict surname / token mismatch protection for multi-word individual artists
+  // (Prevents "Olivia Dean" matching "Olivia Rodrigo", "Chris Brown" matching "Chris Martin")
+  if (wordsW.length >= 2 && wordsC.length >= 2) {
+    const lastW = wordsW[wordsW.length - 1];
+    const lastC = wordsC[wordsC.length - 1];
+    const surnameSim = stringSimilarity(lastW, lastC);
+    if (surnameSim < 0.6) {
+      // Surnames are completely different! Must NOT match
+      return { isMatch: false, score: 0 };
+    }
+  }
+
+  // 4. Overall full-string edit similarity (tolerates typos like "olivia ridrigi" -> "olivia rodrigo")
+  const overallSim = stringSimilarity(normWanted, normCandidate);
+  if (overallSim >= 0.8) {
+    return { isMatch: true, score: overallSim };
+  }
+
+  // 5. Substring ratio match for prefixes/suffixes
+  if (normWanted.includes(normCandidate) || normCandidate.includes(normWanted)) {
+    const ratio = Math.min(normWanted.length, normCandidate.length) / Math.max(normWanted.length, normCandidate.length);
+    if (ratio >= 0.75) {
+      return { isMatch: true, score: 0.9 * ratio };
     }
   }
 

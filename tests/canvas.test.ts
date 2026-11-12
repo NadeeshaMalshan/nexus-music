@@ -322,14 +322,42 @@ describe("CanvasService Orchestration & Caching", () => {
 
 describe("Apple Music Artist Info & Wordmark Logo Service", () => {
   const { getAppleArtistInfo } = require("../src/lib/appleArtistService");
+  const { isArtistMatch } = require("../src/lib/canvas/matching");
 
-  test("returns curated artist logo for Olivia Rodrigo matching user URL", async () => {
-    const info = await getAppleArtistInfo("Olivia Rodrigo");
+  test("returns authentic artist logo for Olivia Rodrigo without confusing with Olivia Dean", async () => {
+    const infoRodrigo = await getAppleArtistInfo("Olivia Rodrigo");
+    assert.ok(infoRodrigo !== null);
+    assert.equal(
+      infoRodrigo.logoUrl,
+      "https://is1-ssl.mzstatic.com/image/thumb/2ayJ04CqIfSdXp36oZA8yA/400x133bb.webp"
+    );
+
+    const infoDean = await getAppleArtistInfo("Olivia Dean");
+    assert.ok(infoDean !== null);
+    assert.equal(
+      infoDean.logoUrl,
+      "https://is1-ssl.mzstatic.com/image/thumb/Wcm2Bo9UxDiBqIsGMm19KA/400x133bb.webp"
+    );
+  });
+
+  test("resolves typo 'olivia ridrigi' to Olivia Rodrigo and strictly rejects Olivia Dean", async () => {
+    const info = await getAppleArtistInfo("olivia ridrigi");
     assert.ok(info !== null);
     assert.equal(
       info.logoUrl,
-      "https://is1-ssl.mzstatic.com/image/thumb/Wcm2Bo9UxDiBqIsGMm19KA/400x133bb.webp"
+      "https://is1-ssl.mzstatic.com/image/thumb/2ayJ04CqIfSdXp36oZA8yA/400x133bb.webp"
     );
+
+    // Verify matcher level rejection of Dean vs Rodrigo
+    const matchDeanVsTypo = isArtistMatch("olivia ridrigi", "Olivia Dean");
+    assert.equal(matchDeanVsTypo.isMatch, false);
+
+    const matchDeanVsRodrigo = isArtistMatch("olivia rodrigo", "Olivia Dean");
+    assert.equal(matchDeanVsRodrigo.isMatch, false);
+
+    const matchRodrigoVsTypo = isArtistMatch("olivia ridrigi", "Olivia Rodrigo");
+    assert.equal(matchRodrigoVsTypo.isMatch, true);
+    assert.ok(matchRodrigoVsTypo.score >= 0.8);
   });
 
   test("normalizes artist names with case or whitespace differences", async () => {
@@ -337,7 +365,7 @@ describe("Apple Music Artist Info & Wordmark Logo Service", () => {
     assert.ok(info !== null);
     assert.equal(
       info.logoUrl,
-      "https://is1-ssl.mzstatic.com/image/thumb/Wcm2Bo9UxDiBqIsGMm19KA/400x133bb.webp"
+      "https://is1-ssl.mzstatic.com/image/thumb/2ayJ04CqIfSdXp36oZA8yA/400x133bb.webp"
     );
   });
 

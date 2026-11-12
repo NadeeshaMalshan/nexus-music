@@ -74,12 +74,16 @@ export async function GET(request: Request) {
     let details: any;
     let allArtistSongs: any[] = [];
     let appleInfo: any = null;
+    const canonicalName = artistBasic?.name || name;
     try {
       [details, allArtistSongs, appleInfo] = await Promise.all([
         api.getArtist(artistId),
         api.getArtistSongs(artistId).catch(() => []),
-        getAppleArtistInfo(name).catch(() => null),
+        getAppleArtistInfo(canonicalName).catch(() => null),
       ]);
+      if (!appleInfo?.logoUrl && details?.name && details.name.toLowerCase() !== canonicalName.toLowerCase()) {
+        appleInfo = await getAppleArtistInfo(details.name).catch(() => null);
+      }
     } catch (err) {
       console.error(`[Artist API] Failed to getArtist for ID ${artistId}:`, err);
       // Fallback: use basic info from search if details fail

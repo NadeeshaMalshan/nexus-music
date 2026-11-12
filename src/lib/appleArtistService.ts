@@ -9,7 +9,8 @@ export interface AppleArtistInfo {
 
 // Curated verified Apple Music artist wordmarks & logos (instant zero-latency fast path)
 const CURATED_ARTIST_LOGOS: Record<string, string> = {
-  "olivia rodrigo": "https://is1-ssl.mzstatic.com/image/thumb/Wcm2Bo9UxDiBqIsGMm19KA/400x133bb.webp",
+  "olivia rodrigo": "https://is1-ssl.mzstatic.com/image/thumb/2ayJ04CqIfSdXp36oZA8yA/400x133bb.webp",
+  "olivia dean": "https://is1-ssl.mzstatic.com/image/thumb/Wcm2Bo9UxDiBqIsGMm19KA/400x133bb.webp",
   "taylor swift": "https://is1-ssl.mzstatic.com/image/thumb/lPXHgVOK2LRp_AkQZj_K8A/400x133bb.webp",
   "dua lipa": "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/e1/c3/f5/e1c3f5ac-bc18-de96-68c4-dd2483e5d7d2/e75c0b81-6175-4ecd-9706-26289a987954.png/400x133bb.webp",
   "chappell roan": "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/04/29/a8/0429a85d-01bf-db5e-237b-bf72035e661e/dff6322b-6891-4938-9db0-9cd0c73dd9f5.png/400x133bb.webp",
@@ -37,7 +38,7 @@ export async function getAppleArtistInfo(artistName: string): Promise<AppleArtis
     return cached.data;
   }
 
-  // 2. Check curated fast-path
+  // 2. Check curated fast-path (exact match)
   if (CURATED_ARTIST_LOGOS[clean]) {
     const info: AppleArtistInfo = {
       logoUrl: CURATED_ARTIST_LOGOS[clean],
@@ -48,6 +49,20 @@ export async function getAppleArtistInfo(artistName: string): Promise<AppleArtis
     return info;
   }
 
+  // Check curated fast-path with fuzzy match (e.g. "olivia ridrigi" -> "olivia rodrigo")
+  for (const [curatedArtist, logoUrl] of Object.entries(CURATED_ARTIST_LOGOS)) {
+    const m = isArtistMatch(clean, curatedArtist);
+    if (m.isMatch && m.score >= 0.82) {
+      const info: AppleArtistInfo = {
+        logoUrl,
+        bio: null,
+        heroArtwork: null,
+      };
+      artistLogoCache.set(clean, { data: info, expiresAt: Date.now() + CACHE_TTL_MS });
+      return info;
+    }
+  }
+
   // 3. Dynamic lookup via Apple Music Catalog API
   try {
     const token = await (appleProvider as any).getToken();
@@ -55,7 +70,7 @@ export async function getAppleArtistInfo(artistName: string): Promise<AppleArtis
 
     const url = `https://amp-api.music.apple.com/v1/catalog/us/search?term=${encodeURIComponent(
       clean
-    )}&types=artists&limit=3&extend=editorialArtwork,artistBio`;
+    )}&types=artists&limit=5&extend=editorialArtwork,artistBio`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2500); // 2.5s strict timeout
@@ -65,33 +80,42 @@ export async function getAppleArtistInfo(artistName: string): Promise<AppleArtis
 
     const candidates = res?.results?.artists?.data;
     if (Array.isArray(candidates) && candidates.length) {
+      // Find candidate with the highest matching confidence
+      let bestCand: any = null;
+      let highestScore = 0;
+
       for (const cand of candidates) {
         const candName = cand?.attributes?.name || "";
         const matches = isArtistMatch(clean, candName);
-        if (matches.isMatch) {
-          const editorial = cand?.attributes?.editorialArtwork;
-          const logoObj = editorial?.musicContentColorLogoTrimmed || editorial?.musicContentColorLogo;
-          const rawUrl = logoObj?.url;
-          const logoUrl = rawUrl
-            ? rawUrl.replace("{w}x{h}bb.jpg", "400x133bb.webp").replace("{w}x{h}", "400x133")
-            : null;
-
-          const rawHero = cand?.attributes?.artwork?.url;
-          const heroArtwork = rawHero
-            ? rawHero.replace("{w}x{h}bb.jpg", "1920x1080bb.jpg").replace("{w}x{h}", "1920x1080")
-            : null;
-
-          const bio = cand?.attributes?.artistBio || null;
-
-          const info: AppleArtistInfo = {
-            logoUrl,
-            bio,
-            heroArtwork,
-          };
-
-          artistLogoCache.set(clean, { data: info, expiresAt: Date.now() + CACHE_TTL_MS });
-          return info;
+        if (matches.isMatch && matches.score > highestScore) {
+          highestScore = matches.score;
+          bestCand = cand;
         }
+      }
+
+      if (bestCand && highestScore >= 0.78) {
+        const editorial = bestCand?.attributes?.editorialArtwork;
+        const logoObj = editorial?.musicContentColorLogoTrimmed || editorial?.musicContentColorLogo;
+        const rawUrl = logoObj?.url;
+        const logoUrl = rawUrl
+          ? rawUrl.replace("{w}x{h}bb.jpg", "400x133bb.webp").replace("{w}x{h}", "400x133")
+          : null;
+
+        const rawHero = bestCand?.attributes?.artwork?.url;
+        const heroArtwork = rawHero
+          ? rawHero.replace("{w}x{h}bb.jpg", "1920x1080bb.jpg").replace("{w}x{h}", "1920x1080")
+          : null;
+
+        const bio = bestCand?.attributes?.artistBio || null;
+
+        const info: AppleArtistInfo = {
+          logoUrl,
+          bio,
+          heroArtwork,
+        };
+
+        artistLogoCache.set(clean, { data: info, expiresAt: Date.now() + CACHE_TTL_MS });
+        return info;
       }
     }
   } catch (err) {

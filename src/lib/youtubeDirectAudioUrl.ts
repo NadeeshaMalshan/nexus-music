@@ -2,6 +2,8 @@ import { chooseFormat, getInfo } from "@distube/ytdl-core";
 import type ytdl from "@distube/ytdl-core";
 import play from "play-dl";
 import redis from "./redis";
+import { searchSongsRobust } from "./ytmSearchService";
+import { isTitleMatch } from "./lyrics/matchUtils";
 
 const CHROME_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -86,10 +88,101 @@ export async function getYoutubeInfoWithRetry(videoUrl: string) {
 }
 
 /**
+ * Result of resolving an audio stream or URL, possibly using an alternative video ID
+ * if the requested one was unavailable or geo-blocked.
+ */
+export interface AudioResolutionResult {
+  url: string;
+  resolvedVideoId: string;
+  isAlternative: boolean;
+}
+
+/**
+ * Searches for a working alternative YouTube video ID for a song when the original ID
+ * is deleted, unavailable, or geo-blocked.
+ */
+export async function findAlternativeVideoId(
+  title: string,
+  artist?: string,
+  brokenVideoId?: string
+): Promise<string | null> {
+  const cleanTitle = (title || "").trim();
+  const cleanArtist = (artist || "").replace(/\s*-\s*Topic\s*$/i, "").trim();
+  if (!cleanTitle) return null;
+
+  // 1. Check Redis for previously resolved mapping
+  if (brokenVideoId && redis) {
+    try {
+      const cached = await redis.get<string>(`resolved_videoid:${brokenVideoId}`);
+      if (cached && cached !== brokenVideoId) {
+        console.log(`[youtubeDirectAudioUrl] Serving cached alternative ID for ${brokenVideoId}: ${cached}`);
+        return cached;
+      }
+    } catch (e) {
+      console.warn("[youtubeDirectAudioUrl] Redis read error for resolved_videoid:", e);
+    }
+  }
+
+  // 2. Search YouTube Music for the track
+  try {
+    const query = cleanArtist ? `${cleanArtist} ${cleanTitle}` : cleanTitle;
+    const results = await searchSongsRobust(query);
+    if (results && results.length > 0) {
+      // First pass: look for a title match that is not the broken video ID
+      for (const item of results) {
+        const id = item.youtubeId?.trim();
+        if (!id || id === brokenVideoId) continue;
+
+        const itemTitle = item.title || "";
+        if (
+          isTitleMatch(cleanTitle, itemTitle) ||
+          cleanTitle.toLowerCase().includes(itemTitle.toLowerCase()) ||
+          itemTitle.toLowerCase().includes(cleanTitle.toLowerCase())
+        ) {
+          console.log(`[youtubeDirectAudioUrl] Resolved alternative ID for "${cleanTitle}" (${brokenVideoId}) -> ${id} ("${itemTitle}")`);
+          if (brokenVideoId && redis) {
+            try {
+              await redis.set(`resolved_videoid:${brokenVideoId}`, id, { ex: 604800 });
+            } catch (err) {
+              console.warn("[youtubeDirectAudioUrl] Redis write error for resolved_videoid:", err);
+            }
+          }
+          return id;
+        }
+      }
+
+      // Second pass: pick the first result whose ID differs from brokenVideoId
+      for (const item of results) {
+        const id = item.youtubeId?.trim();
+        if (id && id !== brokenVideoId) {
+          console.log(`[youtubeDirectAudioUrl] Resolved fallback candidate ID for "${cleanTitle}" -> ${id}`);
+          if (brokenVideoId && redis) {
+            try {
+              await redis.set(`resolved_videoid:${brokenVideoId}`, id, { ex: 604800 });
+            } catch {}
+          }
+          return id;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[youtubeDirectAudioUrl] findAlternativeVideoId error:", err);
+  }
+
+  return null;
+}
+
+/**
  * Best-effort direct googlevideo URL for a YouTube video. Tries @distube/ytdl-core with
  * several player-client orders, then play-dl (often succeeds when ytdl fails on serverless).
+ * If title is provided and video extraction fails, attempts fallback resolution.
  */
-export async function getYoutubeDirectAudioUrl(videoId: string, isLive: boolean = false): Promise<string | null> {
+export async function getYoutubeDirectAudioUrl(
+  videoId: string,
+  isLive: boolean = false,
+  title?: string,
+  artist?: string
+): Promise<string | null> {
   const cacheKey = `audiourl:${videoId}:${isLive}`;
 
   if (redis) {
@@ -136,6 +229,18 @@ export async function getYoutubeDirectAudioUrl(videoId: string, isLive: boolean 
     if (piped) resolvedUrl = piped;
   }
 
+  // If extraction failed for videoId and title is provided, try finding an alternative video
+  if (!resolvedUrl && title) {
+    console.log(`[youtubeDirectAudioUrl] Direct extraction failed for ${videoId}. Searching alternative for "${title}"...`);
+    const alternativeId = await findAlternativeVideoId(title, artist, videoId);
+    if (alternativeId && alternativeId !== videoId) {
+      const altUrl = await getYoutubeDirectAudioUrl(alternativeId, isLive);
+      if (altUrl) {
+        resolvedUrl = altUrl;
+      }
+    }
+  }
+
   if (resolvedUrl && redis) {
     try {
       // Cache for 2 hours (7200 seconds)
@@ -149,6 +254,60 @@ export async function getYoutubeDirectAudioUrl(videoId: string, isLive: boolean 
   return resolvedUrl;
 }
 
+/**
+ * Resolves an audio URL with full metadata about the resolved video ID, enabling the client
+ * to seamlessly switch to an alternative working video ID when the original is broken.
+ */
+export async function resolveAudioUrlWithFallback(
+  videoId: string,
+  isLive: boolean = false,
+  title?: string,
+  artist?: string
+): Promise<AudioResolutionResult | null> {
+  let targetVideoId = videoId;
+  let isAlternative = false;
+
+  // Check Redis for known alias
+  if (redis) {
+    try {
+      const mapped = await redis.get<string>(`resolved_videoid:${videoId}`);
+      if (mapped && mapped !== videoId) {
+        targetVideoId = mapped;
+        isAlternative = true;
+      }
+    } catch {}
+  }
+
+  // 1. Try targetVideoId
+  const directUrl = await getYoutubeDirectAudioUrl(targetVideoId, isLive);
+  if (directUrl) {
+    return {
+      url: directUrl,
+      resolvedVideoId: targetVideoId,
+      isAlternative,
+    };
+  }
+
+  // 2. If extraction failed and we have song title, search alternative
+  if (title) {
+    console.log(`[youtubeDirectAudioUrl] Direct extraction failed for ${videoId}. Searching alternative for "${title}" (${artist || 'unknown'})...`);
+    const alternativeId = await findAlternativeVideoId(title, artist, videoId);
+    if (alternativeId && alternativeId !== videoId && alternativeId !== targetVideoId) {
+      const altUrl = await getYoutubeDirectAudioUrl(alternativeId, isLive);
+      if (altUrl) {
+        console.log(`[youtubeDirectAudioUrl] Successfully resolved audio URL using alternative ID ${alternativeId} for ${videoId}`);
+        return {
+          url: altUrl,
+          resolvedVideoId: alternativeId,
+          isAlternative: true,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
 type PipedStreamsResponse = { audioStreams?: Array<{ url?: string; bitrate?: number; mimeType?: string }> };
 
 /**
@@ -159,13 +318,13 @@ type PipedStreamsResponse = { audioStreams?: Array<{ url?: string; bitrate?: num
  */
 export async function getPipedAudioUrl(videoId: string): Promise<string | null> {
   const raw = process.env.PIPED_API_BASE_URL?.trim();
-  if (raw?.toLowerCase() === "off" || raw === "0") return null;
+  if (raw?.toLowerCase() === "off" || raw === "0" || !raw) return null;
 
-  const base = (raw || "https://pipedapi.kavin.rocks").replace(/\/+$/, "");
+  const base = raw.replace(/\/+$/, "");
 
   try {
     const ac = new AbortController();
-    const t = setTimeout(() => ac.abort(), 15_000);
+    const t = setTimeout(() => ac.abort(), 3_000);
     const r = await fetch(`${base}/streams/${encodeURIComponent(videoId)}`, {
       signal: ac.signal,
       headers: {

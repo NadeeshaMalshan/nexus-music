@@ -879,18 +879,20 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
       const controller = new AbortController();
       async function getClientSideAudioUrl(videoId: string): Promise<string | null> {
+        // Quick check with responsive instances and strict short timeout
         const instances = [
-          "https://pipedapi.kavin.rocks",
-          "https://pipedapi.tokhmi.xyz",
-          "https://pipedapi.moomoo.me",
-          "https://api.piped.yt",
-          "https://pipedapi.colbyland.xyz"
+          "https://pipedapi.ducks.party",
+          "https://piped-api.lunar.icu",
         ];
         for (const base of instances) {
           try {
+            const ac = new AbortController();
+            const timer = setTimeout(() => ac.abort(), 1200);
             const res = await fetch(`${base}/streams/${encodeURIComponent(videoId)}`, {
+              signal: ac.signal,
               headers: { Accept: "application/json" }
             });
+            clearTimeout(timer);
             if (res.ok) {
               const data = await res.json();
               const streams = data.audioStreams;
@@ -902,8 +904,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 }
               }
             }
-          } catch (e) {
-            console.warn(`[Client-side Piped] Instance ${base} failed:`, e);
+          } catch {
+            // Silently fall through to backend
           }
         }
         return null;
@@ -931,14 +933,25 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
         // 2. Fall back to backend extraction if client-side fails
         try {
-          const response = await fetch(`/api/get-audio-url?videoId=${currentSong.id}&isLive=${currentSong.isLive || ""}`, {
+          const params = new URLSearchParams({
+            videoId: currentSong.id,
+            isLive: currentSong.isLive ? "true" : "",
+            title: currentSong.title || "",
+            artist: currentSong.artist || "",
+          });
+          const response = await fetch(`/api/get-audio-url?${params.toString()}`, {
             signal: controller.signal,
             cache: "no-store",
           });
           if (!response.ok) throw new Error("Failed to fetch direct URL");
-          const data = await readResponseJson<{ url?: string }>(response);
+          const data = await readResponseJson<{ url?: string; resolvedVideoId?: string }>(response);
           if (data?.url) {
             directUrlCacheRef.current[currentSong.id] = data.url;
+            if (data.resolvedVideoId && data.resolvedVideoId !== currentSong.id) {
+              console.log(`[DashboardContext] Updating song to resolved alternative video ID: ${data.resolvedVideoId}`);
+              directUrlCacheRef.current[data.resolvedVideoId] = data.url;
+              setCurrentSong((prev) => (prev && prev.id === currentSong.id ? { ...prev, id: data.resolvedVideoId! } : prev));
+            }
             setDirectAudioUrl(data.url);
           }
         } catch (error) {
@@ -1047,14 +1060,22 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
       // 2. Prefetch direct audio URL (music mode only)
       if (viewMode === "music" && !song.isLive && !directUrlCacheRef.current[song.id]) {
+        const audioParams = new URLSearchParams({
+          videoId: song.id,
+          title: song.title || "",
+          artist: song.artist || "",
+        });
         if (settingsRef.current.serverProxyStreaming) {
-          directUrlCacheRef.current[song.id] = `/api/audio/stream?videoId=${song.id}`;
+          directUrlCacheRef.current[song.id] = `/api/audio/stream?${audioParams.toString()}`;
         } else {
           try {
-            const res = await fetch(`/api/get-audio-url?videoId=${song.id}`, { signal: controller.signal, cache: "no-store" });
+            const res = await fetch(`/api/get-audio-url?${audioParams.toString()}`, { signal: controller.signal, cache: "no-store" });
             if (res.ok) {
-              const data = await res.json() as { url?: string };
-              if (data?.url) directUrlCacheRef.current[song.id] = data.url;
+              const data = await res.json() as { url?: string; resolvedVideoId?: string };
+              if (data?.url) {
+                directUrlCacheRef.current[song.id] = data.url;
+                if (data.resolvedVideoId) directUrlCacheRef.current[data.resolvedVideoId] = data.url;
+              }
             }
           } catch { /* ignore */ }
         }
@@ -1498,6 +1519,40 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 onNextRef.current();
               }
             }
+          },
+          onError: async (event: any) => {
+            console.warn(`[DashboardContext] YouTube player error ${event?.data} for video:`, currentSongRef.current?.id);
+            const song = currentSongRef.current;
+            if (song && song.id && song.title) {
+              try {
+                const params = new URLSearchParams({
+                  videoId: song.id,
+                  title: song.title || "",
+                  artist: song.artist || "",
+                });
+                const res = await fetch(`/api/get-audio-url?${params.toString()}`);
+                if (res.ok) {
+                  const data = (await res.json()) as { url?: string; resolvedVideoId?: string };
+                  if (data?.resolvedVideoId && data.resolvedVideoId !== song.id) {
+                    console.log(`[DashboardContext] Recovered from YouTube player error with alternative video ID: ${data.resolvedVideoId}`);
+                    if (data.url) {
+                      directUrlCacheRef.current[data.resolvedVideoId] = data.url;
+                      setDirectAudioUrl(data.url);
+                    }
+                    setCurrentSong((prev) => (prev && prev.id === song.id ? { ...prev, id: data.resolvedVideoId! } : prev));
+                    if (ytPlayerRef.current?.loadVideoById) {
+                      ytPlayerRef.current.loadVideoById({ videoId: data.resolvedVideoId, startSeconds: 0 });
+                    }
+                    return;
+                  }
+                }
+              } catch (recoverErr) {
+                console.warn("[DashboardContext] Failed to recover from YouTube player error:", recoverErr);
+              }
+            }
+            // If recovery fails, advance to next track
+            console.log("[DashboardContext] Advancing to next track due to unrecoverable player error");
+            onNextRef.current();
           },
         },
       });

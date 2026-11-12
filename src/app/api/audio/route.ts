@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { searchSongsRobust, searchVideosRobust } from "@/lib/ytmSearchService";
 import { isTitleMatch } from "@/lib/lyrics/matchUtils";
+import redis from "@/lib/redis";
 
 interface VideoSearchResult {
   youtubeId: string;
@@ -62,10 +63,20 @@ export async function GET(request: Request) {
     const isLive = searchParams.get("isLive") === "true";
 
     let videoId: string | undefined = directVideoId;
+    if (directVideoId && redis) {
+      try {
+        const mapped = await redis.get<string>(`resolved_videoid:${directVideoId}`);
+        if (mapped && mapped !== directVideoId) {
+          console.log(`[audio] Using mapped alternative ID for ${directVideoId} -> ${mapped}`);
+          videoId = mapped;
+        }
+      } catch {}
+    }
     let trackName = passedTitle || query || "YouTube Video";
     let artist = passedArtist || "Unknown Artist";
     let thumbnailUrl = directVideoId ? youtubeHqThumbnail(directVideoId) : "";
     let musicVideoId = directVideoId;
+    let fallbackVideoId: string | undefined;
 
     if (isLive && directVideoId) {
       const finalVideoId = directVideoId;
@@ -160,6 +171,10 @@ export async function GET(request: Request) {
       const titleMatch = searchResults.find((r: any) => isTitleMatch(targetTitle, r.title));
       const metadataSource = exactMatch || titleMatch || (directVideoId ? null : searchResults[0]);
 
+      if (titleMatch?.youtubeId && titleMatch.youtubeId !== directVideoId) {
+        fallbackVideoId = titleMatch.youtubeId.trim();
+      }
+
       if (metadataSource) {
         if (!directVideoId) videoId = metadataSource.youtubeId?.trim();
         
@@ -204,6 +219,7 @@ export async function GET(request: Request) {
       artist: artist.replace(/\s*-\s*Topic\s*$/i, ""),
       coverArt: thumbnail,
       videoId: finalVideoId,
+      fallbackVideoId: fallbackVideoId || undefined,
       musicVideoId: musicVideoId || finalVideoId,
       source: directVideoId ? "youtube.com" : "music.youtube.com",
     };

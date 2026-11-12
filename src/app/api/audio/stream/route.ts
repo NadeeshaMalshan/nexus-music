@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import ytdl from "@distube/ytdl-core";
 import { Readable } from "stream";
 
-import { getYoutubeDirectAudioUrl, getYoutubeInfoWithRetry, getYtdlSharedOptions } from "@/lib/youtubeDirectAudioUrl";
+import {
+  getYoutubeDirectAudioUrl,
+  getYoutubeInfoWithRetry,
+  getYtdlSharedOptions,
+  resolveAudioUrlWithFallback,
+} from "@/lib/youtubeDirectAudioUrl";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -24,7 +29,9 @@ function nodeReadableToWeb(nodeReadable: Readable): ReadableStream {
 }
 
 export async function GET(req: NextRequest) {
-  const videoId = req.nextUrl.searchParams.get("videoId");
+  let videoId = req.nextUrl.searchParams.get("videoId");
+  const title = req.nextUrl.searchParams.get("title")?.trim() || undefined;
+  const artist = req.nextUrl.searchParams.get("artist")?.trim() || undefined;
   if (!videoId) return new Response("Missing videoId", { status: 400 });
 
   // On serverless environments (like Vercel), proxying audio bytes directly
@@ -32,10 +39,10 @@ export async function GET(req: NextRequest) {
   // Redirecting the client to the direct CDN URL allows the client browser
   // to fetch it natively using the client's residential (non-blocked) IP.
   try {
-    const directUrl = await getYoutubeDirectAudioUrl(videoId);
-    if (directUrl) {
-      console.log(`[audio/stream] Redirecting ${videoId} to direct CDN url`);
-      return NextResponse.redirect(directUrl, { status: 307 });
+    const directResult = await resolveAudioUrlWithFallback(videoId, false, title, artist);
+    if (directResult?.url) {
+      console.log(`[audio/stream] Redirecting ${videoId} (resolved: ${directResult.resolvedVideoId}) to direct CDN url`);
+      return NextResponse.redirect(directResult.url, { status: 307 });
     }
   } catch (err) {
     console.warn("[audio/stream] Redirect extraction failed, attempting direct stream:", err);

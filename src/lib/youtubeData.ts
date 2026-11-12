@@ -1,4 +1,5 @@
 import { assertNotYouTubeQuotaError } from "@/lib/youtubeApiErrors";
+import { getKnownOAC } from "./knownOAC";
 
 export interface YouTubePlaylist {
   id: string;
@@ -508,6 +509,27 @@ export async function fetchChannelStats(accessToken: string, channelId: string) 
   return data.items?.[0] || null;
 }
 
+export function parseSubCount(text: string): number {
+  if (!text) return 0;
+  const cleaned = text.replace(/subscribers/gi, "").trim();
+  const numMatch = cleaned.match(/^([\d\.]+)\s*([KMB]?)$/i);
+  if (numMatch) {
+    const val = parseFloat(numMatch[1]);
+    const unit = (numMatch[2] || "").toUpperCase();
+    if (unit === "K") return Math.round(val * 1000);
+    if (unit === "M") return Math.round(val * 1000000);
+    if (unit === "B") return Math.round(val * 1000000000);
+    return Math.round(val);
+  }
+  const millionMatch = cleaned.match(/^([\d\.]+)\s*million/i);
+  if (millionMatch) return Math.round(parseFloat(millionMatch[1]) * 1000000);
+  const thousandMatch = cleaned.match(/^([\d\.]+)\s*thousand/i);
+  if (thousandMatch) return Math.round(parseFloat(thousandMatch[1]) * 1000);
+  const cleanRaw = cleaned.replace(/,/g, "");
+  const parsed = parseInt(cleanRaw);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
 export async function scrapeChannelStats(channelId: string) {
   try {
     const url = `https://www.youtube.com/channel/${channelId}`;
@@ -521,43 +543,160 @@ export async function scrapeChannelStats(channelId: string) {
     if (!response.ok) return null;
     const html = await response.text();
     
-    // Look for subscriberCountText
-    const match = html.match(/"subscriberCountText"\s*:\s*\{\s*"accessibleText"\s*:\s*\{\s*"text"\s*:\s*"([^"]+)"/i)
-               || html.match(/"subscriberCountText"\s*:\s*\{\s*"simpleText"\s*:\s*"([^"]+)"/i);
+    // Look for modern pageHeaderRenderer, accessibilityLabel, content, or legacy subscriberCountText
+    const match =
+      html.match(/"content"\s*:\s*"([\d\.]+[KMB]?)\s*subscribers"/i) ||
+      html.match(/"accessibilityLabel"\s*:\s*"([\d\.]+\s*(?:million|thousand|billion|subscribers)[^"]*)"/i) ||
+      html.match(/"subscriberCountText"\s*:\s*\{\s*"accessibleText"\s*:\s*\{\s*"text"\s*:\s*"([^"]+)"/i) ||
+      html.match(/"subscriberCountText"\s*:\s*\{\s*"simpleText"\s*:\s*"([^"]+)"/i) ||
+      html.match(/([\d\.]+[KMB]?)\s*subscribers/i);
     
     if (match && match[1]) {
-      const text = match[1];
-      const cleanedText = text.replace(/subscribers/gi, "").trim();
-      
-      let rawCount = 0;
-      const numMatch = cleanedText.match(/^([\d\.]+)\s*([KMB]?)$/i);
-      if (numMatch) {
-        const val = parseFloat(numMatch[1]);
-        const unit = (numMatch[2] || "").toUpperCase();
-        if (unit === "K") rawCount = val * 1000;
-        else if (unit === "M") rawCount = val * 1000000;
-        else if (unit === "B") rawCount = val * 1000000000;
-        else rawCount = val;
-      } else {
-        const cleanRaw = cleanedText.replace(/,/g, "");
-        const parsed = parseInt(cleanRaw);
-        if (!isNaN(parsed)) rawCount = parsed;
-      }
+      const rawCount = parseSubCount(match[1]);
+      if (rawCount > 0) {
+        const titleMatch =
+          html.match(/<meta property="og:title" content="([^"]+)">/i) ||
+          html.match(/"title":\s*\{\s*"runs":\s*\[\s*\{\s*"text":\s*"([^"]+)"/i);
+        const title = titleMatch ? titleMatch[1] : "Channel";
 
-      return {
-        id: channelId,
-        snippet: {
-          title: "Channel",
-        },
-        statistics: {
-          subscriberCount: String(Math.round(rawCount))
-        }
-      };
+        return {
+          id: channelId,
+          snippet: {
+            title,
+          },
+          statistics: {
+            subscriberCount: String(rawCount),
+          },
+        };
+      }
     }
   } catch (err) {
     console.error("Scraping YouTube stats failed:", err);
   }
   return null;
+}
+
+/**
+ * Searches YouTube channel listings without requiring OAuth quota to find the official channel ID.
+ */
+export async function dynamicFindOAC(artistName: string): Promise<{ channelId: string; title?: string; subscriberCount?: string } | null> {
+  try {
+    const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(artistName)}&sp=EgIQAg%253D%253D`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!response.ok) return null;
+    const html = await response.text();
+    const initMatch =
+      html.match(/var ytInitialData\s*=\s*(\{[\s\S]+?\});<\/script>/) ||
+      html.match(/ytInitialData\s*=\s*(\{[\s\S]+?\});/);
+    if (!initMatch) return null;
+    const data = JSON.parse(initMatch[1]);
+    const sections = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents || [];
+
+    for (const sec of sections) {
+      const items = sec?.itemSectionRenderer?.contents || [];
+      for (const item of items) {
+        if (item.channelRenderer) {
+          const cr = item.channelRenderer;
+          const id = cr.channelId;
+          const title = cr.title?.simpleText || "";
+          const subText = cr.videoCountText?.simpleText || cr.subscriberCountText?.simpleText || "";
+          if (!title.toLowerCase().includes("- topic") && subText.includes("subscribers")) {
+            return {
+              channelId: id,
+              title,
+              subscriberCount: String(parseSubCount(subText)),
+            };
+          }
+        }
+      }
+    }
+  } catch {
+    // Non-fatal dynamic fallback
+  }
+  return null;
+}
+
+/**
+ * High-authority resolver for canonical artist channel and accurate subscriber statistics.
+ * Combines verified fast-path, modern DOM scraping, dynamic search, and OAuth fallback.
+ */
+export async function resolveArtistChannelAndStats(
+  channelId: string,
+  artistName?: string,
+  accessToken?: string
+): Promise<{ channelId: string; stats: any }> {
+  // 1. Curated fast-path (instant 0ms)
+  const known = getKnownOAC(channelId) || (artistName ? getKnownOAC(artistName) : null);
+  if (known) {
+    let scraped = await scrapeChannelStats(known.channelId).catch(() => null);
+    if (!scraped && accessToken) {
+      scraped = await fetchChannelStats(accessToken, known.channelId).catch(() => null);
+    }
+    const finalStats = scraped || {
+      id: known.channelId,
+      snippet: { title: known.name },
+      statistics: { subscriberCount: String(known.subscribers) },
+    };
+    return { channelId: known.channelId, stats: finalStats };
+  }
+
+  // 2. Direct channel scraping
+  let stats = await scrapeChannelStats(channelId).catch(() => null);
+
+  // 3. Fallback to authenticated YouTube Data API if available
+  if (!stats && accessToken) {
+    try {
+      stats = await fetchChannelStats(accessToken, channelId);
+    } catch {}
+  }
+
+  // 4. Topic Channel or low subscriber count upgrade
+  const subs = parseInt(stats?.statistics?.subscriberCount || "0");
+  const channelTitle = stats?.snippet?.title || "";
+  const isTopicOrSmall = !stats || channelTitle.toLowerCase().includes("- topic") || subs < 100000;
+
+  if (isTopicOrSmall) {
+    const candidateName = artistName || channelTitle.replace(/\s*-\s*Topic$/i, "").trim();
+    if (candidateName) {
+      let upgradedId: string | null = null;
+      if (accessToken) {
+        try {
+          const off = await searchOfficialChannel(accessToken, candidateName);
+          if (off?.id?.channelId && off.id.channelId !== channelId) {
+            upgradedId = off.id.channelId;
+          }
+        } catch {}
+      }
+
+      if (!upgradedId) {
+        const dyn = await dynamicFindOAC(candidateName);
+        if (dyn?.channelId && dyn.channelId !== channelId) {
+          upgradedId = dyn.channelId;
+        }
+      }
+
+      if (upgradedId) {
+        let upgradedStats = await scrapeChannelStats(upgradedId).catch(() => null);
+        if (!upgradedStats && accessToken) {
+          upgradedStats = await fetchChannelStats(accessToken, upgradedId).catch(() => null);
+        }
+        if (upgradedStats && parseInt(upgradedStats.statistics?.subscriberCount || "0") > subs) {
+          return { channelId: upgradedId, stats: upgradedStats };
+        }
+      }
+    }
+  }
+
+  return { channelId, stats };
 }
 
 export async function subscribeToChannel(accessToken: string, channelId: string): Promise<void> {

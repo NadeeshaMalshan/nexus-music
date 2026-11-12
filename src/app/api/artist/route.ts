@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getYTMusic } from "@/lib/ytmClient";
 import { getAppleArtistInfo } from "@/lib/appleArtistService";
+import { getKnownOAC } from "@/lib/knownOAC";
 
 // ─── GET /api/artist?name=<artistName> ───────────────────────────────────────
 export async function GET(request: Request) {
@@ -38,31 +39,29 @@ export async function GET(request: Request) {
 
     // ─── Authority Check & Upgrade ──────────────────────────────────────────
     // Cross-reference with known OACs or YouTube Data API to find the TRUE Official Artist Channel (OAC)
-    // This resolves the issue where YTM returns a sub-optimal ID (e.g. 33K subs vs 100M subs).
+    // This resolves the issue where YTM returns a sub-optimal ID (e.g. 10K subs vs 25M subs).
     
-    // 1. High-Authority Fast Path Mapping (Bypasses API Quotas)
-    const KNOWN_OAC_MAP: Record<string, string> = {
-      "blackpink": "UCOmHUn--16B90oW2L6FRR3A",
-      "bts": "UCLkAepWjdylmXSltofFvsYQ",
-      "taylor swift": "UCqECaJ8Gagnn7YCbPEzWH6g",
-      "the weeknd": "UC0WP5P-ufpRfjbNrmOWwLBQ"
-    };
-
-    const normalizedName = name.toLowerCase().trim();
-    if (KNOWN_OAC_MAP[normalizedName]) {
-      artistId = KNOWN_OAC_MAP[normalizedName];
+    // 1. High-Authority Fast Path Mapping (Bypasses API Quotas & zero latency)
+    const known = getKnownOAC(name) || getKnownOAC(artistId);
+    if (known) {
+      artistId = known.channelId;
       console.log(`[Artist API] Fast-path OAC mapping for ${name} -> ${artistId}`);
     } else {
-      // 2. Dynamic Fallback Search (if quota allows)
+      // 2. Dynamic Fallback Search (works with or without OAuth session)
       try {
-        const { searchOfficialChannel } = await import("@/lib/youtubeData");
+        const { dynamicFindOAC, searchOfficialChannel } = await import("@/lib/youtubeData");
         
         if (session?.accessToken) {
-          // We search for the name and find the candidate with the MOST subscribers
           const official = await searchOfficialChannel(session.accessToken, name);
           if (official?.id?.channelId && official.id.channelId !== artistId) {
-            console.log(`[Artist API] UPGRADING ID: ${name} (${artistId}) -> OAC (${official.id.channelId})`);
+            console.log(`[Artist API] UPGRADING ID (OAuth): ${name} (${artistId}) -> OAC (${official.id.channelId})`);
             artistId = official.id.channelId;
+          }
+        } else {
+          const dyn = await dynamicFindOAC(name);
+          if (dyn?.channelId && dyn.channelId !== artistId) {
+            console.log(`[Artist API] UPGRADING ID (Dynamic): ${name} (${artistId}) -> OAC (${dyn.channelId})`);
+            artistId = dyn.channelId;
           }
         }
       } catch (err) {
@@ -262,22 +261,17 @@ export async function GET(request: Request) {
     // 4. Map albums and tracks as before (they are already mapped earlier)
 
 
-    // 3. Resolve Statistics (Embedded for UI accuracy)
+    // 3. Resolve Statistics (Embedded for UI accuracy & Official Artist counts)
     let ytStats: any = null;
     try {
-      const { fetchChannelStats, scrapeChannelStats } = await import("@/lib/youtubeData");
-      ytStats = await scrapeChannelStats(artistId);
-      if (!ytStats) {
-        ytStats = await fetchChannelStats(session?.accessToken || "", artistId);
+      const { resolveArtistChannelAndStats } = await import("@/lib/youtubeData");
+      const res = await resolveArtistChannelAndStats(artistId, details?.name || canonicalName, session?.accessToken);
+      if (res?.channelId && res.channelId !== artistId) {
+        artistId = res.channelId;
       }
+      ytStats = res?.stats || null;
     } catch (err) {
-      console.warn("[Artist API] Stats scraping failed, trying fallback API:", err);
-      try {
-        const { fetchChannelStats } = await import("@/lib/youtubeData");
-        ytStats = await fetchChannelStats(session?.accessToken || "", artistId);
-      } catch (e) {
-        console.warn("[Artist API] Stats fallback API fetch failed:", e);
-      }
+      console.warn("[Artist API] High-authority stats resolution failed:", err);
     }
 
     // Enrich top related artists with Apple Music artist logos/icons

@@ -183,7 +183,12 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
         // Parallel fetch for stats and subscription status
         const ytInit = youtubeApiFetchInit(session?.accessToken);
         const [statsRes, statusRes] = await Promise.all([
-          fetch(`/api/youtube/channel-stats?channelId=${currentData.id}`, ytInit),
+          fetch(
+            `/api/youtube/channel-stats?channelId=${currentData.id}&name=${encodeURIComponent(
+              currentData.name || ""
+            )}`,
+            ytInit
+          ),
           fetch(`/api/youtube/subscribe/status?channelId=${targetChannelId}`, ytInit),
         ]);
 

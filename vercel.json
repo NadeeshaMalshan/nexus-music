@@ -3,19 +3,7 @@
   "framework": "nextjs",
   "buildCommand": "next build",
   "functions": {
-    "src/app/**/*": {
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "src/app/api/**/*": {
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "app/**/*": {
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "api/**/*": {
+    "src/app/api/**/route.ts": {
       "maxDuration": 60,
       "memory": 1024
     }

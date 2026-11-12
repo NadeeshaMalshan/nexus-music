@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   turbopack: {},
+  serverExternalPackages: ["youtubei.js"],
   experimental: {
     webpackBuildWorker: true,
   },

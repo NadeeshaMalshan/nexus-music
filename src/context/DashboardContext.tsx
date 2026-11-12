@@ -11,6 +11,7 @@ import { useArtworkColors, type ArtworkPalette } from "@/lib/useArtworkColors";
 import { useSettings } from "./SettingsContext";
 import { type LiveMetadata } from "@/lib/live-tracker";
 import { useDeviceSync } from "./DeviceSyncContext";
+import { alignLyricsToCaption, type CaptionWord } from "@/lib/lyrics/captionAlign";
 
 type AudioPayload = {
   audioUrl: string;
@@ -84,6 +85,11 @@ type DashboardContextType = {
   volume: number;
   lyricsData: LyricsPayload | null;
   lyricsLoading: boolean;
+  lyricsAlignment: {
+    method: "caption" | "duration" | "none";
+    offsetSec: number;
+    aligned: boolean;
+  };
   knowFacts: string[];
   knowLoading: boolean;
   likedSongs: Set<string>;
@@ -247,6 +253,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [volume, setVolume] = useState(70);
   const [lyricsData, setLyricsData] = useState<LyricsPayload | null>(null);
   const [lyricsLoading, setLyricsLoading] = useState(false);
+  const [captionWords, setCaptionWords] = useState<CaptionWord[] | null>(null);
+  const captionsCacheRef = useRef<Record<string, CaptionWord[]>>({});
   const [selectedPlaylist, setSelectedPlaylist] = useState<YouTubePlaylist | null>(null);
   const [playedHistory, setPlayedHistory] = useState<Song[]>([]);
   const [overrideArtwork, setOverrideArtwork] = useState<string | null>(null);
@@ -1017,6 +1025,161 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     void loadLyrics();
     return () => controller.abort();
   }, [currentSong, liveMetadata?.title, liveMetadata?.artist, audioData?.trackName, audioData?.artist]);
+
+  // Music-video caption fetch logic
+  useEffect(() => {
+    // Fetch captions only when viewMode === "video", not live, and lyrics have lines
+    if (viewMode !== "video" || currentSong?.isLive || !lyricsData?.lyrics.lines?.length) {
+      setCaptionWords(null);
+      return;
+    }
+
+    const activeVideoId = currentSong?.musicVideoId || audioData?.musicVideoId || currentSong?.id;
+    if (!activeVideoId) {
+      setCaptionWords(null);
+      return;
+    }
+
+    const videoIdToFetch = activeVideoId;
+    if (captionsCacheRef.current[videoIdToFetch]) {
+      setCaptionWords(captionsCacheRef.current[videoIdToFetch]);
+      return;
+    }
+
+    const controller = new AbortController();
+    let isStale = false;
+
+    async function loadCaptions() {
+      try {
+        const res = await fetch(`/api/caption-sync?videoId=${encodeURIComponent(videoIdToFetch)}`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (isStale) return;
+        const words = Array.isArray(data?.words) ? (data.words as CaptionWord[]) : [];
+        captionsCacheRef.current[videoIdToFetch] = words;
+        setCaptionWords(words);
+      } catch (err: unknown) {
+        if (!isStale && (err as Error).name !== "AbortError") {
+          console.warn("[DashboardContext] Caption sync error:", err);
+          captionsCacheRef.current[videoIdToFetch] = [];
+          setCaptionWords([]);
+        }
+      }
+    }
+
+    void loadCaptions();
+
+    return () => {
+      isStale = true;
+      controller.abort();
+    };
+  }, [viewMode, currentSong?.isLive, currentSong?.id, currentSong?.musicVideoId, audioData?.musicVideoId, lyricsData?.lyrics.lines]);
+
+  // Synchronized / Aligned Lyrics for Music-Video Mode
+  const { syncedLyricsData, lyricsAlignment } = useMemo(() => {
+    const defaultAlignment = { method: "none" as const, offsetSec: 0, aligned: false };
+    if (!lyricsData || viewMode !== "video" || currentSong?.isLive || !lyricsData.lyrics.lines?.length) {
+      return { syncedLyricsData: lyricsData, lyricsAlignment: defaultAlignment };
+    }
+
+    const lines = lyricsData.lyrics.lines;
+
+    // 1. Caption alignment: use the playing video's own YouTube captions (ASR word timings) to re-time the lyrics.
+    if (captionWords && captionWords.length > 0) {
+      const alignResult = alignLyricsToCaption(lines, captionWords);
+      if (alignResult && alignResult.lines.length > 0) {
+        console.debug("[lyrics-align]", "caption", alignResult.stats);
+        const alignedPayload: LyricsPayload = {
+          ...lyricsData,
+          lyrics: {
+            ...lyricsData.lyrics,
+            lines: alignResult.lines,
+          },
+        };
+        return {
+          syncedLyricsData: alignedPayload,
+          lyricsAlignment: {
+            method: "caption" as const,
+            offsetSec: alignResult.stats.medianOffset,
+            aligned: true,
+          },
+        };
+      }
+    }
+
+    // 2. Duration fallback: if captions are unavailable and 2s < (videoDuration - songDuration) <= 45s, shift all lyric times by that difference (assume intro).
+    const songDuration = currentSong?.duration ? (youtubeTimestampToSeconds(currentSong.duration) ?? 0) : 0;
+    const videoDuration = durationSec;
+    const durationDiff = videoDuration - songDuration;
+
+    if (songDuration > 0 && videoDuration > 0 && durationDiff > 2 && durationDiff <= 45) {
+      console.debug("[lyrics-align]", "duration", { offsetSec: durationDiff, videoDuration, songDuration });
+      const shiftedLines = lines.map((line) => {
+        const newStart = Math.max(0, line.start + durationDiff);
+        const newEnd = Math.max(newStart, line.end + durationDiff);
+        const newWords = line.words?.map((w) => ({
+          ...w,
+          start: Math.max(0, w.start + durationDiff),
+          end: Math.max(Math.max(0, w.start + durationDiff), w.end + durationDiff),
+        }));
+        return {
+          ...line,
+          start: newStart,
+          end: newEnd,
+          words: newWords,
+        };
+      });
+
+      // Insert instrumental break if there is an intro gap >= 4s
+      const finalLines: NonNullable<LyricsPayload["lyrics"]["lines"]> = [];
+      if (shiftedLines.length > 0 && shiftedLines[0].start >= 4.0) {
+        finalLines.push({
+          text: "",
+          isInstrumental: true,
+          start: 0,
+          end: shiftedLines[0].start,
+          words: undefined,
+        });
+      }
+      for (let i = 0; i < shiftedLines.length; i++) {
+        finalLines.push(shiftedLines[i]);
+        const curr = shiftedLines[i];
+        const next = shiftedLines[i + 1];
+        if (next && next.start - curr.end >= 4.0) {
+          finalLines.push({
+            text: "",
+            isInstrumental: true,
+            start: curr.end,
+            end: next.start,
+            words: undefined,
+          });
+        }
+      }
+
+      const shiftedPayload: LyricsPayload = {
+        ...lyricsData,
+        lyrics: {
+          ...lyricsData.lyrics,
+          lines: finalLines,
+        },
+      };
+
+      return {
+        syncedLyricsData: shiftedPayload,
+        lyricsAlignment: {
+          method: "duration" as const,
+          offsetSec: durationDiff,
+          aligned: true,
+        },
+      };
+    }
+
+    // 3. Otherwise unchanged behavior.
+    console.debug("[lyrics-align]", "none", { captionWordsCount: captionWords?.length ?? 0, durationDiff });
+    return { syncedLyricsData: lyricsData, lyricsAlignment: defaultAlignment };
+  }, [lyricsData, viewMode, currentSong?.isLive, currentSong?.duration, durationSec, captionWords]);
 
   // Track session played history
   useEffect(() => {
@@ -2404,8 +2567,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     currentTimeSec,
     durationSec,
     volume,
-    lyricsData,
+    lyricsData: syncedLyricsData,
     lyricsLoading,
+    lyricsAlignment,
     knowFacts,
     knowLoading,
     likedSongs,
@@ -2475,7 +2639,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     pwaInstallable,
   }), [
     audioData, queueSongs, previousQueue, currentSong, isPlaying, currentTimeSec, 
-    durationSec, volume, lyricsData, lyricsLoading, knowFacts, 
+    durationSec, volume, syncedLyricsData, lyricsLoading, lyricsAlignment, knowFacts, 
     knowLoading, likedSongs, likedLibraryTracks, songIsInLikedLibrary, resolveLikedLibraryRateVideoId, upNextQueue, playedHistory, aiLoading, 
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,

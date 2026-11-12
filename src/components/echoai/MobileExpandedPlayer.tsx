@@ -235,7 +235,7 @@ export function MobileExpandedPlayer({
   isOpen,
   setDurationSec,
 }: ExpandedPlayerProps) {
-  const { palette, resolveLikedLibraryRateVideoId, liveMetadata } = useDashboard();
+  const { palette, resolveLikedLibraryRateVideoId, liveMetadata, lyricsAlignment } = useDashboard();
   const { settings } = useSettings();
   const router = useRouter();
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -486,7 +486,7 @@ export function MobileExpandedPlayer({
     return musicDuration > 0 && durationSec > 0 && Math.abs(musicDuration - durationSec) <= 2;
   }, [currentSong.duration, durationSec]);
 
-  const displayHasSynced = hasSynced && !isReallyLive && (viewMode === "music" || isDurationEqual);
+  const displayHasSynced = hasSynced && !isReallyLive && (viewMode === "music" || isDurationEqual || Boolean(lyricsAlignment?.aligned));
   const lines = displayHasSynced ? syncedLines.map(l => l.text) : plainLines;
 
   const activeIndex = displayHasSynced ? findActiveLineIndex(syncedLines, currentTimeSec) : -1;

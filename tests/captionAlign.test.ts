@@ -345,3 +345,4 @@ describe("Caption-Based Lyrics Re-sync (captionAlign)", () => {
     assert.strictEqual(result.stats.medianOffset, 4.0);
   });
 });
+

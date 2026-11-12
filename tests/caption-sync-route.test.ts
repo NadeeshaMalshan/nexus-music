@@ -29,3 +29,4 @@ describe("GET /api/caption-sync", () => {
     assert.ok(Array.isArray(data.words));
   });
 });
+

@@ -151,7 +151,7 @@ type DashboardContextType = {
   setViewMode: (mode: "music" | "video") => void;
   isJamActive: boolean;
   setIsJamActive: (active: boolean) => void;
-  
+
   // Refs
   ytPlayerRef: React.RefObject<{
     playVideo: () => void;
@@ -187,7 +187,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const isControllerModeRef = useRef(false);
   isControllerModeRef.current = isControllerMode;
-  
+
   const ytPlayerRef = useRef<{
     playVideo: () => void;
     pauseVideo: () => void;
@@ -205,7 +205,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const progressIntervalRef = useRef<number | null>(null);
   const lastTimeBucketRef = useRef(-1);
-  const onNextRef = useRef<() => void>(() => {});
+  const onNextRef = useRef<() => void>(() => { });
   const playerElementId = "echoai-youtube-player";
 
   // State
@@ -235,7 +235,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           setRightSidebarMode(savedMode);
         }
       }
-    } catch {}
+    } catch { }
   }, []);
 
   useEffect(() => {
@@ -531,10 +531,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       try {
         // Force-reload from current position and unmute
         lastProcessedIdRef.current = null;
-        
+
         const musicDuration = currentSongRef.current ? (youtubeTimestampToSeconds(currentSongRef.current.duration) ?? 0) : 0;
         const isDurationEqual = musicDuration > 0 && durationSec > 0 && Math.abs(musicDuration - durationSec) <= 2;
-        
+
         const seekTo = (closedVideo && !isDurationEqual) ? 0 : Math.max(0, currentTimeSec - 0.3);
         if (closedVideo && !isDurationEqual) {
           setCurrentTimeSec(0);
@@ -545,7 +545,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         setIsPlaying(true);
       } catch { /* ignore */ }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, isExpandedPlayerOpen, isUsingNativeAudio]);
 
   /** Hidden player: in video mode only cue + mute so expanded iframe is the sole audio source. */
@@ -565,7 +565,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       try {
         player.pauseVideo();
         player.setVolume(0);
-      } catch {}
+      } catch { }
       return;
     }
 
@@ -634,7 +634,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Sync YouTube artist subscriptions into following list (once per day)
   useEffect(() => {
     if (!session?.accessToken || !session?.user?.email) return;
-    fetch("/api/user/subscriptions/sync", { method: "POST" }).catch(() => {});
+    fetch("/api/user/subscriptions/sync", { method: "POST" }).catch(() => { });
   }, [session?.accessToken, session?.user?.email]);
 
   // Fetch user's actual recent plays from DB on login
@@ -694,12 +694,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       fetch("/api/user/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           action: "clear",
           deviceId: window.localStorage.getItem('nexus_device_id') || "unknown"
         }),
         keepalive: true,
-      }).catch(() => {});
+      }).catch(() => { });
     };
 
     window.addEventListener("beforeunload", handleUnload);
@@ -723,7 +723,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Dynamic Tab Title and Favicon
   useEffect(() => {
     if (typeof document === "undefined") return;
-    
+
     // 1. Update Document Title
     if (currentSong) {
       const prefix = isPlaying ? "▶ " : "";
@@ -789,7 +789,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const hasId = !!currentSong?.id;
       const isVideo = viewMode === "video" || currentSong?.preferVideoPlayback || currentSong?.isLive;
       const cacheKey = hasId ? (`${currentSong.id}_${audioQuery}_${isVideo ? 'v' : 'a'}`) : audioQuery;
-      
+
       if (audioCacheRef.current[cacheKey]) {
         const payload = audioCacheRef.current[cacheKey];
         setAudioData(payload);
@@ -857,7 +857,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Explicitly nullify direct audio URL when track changes to prevent old track from persisting
     setDirectAudioUrl(null);
-    
+
     // If we are switching away from native-audio playback (e.g. to LIVE or video mode),
     // ensure the <audio> elements are actually paused. Otherwise the previous track can
     // keep playing underneath a live/video YouTube player, causing overlap.
@@ -928,7 +928,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         console.log(`[DashboardContext] Loading direct URL for: ${currentSong.id}`);
-        
+
         // 1. Try client-side extraction first to avoid using Vercel backend
         try {
           const clientUrl = await getClientSideAudioUrl(currentSong.id);
@@ -1329,12 +1329,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           duration: t.duration,
           color: palette.accent
         }));
-        
+
         setUpNextQueue(prev => {
-           // Retain all tracks currently in the queue (both manual and previous AI items)
-           // and only append the new discovery items that are not already present.
-           const uniqueNewTracks = tracks.filter(t => !prev.some(p => p.id === t.id));
-           return [...prev, ...uniqueNewTracks];
+          // Retain all tracks currently in the queue (both manual and previous AI items)
+          // and only append the new discovery items that are not already present.
+          const uniqueNewTracks = tracks.filter(t => !prev.some(p => p.id === t.id));
+          return [...prev, ...uniqueNewTracks];
         });
       } catch (err) {
         console.error("Up Next Fetch Error:", err);
@@ -1391,14 +1391,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Global Live Metadata Polling
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     // Heuristic for live streams (often search results or history don't have isLive=true)
     const safeDuration = currentSong?.durationObj?.totalSeconds || 0;
     const targetTitle = (liveMetadata?.title || currentSong?.title || "").toLowerCase();
-    const isReallyLive = 
-      currentSong?.isLive || 
-      currentSong?.duration === "LIVE" || 
-      safeDuration > 43200 || 
+    const isReallyLive =
+      currentSong?.isLive ||
+      currentSong?.duration === "LIVE" ||
+      safeDuration > 43200 ||
       targetTitle.includes("one world radio") ||
       targetTitle.includes("owr") ||
       targetTitle.includes("daybreak") ||
@@ -1409,8 +1409,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       targetTitle.includes("edc") ||
       targetTitle.includes(" 24/7") ||
       (targetTitle.includes("live") && (targetTitle.includes("stream") || targetTitle.includes("festival") || targetTitle.includes("radio"))) ||
-      (isPlaying && (safeDuration < 1 || currentSong?.duration === "0:00") && 
-       (targetTitle.includes("fest") || targetTitle.includes("radio") || targetTitle.includes("live") || !!liveMetadata));
+      (isPlaying && (safeDuration < 1 || currentSong?.duration === "0:00") &&
+        (targetTitle.includes("fest") || targetTitle.includes("radio") || targetTitle.includes("live") || !!liveMetadata));
 
     const fetchLive = async () => {
       if (!isReallyLive || !currentSong) {
@@ -1420,7 +1420,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       try {
         const query = `${currentSong.artist} ${currentSong.title}`;
         const videoId = currentSong.id;
-        const url  = `/api/live-tracker?query=${encodeURIComponent(query)}&title=${encodeURIComponent(currentSong.title)}&videoId=${encodeURIComponent(videoId)}`;
+        const url = `/api/live-tracker?query=${encodeURIComponent(query)}&title=${encodeURIComponent(currentSong.title)}&videoId=${encodeURIComponent(videoId)}`;
         const res = await fetch(url);
         if (res.ok) {
           const data = await readResponseJson<LiveMetadata>(res);
@@ -1437,14 +1437,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         console.warn("Global Live Tracking Failed:", err);
       }
     };
-    
+
     if (isReallyLive) {
       void fetchLive();
-      interval = setInterval(fetchLive, 10000); 
+      interval = setInterval(fetchLive, 10000);
     } else {
       setLiveMetadata(null);
     }
-    
+
     return () => clearInterval(interval);
   }, [currentSong, isPlaying]);
 
@@ -1467,10 +1467,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         height: "1",
         width: "1",
         videoId: "", // Empty initially, will be loaded via logic
-        playerVars: { 
-          controls: 0, 
-          modestbranding: 1, 
-          rel: 0, 
+        playerVars: {
+          controls: 0,
+          modestbranding: 1,
+          rel: 0,
           playsinline: 1,
           enablejsapi: 1,
           origin: typeof window !== "undefined" ? window.location.origin : undefined
@@ -1490,7 +1490,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
               const current = player.getCurrentTime();
               const duration = player.getDuration();
-              
+
               if (Number.isFinite(current)) {
                 const bucket = Math.floor(current * 5);
                 if (bucket !== lastTimeBucketRef.current) {
@@ -1502,7 +1502,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 // If Gapless is ON, we trigger slightly earlier (1s) to mask the loading delay.
                 const bufferTime = settingsRef.current.gaplessPlayback ? 1.0 : 0.5;
                 if (duration > 0 && current >= duration - bufferTime && userIntentRef.current === "playing") {
-                   onNextRef.current();
+                  onNextRef.current();
                 }
               }
               if (Number.isFinite(duration) && duration > 0) setDurationSec(duration);
@@ -1513,45 +1513,45 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
               const isSimultaneous = typeof window !== 'undefined' && window.localStorage.getItem('crossDeviceAction') === 'Play simultaneously';
               const crossfadeSec = (isJamActive || isSimultaneous) ? 0 : settingsRef.current.crossfade;
               if (duration > 0 && crossfadeSec > 0 && currentSec >= (duration - crossfadeSec)) {
-                  const remaining = duration - currentSec;
-                  const ratio = Math.max(0, remaining / crossfadeSec);
-                  const targetVolume = Math.floor(volumeRef.current * ratio);
-                  player.setVolume(targetVolume);
-                } else {
-                  player.setVolume(volumeRef.current);
-                }
-                
-                // Suggest audio quality
-                const qualityMap: Record<string, string> = {
-                  high: "highres",
-                  normal: "medium",
-                  low: "small"
-                };
-                try {
-                  // For background/hidden player, we ALWAYS want lowest quality to save bandwidth and speed up transitions
-                  const targetQuality = (viewModeRef.current === "music") ? "small" : (qualityMap[settingsRef.current.audioQuality] || "auto");
-                  (player as any)?.setPlaybackQuality?.(targetQuality);
-                } catch (e) {}
+                const remaining = duration - currentSec;
+                const ratio = Math.max(0, remaining / crossfadeSec);
+                const targetVolume = Math.floor(volumeRef.current * ratio);
+                player.setVolume(targetVolume);
+              } else {
+                player.setVolume(volumeRef.current);
+              }
 
-                // RESILIENCE: If user intent is playing but player is paused background, try to resume
-                // We SKIP this for live streams and video mode because the expanded player owns them.
-                if (
-                  userIntentRef.current === "playing" && 
-                  document.visibilityState === 'hidden' && 
-                  viewModeRef.current === "music" &&
-                  !isUsingNativeAudio &&
-                  !hiddenYoutubeMustStaySilentRef.current
-                ) {
-                    const state = player.getPlayerState();
-                    if (state === 2 || state === 5) {
-                        player.playVideo();
-                    }
+              // Suggest audio quality
+              const qualityMap: Record<string, string> = {
+                high: "highres",
+                normal: "medium",
+                low: "small"
+              };
+              try {
+                // For background/hidden player, we ALWAYS want lowest quality to save bandwidth and speed up transitions
+                const targetQuality = (viewModeRef.current === "music") ? "small" : (qualityMap[settingsRef.current.audioQuality] || "auto");
+                (player as any)?.setPlaybackQuality?.(targetQuality);
+              } catch (e) { }
 
-                    // RE-SYNC MEDIA SESSION: Sometimes notification disappears if OS thinks we're idle
-                    if ("mediaSession" in navigator) {
-                       navigator.mediaSession.playbackState = "playing";
-                    }
+              // RESILIENCE: If user intent is playing but player is paused background, try to resume
+              // We SKIP this for live streams and video mode because the expanded player owns them.
+              if (
+                userIntentRef.current === "playing" &&
+                document.visibilityState === 'hidden' &&
+                viewModeRef.current === "music" &&
+                !isUsingNativeAudio &&
+                !hiddenYoutubeMustStaySilentRef.current
+              ) {
+                const state = player.getPlayerState();
+                if (state === 2 || state === 5) {
+                  player.playVideo();
                 }
+
+                // RE-SYNC MEDIA SESSION: Sometimes notification disappears if OS thinks we're idle
+                if ("mediaSession" in navigator) {
+                  navigator.mediaSession.playbackState = "playing";
+                }
+              }
             }, 500); // Slower interval in background is more likely to be regular than fast one
 
             // Native Audio progress interval
@@ -1559,17 +1559,17 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
               if (isControllerModeRef.current) return;
               const activeAudio = getActiveAudio();
               if (!isUsingNativeAudio || !activeAudio) return;
-              
+
               if (!activeAudio.paused && userIntentRef.current === "playing") {
                 const current = activeAudio.currentTime;
                 const duration = activeAudio.duration;
-                
+
                 if (Number.isFinite(current)) {
                   setCurrentTimeSec(current);
                 }
                 if (Number.isFinite(duration) && duration > 0) {
                   setDurationSec(duration);
-                  
+
                   const isSimultaneous = typeof window !== 'undefined' && window.localStorage.getItem('crossDeviceAction') === 'Play simultaneously';
                   const crossfadeSec = (isJamActive || isSimultaneous) ? 0 : settingsRef.current.crossfade;
                   const gapless = settingsRef.current.gaplessPlayback;
@@ -1598,10 +1598,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                     if (!crossfadeActiveRef.current) {
                       const nextSongs = upNextQueueRef.current;
                       const inactiveAudio = getInactiveAudio();
-                      
+
                       if (nextSongs.length > 0 && inactiveAudio && nextAudioPreloadedUrlRef.current) {
                         crossfadeActiveRef.current = true;
-                        
+
                         console.log(`[Crossfade] Initiating crossfade. Active player index was: ${activePlayerIndex.current}`);
 
                         const remaining = Math.max(0, duration - current);
@@ -1651,7 +1651,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                 // If it paused but our intent is still playing, don't kill the global isPlaying yet
                 // This keeps the MediaSession and Silent Audio alive on lock screen
                 if (document.visibilityState === 'visible' || userIntentRef.current === "paused") {
-                    setIsPlaying(false);
+                  setIsPlaying(false);
                 }
               }
               // ENDED: only advance from the hidden player in music mode
@@ -1729,113 +1729,113 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Sync native audio if in use
     if (isUsingNativeAudio) {
-        const activeAudio = getActiveAudio();
-        const inactiveAudio = getInactiveAudio();
+      const activeAudio = getActiveAudio();
+      const inactiveAudio = getInactiveAudio();
 
-        // If crossfade is in progress and the next audio was pre-buffered,
-        // swap: promote inactiveAudio to active (it's already playing)
-        // but let the volume ramps continue so the overlap sounds smooth.
-        if (crossfadeActiveRef.current && inactiveAudio && nextAudioPreloadedUrlRef.current) {
-          // Promote inactive audio to active (it's already playing via crossfade)
-          const oldPlayerIndex = activePlayerIndex.current;
-          activePlayerIndex.current = activePlayerIndex.current === 1 ? 2 : 1;
+      // If crossfade is in progress and the next audio was pre-buffered,
+      // swap: promote inactiveAudio to active (it's already playing)
+      // but let the volume ramps continue so the overlap sounds smooth.
+      if (crossfadeActiveRef.current && inactiveAudio && nextAudioPreloadedUrlRef.current) {
+        // Promote inactive audio to active (it's already playing via crossfade)
+        const oldPlayerIndex = activePlayerIndex.current;
+        activePlayerIndex.current = activePlayerIndex.current === 1 ? 2 : 1;
 
-          // DON'T cancel ramps or snap volumes — let the crossfade finish naturally.
-          // Schedule cleanup of the old (now demoted) audio after remaining ramp time.
-          const oldAudio = oldPlayerIndex === 1 ? audio1Ref.current : audio2Ref.current;
-          if (oldAudio) {
-            const cleanupDelay = Math.max(300, (settingsRef.current.crossfade || 1) * 1000);
-            setTimeout(() => {
-              try {
-                cancelVolumeRamp(oldPlayerIndex);
-                oldAudio.pause();
-                oldAudio.src = "";
-              } catch {}
-            }, cleanupDelay);
-          }
-
-          // Reset crossfade state (but ramps keep running)
-          crossfadeActiveRef.current = false;
-          nextAudioPreloadedUrlRef.current = null;
-          return; // Don't re-assign src, it's already playing
+        // DON'T cancel ramps or snap volumes — let the crossfade finish naturally.
+        // Schedule cleanup of the old (now demoted) audio after remaining ramp time.
+        const oldAudio = oldPlayerIndex === 1 ? audio1Ref.current : audio2Ref.current;
+        if (oldAudio) {
+          const cleanupDelay = Math.max(300, (settingsRef.current.crossfade || 1) * 1000);
+          setTimeout(() => {
+            try {
+              cancelVolumeRamp(oldPlayerIndex);
+              oldAudio.pause();
+              oldAudio.src = "";
+            } catch { }
+          }, cleanupDelay);
         }
 
-        // Normal (non-crossfade) src assignment
-        if (directAudioUrl && activeAudio && activeAudio.src !== directAudioUrl && !activeAudio.src.endsWith(directAudioUrl)) {
-            // Cancel active ramps
-            cancelAllVolumeRamps();
+        // Reset crossfade state (but ramps keep running)
+        crossfadeActiveRef.current = false;
+        nextAudioPreloadedUrlRef.current = null;
+        return; // Don't re-assign src, it's already playing
+      }
 
-            // Reset crossfade state for clean start
-            crossfadeActiveRef.current = false;
-            nextAudioPreloadedUrlRef.current = null;
+      // Normal (non-crossfade) src assignment
+      if (directAudioUrl && activeAudio && activeAudio.src !== directAudioUrl && !activeAudio.src.endsWith(directAudioUrl)) {
+        // Cancel active ramps
+        cancelAllVolumeRamps();
 
-            // Clear inactive audio just in case
-            if (inactiveAudio) {
-              try {
-                inactiveAudio.pause();
-                inactiveAudio.src = "";
-                inactiveAudio.volume = 0;
-              } catch {}
-            }
+        // Reset crossfade state for clean start
+        crossfadeActiveRef.current = false;
+        nextAudioPreloadedUrlRef.current = null;
 
-            activeAudio.volume = volumeRef.current / 100;
-            activeAudio.src = directAudioUrl;
-
-            // Check if we transitioned from video to music mode
-            const wasVideo = prevViewModeRef.current === "video";
-            const musicDuration = currentSongRef.current ? (youtubeTimestampToSeconds(currentSongRef.current.duration) ?? 0) : 0;
-            const isDurationEqual = musicDuration > 0 && durationSec > 0 && Math.abs(musicDuration - durationSec) <= 2;
-            
-            let seekTo = 0;
-            if (wasVideo && isDurationEqual) {
-              seekTo = currentTimeSec;
-            } else if (wasVideo) {
-              setCurrentTimeSec(0);
-            }
-            
-            if (seekTo > 0) {
-              const onMetadata = () => {
-                try {
-                  activeAudio.currentTime = seekTo;
-                } catch (e) {
-                  console.warn("Failed to set native audio currentTime on metadata load:", e);
-                }
-                activeAudio.removeEventListener("loadedmetadata", onMetadata);
-              };
-              activeAudio.addEventListener("loadedmetadata", onMetadata);
-              try {
-                activeAudio.currentTime = seekTo;
-              } catch {}
-            }
-
-            if (userIntentRef.current === "playing") {
-                activeAudio.play().catch(e => console.warn("Native audio play failed:", e));
-                setIsPlaying(true);
-            }
+        // Clear inactive audio just in case
+        if (inactiveAudio) {
+          try {
+            inactiveAudio.pause();
+            inactiveAudio.src = "";
+            inactiveAudio.volume = 0;
+          } catch { }
         }
-        // Silence YT player
-        try { ytPlayerRef.current?.pauseVideo(); ytPlayerRef.current?.setVolume(0); } catch {}
+
+        activeAudio.volume = volumeRef.current / 100;
+        activeAudio.src = directAudioUrl;
+
+        // Check if we transitioned from video to music mode
+        const wasVideo = prevViewModeRef.current === "video";
+        const musicDuration = currentSongRef.current ? (youtubeTimestampToSeconds(currentSongRef.current.duration) ?? 0) : 0;
+        const isDurationEqual = musicDuration > 0 && durationSec > 0 && Math.abs(musicDuration - durationSec) <= 2;
+
+        let seekTo = 0;
+        if (wasVideo && isDurationEqual) {
+          seekTo = currentTimeSec;
+        } else if (wasVideo) {
+          setCurrentTimeSec(0);
+        }
+
+        if (seekTo > 0) {
+          const onMetadata = () => {
+            try {
+              activeAudio.currentTime = seekTo;
+            } catch (e) {
+              console.warn("Failed to set native audio currentTime on metadata load:", e);
+            }
+            activeAudio.removeEventListener("loadedmetadata", onMetadata);
+          };
+          activeAudio.addEventListener("loadedmetadata", onMetadata);
+          try {
+            activeAudio.currentTime = seekTo;
+          } catch { }
+        }
+
+        if (userIntentRef.current === "playing") {
+          activeAudio.play().catch(e => console.warn("Native audio play failed:", e));
+          setIsPlaying(true);
+        }
+      }
+      // Silence YT player
+      try { ytPlayerRef.current?.pauseVideo(); ytPlayerRef.current?.setVolume(0); } catch { }
     }
 
     if (!ytPlayerRef.current || !isPlayerReady || isUsingNativeAudio) return;
-    
+
     // We prioritize audioData.videoId, but fallback to currentSong.id for instant start
     const targetId = audioData?.videoId || currentSong?.id;
     if (!targetId) {
-       // If no song is selected, ensure the player stops and clears
-       try {
-         ytPlayerRef.current.pauseVideo();
-         ytPlayerRef.current.cueVideoById("");
-       } catch {}
-       lastProcessedIdRef.current = null;
-       return;
+      // If no song is selected, ensure the player stops and clears
+      try {
+        ytPlayerRef.current.pauseVideo();
+        ytPlayerRef.current.cueVideoById("");
+      } catch { }
+      lastProcessedIdRef.current = null;
+      return;
     }
 
     if (targetId === lastProcessedIdRef.current) return;
-    
+
     lastProcessedIdRef.current = targetId;
     syncHiddenPlayerForViewMode(ytPlayerRef.current, targetId);
-    
+
     // If we're using currentSong.id (optimistic start) and then audioData comes back later,
     // we don't want to re-load the exact same video if it's already playing.
   }, [audioData?.videoId, currentSong?.id, isPlayerReady, isUsingNativeAudio, directAudioUrl]);
@@ -1843,19 +1843,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Keep player volumes synced with settings
   useEffect(() => {
     const p = ytPlayerRef.current;
-    
+
     // Set native active audio volume directly if not in active crossfade ramping
     if (!volumeRamp1Ref.current && !volumeRamp2Ref.current) {
       const activeAudio = getActiveAudio();
       if (activeAudio) {
-          activeAudio.volume = volume / 100;
+        activeAudio.volume = volume / 100;
       }
       const inactiveAudio = getInactiveAudio();
       if (inactiveAudio) {
-          inactiveAudio.volume = 0;
+        inactiveAudio.volume = 0;
       }
     }
-    
+
     if (!p || !playerReadyRef.current) return;
     try {
       const silenceHidden =
@@ -1889,7 +1889,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Initialize silent audio stream on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     // Create a real silent audio stream using AudioContext
     // This is much more effective than Data URIs at preventing background suspension
     const audio = new Audio();
@@ -1902,7 +1902,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const oscillator = ctx.createOscillator();
       const gainNode = ctx.createGain();
       const dst = ctx.createMediaStreamDestination();
-      
+
       // Use a very low frequency tone (20Hz) at near-zero volume
       // This is "audible content" to the OS/browser but silent to humans.
       // This is much more effective at keeping the session alive than absolute silence.
@@ -1910,11 +1910,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       // and a slightly higher gain so the OS doesn't ignore it as noise floor.
       oscillator.frequency.setValueAtTime(30, ctx.currentTime);
       gainNode.gain.setValueAtTime(0.005, ctx.currentTime);
-      
+
       oscillator.connect(gainNode);
       gainNode.connect(dst);
       oscillator.start();
-      
+
       audio.srcObject = dst.stream;
       audioCtxRef.current = ctx;
     } catch (e) {
@@ -1928,13 +1928,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         if (audioCtxRef.current?.state === "suspended") {
           audioCtxRef.current.resume();
         }
-      } catch (e) {}
+      } catch (e) { }
 
       if (userIntentRef.current === "playing") {
-        if (silentAudioRef.current?.paused) silentAudioRef.current.play().catch(() => {});
+        if (silentAudioRef.current?.paused) silentAudioRef.current.play().catch(() => { });
         if (ytPlayerRef.current && playerReadyRef.current && viewModeRef.current === "music") {
-           // Try to kick the YT player back to life
-           try { ytPlayerRef.current.playVideo(); } catch {}
+          // Try to kick the YT player back to life
+          try { ytPlayerRef.current.playVideo(); } catch { }
         }
       }
     };
@@ -1951,7 +1951,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (isControllerMode) return;
     if (!silentAudioRef.current) return;
     if (isPlaying) {
-      silentAudioRef.current.play().catch(() => {});
+      silentAudioRef.current.play().catch(() => { });
     } else {
       silentAudioRef.current.pause();
     }
@@ -1999,7 +1999,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setCurrentSong(null);
     }
     setIsPlaying(!!targetDevice.isPlaying);
-    
+
     const targetDuration = targetDevice.currentSong?.duration ? (youtubeTimestampToSeconds(targetDevice.currentSong.duration) ?? 0) : 0;
     if (targetDuration > 0) {
       setDurationSec(targetDuration);
@@ -2009,10 +2009,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Pause local background audio player if we enter controller mode
   useEffect(() => {
     if (isControllerMode) {
-      try { audio1Ref.current?.pause(); } catch {}
-      try { audio2Ref.current?.pause(); } catch {}
-      try { silentAudioRef.current?.pause(); } catch {}
-      try { ytPlayerRef.current?.pauseVideo(); } catch {}
+      try { audio1Ref.current?.pause(); } catch { }
+      try { audio2Ref.current?.pause(); } catch { }
+      try { silentAudioRef.current?.pause(); } catch { }
+      try { ytPlayerRef.current?.pauseVideo(); } catch { }
     }
   }, [isControllerMode]);
 
@@ -2032,41 +2032,41 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (isUsingNativeAudio) {
-        const activeAudio = getActiveAudio();
-        if (activeAudio) {
-            if (activeAudio.paused) {
-                userIntentRef.current = "playing";
-                try { audioCtxRef.current?.resume(); } catch {}
-                activeAudio.play().catch(() => {});
-                setIsPlaying(true);
-                if (silentAudioRef.current?.paused) silentAudioRef.current.play().catch(() => {});
-            } else {
-                userIntentRef.current = "paused";
-                activeAudio.pause();
-                setIsPlaying(false);
-                if (!silentAudioRef.current?.paused) silentAudioRef.current?.pause();
-            }
-            return;
+      const activeAudio = getActiveAudio();
+      if (activeAudio) {
+        if (activeAudio.paused) {
+          userIntentRef.current = "playing";
+          try { audioCtxRef.current?.resume(); } catch { }
+          activeAudio.play().catch(() => { });
+          setIsPlaying(true);
+          if (silentAudioRef.current?.paused) silentAudioRef.current.play().catch(() => { });
+        } else {
+          userIntentRef.current = "paused";
+          activeAudio.pause();
+          setIsPlaying(false);
+          if (!silentAudioRef.current?.paused) silentAudioRef.current?.pause();
         }
+        return;
+      }
     }
 
     const player = ytPlayerRef.current as any;
     if (!player || !playerReadyRef.current) return;
-    
+
     // Check current actual state if possible to avoid desync
     let actualState = -1;
-    try { actualState = player.getPlayerState(); } catch {}
-    
+    try { actualState = player.getPlayerState(); } catch { }
+
     // If not currently playing (state 1), we want to play
     if (actualState !== 1) {
       userIntentRef.current = "playing";
       // Resume context first
-      try { audioCtxRef.current?.resume(); } catch {}
+      try { audioCtxRef.current?.resume(); } catch { }
       player.playVideo();
       setIsPlaying(true);
       // Ensure silent audio is active
       if (silentAudioRef.current?.paused) {
-        silentAudioRef.current.play().catch(() => {});
+        silentAudioRef.current.play().catch(() => { });
       }
     } else {
       userIntentRef.current = "paused";
@@ -2086,21 +2086,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
 
     userIntentRef.current = "playing";
-    
+
     // In video/live modes, the ExpandedPlayer component owns the YouTube instance and 
     // will react to the isPlaying state changing. We don't want to play the hidden player here.
     if (viewModeRef.current === "video" || currentSongRef.current?.isLive) {
-        setIsPlaying(true);
-        return;
+      setIsPlaying(true);
+      return;
     }
 
     if (isUsingNativeAudio) {
-        const activeAudio = getActiveAudio();
-        if (activeAudio) {
-            activeAudio.play().catch(() => {});
-            setIsPlaying(true);
-            return;
-        }
+      const activeAudio = getActiveAudio();
+      if (activeAudio) {
+        activeAudio.play().catch(() => { });
+        setIsPlaying(true);
+        return;
+      }
     }
 
     const player = ytPlayerRef.current;
@@ -2117,20 +2117,20 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
 
     userIntentRef.current = "paused";
-    
+
     // For video/live mode, ExpandedPlayer will pause itself when isPlaying === false.
     if (viewModeRef.current === "video" || currentSongRef.current?.isLive) {
-        setIsPlaying(false);
-        return;
+      setIsPlaying(false);
+      return;
     }
 
     if (isUsingNativeAudio) {
-        const activeAudio = getActiveAudio();
-        if (activeAudio) {
-            activeAudio.pause();
-            setIsPlaying(false);
-            return;
-        }
+      const activeAudio = getActiveAudio();
+      if (activeAudio) {
+        activeAudio.pause();
+        setIsPlaying(false);
+        return;
+      }
     }
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
@@ -2145,11 +2145,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (isUsingNativeAudio) {
-        const activeAudio = getActiveAudio();
-        if (activeAudio) {
-            activeAudio.pause();
-            return;
-        }
+      const activeAudio = getActiveAudio();
+      if (activeAudio) {
+        activeAudio.pause();
+        return;
+      }
     }
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
@@ -2178,15 +2178,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       // If clicked from within the upNextQueue, slice it and update previous queue
       const currentIndex = upNextQueueRef.current.findIndex(s => s.id === song.id);
       if (currentIndex !== -1) {
-         setPreviousQueue(prev => {
-            const newPrev = [...prev];
-            if (currentSongRef.current) newPrev.push(currentSongRef.current);
-            // Add any skipped songs from the queue to the previous cache
-            const skipped = upNextQueueRef.current.slice(0, currentIndex);
-            const combined = [...newPrev, ...skipped];
-            return combined.slice(-4); // Keep last 4
-         });
-         setUpNextQueue(prev => prev.slice(currentIndex + 1));
+        setPreviousQueue(prev => {
+          const newPrev = [...prev];
+          if (currentSongRef.current) newPrev.push(currentSongRef.current);
+          // Add any skipped songs from the queue to the previous cache
+          const skipped = upNextQueueRef.current.slice(0, currentIndex);
+          const combined = [...newPrev, ...skipped];
+          return combined.slice(-4); // Keep last 4
+        });
+        setUpNextQueue(prev => prev.slice(currentIndex + 1));
       }
     }
     const isLive = song.isLive || song.duration === "LIVE";
@@ -2195,7 +2195,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setIsExpandedPlayerOpen(true);
     }
     userIntentRef.current = "playing";
-    try { audioCtxRef.current?.resume(); } catch {}
+    try { audioCtxRef.current?.resume(); } catch { }
     setCurrentSong({ ...song, isLive });
     setLyricsData(null);
     setLyricsLoading(true);
@@ -2211,7 +2211,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ action: "play", song }),
       }).catch((err) => console.error("Failed to log play event to database:", err));
     }
-    
+
     // Update local history
     setPlayedHistory((prev) => {
       // Filter out if already in history to move to top
@@ -2240,8 +2240,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (upNextQueue.length > 0) {
       const next = upNextQueue[0];
       setPreviousQueue(prev => {
-         const newPrev = currentSong ? [...prev, currentSong] : [...prev];
-         return newPrev.slice(-4); // Keep last 4
+        const newPrev = currentSong ? [...prev, currentSong] : [...prev];
+        return newPrev.slice(-4); // Keep last 4
       });
       setUpNextQueue((prev) => prev.slice(1));
       onSongClick(next, false); // <--- Don't reset when auto-playing
@@ -2251,9 +2251,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     // If queue is empty but autoplay is on, maybe we are still fetching?
     // We try to trigger a re-fetch if we're stuck
     if (settings.autoplay && currentSong) {
-        setLastSeedFetched(null); // Force AI re-fetch
+      setLastSeedFetched(null); // Force AI re-fetch
     }
-    
+
     setIsPlaying(false);
   }, [upNextQueue, onSongClick, settings.autoplay, currentSong, isControllerMode, targetDevice, triggerDeviceControl]);
 
@@ -2266,20 +2266,20 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (!Number.isFinite(nextTimeSec)) return;
-    
+
     // In video/live modes, seeking should be handled by the ExpandedPlayer or ignored for live.
     if (viewModeRef.current === "video" || currentSongRef.current?.isLive) {
-        setCurrentTimeSec(nextTimeSec);
-        return; 
+      setCurrentTimeSec(nextTimeSec);
+      return;
     }
 
     if (isUsingNativeAudio) {
-        const activeAudio = getActiveAudio();
-        if (activeAudio) {
-            activeAudio.currentTime = nextTimeSec;
-            setCurrentTimeSec(nextTimeSec);
-            return;
-        }
+      const activeAudio = getActiveAudio();
+      if (activeAudio) {
+        activeAudio.currentTime = nextTimeSec;
+        setCurrentTimeSec(nextTimeSec);
+        return;
+      }
     }
 
     const player = ytPlayerRef.current;
@@ -2297,19 +2297,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (currentTimeSec > 5 || previousQueue.length === 0) {
-       onSeek(0);
-       return;
+      onSeek(0);
+      return;
     }
-    
+
     // Pop the last song from previousQueue
     const prevSong = previousQueue[previousQueue.length - 1];
     setPreviousQueue(prev => prev.slice(0, -1));
-    
+
     // Push the current song back to the top of upNextQueue
     if (currentSongRef.current) {
-       setUpNextQueue(prev => [currentSongRef.current!, ...prev]);
-     }
-    
+      setUpNextQueue(prev => [currentSongRef.current!, ...prev]);
+    }
+
     // Play the previous song without resetting queue
     onSongClick(prevSong, false);
   }, [onSeek, currentTimeSec, previousQueue, onSongClick, isControllerMode, targetDevice, triggerDeviceControl]);
@@ -2342,7 +2342,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const onRateSong = useCallback(async (songId: string, rating: "like" | "none", meta?: { title: string; artist: string }): Promise<{ pendingSync?: boolean }> => {
     if (!session?.user) return {};
-    
+
     let targetId = (songId === currentSong?.id && audioData?.videoId) ? audioData.videoId : songId;
     let finalMeta = meta ?? (rating === "like" && songId === currentSong?.id && currentSong ? { title: currentSong.title, artist: currentSong.artist } : undefined);
 
@@ -2400,8 +2400,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         youtubeApiFetchInit(session?.accessToken, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            videoId: targetId, 
+          body: JSON.stringify({
+            videoId: targetId,
             rating,
             track: rating === "like" && finalMeta ? {
               videoId: targetId,
@@ -2470,7 +2470,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       Object.keys(handlersMap).forEach((action) => {
-        try { navigator.mediaSession.setActionHandler(action as any, null); } catch {}
+        try { navigator.mediaSession.setActionHandler(action as any, null); } catch { }
       });
     };
   }, []); // Only register once! Current state accessed via sessionHandlersRef and currentTimeSec (well, currentTimeSec is still in closure, but we want it fresh)
@@ -2482,9 +2482,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // Revised handlers to use currentTimeRef
   useEffect(() => {
-     if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
-     navigator.mediaSession.setActionHandler("seekbackward", () => sessionHandlersRef.current.onSeek(currentTimeRef.current - 10));
-     navigator.mediaSession.setActionHandler("seekforward", () => sessionHandlersRef.current.onSeek(currentTimeRef.current + 10));
+    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+    navigator.mediaSession.setActionHandler("seekbackward", () => sessionHandlersRef.current.onSeek(currentTimeRef.current - 10));
+    navigator.mediaSession.setActionHandler("seekforward", () => sessionHandlersRef.current.onSeek(currentTimeRef.current + 10));
   }, []);
 
   // Native Media Session API: Metadata (Update on song change)
@@ -2511,7 +2511,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
     // Ensure playback state is synced for the new metadata
     if ("mediaSession" in navigator) {
-       navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+      navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
     }
   }, [currentSong, isPlaying, liveMetadata]);
 
@@ -2616,9 +2616,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     installPwa,
     pwaInstallable,
   }), [
-    audioData, queueSongs, previousQueue, currentSong, isPlaying, currentTimeSec, 
-    durationSec, volume, syncedLyricsData, lyricsLoading, lyricsAlignment, knowFacts, 
-    knowLoading, likedSongs, likedLibraryTracks, songIsInLikedLibrary, resolveLikedLibraryRateVideoId, upNextQueue, playedHistory, aiLoading, 
+    audioData, queueSongs, previousQueue, currentSong, isPlaying, currentTimeSec,
+    durationSec, volume, syncedLyricsData, lyricsLoading, lyricsAlignment, knowFacts,
+    knowLoading, likedSongs, likedLibraryTracks, songIsInLikedLibrary, resolveLikedLibraryRateVideoId, upNextQueue, playedHistory, aiLoading,
     isRightSidebarOpen, isExpandedPlayerOpen, selectedPlaylist, palette,
     onSongClick, onNext, onPrev, onTogglePlay, onSeek, onRateSong, playVideo, pauseVideo, pauseBackgroundPlayer, viewMode, setViewMode,
     setIsPlaying, setQueueSongs, setPreviousQueue, setUpNextQueue, rightSidebarMode, overrideArtwork, setOverrideArtwork, liveMetadata,
@@ -2629,18 +2629,18 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const audio = index === 1 ? audio1Ref.current : audio2Ref.current;
     if (!audio) return;
     console.warn(`[DashboardContext] Native Audio player ${index} error:`, audio.error);
-    
+
     if (directAudioUrl) {
       console.log("[DashboardContext] Falling back to YouTube iframe player due to native audio error.");
-      
+
       const currentTime = audio.currentTime || currentTimeSec;
-      
+
       // Clear direct audio URL to disable native audio mode
       setDirectAudioUrl(null);
-      
+
       // Force YouTube player to reload by clearing last processed ID
       lastProcessedIdRef.current = null;
-      
+
       const targetId = audioData?.videoId || currentSong?.id;
       if (targetId && ytPlayerRef.current && playerReadyRef.current) {
         try {

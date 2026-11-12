@@ -392,7 +392,15 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
             >
               <ArrowLeft size={18} />
             </button>
-            <h2 className="text-lg font-black text-white truncate">{data?.name || artistName}</h2>
+            {data?.artistLogo ? (
+              <img
+                src={data.artistLogo}
+                alt={data.name}
+                className="max-h-7 max-w-[160px] object-contain filter drop-shadow-md select-none pointer-events-none"
+              />
+            ) : (
+              <h2 className="text-lg font-black text-white truncate">{data?.name || artistName}</h2>
+            )}
           </m.div>
         )}
       </AnimatePresence>
@@ -478,13 +486,13 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                   ))}
                 </div>
 
-                {/* Apple Music Artist Wordmark / Logo Icon */}
-                {data.artistLogo && (
+                {/* Apple Music Artist Icon / Logo (Replaces plain text name when available) */}
+                {data.artistLogo ? (
                   <m.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={MOTION_CONFIG.transition}
-                    className="mb-3 max-w-[260px] sm:max-w-[340px] md:max-w-[400px]"
+                    className="mb-4 max-w-[280px] sm:max-w-[360px] md:max-w-[440px]"
                   >
                     <img
                       src={data.artistLogo}
@@ -492,11 +500,11 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                       className="max-h-16 sm:max-h-20 md:max-h-24 w-auto object-contain filter drop-shadow-[0_10px_24px_rgba(0,0,0,0.85)] select-none pointer-events-none"
                     />
                   </m.div>
+                ) : (
+                  <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white tracking-tighter leading-none mb-4">
+                    {data.name}
+                  </h1>
                 )}
-
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white tracking-tighter leading-none mb-4">
-                  {data.name}
-                </h1>
 
                 <div className="flex flex-wrap items-center gap-6 text-sm font-bold text-white/60">
                   <div className="flex items-center gap-2.5">
@@ -977,19 +985,24 @@ export function ArtistPage({ artistName, onBack, onNavigateArtist, onNavigatePla
                           rounded="full"
                           className="h-full w-full transition-transform duration-500 group-hover:scale-110"
                         />
-                        {artist.logo && (
-                          <div className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md p-1 border border-white/10 shadow-lg flex items-center justify-center pointer-events-none">
-                            <img src={artist.logo} alt="" className="w-full h-full object-contain" />
-                          </div>
-                        )}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                           <ChevronRight size={28} className="text-white" />
                         </div>
                       </div>
-                      <div className="text-center w-full">
-                        <h4 className="font-black text-white text-[14px] leading-tight truncate w-full group-hover:underline">
-                          {artist.name}
-                        </h4>
+                      <div className="text-center w-full flex flex-col items-center">
+                        {artist.logo ? (
+                          <div className="h-6 flex items-center justify-center my-0.5 w-full">
+                            <img
+                              src={artist.logo}
+                              alt={artist.name}
+                              className="max-h-5 max-w-[85%] object-contain filter drop-shadow-md brightness-110 select-none pointer-events-none"
+                            />
+                          </div>
+                        ) : (
+                          <h4 className="font-black text-white text-[14px] leading-tight truncate w-full group-hover:underline">
+                            {artist.name}
+                          </h4>
+                        )}
                         {artist.followers && (
                           <p className="text-[11px] font-bold text-white/30 mt-0.5">
                             {artist.followers} followers

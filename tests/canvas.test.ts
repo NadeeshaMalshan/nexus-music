@@ -323,17 +323,22 @@ describe("CanvasService Orchestration & Caching", () => {
 describe("Apple Music Artist Info & Wordmark Logo Service", () => {
   const { getAppleArtistInfo } = require("../src/lib/appleArtistService");
 
-  test("returns curated artist logo for Olivia Rodrigo with valid PNG link", async () => {
+  test("returns curated artist logo for Olivia Rodrigo matching user URL", async () => {
     const info = await getAppleArtistInfo("Olivia Rodrigo");
     assert.ok(info !== null);
-    assert.ok(info.logoUrl && info.logoUrl.includes("mzstatic.com"));
-    assert.ok(info.logoUrl.endsWith(".png"));
+    assert.equal(
+      info.logoUrl,
+      "https://is1-ssl.mzstatic.com/image/thumb/Wcm2Bo9UxDiBqIsGMm19KA/400x133bb.webp"
+    );
   });
 
   test("normalizes artist names with case or whitespace differences", async () => {
     const info = await getAppleArtistInfo("  olivia rodrigo  ");
     assert.ok(info !== null);
-    assert.ok(info.logoUrl && info.logoUrl.includes("mzstatic.com"));
+    assert.equal(
+      info.logoUrl,
+      "https://is1-ssl.mzstatic.com/image/thumb/Wcm2Bo9UxDiBqIsGMm19KA/400x133bb.webp"
+    );
   });
 
   test("handles empty or unknown artist gracefully without throwing", async () => {
@@ -344,4 +349,3 @@ describe("Apple Music Artist Info & Wordmark Logo Service", () => {
     assert.equal(unknownInfo, null);
   });
 });
-

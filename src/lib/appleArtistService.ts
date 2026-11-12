@@ -9,18 +9,17 @@ export interface AppleArtistInfo {
 
 // Curated verified Apple Music artist wordmarks & logos (instant zero-latency fast path)
 const CURATED_ARTIST_LOGOS: Record<string, string> = {
-  "olivia rodrigo": "https://is1-ssl.mzstatic.com/image/thumb/2ayJ04CqIfSdXp36oZA8yA/600x600bb.png",
-  "taylor swift": "https://is1-ssl.mzstatic.com/image/thumb/lPXHgVOK2LRp_AkQZj_K8A/600x600bb.png",
-  "sabrina carpenter": "https://is1-ssl.mzstatic.com/image/thumb/2cM09e99g2T2v8pUvU9iEg/600x600bb.png",
-  "dua lipa": "https://is1-ssl.mzstatic.com/image/thumb/j-3l5d4a_2_8cM2y-E6v0A/600x600bb.png",
-  "chappell roan": "https://is1-ssl.mzstatic.com/image/thumb/4b7b2f6c-8c01-4475-a0c3-04bc99fcae5c/600x600bb.png",
-  "gracie abrams": "https://is1-ssl.mzstatic.com/image/thumb/763b6555-520e-436d-9266-b3337a6d4d12/600x600bb.png",
-  "ariana grande": "https://is1-ssl.mzstatic.com/image/thumb/8h4u1p9_2k3b8_5d7m1q_g/600x600bb.png",
-  "sza": "https://is1-ssl.mzstatic.com/image/thumb/3q9_1p8_3k2b7_6d8m2q_h/600x600bb.png",
-  "billie eilish": "https://is1-ssl.mzstatic.com/image/thumb/Features125/v4/b5/15/47/b5154784-a14a-73c3-631d-2391bdf1eeeb/600x600bb.png",
-  "the weeknd": "https://is1-ssl.mzstatic.com/image/thumb/Features115/v4/71/6a/5d/716a5d42-ef47-0624-9b55-d3c5fdfaa640/600x600bb.png",
-  "charli xcx": "https://is1-ssl.mzstatic.com/image/thumb/Features126/v4/bf/25/61/bf256191-24dc-d3d5-6ff8-5c4a7534c03b/600x600bb.png",
-  "lana del rey": "https://is1-ssl.mzstatic.com/image/thumb/Features125/v4/37/10/72/37107297-6a7a-6b5d-2483-49033e07d722/600x600bb.png",
+  "olivia rodrigo": "https://is1-ssl.mzstatic.com/image/thumb/Wcm2Bo9UxDiBqIsGMm19KA/400x133bb.webp",
+  "taylor swift": "https://is1-ssl.mzstatic.com/image/thumb/lPXHgVOK2LRp_AkQZj_K8A/400x133bb.webp",
+  "dua lipa": "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/e1/c3/f5/e1c3f5ac-bc18-de96-68c4-dd2483e5d7d2/e75c0b81-6175-4ecd-9706-26289a987954.png/400x133bb.webp",
+  "chappell roan": "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/04/29/a8/0429a85d-01bf-db5e-237b-bf72035e661e/dff6322b-6891-4938-9db0-9cd0c73dd9f5.png/400x133bb.webp",
+  "gracie abrams": "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/a7/23/e0/a723e03f-ae05-0f07-f13d-f14df11b5dd7/4945badd-996f-44a5-ba46-ddc4bca89364.png/400x133bb.webp",
+  "ariana grande": "https://is1-ssl.mzstatic.com/image/thumb/CfahkqIV7d3iglSrEp6Pcg/400x133bb.webp",
+  "lorde": "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/50/28/2d/50282d33-6927-cab4-429a-5e003cf4a8f8/06723374-0f41-4e53-8beb-055ea5e539fa.png/400x133bb.webp",
+  "tate mcrae": "https://is1-ssl.mzstatic.com/image/thumb/AiDpnTNIaTHYSOl5Ie6wGw/400x133bb.webp",
+  "bruno mars": "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/29/f2/ff/29f2ff9a-407e-f47a-d99c-190db7ecd7cd/1d31f137-bd1e-4615-9d14-0791c0dc1867.png/400x133bb.webp",
+  "beyonce": "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/81/0f/83/810f83c5-c3e2-067b-5125-aba946a40e30/7e208df1-0cc6-49d5-8101-c8f8bf8a7076.png/400x133bb.webp",
+  "renee rapp": "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/c8/74/0f/c8740f42-4392-a2dd-74b5-c59a022753b8/bdd3dda7-40c0-49d9-8e6d-650cbe68848c.png/400x133bb.webp",
 };
 
 const artistLogoCache = new Map<string, { data: AppleArtistInfo | null; expiresAt: number }>();
@@ -74,7 +73,7 @@ export async function getAppleArtistInfo(artistName: string): Promise<AppleArtis
           const logoObj = editorial?.musicContentColorLogoTrimmed || editorial?.musicContentColorLogo;
           const rawUrl = logoObj?.url;
           const logoUrl = rawUrl
-            ? rawUrl.replace("{w}x{h}bb.jpg", "600x600bb.png").replace("{w}x{h}", "600x600")
+            ? rawUrl.replace("{w}x{h}bb.jpg", "400x133bb.webp").replace("{w}x{h}", "400x133")
             : null;
 
           const rawHero = cand?.attributes?.artwork?.url;

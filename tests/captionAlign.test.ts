@@ -344,5 +344,158 @@ describe("Caption-Based Lyrics Re-sync (captionAlign)", () => {
     assert.strictEqual(result.stats.matched, 11);
     assert.strictEqual(result.stats.medianOffset, 4.0);
   });
+
+  it("handles phrase/segment-level input with a constant 12s offset", () => {
+    const rawLines: LyricsLine[] = [
+      {
+        text: "Back it up subwoofers in the trunk and the",
+        start: 2.5,
+        end: 5.5,
+      },
+      {
+        text: "Gemstones in the teeth go dumb and the",
+        start: 6.0,
+        end: 9.0,
+      },
+      {
+        text: "Light the cigarette with the propane",
+        start: 9.5,
+        end: 12.5,
+      },
+    ];
+
+    const offset = 12.0;
+    // Segment-level captions (entire phrases per caption object)
+    const captionSegments: CaptionWord[] = [
+      {
+        text: "Back it up subwoofers in the trunk and the",
+        start: 2.5 + offset,
+        end: 5.5 + offset,
+      },
+      {
+        text: "Gemstones in the teeth go dumb and the",
+        start: 6.0 + offset,
+        end: 9.0 + offset,
+      },
+      {
+        text: "Light the cigarette with the propane",
+        start: 9.5 + offset,
+        end: 12.5 + offset,
+      },
+    ];
+
+    const result = alignLyricsToCaption(rawLines, captionSegments);
+    assert.ok(result);
+    assert.strictEqual(result.stats.mode, "constant");
+    assert.ok(Math.abs(result.stats.medianOffset - 12.0) <= 0.3);
+    assert.ok(result.stats.matched >= 15);
+
+    // Because first line starts at 14.5 >= 4.0s, an intro instrumental break is inserted
+    assert.strictEqual(result.lines[0].isInstrumental, true);
+    assert.strictEqual(result.lines[0].start, 0);
+    assert.ok(Math.abs(result.lines[0].end - 14.5) <= 0.3);
+
+    // First vocal line is shifted by ~12s
+    assert.strictEqual(result.lines[1].text, rawLines[0].text);
+    assert.ok(Math.abs(result.lines[1].start - (2.5 + offset)) <= 0.3);
+  });
+
+  it("handles segment-level captions with ASR-style typos (Levenshtein matching)", () => {
+    const rawLines: LyricsLine[] = [
+      {
+        text: "dancing in the moonlight tonight",
+        start: 5.0,
+        end: 8.0,
+      },
+      {
+        text: "celebrating under the stars above",
+        start: 8.5,
+        end: 11.5,
+      },
+    ];
+
+    // ASR mis-transcriptions (dancin for dancing, celbrating for celebrating)
+    const captionSegments: CaptionWord[] = [
+      {
+        text: "dancin in the moonlite tonite", // dancin matched, moonlite dist > 1, etc.
+        start: 15.0,
+        end: 18.0,
+      },
+      {
+        text: "celebratin under the stars above", // celebratin matched
+        start: 18.5,
+        end: 21.5,
+      },
+    ];
+
+    const result = alignLyricsToCaption(rawLines, captionSegments);
+    assert.ok(result);
+    assert.strictEqual(result.stats.mode, "constant");
+    assert.ok(Math.abs(result.stats.medianOffset - 10.0) <= 0.3);
+    assert.ok(result.stats.matched >= 5);
+  });
+
+  it("handles repeated chorus correctly with segment-level captions", () => {
+    const chorus = "baby please come back to me right now";
+    const rawLines: LyricsLine[] = [
+      { text: chorus, start: 10.0, end: 14.0 },
+      { text: "verse one words are here", start: 15.0, end: 19.0 },
+      { text: chorus, start: 20.0, end: 24.0 },
+    ];
+
+    const offset = 5.0;
+    const captionSegments: CaptionWord[] = [
+      { text: chorus, start: 10.0 + offset, end: 14.0 + offset },
+      { text: "verse one words are here", start: 15.0 + offset, end: 19.0 + offset },
+      { text: chorus, start: 20.0 + offset, end: 24.0 + offset },
+    ];
+
+    const result = alignLyricsToCaption(rawLines, captionSegments);
+    assert.ok(result);
+    assert.strictEqual(result.stats.medianOffset, 5.0);
+    assert.ok(result.stats.matched >= 15);
+  });
+
+  it("returns null when too few matches exist between lyrics and captions", () => {
+    const rawLines: LyricsLine[] = [
+      { text: "completely different song lyrics about space", start: 1.0, end: 4.0 },
+      { text: "rockets flying high to the red planet mars", start: 5.0, end: 9.0 },
+    ];
+
+    const unrelatedCaptions: CaptionWord[] = [
+      { text: "unrelated cooking recipe about pasta and cheese", start: 10.0, end: 15.0 },
+    ];
+
+    const result = alignLyricsToCaption(rawLines, unrelatedCaptions);
+    assert.strictEqual(result, null);
+  });
+
+  it("guarantees inputs are not mutated", () => {
+    const originalLines: LyricsLine[] = [
+      {
+        text: "hello world sample text",
+        start: 2.0,
+        end: 5.0,
+        words: [
+          { text: "hello", start: 2.0, end: 2.8 },
+          { text: "world", start: 2.8, end: 3.5 },
+          { text: "sample", start: 3.5, end: 4.2 },
+          { text: "text", start: 4.2, end: 5.0 },
+        ],
+      },
+    ];
+
+    const originalCaptions: CaptionWord[] = [
+      { text: "hello world sample text", start: 6.0, end: 9.0 },
+    ];
+
+    const linesCopy = JSON.parse(JSON.stringify(originalLines));
+    const captionsCopy = JSON.parse(JSON.stringify(originalCaptions));
+
+    alignLyricsToCaption(originalLines, originalCaptions);
+
+    assert.deepStrictEqual(originalLines, linesCopy);
+    assert.deepStrictEqual(originalCaptions, captionsCopy);
+  });
 });
 

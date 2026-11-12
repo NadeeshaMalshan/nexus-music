@@ -615,21 +615,22 @@ export function MobileExpandedPlayer({
     if (viewMode === "video") {
       videoSyncIntervalRef.current = setInterval(() => {
         try {
-          const p = ytPlayerInstance.current as any;
+          const p = ytPlayerInstance.current;
           if (!p) return;
           const state = p.getPlayerState?.();
-          if (state === 1) {
+          // Poll time while playing (1), paused (2, in case user scrubbed), or buffering (3)
+          if (state === 1 || state === 2 || state === 3) {
             const time = p.getCurrentTime();
             const duration = p.getDuration ? p.getDuration() : 0;
             if (duration > 0 && Number.isFinite(duration)) {
               setDurationSec?.(duration);
             }
-            if (time > 0 && Number.isFinite(time)) {
+            if (typeof time === "number" && Number.isFinite(time) && time >= 0) {
               setCurrentTimeSec(time);
 
               // Watchdog for background/minimized autoplay in video mode
               const dur = safeDurationRef.current;
-              if (dur > 0 && time >= dur - 1.5 && isPlayingRef.current && lastSkippedVideoIdRef.current !== currentSong.id) {
+              if (state === 1 && dur > 0 && time >= dur - 1.5 && isPlayingRef.current && lastSkippedVideoIdRef.current !== currentSong.id) {
                 lastSkippedVideoIdRef.current = currentSong.id;
                 onNextRef.current();
               }
@@ -640,10 +641,10 @@ export function MobileExpandedPlayer({
             try { p.playVideo(); } catch { /* ignore */ }
           }
         } catch { /* ignore */ }
-      }, 500);
+      }, 250);
     }
     return () => { if (videoSyncIntervalRef.current) clearInterval(videoSyncIntervalRef.current); };
-  }, [viewMode]);
+  }, [viewMode, setCurrentTimeSec]);
 
   // Resume on page becoming visible again (returning from background/lock screen)
   useEffect(() => {
@@ -1081,6 +1082,7 @@ export function MobileExpandedPlayer({
                     e.target.seekTo(currentTimeSec, true);
                   } else if (!isDurationEqual) {
                     e.target.seekTo(0, true);
+                    setCurrentTimeSec(0);
                   }
 
                   if (isPlaying) e.target.playVideo();
@@ -1089,10 +1091,14 @@ export function MobileExpandedPlayer({
                   if (e.data === 0) onNext();
                   else if (e.data === 1) {
                     setIsPlaying(true);
+                    const t = e.target.getCurrentTime();
+                    if (typeof t === "number" && Number.isFinite(t) && t >= 0) setCurrentTimeSec(t);
                     const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
                     try { e.target.setPlaybackQuality(vq); } catch (err) { }
                   }
                   else if (e.data === 2) {
+                    const t = e.target.getCurrentTime();
+                    if (typeof t === "number" && Number.isFinite(t) && t >= 0) setCurrentTimeSec(t);
                     if (!isPlayingRef.current) setIsPlaying(false);
                     else {
                       setTimeout(() => {
@@ -1102,6 +1108,10 @@ export function MobileExpandedPlayer({
                         } catch { /* ignore */ }
                       }, 400);
                     }
+                  }
+                  else if (e.data === 3) {
+                    const t = e.target.getCurrentTime();
+                    if (typeof t === "number" && Number.isFinite(t) && t >= 0) setCurrentTimeSec(t);
                   }
                   else if (e.data === 5) {
                     // CUED: If a new song has cued but isPlaying is true, start playing automatically

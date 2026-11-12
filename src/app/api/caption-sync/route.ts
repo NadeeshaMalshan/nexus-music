@@ -9,6 +9,10 @@ export const maxDuration = 30;
 const CHROME_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
+const TTL_HIT_SECONDS = 7 * 86400; // 7 days
+const TTL_MISS_SECONDS = 86400; // 1 day
+const TTL_TRANSIENT_SECONDS = 600; // 10 minutes for transient / network errors
+
 interface CaptionTrack {
   baseUrl: string;
   name?: { simpleText?: string; runs?: Array<{ text: string }> };
@@ -30,6 +34,12 @@ interface TimedTextEvent {
 
 interface TimedTextResponse {
   events?: TimedTextEvent[];
+}
+
+interface ParsedWord {
+  text: string;
+  start: number;
+  end: number;
 }
 
 function selectBestTrack(tracks: CaptionTrack[]): CaptionTrack | null {
@@ -74,6 +84,60 @@ async function safeCache(key: string, data: unknown, ttlSeconds: number) {
   }
 }
 
+/**
+ * Priority 1: Innertube getTranscript (with strict 3s timeout)
+ */
+async function fetchInnertubeTranscript(
+  videoId: string
+): Promise<{ words: ParsedWord[]; lang: string; kind: "asr" | "manual" } | null> {
+  const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+  const workPromise = (async () => {
+    try {
+      const { Innertube, UniversalCache } = await import("youtubei.js");
+      const yt = await Innertube.create({ cache: new UniversalCache(false) });
+      const info = await yt.getInfo(videoId);
+      const transcript = await info.getTranscript();
+      const transcriptObj = transcript as unknown as {
+        transcript?: {
+          content?: {
+            body?: {
+              initial_segments?: Array<{
+                start_ms?: number | string;
+                end_ms?: number | string;
+                snippet?: { text?: string };
+              }>;
+            };
+          };
+        };
+      };
+      const rawSegments = transcriptObj?.transcript?.content?.body?.initial_segments || [];
+      if (!Array.isArray(rawSegments) || rawSegments.length === 0) return null;
+
+      const words: ParsedWord[] = [];
+      for (const seg of rawSegments) {
+        const text = seg.snippet?.text?.trim();
+        if (!text || isIgnoredToken(text)) continue;
+        const startMs = typeof seg.start_ms === "number" ? seg.start_ms : Number(seg.start_ms) || 0;
+        const endMs = typeof seg.end_ms === "number" ? seg.end_ms : Number(seg.end_ms) || startMs;
+        const start = startMs / 1000;
+        const end = Math.max(start + 0.1, endMs / 1000);
+        words.push({ text, start, end });
+      }
+
+      if (words.length === 0) return null;
+      return {
+        words,
+        lang: "en",
+        kind: "asr" as const,
+      };
+    } catch {
+      return null;
+    }
+  })();
+
+  return Promise.race([workPromise, timeoutPromise]);
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const videoId = searchParams.get("videoId");
@@ -96,10 +160,22 @@ export async function GET(request: Request) {
     }
   }
 
+  // 1. Try Innertube transcript first
+  try {
+    const innertubeResult = await fetchInnertubeTranscript(videoId);
+    if (innertubeResult && innertubeResult.words.length > 0) {
+      await safeCache(cacheKey, innertubeResult, TTL_HIT_SECONDS);
+      return NextResponse.json(innertubeResult);
+    }
+  } catch (err) {
+    console.warn("[caption-sync] Innertube note:", err instanceof Error ? err.message : err);
+  }
+
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   let tracks: CaptionTrack[] | undefined;
+  let isTransientError = false;
 
-  // 1. Fast direct HTML extraction of captionTracks (resolves in ~300ms without triggering ytdl bot checks)
+  // 2. Direct HTML extraction of captionTracks (resolves in ~300ms without triggering ytdl bot checks)
   try {
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), 4000);
@@ -132,12 +208,15 @@ export async function GET(request: Request) {
         const raw = html.substring(arrStart, endIdx);
         tracks = JSON.parse(raw) as CaptionTrack[];
       }
+    } else if (pageRes.status >= 500) {
+      isTransientError = true;
     }
   } catch (scrapeErr) {
+    isTransientError = true;
     console.warn("[caption-sync] HTML scrape note:", scrapeErr instanceof Error ? scrapeErr.message : scrapeErr);
   }
 
-  // 2. Fallback to getYoutubeInfoWithRetry if HTML scrape didn't find captionTracks
+  // 3. Fallback to getYoutubeInfoWithRetry if HTML scrape didn't find captionTracks
   if (!tracks || tracks.length === 0) {
     try {
       const info = await getYoutubeInfoWithRetry(videoUrl);
@@ -152,21 +231,22 @@ export async function GET(request: Request) {
           };
         })?.player_response?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
       }
-    } catch (err) {
-      console.warn("[caption-sync] getYoutubeInfoWithRetry failed:", err instanceof Error ? err.message : err);
+    } catch (infoErr) {
+      isTransientError = true;
+      console.warn("[caption-sync] getInfo note:", infoErr instanceof Error ? infoErr.message : infoErr);
     }
   }
 
   if (!tracks || tracks.length === 0) {
     const emptyResult = { words: [], reason: "No caption tracks found" };
-    await safeCache(cacheKey, emptyResult, 86400); // 1 day
+    await safeCache(cacheKey, emptyResult, isTransientError ? TTL_TRANSIENT_SECONDS : TTL_MISS_SECONDS);
     return NextResponse.json(emptyResult);
   }
 
   const selectedTrack = selectBestTrack(tracks);
   if (!selectedTrack || !selectedTrack.baseUrl) {
     const emptyResult = { words: [], reason: "No suitable caption track baseUrl" };
-    await safeCache(cacheKey, emptyResult, 86400); // 1 day
+    await safeCache(cacheKey, emptyResult, TTL_MISS_SECONDS);
     return NextResponse.json(emptyResult);
   }
 
@@ -193,15 +273,16 @@ export async function GET(request: Request) {
     clearTimeout(timeout);
 
     if (!res.ok) {
+      const transient = res.status >= 500;
       const emptyResult = { words: [], reason: `Timedtext returned HTTP ${res.status}` };
-      await safeCache(cacheKey, emptyResult, 86400);
+      await safeCache(cacheKey, emptyResult, transient ? TTL_TRANSIENT_SECONDS : TTL_MISS_SECONDS);
       return NextResponse.json(emptyResult);
     }
 
     const text = await res.text();
     if (!text || text.trim().length === 0) {
       const emptyResult = { words: [], reason: "Empty timedtext response body" };
-      await safeCache(cacheKey, emptyResult, 86400);
+      await safeCache(cacheKey, emptyResult, TTL_MISS_SECONDS);
       return NextResponse.json(emptyResult);
     }
 
@@ -210,92 +291,84 @@ export async function GET(request: Request) {
       data = JSON.parse(text) as TimedTextResponse;
     } catch {
       const emptyResult = { words: [], reason: "Invalid JSON timedtext response" };
-      await safeCache(cacheKey, emptyResult, 86400);
+      await safeCache(cacheKey, emptyResult, TTL_MISS_SECONDS);
       return NextResponse.json(emptyResult);
     }
 
     if (!data.events || data.events.length === 0) {
       const emptyResult = { words: [], reason: "No events in timedtext" };
-      await safeCache(cacheKey, emptyResult, 86400);
+      await safeCache(cacheKey, emptyResult, TTL_MISS_SECONDS);
       return NextResponse.json(emptyResult);
-    }
-
-    // Parse words from json3 events
-    interface ParsedWord {
-      text: string;
-      start: number;
-      end: number;
     }
 
     const parsedWords: ParsedWord[] = [];
 
-    for (const event of data.events) {
-      if (!event.segs || event.segs.length === 0) continue;
-      const eventStartMs = event.tStartMs ?? 0;
-      const eventDurationMs = event.dDurationMs ?? 0;
-      const eventEndMs = eventStartMs + eventDurationMs;
+    for (const evt of data.events) {
+      if (!evt.segs || evt.segs.length === 0) continue;
+      const eventStartMs = evt.tStartMs ?? 0;
+      const eventEndMs = eventStartMs + (evt.dDurationMs ?? 0);
 
-      // Extract raw valid segs
-      const validSegs: Array<{ text: string; startMs: number }> = [];
-      for (const seg of event.segs) {
-        const segText = (seg.utf8 ?? "").trim();
-        if (isIgnoredToken(segText)) continue;
+      // Filter and clean segments
+      const validSegs: { text: string; startMs: number }[] = [];
+      for (const seg of evt.segs) {
+        const raw = seg.utf8?.trim() ?? "";
+        if (!raw || isIgnoredToken(raw)) continue;
         const segStartMs = eventStartMs + (seg.tOffsetMs ?? 0);
-        validSegs.push({ text: segText, startMs: segStartMs });
+        validSegs.push({ text: raw, startMs: segStartMs });
       }
 
-      for (let sIdx = 0; sIdx < validSegs.length; sIdx++) {
-        const current = validSegs[sIdx];
-        const next = validSegs[sIdx + 1];
+      if (validSegs.length === 0) continue;
 
-        const startSec = Math.max(0, current.startMs / 1000);
-        const nextStartMs = next ? next.startMs : eventEndMs;
-        const endMs = Math.min(nextStartMs, eventEndMs);
-        const endSec = Math.max(startSec + 0.05, endMs / 1000);
+      for (let i = 0; i < validSegs.length; i++) {
+        const curr = validSegs[i];
+        const next = validSegs[i + 1];
+        const startSec = curr.startMs / 1000;
+        let endSec: number;
 
-        // Enforce non-decreasing starts
+        if (next) {
+          endSec = Math.min(next.startMs / 1000, eventEndMs / 1000);
+        } else {
+          endSec = eventEndMs / 1000;
+        }
+
+        // Enforce valid positive duration
+        if (endSec <= startSec) {
+          endSec = startSec + 0.1;
+        }
+
+        // Enforce non-decreasing starts & drop exact duplicate tokens
         const last = parsedWords[parsedWords.length - 1];
-        const safeStart = last ? Math.max(last.start, startSec) : startSec;
-        const safeEnd = Math.max(safeStart + 0.05, endSec);
-
-        // Drop exact duplicates (same text and start within 10ms)
-        if (
-          last &&
-          last.text.toLowerCase() === current.text.toLowerCase() &&
-          Math.abs(last.start - safeStart) < 0.01
-        ) {
-          continue;
+        if (last) {
+          if (startSec < last.start) continue;
+          if (Math.abs(startSec - last.start) < 0.001 && last.text === curr.text) continue;
         }
 
         parsedWords.push({
-          text: current.text,
-          start: Number(safeStart.toFixed(3)),
-          end: Number(safeEnd.toFixed(3)),
+          text: curr.text,
+          start: startSec,
+          end: endSec,
         });
       }
     }
 
-    const kind: "asr" | "manual" = selectedTrack.kind === "asr" ? "asr" : "manual";
-    const lang = selectedTrack.languageCode || "en";
-
-    if (parsedWords.length > 0) {
-      const successResult = {
-        words: parsedWords,
-        lang,
-        kind,
-      };
-      await safeCache(cacheKey, successResult, 7 * 86400); // 7 days
-      return NextResponse.json(successResult);
-    } else {
-      const emptyResult = { words: [], reason: "No valid word tokens parsed" };
-      await safeCache(cacheKey, emptyResult, 86400); // 1 day
+    if (parsedWords.length === 0) {
+      const emptyResult = { words: [], reason: "No valid tokens parsed from timedtext" };
+      await safeCache(cacheKey, emptyResult, TTL_MISS_SECONDS);
       return NextResponse.json(emptyResult);
     }
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    console.warn("[caption-sync] Timedtext fetch error:", errorMsg);
-    const fallbackResult = { words: [], reason: `Fetch error: ${errorMsg}` };
-    await safeCache(cacheKey, fallbackResult, 86400);
-    return NextResponse.json(fallbackResult);
+
+    const result = {
+      words: parsedWords,
+      lang: selectedTrack.languageCode || "en",
+      kind: (selectedTrack.kind === "asr" ? "asr" : "manual") as "asr" | "manual",
+    };
+
+    await safeCache(cacheKey, result, TTL_HIT_SECONDS);
+    return NextResponse.json(result);
+  } catch (fetchErr) {
+    console.warn("[caption-sync] Timedtext fetch exception:", fetchErr);
+    const emptyResult = { words: [], reason: "Timedtext fetch failed" };
+    await safeCache(cacheKey, emptyResult, TTL_TRANSIENT_SECONDS);
+    return NextResponse.json(emptyResult);
   }
 }

@@ -92,6 +92,44 @@ export function calculateMedian(sorted: number[]): number {
   return (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
+/**
+ * Expands segment-level (phrase-level) caption entries into individual words
+ * spread evenly across [start, end]. Single-word entries are preserved.
+ * Pure function: does not mutate inputs.
+ */
+export function expandCaptionSegments(captions: readonly CaptionWord[]): CaptionWord[] {
+  if (!captions || captions.length === 0) return [];
+  const expanded: CaptionWord[] = [];
+  for (const cap of captions) {
+    if (!cap || !cap.text) continue;
+    const trimmed = cap.text.trim();
+    if (!trimmed) continue;
+    const rawTokens = trimmed.split(/\s+/).filter(Boolean);
+    if (rawTokens.length <= 1) {
+      expanded.push({
+        text: rawTokens[0] || trimmed,
+        start: cap.start,
+        end: cap.end,
+      });
+      continue;
+    }
+    const segStart = cap.start;
+    const segEnd = Math.max(segStart, cap.end);
+    const totalDur = segEnd - segStart;
+    const step = totalDur > 0 ? totalDur / rawTokens.length : 0;
+    for (let i = 0; i < rawTokens.length; i++) {
+      const wStart = segStart + i * step;
+      const wEnd = i === rawTokens.length - 1 ? segEnd : segStart + (i + 1) * step;
+      expanded.push({
+        text: rawTokens[i],
+        start: wStart,
+        end: wEnd,
+      });
+    }
+  }
+  return expanded;
+}
+
 interface FlatLyricWord {
   rawText: string;
   normText: string;
@@ -114,12 +152,16 @@ interface FlatCaptionWord {
  * Never mutates inputs. Returns null if alignment quality is insufficient.
  */
 export function alignLyricsToCaption(
-  lines: LyricsLine[],
-  captionWords: CaptionWord[]
+  lines: readonly LyricsLine[],
+  captionWords: readonly CaptionWord[]
 ): AlignmentResult | null {
   if (!lines || lines.length === 0 || !captionWords || captionWords.length === 0) {
     return null;
   }
+
+  // Support both phrase-level/segment-level and word-level caption data
+  const normalizedCaptions = expandCaptionSegments(captionWords);
+  if (normalizedCaptions.length === 0) return null;
 
   // 1. Flatten lyric words
   const flatLyricWords: FlatLyricWord[] = [];
@@ -163,7 +205,7 @@ export function alignLyricsToCaption(
 
   // 2. Prepare caption words
   const flatCaptionWords: FlatCaptionWord[] = [];
-  for (const c of captionWords) {
+  for (const c of normalizedCaptions) {
     const norm = normalizeToken(c.text);
     if (norm) {
       flatCaptionWords.push({

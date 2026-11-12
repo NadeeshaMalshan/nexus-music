@@ -171,6 +171,9 @@ type DashboardContextType = {
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
 
+/** Feature flag: Enable duration-based offset fallback in video mode when captions are unavailable */
+export const ENABLE_DURATION_FALLBACK = true;
+
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const { settings } = useSettings();
@@ -1109,12 +1112,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // 2. Duration fallback: if captions are unavailable and 2s < (videoDuration - songDuration) <= 45s, shift all lyric times by that difference (assume intro).
+    // 2. Duration fallback: if captions are unavailable and 2s < (videoDuration - songDuration) <= 25s, shift all lyric times by that difference.
+    // Safe fallback: does NOT insert artificial intro instrumental lines to avoid locking lyrics into bouncing dots.
     const songDuration = currentSong?.duration ? (youtubeTimestampToSeconds(currentSong.duration) ?? 0) : 0;
     const videoDuration = durationSec;
     const durationDiff = videoDuration - songDuration;
 
-    if (songDuration > 0 && videoDuration > 0 && durationDiff > 2 && durationDiff <= 45) {
+    if (ENABLE_DURATION_FALLBACK && songDuration > 0 && videoDuration > 0 && durationDiff > 2 && durationDiff <= 25) {
       console.debug("[lyrics-align]", "duration", { offsetSec: durationDiff, videoDuration, songDuration });
       const shiftedLines = lines.map((line) => {
         const newStart = Math.max(0, line.start + durationDiff);
@@ -1132,37 +1136,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         };
       });
 
-      // Insert instrumental break if there is an intro gap >= 4s
-      const finalLines: NonNullable<LyricsPayload["lyrics"]["lines"]> = [];
-      if (shiftedLines.length > 0 && shiftedLines[0].start >= 4.0) {
-        finalLines.push({
-          text: "",
-          isInstrumental: true,
-          start: 0,
-          end: shiftedLines[0].start,
-          words: undefined,
-        });
-      }
-      for (let i = 0; i < shiftedLines.length; i++) {
-        finalLines.push(shiftedLines[i]);
-        const curr = shiftedLines[i];
-        const next = shiftedLines[i + 1];
-        if (next && next.start - curr.end >= 4.0) {
-          finalLines.push({
-            text: "",
-            isInstrumental: true,
-            start: curr.end,
-            end: next.start,
-            words: undefined,
-          });
-        }
-      }
-
       const shiftedPayload: LyricsPayload = {
         ...lyricsData,
         lyrics: {
           ...lyricsData.lyrics,
-          lines: finalLines,
+          lines: shiftedLines,
         },
       };
 

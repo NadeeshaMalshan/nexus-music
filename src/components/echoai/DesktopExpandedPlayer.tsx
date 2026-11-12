@@ -19,6 +19,9 @@ interface YouTubePlayer {
   pauseVideo: () => void;
   setVolume: (volume: number) => void;
   getCurrentTime: () => number;
+  getDuration?: () => number;
+  seekTo?: (seconds: number, allowSeekAhead?: boolean) => void;
+  setPlaybackQuality?: (quality: string) => void;
 }
 
 interface LyricLineProps {
@@ -494,21 +497,22 @@ export function DesktopExpandedPlayer({
     if (viewMode === "video") {
       videoSyncIntervalRef.current = setInterval(() => {
         try {
-          const p = ytPlayerInstance.current as any;
+          const p = ytPlayerInstance.current;
           if (!p) return;
           const state = p.getPlayerState?.();
-          if (state === 1) {
+          // Poll time while playing (1), paused (2, in case user scrubbed), or buffering (3)
+          if (state === 1 || state === 2 || state === 3) {
             const time = p.getCurrentTime();
             const duration = p.getDuration ? p.getDuration() : 0;
             if (duration > 0 && Number.isFinite(duration)) {
               setDurationSec?.(duration);
             }
-            if (time > 0 && Number.isFinite(time)) {
+            if (typeof time === "number" && Number.isFinite(time) && time >= 0) {
               setCurrentTimeSec(time);
 
               // Watchdog for background/minimized autoplay in video mode
               const dur = safeDurationRef.current;
-              if (dur > 0 && time >= dur - 1.5 && isPlayingRef.current && lastSkippedVideoIdRef.current !== currentSong.id) {
+              if (state === 1 && dur > 0 && time >= dur - 1.5 && isPlayingRef.current && lastSkippedVideoIdRef.current !== currentSong.id) {
                 lastSkippedVideoIdRef.current = currentSong.id;
                 onNextRef.current();
               }
@@ -519,7 +523,7 @@ export function DesktopExpandedPlayer({
             try { p.playVideo(); } catch { /* ignore */ }
           }
         } catch { /* ignore */ }
-      }, 500);
+      }, 250);
     }
     return () => { if (videoSyncIntervalRef.current) clearInterval(videoSyncIntervalRef.current); };
   }, [viewMode, setCurrentTimeSec]);
@@ -938,6 +942,7 @@ export function DesktopExpandedPlayer({
                       e.target.seekTo(currentTimeSec, true);
                     } else if (!isDurationEqual) {
                       e.target.seekTo(0, true);
+                      setCurrentTimeSec(0);
                     }
 
                     if (isPlaying) e.target.playVideo();
@@ -947,10 +952,14 @@ export function DesktopExpandedPlayer({
                       onNext();
                     } else if (e.data === 1) {
                       setIsPlaying(true);
+                      const t = e.target.getCurrentTime();
+                      if (typeof t === "number" && Number.isFinite(t) && t >= 0) setCurrentTimeSec(t);
                       // Force quality again after playback starts to ensure it sticks
                       const vq = (viewMode === "music" && currentSong.isLive) ? "tiny" : (settings.videoQuality === "auto" ? "default" : settings.videoQuality);
                       try { e.target.setPlaybackQuality(vq); } catch { }
                     } else if (e.data === 2) {
+                      const t = e.target.getCurrentTime();
+                      if (typeof t === "number" && Number.isFinite(t) && t >= 0) setCurrentTimeSec(t);
                       if (!isPlayingRef.current) {
                         setIsPlaying(false);
                       } else {
@@ -961,6 +970,9 @@ export function DesktopExpandedPlayer({
                           } catch { /* ignore */ }
                         }, 400);
                       }
+                    } else if (e.data === 3) {
+                      const t = e.target.getCurrentTime();
+                      if (typeof t === "number" && Number.isFinite(t) && t >= 0) setCurrentTimeSec(t);
                     } else if (e.data === 5) {
                       // CUED: If a new song has cued but isPlaying is true, start playing automatically
                       if (isPlayingRef.current) {

@@ -115,6 +115,7 @@ export interface RenderWord {
   start: number;
   end: number;
   isBracketed: boolean;
+  hasAnchor?: boolean;
   syllables?: SyllableProgress[];
 }
 
@@ -123,11 +124,93 @@ function cleanNorm(str: string): string {
 }
 
 /**
+ * Smoothly interpolates unanchored words across gaps between anchors and enforces
+ * non-overlapping, strictly monotonic timestamps within a single vocal segment.
+ */
+export function cleanMonotonicSegment(words: RenderWord[], segStart: number, segEnd: number): void {
+  if (words.length === 0) return;
+
+  const N = words.length;
+  let lastAnchorIdx = -1;
+
+  for (let i = 0; i < N; i++) {
+    const w = words[i];
+    const isAnchor = Boolean(w.hasAnchor);
+
+    if (isAnchor) {
+      if (lastAnchorIdx === -1) {
+        // Words before first anchor: spread evenly from segStart to w.start
+        const spanStart = Math.min(segStart, w.start - i * 0.2);
+        const totalGap = Math.max(0.1, w.start - spanStart);
+        const step = totalGap / (i + 1);
+        for (let k = 0; k < i; k++) {
+          words[k].start = spanStart + k * step;
+          words[k].end = spanStart + (k + 1) * step;
+        }
+      } else if (i > lastAnchorIdx + 1) {
+        // Words between last anchor and current anchor: interpolate smoothly across the gap
+        const prevEnd = words[lastAnchorIdx].end;
+        const curStart = Math.max(prevEnd + 0.05, w.start);
+        w.start = curStart;
+        if (w.end <= w.start) w.end = w.start + 0.1;
+
+        const gap = Math.max(0.05 * (i - lastAnchorIdx - 1), curStart - prevEnd);
+        const unanchoredCount = i - lastAnchorIdx - 1;
+        const step = gap / (unanchoredCount + 1);
+
+        for (let k = 1; k <= unanchoredCount; k++) {
+          const idx = lastAnchorIdx + k;
+          words[idx].start = prevEnd + (k - 1) * step;
+          words[idx].end = prevEnd + k * step;
+        }
+      }
+      lastAnchorIdx = i;
+    }
+  }
+
+  if (lastAnchorIdx === -1) {
+    // No anchors at all: character-proportional across [segStart, segEnd]
+    const dur = Math.max(0.4, segEnd - segStart);
+    const totalChars = words.reduce((acc, w) => acc + w.text.length, 0) + words.length - 1;
+    let acc = 0;
+    for (let i = 0; i < N; i++) {
+      const sRatio = totalChars > 0 ? acc / totalChars : 0;
+      acc += words[i].text.length;
+      const eRatio = totalChars > 0 ? acc / totalChars : 1;
+      acc += 1;
+      words[i].start = segStart + sRatio * dur;
+      words[i].end = segStart + eRatio * dur;
+    }
+  } else if (lastAnchorIdx < N - 1) {
+    // Words after last anchor: spread from last anchor end to segEnd
+    const prevEnd = words[lastAnchorIdx].end;
+    const remaining = N - 1 - lastAnchorIdx;
+    const gap = Math.max(remaining * 0.15, segEnd - prevEnd);
+    const step = gap / remaining;
+    for (let k = 1; k <= remaining; k++) {
+      const idx = lastAnchorIdx + k;
+      words[idx].start = prevEnd + (k - 1) * step;
+      words[idx].end = prevEnd + k * step;
+    }
+  }
+
+  // Final monotonic forward pass: ensure strictly non-decreasing, non-negative duration
+  for (let i = 0; i < N; i++) {
+    if (i > 0 && words[i].start < words[i - 1].end) {
+      words[i].start = words[i - 1].end;
+    }
+    if (words[i].end <= words[i].start) {
+      words[i].end = words[i].start + 0.1;
+    }
+  }
+}
+
+/**
  * Normalizes words with genuine provider timestamps:
  * 1. Merges syllables into full target words matching lineText.
  * 2. Enforces strictly monotonic non-overlapping timings WITHIN each vocal track.
  */
-function processLineWords(
+export function processLineWords(
   lineText: string,
   rawWords: LyricsWord[] | undefined,
   lineStart: number,
@@ -164,48 +247,85 @@ function processLineWords(
   let resultWords: RenderWord[] = [];
 
   if (rawWords && rawWords.length > 0) {
-    let rawIdx = 0;
+    const N = targetTokens.length;
+    const M = rawWords.length;
+    const targetClean = targetTokens.map((t) => cleanNorm(t.displayText));
+    const rawClean = rawWords.map((r) => cleanNorm(r.text));
 
-    for (let tIdx = 0; tIdx < targetTokens.length; tIdx++) {
-      const item = targetTokens[tIdx];
-      const targetClean = cleanNorm(item.displayText);
+    // DP table: match target word with one or more raw syllables
+    const dp = Array.from({ length: N + 1 }, () => new Int32Array(M + 1));
+    const choice = Array.from({ length: N + 1 }, () => new Int32Array(M + 1));
 
-      const matchedSyllables: SyllableProgress[] = [];
-      let accumulatedClean = "";
+    for (let i = 1; i <= N; i++) {
+      const tc = targetClean[i - 1];
+      for (let j = 1; j <= M; j++) {
+        let best = dp[i - 1][j];
+        let bestChoice = 0;
 
-      while (rawIdx < rawWords.length) {
-        const rw = rawWords[rawIdx];
-        const rwClean = cleanNorm(rw.text);
-        if (!rwClean && rw.text.trim()) {
-          rawIdx++;
-          continue;
+        if (dp[i][j - 1] > best) {
+          best = dp[i][j - 1];
+          bestChoice = 1;
         }
 
-        matchedSyllables.push({
-          text: rw.text,
-          start: rw.start,
-          end: rw.end,
-          charLen: rw.text.length,
-        });
-        accumulatedClean += rwClean;
-        rawIdx++;
-
-        if (accumulatedClean.length >= targetClean.length || accumulatedClean === targetClean) {
-          break;
+        let combined = "";
+        for (let k = 1; k <= 4 && j - k >= 0; k++) {
+          combined = rawClean[j - k] + combined;
+          if (combined === tc || (k === 1 && (tc.startsWith(combined) || combined.startsWith(tc)))) {
+            const score = dp[i - 1][j - k] + (combined === tc ? 10 : 5);
+            if (score > best) {
+              best = score;
+              bestChoice = 1 + k;
+            }
+          }
         }
+
+        dp[i][j] = best;
+        choice[i][j] = bestChoice;
       }
+    }
 
-      if (matchedSyllables.length > 0) {
-        const wStart = matchedSyllables[0].start;
-        const wEnd = matchedSyllables[matchedSyllables.length - 1].end;
+    let i = N;
+    let j = M;
+    const matchMap = new Map<number, [number, number]>();
+
+    while (i > 0 && j > 0) {
+      const ch = choice[i][j];
+      if (ch === 0) {
+        i--;
+      } else if (ch === 1) {
+        j--;
+      } else {
+        const k = ch - 1;
+        matchMap.set(i - 1, [j - k, j - 1]);
+        i--;
+        j -= k;
+      }
+    }
+
+    for (let tIdx = 0; tIdx < N; tIdx++) {
+      const item = targetTokens[tIdx];
+      const match = matchMap.get(tIdx);
+
+      if (match) {
+        const [startR, endR] = match;
+        const syllables: SyllableProgress[] = [];
+        for (let r = startR; r <= endR; r++) {
+          syllables.push({
+            text: rawWords[r].text,
+            start: rawWords[r].start,
+            end: rawWords[r].end,
+            charLen: rawWords[r].text.length,
+          });
+        }
         resultWords.push({
           globalIndex: tIdx,
           wordIndex: tIdx,
           text: item.displayText,
-          start: wStart,
-          end: Math.max(wStart + 0.05, wEnd),
+          start: syllables[0].start,
+          end: Math.max(syllables[0].start + 0.05, syllables[syllables.length - 1].end),
           isBracketed: item.isBracketed,
-          syllables: matchedSyllables.length > 1 ? matchedSyllables : undefined,
+          hasAnchor: true,
+          syllables: syllables.length > 1 ? syllables : undefined,
         });
       } else {
         resultWords.push({
@@ -215,6 +335,7 @@ function processLineWords(
           start: lineStart,
           end: lineEnd,
           isBracketed: item.isBracketed,
+          hasAnchor: false,
         });
       }
     }
@@ -239,37 +360,36 @@ function processLineWords(
         start: lineStart + sRatio * lineDur,
         end: lineStart + eRatio * lineDur,
         isBracketed: item.isBracketed,
+        hasAnchor: false,
       };
     });
   }
 
-  // Enforce STRICT monotonic non-overlapping timings WITHIN EACH VOCAL SEGMENT
-  // (Main vocal and background vocal overlap in time, so they must be adjusted independently)
-  for (let i = 1; i < resultWords.length; i++) {
-    const prev = resultWords[i - 1];
-    const curr = resultWords[i];
-
-    if (prev.isBracketed === curr.isBracketed) {
-      if (prev.end > curr.start) {
-        prev.end = curr.start;
-      }
-      if (curr.start < prev.end) {
-        curr.start = prev.end;
-      }
-      if (curr.end <= curr.start) {
-        const nextBound = (i + 1 < resultWords.length && resultWords[i + 1].isBracketed === curr.isBracketed)
-          ? resultWords[i + 1].start
-          : lineEnd;
-        const span = Math.min(0.3, Math.max(0.05, nextBound - curr.start));
-        curr.end = curr.start + span;
-      }
+  // Group into contiguous vocal tracks (main vs background) and normalize timings
+  const segGroups: RenderWord[][] = [];
+  let curGroup: RenderWord[] | null = null;
+  for (const w of resultWords) {
+    if (!curGroup || curGroup[0].isBracketed !== w.isBracketed) {
+      if (curGroup && curGroup.length > 0) segGroups.push(curGroup);
+      curGroup = [w];
+    } else {
+      curGroup.push(w);
     }
+  }
+  if (curGroup && curGroup.length > 0) segGroups.push(curGroup);
+
+  for (const group of segGroups) {
+    const firstAnchor = group.find((w) => w.hasAnchor);
+    const segStart = firstAnchor ? firstAnchor.start : lineStart;
+    const lastAnchor = [...group].reverse().find((w) => w.hasAnchor);
+    const segEnd = lastAnchor ? Math.max(lastAnchor.end, lineEnd) : lineEnd;
+    cleanMonotonicSegment(group, segStart, segEnd);
   }
 
   return resultWords;
 }
 
-function calculateWordFill(word: RenderWord, currentTimeSec: number): number {
+export function calculateWordFill(word: RenderWord, currentTimeSec: number): number {
   if (currentTimeSec >= word.end) return 100;
   if (currentTimeSec <= word.start) return 0;
 
@@ -488,9 +608,19 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
         syncMetaRef.current
       );
 
-      // Enforce sequential fill within each segment (prevent middle words filling prematurely)
+      // Enforce strict left-to-right sequential fill within each vocal segment:
+      // 1. All words before the active word MUST be 100% filled (no preceding words left gray).
+      // 2. The active word fills smoothly based on time t.
+      // 3. All words after the active word MUST be 0% filled (no middle or future words filling early).
       for (const seg of segments) {
-        let prevWordFinished = true;
+        let activeIdx = -1;
+        for (let j = 0; j < seg.words.length; j++) {
+          if (t >= seg.words[j].start) {
+            activeIdx = j;
+          } else {
+            break;
+          }
+        }
 
         for (let j = 0; j < seg.words.length; j++) {
           const w = seg.words[j];
@@ -498,16 +628,14 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
           if (!el) continue;
 
           let fill = 0;
-          if (t >= w.end) {
-            fill = 100;
-          } else if (t <= w.start || !prevWordFinished) {
+          if (activeIdx === -1) {
             fill = 0;
-          } else {
+          } else if (j < activeIdx) {
+            fill = 100;
+          } else if (j === activeIdx) {
             fill = calculateWordFill(w, t);
-          }
-
-          if (fill < 100) {
-            prevWordFinished = false;
+          } else {
+            fill = 0;
           }
 
           const clipPct = Math.max(0, 100 - fill).toFixed(2);
@@ -532,23 +660,35 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
   const segWordFills = useMemo(() => {
     const map = new Map<number, number>();
     for (const seg of segments) {
-      let prevFinished = true;
-      for (const w of seg.words) {
-        let fill = 0;
-        if (isPastLine) {
-          fill = 100;
-        } else if (isUpcomingLine) {
-          fill = 0;
-        } else if (currentTimeSec >= w.end) {
-          fill = 100;
-        } else if (currentTimeSec <= w.start || !prevFinished) {
-          fill = 0;
-        } else {
-          fill = calculateWordFill(w, currentTimeSec);
-        }
+      if (isPastLine) {
+        for (const w of seg.words) map.set(w.wordIndex, 100);
+        continue;
+      }
+      if (isUpcomingLine) {
+        for (const w of seg.words) map.set(w.wordIndex, 0);
+        continue;
+      }
 
-        if (fill < 100) {
-          prevFinished = false;
+      let activeIdx = -1;
+      for (let j = 0; j < seg.words.length; j++) {
+        if (currentTimeSec >= seg.words[j].start) {
+          activeIdx = j;
+        } else {
+          break;
+        }
+      }
+
+      for (let j = 0; j < seg.words.length; j++) {
+        const w = seg.words[j];
+        let fill = 0;
+        if (activeIdx === -1) {
+          fill = 0;
+        } else if (j < activeIdx) {
+          fill = 100;
+        } else if (j === activeIdx) {
+          fill = calculateWordFill(w, currentTimeSec);
+        } else {
+          fill = 0;
         }
         map.set(w.wordIndex, fill);
       }
@@ -609,10 +749,8 @@ export const KaraokeWordLine = React.memo(function KaraokeWordLine({
                     ref={(el) => {
                       if (el) {
                         fillSpanRefs.current.set(w.wordIndex, el);
-                        // Ensure immediate visual state if not active
-                        if (!isActive) {
-                          applyClip(el, initialClip);
-                        }
+                        // Ensure immediate visual state in sync with initialClip
+                        applyClip(el, initialClip);
                       } else {
                         fillSpanRefs.current.delete(w.wordIndex);
                       }

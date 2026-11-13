@@ -177,3 +177,4 @@ export function AppleLyricsDots({
     </div>
   );
 }
+

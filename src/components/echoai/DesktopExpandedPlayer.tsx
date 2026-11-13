@@ -140,15 +140,13 @@ const LyricLine = React.memo(({
       ref={el => { if (elementsRef.current) elementsRef.current[index] = el; }}
       onClick={() => hasSynced && syncedLine && onSeek(syncedLine.start)}
       style={lineStyle}
-      className={`group flex items-center origin-left transform-gpu ${
-        hasSynced ? "z-10 cursor-pointer" : "cursor-default"
-      } ${
-        isInstrumental
+      className={`group flex items-center origin-left transform-gpu ${hasSynced ? "z-10 cursor-pointer" : "cursor-default"
+        } ${isInstrumental
           ? (isActive ? "h-[64px]" : "h-[36px]")
           : !line || !line.trim()
             ? "h-[32px]"
             : "py-6"
-      } ${!isActive && hasSynced ? "hover:opacity-75 hover:filter-none hover:scale-[0.99]" : ""}`}
+        } ${!isActive && hasSynced ? "hover:opacity-75 hover:filter-none hover:scale-[0.99]" : ""}`}
     >
       {isInstrumental ? (
         <AppleLyricsDots
@@ -173,13 +171,12 @@ const LyricLine = React.memo(({
           sizeVariant="desktop"
         />
       ) : (
-        <p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-[0_4px_24px_rgba(0,0,0,0.5)] text-[44px] leading-[1.15] ${
-          !hasSynced
-            ? "text-white/90"
-            : isActive
-              ? "text-white"
-              : "text-white/40"
-        }`}>
+        <p className={`w-full origin-left whitespace-pre-wrap break-words text-balance font-extrabold tracking-tight drop-shadow-[0_4px_24px_rgba(0,0,0,0.5)] text-[44px] leading-[1.15] ${!hasSynced
+          ? "text-white/90"
+          : isActive
+            ? "text-white"
+            : "text-white/40"
+          }`}>
           {line}
         </p>
       )}

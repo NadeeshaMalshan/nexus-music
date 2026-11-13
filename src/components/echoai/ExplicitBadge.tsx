@@ -63,3 +63,4 @@ export function ExplicitBadge({ className = "", size = "sm" }: ExplicitBadgeProp
     </span>
   );
 }
+

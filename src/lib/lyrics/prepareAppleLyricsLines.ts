@@ -44,3 +44,4 @@ export function prepareAppleLyricsLines(rawLines: LyricsLine[]): LyricsLine[] {
 
   return result.sort((a, b) => a.start - b.start);
 }
+

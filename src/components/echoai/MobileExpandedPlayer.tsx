@@ -8,10 +8,13 @@ import { m, AnimatePresence, Reorder, useDragControls } from "motion/react";
 import { APPLE_EASE, SLIDE_UP_VARIANTS, EXPO_OUT, MOTION_CONFIG, APPLE_LYRICS_TRANSITION } from "@/lib/animations";
 import { type Song, type ExpandedPlayerProps } from "./types";
 import { parseLyrics, findActiveLineIndex, findActiveWordIndex, type LyricsLine } from "@/lib/lrc";
+import { prepareAppleLyricsLines } from "@/lib/lyrics/prepareAppleLyricsLines";
 import { youtubeTimestampToSeconds } from "@/lib/duration";
 import { SessionFriendsPanel } from "./SessionFriendsPanel";
 import { MusicArtwork } from "./MusicArtwork";
 import { AnimatedCanvasArtwork } from "./AnimatedCanvasArtwork";
+import { AppleLyricsDots } from "./AppleLyricsDots";
+import { ExplicitBadge, isSongExplicit } from "./ExplicitBadge";
 import { useSettings } from "@/context/SettingsContext";
 import { useJam } from "@/context/JamContext";
 
@@ -52,19 +55,6 @@ const LyricLine = React.memo(({
   isPlaying,
   elementsRef
 }: LyricLineProps) => {
-  let instProgress = 0;
-  if (isInstrumental && isActive && syncedLine) {
-    const start = syncedLine.start;
-    const next = syncedLines[index + 1];
-    const end = next ? next.start : start + 5;
-    const dur = end > start ? end - start : 5;
-    instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
-  }
-
-  const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
-  const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
-  const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
-
   const words = syncedLine?.words;
   const hasWordSync = Boolean(hasSynced && words && words.length > 0);
 
@@ -151,11 +141,14 @@ const LyricLine = React.memo(({
         } ${!isActive && hasSynced ? "hover:opacity-75 hover:filter-none hover:scale-[0.99]" : ""}`}
     >
       {isInstrumental ? (
-        <div className={`flex gap-3 items-center h-full transition-opacity duration-500 ${isActive ? "opacity-100" : "opacity-30"}`}>
-          <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.25 }} />
-          <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.25 }} />
-          <div className="h-3 w-3 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.25 }} />
-        </div>
+        <AppleLyricsDots
+          isActive={isActive}
+          startTime={syncedLine?.start ?? 0}
+          endTime={syncedLines[index + 1]?.start ?? syncedLine?.end ?? (syncedLine?.start ?? 0) + 5}
+          currentTimeSec={currentTimeSec}
+          isPlaying={isPlaying}
+          sizeVariant="mobile"
+        />
       ) : hasWordSync ? (
         <KaraokeWordLine
           words={words}
@@ -433,11 +426,14 @@ export function MobileExpandedPlayer({
   const videoInitSeekRef = useRef<boolean>(false);
 
   const syncedLines = useMemo(() => {
+    let raw: LyricsLine[] = [];
     if (lyricsLines && lyricsLines.length > 0) {
-      return lyricsLines;
+      raw = lyricsLines;
+    } else if (lyricsContent) {
+      const parsed = parseLyrics(lyricsContent);
+      raw = parsed.lines;
     }
-    const parsed = parseLyrics(lyricsContent || "");
-    return parsed.lines;
+    return prepareAppleLyricsLines(raw);
   }, [lyricsLines, lyricsContent]);
 
   const plainLines = useMemo(() => {
@@ -1425,10 +1421,13 @@ export function MobileExpandedPlayer({
                           <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] line-clamp-1">{liveMetadata.source}</span>
                         </m.div>
                       )}
-                      <MarqueeText
-                        text={liveMetadata?.title || currentSong.title}
-                        className="text-[28px] leading-none font-black text-white tracking-tight mb-1"
-                      />
+                      <div className="flex items-center gap-2 mb-1 min-w-0">
+                        <MarqueeText
+                          text={liveMetadata?.title || currentSong.title}
+                          className="text-[28px] leading-none font-black text-white tracking-tight"
+                        />
+                        {isSongExplicit(currentSong) && <ExplicitBadge size="md" />}
+                      </div>
                       <div className="w-full text-left mt-1.5">
                         <ArtistLinks
                           artist={liveMetadata?.artist || currentSong.artist}
@@ -1598,7 +1597,10 @@ export function MobileExpandedPlayer({
                               <MusicArtwork src={song.artwork} alt={song.title} iconSize={14} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="truncate font-bold text-white text-[14px] leading-tight">{song.title}</p>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="truncate font-bold text-white text-[14px] leading-tight">{song.title}</p>
+                                {isSongExplicit(song) && <ExplicitBadge size="xs" />}
+                              </div>
                               <button
                                 onClick={(e) => { e.stopPropagation(); onArtistClick?.(song.artist); }}
                                 className="truncate text-[11px] font-bold text-white/30 active:text-white/60 transition-colors mt-0.5 text-left"

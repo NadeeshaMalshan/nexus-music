@@ -68,6 +68,7 @@ export async function GET(request: Request) {
     let thumbnailUrl = directVideoId ? youtubeHqThumbnail(directVideoId) : "";
     let musicVideoId = directVideoId;
     let fallbackVideoId: string | undefined;
+    let resolvedMetadataSource: any = null;
 
     if (isLive && directVideoId) {
       const finalVideoId = directVideoId;
@@ -172,6 +173,7 @@ export async function GET(request: Request) {
 
       // If directVideoId is provided, ONLY trust exactMatch or verified title+artist match. Never pick searchResults[0].
       const metadataSource = exactMatch || titleMatch || (directVideoId ? null : searchResults[0]);
+      resolvedMetadataSource = metadataSource;
 
       if (titleMatch?.youtubeId && titleMatch.youtubeId !== directVideoId) {
         fallbackVideoId = titleMatch.youtubeId.trim();
@@ -221,6 +223,14 @@ export async function GET(request: Request) {
     const finalVideoId = directVideoId || videoId!;
     const thumbnail = upgradeThumbnail(thumbnailUrl, finalVideoId);
 
+    const explicit = Boolean(
+      resolvedMetadataSource?.isExplicit ||
+      resolvedMetadataSource?.explicit ||
+      /\b(explicit|dirty|advisory)\b/i.test(trackName)
+    );
+
+    const album = resolvedMetadataSource?.album || undefined;
+
     const payload = {
       audioUrl: `https://www.youtube.com/watch?v=${finalVideoId}`,
       trackName,
@@ -230,6 +240,8 @@ export async function GET(request: Request) {
       fallbackVideoId: fallbackVideoId || undefined,
       musicVideoId: musicVideoId || finalVideoId,
       source: directVideoId ? "youtube.com" : "music.youtube.com",
+      album,
+      isExplicit: explicit,
     };
 
     return NextResponse.json(payload);

@@ -7,6 +7,7 @@ export type Song = {
   color: string;
   musicVideoId?: string;
   album?: string;
+  isExplicit?: boolean;
   isManual?: boolean;
   isDirectLink?: boolean;
   /** When true, open expanded player and play as YouTube video (not audio-only). */

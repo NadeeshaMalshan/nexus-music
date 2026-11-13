@@ -187,6 +187,26 @@ describe("Overall Match Scoring & Cutoff", () => {
     assert.equal(result.isMatch, false);
     assert.equal(result.score, 0);
   });
+
+  test("heavily penalizes candidate when user requested album does not match candidate album", () => {
+    const result = scoreCanvasMatch(
+      { title: "Cruel Summer", artist: "Taylor Swift", album: "Lover" },
+      { title: "Cruel Summer", artist: "Taylor Swift", album: "Random Compilation Hits 2024" }
+    );
+    // 60 (title) + 30 (artist) - 35 (mismatched album) = 55 (< 75 threshold)
+    assert.equal(result.isMatch, false);
+    assert.ok(result.score < 75);
+  });
+
+  test("heavily penalizes compilation/karaoke candidate unless requested", () => {
+    const result = scoreCanvasMatch(
+      { title: "Save Your Tears", artist: "The Weeknd" },
+      { title: "Save Your Tears", artist: "The Weeknd", album: "Karaoke Party Hits Vol 2" }
+    );
+    // 60 + 30 + 5 - 45 = 50 (< 75 threshold)
+    assert.equal(result.isMatch, false);
+    assert.ok(result.score < 75);
+  });
 });
 
 describe("CuratedCanvasProvider", () => {
@@ -219,6 +239,25 @@ describe("CuratedCanvasProvider", () => {
     const result = await provider.getCanvas({
       title: "Random Indie Track",
       artist: "Unknown Artist",
+    });
+    assert.equal(result, null);
+  });
+
+  test("does NOT substitute another song video from the same album when querying a specific track", async () => {
+    // SOUR has "good 4 u" in curated canvases, but querying "favorite crime" MUST NOT return "good 4 u"
+    const result = await provider.getCanvas({
+      title: "favorite crime",
+      artist: "Olivia Rodrigo",
+      album: "SOUR",
+    });
+    assert.equal(result, null);
+  });
+
+  test("does NOT substitute Espresso for another track on Short n' Sweet", async () => {
+    const result = await provider.getCanvas({
+      title: "Bed Chem",
+      artist: "Sabrina Carpenter",
+      album: "Short n' Sweet",
     });
     assert.equal(result, null);
   });

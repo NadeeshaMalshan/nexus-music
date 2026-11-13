@@ -9,6 +9,8 @@ import { motion, Reorder, AnimatePresence } from "motion/react";
 import { SessionFriendsPanel } from "./SessionFriendsPanel";
 import { MusicArtwork } from "./MusicArtwork";
 import { KaraokeWordLine } from "./KaraokeWordLine";
+import { AppleLyricsDots } from "./AppleLyricsDots";
+import { ExplicitBadge, isSongExplicit } from "./ExplicitBadge";
 
 
 interface RightSidebarProps {
@@ -355,8 +357,9 @@ export function RightSidebar({
                                 </div>
                               </div>
                               <div className="min-w-0 flex-1 pr-2">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
                                   <p className={`line-clamp-1 text-[15px] font-bold tracking-tight leading-tight transition-colors ${isActive ? "text-white" : "text-white/90 group-hover:text-white"}`}>{song.title}</p>
+                                  {isSongExplicit(song) && <ExplicitBadge size="xs" />}
                                   {song.isManual && !isActive && (
                                     <div className="shrink-0 flex items-center justify-center p-0.5 rounded-[4px] border border-white/20" style={isActive ? { backgroundColor: 'var(--art-accent, #FA243C)22', borderColor: 'var(--art-accent, #FA243C)33' } : {}} title="Added to Queue">
                                        <Plus size={8} className="text-white/50" />
@@ -428,19 +431,6 @@ export function RightSidebar({
                       const lineItem = effectiveLines[index];
                       const isInstrumental = hasSynced && lineItem?.isInstrumental;
                       const hasWordSync = Boolean(hasSynced && lineItem?.words && lineItem.words.length > 0);
-
-                      let instProgress = 0;
-                      if (isInstrumental && isActive && lineItem) {
-                        const start = lineItem.at;
-                        const next = effectiveLines[index + 1];
-                        const end = next ? next.at : start + 5;
-                        const dur = end > start ? end - start : 5;
-                        instProgress = Math.max(0, Math.min(1, (currentTimeSec - start) / dur));
-                      }
-
-                      const dot1Op = 0.2 + 0.8 * Math.max(0, Math.min(1, instProgress / 0.33));
-                      const dot2Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.33) / 0.33));
-                      const dot3Op = 0.2 + 0.8 * Math.max(0, Math.min(1, (instProgress - 0.66) / 0.34));
 
                       // 4 Apple Music animation effects:
                       // 1. Active lyric line: Bright white, bold text that stands out clearly
@@ -522,11 +512,14 @@ export function RightSidebar({
                           } ${!isActive && hasSynced ? "hover:opacity-75 hover:filter-none hover:scale-[0.99]" : ""}`}
                         >
                           {isInstrumental ? (
-                            <div className={`flex gap-2 origin-left transition-opacity duration-500 ${isActive ? "opacity-100" : "opacity-30"}`}>
-                                <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot1Op : 0.2 }} />
-                                <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot2Op : 0.2 }} />
-                                <div className="h-2.5 w-2.5 rounded-full bg-white shadow-xl transition-opacity duration-300" style={{ opacity: isActive ? dot3Op : 0.2 }} />
-                             </div>
+                            <AppleLyricsDots
+                              isActive={isActive}
+                              startTime={lineItem?.at ?? 0}
+                              endTime={effectiveLines[index + 1]?.at ?? (lineItem?.at ?? 0) + 5}
+                              currentTimeSec={currentTimeSec}
+                              isPlaying={isPlaying}
+                              sizeVariant="sidebar"
+                            />
                           ) : hasWordSync ? (
                             <KaraokeWordLine
                               words={lineItem?.words}

@@ -276,10 +276,19 @@ export class AppleCanvasProvider implements ICanvasProvider {
           const albumResult = await this.appleGet(albumUrl.toString(), token);
           const albumRecord = obj(arr(albumResult?.data)[0]);
           const albumAttributes = obj(albumRecord?.attributes);
-          url = extractVideoUrl(obj(albumAttributes?.editorialVideo));
-          matchedAlbum = string(albumAttributes?.name) || matchedAlbum;
-          if (!matchedBgColor) {
-            matchedBgColor = string(obj(albumAttributes?.artwork)?.bgColor);
+          const candidateAlbName = string(albumAttributes?.name);
+
+          // If user specified an album, ensure this candidate album matches to prevent unrelated album art
+          const albumMatches = !query.album || isAlbumMatch(query.album, candidateAlbName);
+          const isComp = /(\bdj mix\b|compilation|karaoke|tribute|cover band|tribute band|various artists)/i.test(candidateAlbName);
+          const allowComp = Boolean(query.album && /(\bdj mix\b|compilation|karaoke|tribute)/i.test(query.album));
+
+          if (albumMatches && (!isComp || allowComp)) {
+            url = extractVideoUrl(obj(albumAttributes?.editorialVideo));
+            matchedAlbum = candidateAlbName || matchedAlbum;
+            if (!matchedBgColor) {
+              matchedBgColor = string(obj(albumAttributes?.artwork)?.bgColor);
+            }
           }
         }
       }
@@ -338,7 +347,11 @@ export class AppleCanvasProvider implements ICanvasProvider {
         const albumMatches = isAlbumMatch(albumTarget, gotAlbTitle);
         const artistMatches = isArtistMatch(cleanArtist, gotAlbArtist).isMatch;
 
-        if (albumMatches && artistMatches) {
+        // Reject compilations, karaoke, and tribute albums unless explicitly requested
+        const isComp = /(\bdj mix\b|compilation|karaoke|tribute|cover band|tribute band|various artists|greatest hits)/i.test(gotAlbTitle);
+        const allowComp = /(\bdj mix\b|compilation|karaoke|tribute)/i.test(albumTarget);
+
+        if (albumMatches && artistMatches && (!isComp || allowComp)) {
           const video = extractVideoUrl(obj(aAttr?.editorialVideo));
           if (video) {
             const rawBg = string(obj(aAttr?.artwork)?.bgColor);

@@ -9,6 +9,7 @@ import { SongMenu } from "./SongMenu";
 import { useDashboard } from "@/context/DashboardContext";
 import { parseYouTubeWatchUrl, songFromYouTubeVideoId } from "@/lib/parseYouTubeUrl";
 import { MusicArtwork } from "./MusicArtwork";
+import { ExplicitBadge, isSongExplicit } from "./ExplicitBadge";
 import { JamSession } from "./JamSession";
 import { useSearchSuggestions } from "@/lib/useSearchSuggestions";
 
@@ -647,6 +648,8 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
       isLive: isActuallyLiveStream(item),
       isDirectLink: true,
       preferVideoPlayback: activeCategory === "Videos" || activeCategory === "Live" || (activeCategory === "Top" && (!!item.fromVideosShelf || !!item.fromLiveShelf)) || item.isLive || (item.duration === "LIVE"),
+      album: (item as any).album,
+      isExplicit: isSongExplicit(item),
     };
   });
 
@@ -899,7 +902,10 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                       />
                     </div>
                     <div className="flex flex-col min-w-0 pr-4">
-                      <h3 className="text-2xl md:text-4xl font-black text-white leading-tight tracking-tight mb-2 group-hover:text-white transition-colors">{mappedSongs[0].title}</h3>
+                      <div className="flex items-center gap-2 mb-2 min-w-0">
+                        <h3 className="text-2xl md:text-4xl font-black text-white leading-tight tracking-tight group-hover:text-white transition-colors">{mappedSongs[0].title}</h3>
+                        {mappedSongs[0].isExplicit && <ExplicitBadge size="md" />}
+                      </div>
                       <p className="text-[14px] md:text-[16px] font-black uppercase tracking-widest text-white/40">
                         {mappedSongs[0].type === "ARTIST" ? "Artist" : mappedSongs[0].type === "USER" ? "User" : mappedSongs[0].type === "ALBUM" ? "Album" : mappedSongs[0].type === "PLAYLIST" ? "Playlist" : mappedSongs[0].artist}
                       </p>
@@ -1194,7 +1200,10 @@ const categories = ["Top", "Songs", "Videos", "Live", "Artists", "Albums", "Play
                         />
                       </div>
                       <div className="flex flex-col flex-1 min-w-0 pr-4">
-                        <p className="truncate text-[20px] font-black text-white leading-none mb-2 tracking-tight">{song.title}</p>
+                        <div className="flex items-center gap-2 mb-2 min-w-0">
+                          <p className="truncate text-[20px] font-black text-white leading-none tracking-tight">{song.title}</p>
+                          {song.isExplicit && <ExplicitBadge size="xs" />}
+                        </div>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-2 min-w-0">
                             {song.isLive || song.duration === "LIVE" ? (

@@ -9,6 +9,7 @@ import { m } from "motion/react";
 import { useDashboard } from "@/context/DashboardContext";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 import { SongMenu } from "./SongMenu";
+import { ExplicitBadge, isSongExplicit } from "./ExplicitBadge";
 import { useArtworkColors, getAppleMusicBackground } from "@/lib/useArtworkColors";
 
 import { extractPrimaryArtist } from "@/lib/artistUtils";
@@ -155,6 +156,7 @@ export function AlbumDetail({
         artwork: t.artwork || artworkUrl,
         duration: t.duration || "0:00",
         color: accentColor,
+        isExplicit: isSongExplicit(t),
       }));
       onPlayPlaylist(mappedSongs, index);
     } else {
@@ -166,6 +168,7 @@ export function AlbumDetail({
         artwork: track.artwork || artworkUrl,
         duration: track.duration || "0:00",
         color: accentColor,
+        isExplicit: isSongExplicit(track),
       });
     }
   };
@@ -180,6 +183,7 @@ export function AlbumDetail({
       artwork: t.artwork || artworkUrl,
       duration: t.duration || "0:00",
       color: accentColor,
+      isExplicit: isSongExplicit(t),
     }));
     if (onPlayPlaylist) {
       onPlayPlaylist(mappedSongs, 0);
@@ -200,6 +204,7 @@ export function AlbumDetail({
       artwork: t.artwork || artworkUrl,
       duration: t.duration || "0:00",
       color: accentColor,
+      isExplicit: isSongExplicit(t),
     }));
     if (onPlayPlaylist) {
       onPlayPlaylist(mappedSongs, 0);
@@ -280,14 +285,7 @@ export function AlbumDetail({
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[48px] font-black text-white tracking-tight leading-[1.08] drop-shadow-sm">
                 {albumData.name}
               </h1>
-              {isAlbumExplicit && (
-                <span
-                  className="inline-flex items-center justify-center w-5 h-5 rounded-[4px] bg-white/20 text-white text-[11px] font-black tracking-normal shrink-0 select-none align-middle"
-                  title="Explicit"
-                >
-                  E
-                </span>
-              )}
+              {isAlbumExplicit && <ExplicitBadge size="lg" />}
             </div>
 
             {/* Artist Name */}
@@ -370,6 +368,7 @@ export function AlbumDetail({
             const isActive = track.videoId === currentSongId;
             const isHovered = hoveredTrackIndex === i;
             const isTopTrack = i === 0 || i === 1; // Apple Music bullet for popular tracks
+            const trackIsExplicit = isSongExplicit(track);
             const song: Song = {
               id: track.videoId,
               title: track.title,
@@ -378,6 +377,7 @@ export function AlbumDetail({
               artwork: track.artwork || artworkUrl,
               duration: track.duration || "0:00",
               color: accentColor,
+              isExplicit: trackIsExplicit,
             };
 
             return (
@@ -425,11 +425,7 @@ export function AlbumDetail({
                     >
                       {track.title}
                     </span>
-                    {track.explicit && (
-                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-[3px] bg-white/20 text-white text-[9px] font-bold tracking-normal shrink-0">
-                        E
-                      </span>
-                    )}
+                    {trackIsExplicit && <ExplicitBadge size="sm" />}
                   </div>
 
                   {/* Right Column: Duration & SongMenu Trigger */}

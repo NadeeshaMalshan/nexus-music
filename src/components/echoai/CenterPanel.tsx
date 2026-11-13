@@ -21,6 +21,7 @@ import { PrivacyPolicy } from "./PrivacyPolicy";
 import { TermsOfService } from "./TermsOfService";
 import { AppBrandMark } from "./AppBrandMark";
 import { extractPrimaryArtist } from "@/lib/artistUtils";
+import { ExplicitBadge, isSongExplicit } from "./ExplicitBadge";
 import { useRouter } from "next/navigation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -226,9 +227,12 @@ function ForYouCard(props: {
       </div>
 
       <div className="mt-4 text-left px-1">
-        <h3 className="font-bold text-white text-[17px] tracking-tight line-clamp-2 leading-tight mb-1 h-[42px]">
-          {track.title}
-        </h3>
+        <div className="flex items-center gap-1.5 min-w-0 mb-1">
+          <h3 className="font-bold text-white text-[17px] tracking-tight line-clamp-2 leading-tight">
+            {track.title}
+          </h3>
+          {isSongExplicit(track) && <ExplicitBadge size="xs" />}
+        </div>
         <p
           onClick={(e) => {
             e.stopPropagation();
@@ -303,9 +307,12 @@ function SearchCard(props: {
       </div>
 
       <div className="mt-4 text-left px-1">
-        <h3 className="font-bold text-white text-[17px] tracking-tight line-clamp-2 leading-tight mb-1 h-[42px]">
-          {item.title}
-        </h3>
+        <div className="flex items-center gap-1.5 min-w-0 mb-1">
+          <h3 className="font-bold text-white text-[17px] tracking-tight line-clamp-2 leading-tight">
+            {item.title}
+          </h3>
+          {isSongExplicit(item) && <ExplicitBadge size="xs" />}
+        </div>
         <p className="text-[14px] text-white/40 font-medium truncate">
           {item.author}
         </p>
@@ -852,6 +859,8 @@ export function CenterPanel(props: CenterPanelProps) {
       duration: track.duration || "",
       color: accentColor,
       isDirectLink: true,
+      album: (track as any).album,
+      isExplicit: isSongExplicit(track),
     });
     setForYouPlayingId(null);
   };
@@ -870,6 +879,8 @@ export function CenterPanel(props: CenterPanelProps) {
       isLive,
       preferVideoPlayback: preferVideo,
       isDirectLink: true,
+      album: (item as any).album,
+      isExplicit: isSongExplicit(item),
     });
   }, [accentColor, onSongClick]);
 

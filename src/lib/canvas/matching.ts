@@ -412,27 +412,27 @@ export function scoreCanvasMatch(
   // Artist: up to 30 points
   const artistScore = Math.round(artistResult.score * 30);
 
-  // Album: up to 10 points
+  // Album: up to 15 points
   let albumScore = 0;
   if (wanted.album && candidate.album) {
     if (isAlbumMatch(wanted.album, candidate.album)) {
-      albumScore = 10;
+      albumScore = 15;
     } else {
-      albumScore = -5;
+      albumScore = -35; // Heavy penalty if candidate belongs to a completely different album
     }
   } else {
     albumScore = 5; // Neutral
   }
 
-  // DJ Mix / Compilation penalty if user didn't ask for a mix
+  // DJ Mix / Compilation / Karaoke / Tribute penalty if user didn't ask for it
   let penalty = 0;
   const candLower = `${candidate.title} ${candidate.album || ""}`.toLowerCase();
   const wantedLower = `${wanted.title} ${wanted.album || ""}`.toLowerCase();
   if (
-    /(\bdj mix\b|compilation|karaoke|tribute|cover band|tribute band)/i.test(candLower) &&
+    /(\bdj mix\b|compilation|karaoke|tribute|cover band|tribute band|greatest hits|summer hits|party hits)/i.test(candLower) &&
     !/(\bdj mix\b|compilation|karaoke|tribute)/i.test(wantedLower)
   ) {
-    penalty = -25;
+    penalty = -45;
   }
 
   const totalScore = Math.max(0, titleScore + artistScore + albumScore + penalty);

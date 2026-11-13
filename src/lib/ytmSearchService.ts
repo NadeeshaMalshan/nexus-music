@@ -80,15 +80,36 @@ function mapYTMToMusicVideo(item: any) {
     }
   }
 
+  const rawTitle = item.name || item.title || "Unknown Title";
+  const isExplicit = Boolean(
+    item.isExplicit ||
+    item.explicit ||
+    (Array.isArray(item.badges) &&
+      item.badges.some((b: any) =>
+        b === "BADGE_STYLE_TYPE_EXPLICIT" ||
+        b?.iconType === "MUSIC_EXPLICIT_BADGE" ||
+        b?.metadataBadgeRenderer?.icon?.iconType === "MUSIC_EXPLICIT_BADGE" ||
+        b?.metadataBadgeRenderer?.style === "BADGE_STYLE_TYPE_EXPLICIT"
+      )) ||
+    /\b(explicit|dirty|advisory)\b/i.test(rawTitle)
+  );
+
+  const albumName =
+    typeof item.album === "string"
+      ? item.album
+      : item.album?.name || undefined;
+
   return {
     youtubeId: item.videoId,
-    title: item.name || item.title || "Unknown Title",
+    title: rawTitle,
     artists: [{ name: artistName }], // Plural for backward compat
     artist: artistName,               // Singular for Song type
     duration: formattedDuration,      // String for Song type
     durationObj: { totalSeconds: durationSec, label: formattedDuration }, // Object for legacy routes
     thumbnail: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "",
-    thumbnailUrl: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "" // Backward compat
+    thumbnailUrl: item.thumbnails?.[item.thumbnails.length - 1]?.url || item.thumbnail?.url || item.thumbnail || "", // Backward compat
+    album: albumName,
+    isExplicit,
   };
 }
 

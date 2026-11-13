@@ -21,6 +21,8 @@ type AudioPayload = {
   videoId: string;
   musicVideoId?: string;
   directUrl?: string; // Direct YouTube stream URL
+  album?: string;
+  isExplicit?: boolean;
 };
 
 type LikedLibraryTrackRow = { videoId: string; title: string; artist: string };
@@ -822,25 +824,23 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         audioCacheRef.current[cacheKey] = payload;
         setAudioData(payload);
 
-        // If this was a direct link, sync refined metadata (clean artist/title) back to the song object
-        if (currentSong?.isDirectLink && payload.videoId === currentSong.id) {
-          if (payload.trackName !== currentSong.title || payload.artist !== currentSong.artist) {
-            setCurrentSong((prev) => {
-              if (prev?.id !== payload.videoId) return prev;
-              // Preserve multi-artist strings: if the original has multiple artists
-              // (comma, &, feat., ft.) but the API only returns one, keep the original.
-              const multiArtistRe = /,\s*|\s+&\s+|\s+feat\.\s+|\s+ft\.\s+/i;
-              const prevHasMultiple = multiArtistRe.test(prev.artist);
-              const payloadHasMultiple = payload.artist ? multiArtistRe.test(payload.artist) : false;
-              const keepOriginalArtist = prevHasMultiple && !payloadHasMultiple && payload.artist;
-              return {
-                ...prev,
-                title: payload.trackName || prev.title,
-                artist: keepOriginalArtist ? prev.artist : (payload.artist || prev.artist),
-                artwork: payload.coverArt || prev.artwork,
-              };
-            });
-          }
+        // Sync refined metadata (clean artist/title, album, and explicit badge) back to the song object
+        if (payload.videoId === currentSong?.id) {
+          setCurrentSong((prev) => {
+            if (prev?.id !== payload.videoId) return prev;
+            const multiArtistRe = /,\s*|\s+&\s+|\s+feat\.\s+|\s+ft\.\s+/i;
+            const prevHasMultiple = multiArtistRe.test(prev.artist);
+            const payloadHasMultiple = payload.artist ? multiArtistRe.test(payload.artist) : false;
+            const keepOriginalArtist = prevHasMultiple && !payloadHasMultiple && payload.artist;
+            return {
+              ...prev,
+              title: prev.isDirectLink ? (payload.trackName || prev.title) : prev.title,
+              artist: prev.isDirectLink ? (keepOriginalArtist ? prev.artist : (payload.artist || prev.artist)) : prev.artist,
+              artwork: prev.isDirectLink ? (payload.coverArt || prev.artwork) : prev.artwork,
+              album: prev.album || payload.album,
+              isExplicit: prev.isExplicit ?? payload.isExplicit,
+            };
+          });
         }
       } catch (error) {
         if ((error as Error).name !== "AbortError") {

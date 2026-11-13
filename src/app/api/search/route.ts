@@ -85,6 +85,8 @@ type SearchItem = {
   author: string;
   duration: string;
   thumbnail: string;
+  album?: string;
+  isExplicit?: boolean;
 };
 
 function youtubeHqThumbnail(videoId: string): string {
@@ -129,12 +131,21 @@ function musicVideoToItem(m: {
   let thumb = m.thumbnailUrl?.trim() || youtubeHqThumbnail(id);
   thumb = upgradeYtMusicThumbnail(thumb);
 
+  const rawTitle = m.title?.trim() || "Unknown title";
+  const explicit = Boolean(
+    (m as any).isExplicit ||
+    (m as any).explicit ||
+    /\b(explicit|dirty|advisory)\b/i.test(rawTitle)
+  );
+
   return {
     videoId: id,
-    title: m.title?.trim() || "Unknown title",
+    title: rawTitle,
     author: artist,
     duration: dur,
     thumbnail: thumb,
+    album: (m as any).album,
+    isExplicit: explicit,
   };
 }
 

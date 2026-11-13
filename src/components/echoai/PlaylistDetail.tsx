@@ -9,6 +9,7 @@ import { MusicArtwork } from "./MusicArtwork";
 import { m } from "motion/react";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 import { SongMenu } from "./SongMenu";
+import { ExplicitBadge, isSongExplicit } from "./ExplicitBadge";
 import { useDashboard } from "@/context/DashboardContext";
 import { useSession } from "next-auth/react";
 import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
@@ -229,6 +230,7 @@ export function PlaylistDetail({
         artwork: t.thumbnailUrl,
         duration: t.duration || "0:00",
         color: accentColor,
+        isExplicit: isSongExplicit(t),
       }));
       onPlayPlaylist(mappedSongs, index);
     } else {
@@ -239,6 +241,7 @@ export function PlaylistDetail({
         artwork: track.thumbnailUrl,
         duration: track.duration || "0:00",
         color: accentColor,
+        isExplicit: isSongExplicit(track),
       });
     }
   };
@@ -252,6 +255,7 @@ export function PlaylistDetail({
       artwork: track.thumbnailUrl,
       duration: track.duration || "0:00",
       color: accentColor,
+      isExplicit: isSongExplicit(track),
     }));
     if (onPlayPlaylist) {
       onPlayPlaylist(mappedSongs, 0);
@@ -271,6 +275,7 @@ export function PlaylistDetail({
       artwork: track.thumbnailUrl,
       duration: track.duration || "0:00",
       color: accentColor,
+      isExplicit: isSongExplicit(track),
     }));
     if (onPlayPlaylist) {
       onPlayPlaylist(mappedSongs, 0);
@@ -474,13 +479,16 @@ export function PlaylistDetail({
                       </div>
 
                       <div className="flex flex-col min-w-0">
-                        <span
-                          className={`text-base sm:text-[17px] truncate leading-snug ${
-                            isActive ? "text-white font-bold" : "text-white font-semibold"
-                          }`}
-                        >
-                          {track.title}
-                        </span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className={`text-base sm:text-[17px] truncate leading-snug ${
+                              isActive ? "text-white font-bold" : "text-white font-semibold"
+                            }`}
+                          >
+                            {track.title}
+                          </span>
+                          {isSongExplicit(track) && <ExplicitBadge size="xs" />}
+                        </div>
                         <span
                           onClick={(e) => {
                             e.stopPropagation();

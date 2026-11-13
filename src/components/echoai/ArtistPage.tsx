@@ -25,6 +25,7 @@ import { useSession } from "next-auth/react";
 import { youtubeApiFetchInit } from "@/lib/youtubeClientFetch";
 import { Shelf } from "./CenterPanel";
 import { MusicArtwork } from "./MusicArtwork";
+import { ExplicitBadge, isSongExplicit } from "./ExplicitBadge";
 import { type Song } from "./types";
 import { SwipeableSongRow } from "./SwipeableSongRow";
 
@@ -263,9 +264,11 @@ export function ArtistPage({ artistName, artistId, onBack, onNavigateArtist, onN
     id: t.videoId || t.spotifyId,
     title: t.name,
     artist: data?.name || artistName,
+    album: t.albumName,
     artwork: t.thumbnail || t.albumArt,
     duration: t.duration || fmtMs(t.durationMs),
     color: palette.accent,
+    isExplicit: isSongExplicit({ title: t.name, isExplicit: (t as any).isExplicit, explicit: (t as any).explicit }),
   });
 
   const formatCount = (count: number | string) => {
@@ -738,15 +741,20 @@ export function ArtistPage({ artistName, artistId, onBack, onNavigateArtist, onN
 
                       {/* Track Info */}
                       <div className="flex-1 min-w-0 pr-4">
-                        <p
-                          className={`truncate text-[16px] font-bold leading-tight mb-0.5 ${
-                            currentSong?.id === track.videoId
-                              ? "text-(--art-accent,#FA243C)"
-                              : "text-white"
-                          }`}
-                        >
-                          {track.name}
-                        </p>
+                        <div className="flex items-center gap-1.5 min-w-0 mb-0.5">
+                          <p
+                            className={`truncate text-[16px] font-bold leading-tight ${
+                              currentSong?.id === track.videoId
+                                ? "text-(--art-accent,#FA243C)"
+                                : "text-white"
+                            }`}
+                          >
+                            {track.name}
+                          </p>
+                          {isSongExplicit({ title: track.name, isExplicit: (track as any).isExplicit, explicit: (track as any).explicit }) && (
+                            <ExplicitBadge size="xs" />
+                          )}
+                        </div>
                         <p className="truncate text-[13px] font-medium text-white/40">
                           {track.albumName}
                         </p>

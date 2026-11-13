@@ -161,14 +161,21 @@ export class CuratedCanvasProvider implements ICanvasProvider {
     const cleanArtist = cleanCanvasArtist(query.artist);
     if ((!cleanTitle && !query.album) || !cleanArtist) return null;
 
+    // Check if this is a pure album-level query (e.g. from AlbumDetail page)
+    const isPureAlbumQuery = Boolean(
+      query.album && (!cleanTitle || cleanTitle.toLowerCase() === query.album.toLowerCase())
+    );
+
     for (const item of CURATED_CANVASES) {
       const titleMatch = cleanTitle ? isTitleMatch(cleanTitle, item.title) : { isMatch: false, score: 0 };
       const artistMatch = isArtistMatch(cleanArtist, item.artist);
-      const albumMatch = item.album
-        ? (query.album && isAlbumMatch(query.album, item.album)) || isAlbumMatch(cleanTitle, item.album)
-        : false;
 
-      if ((titleMatch.isMatch || albumMatch) && artistMatch.isMatch) {
+      // If querying for a specific song, title MUST match. Never substitute with another track from the same album!
+      const isCandidateMatch = isPureAlbumQuery
+        ? ((titleMatch.isMatch || (item.album && isAlbumMatch(query.album, item.album))) && artistMatch.isMatch)
+        : (titleMatch.isMatch && artistMatch.isMatch);
+
+      if (isCandidateMatch) {
         return {
           hasCanvas: true,
           animatedCover: {

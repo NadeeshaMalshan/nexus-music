@@ -11,6 +11,7 @@ import { useDashboard } from "@/context/DashboardContext";
 import { useDeviceSync } from "@/context/DeviceSyncContext";
 import { MarqueeText } from "./MarqueeText";
 import { ArtistLinks } from "./ArtistLinks";
+import { ExplicitBadge, isSongExplicit } from "./ExplicitBadge";
 
 interface FloatingPlayerProps {
   onExpand: () => void;
@@ -151,6 +152,7 @@ export function FloatingPlayer({
     artwork: liveMetadata?.artwork || currentSong?.artwork || remoteSong?.artwork || null,
     duration: currentSong?.duration || remoteSong?.duration || "0:00",
     color: currentSong?.color || remoteSong?.color || "#FA243C",
+    isExplicit: isSongExplicit(currentSong) || isSongExplicit(remoteSong),
   };
 
   const fallbackDuration = youtubeTimestampToSeconds(displaySong.duration) ?? 0;
@@ -447,10 +449,13 @@ export function FloatingPlayer({
               {/* Scrolling Song Info */}
               <div className="min-w-[120px] flex-1 overflow-hidden">
                  <div className="flex flex-col justify-center h-full">
-                    <MarqueeText 
-                      text={displaySong.title} 
-                      className="text-[16px] font-black text-white tracking-tighter leading-none mb-1" 
-                    />
+                    <div className="flex items-center gap-1.5 min-w-0 mb-1">
+                      <MarqueeText 
+                        text={displaySong.title} 
+                        className="text-[16px] font-black text-white tracking-tighter leading-none" 
+                      />
+                      {displaySong.isExplicit && <ExplicitBadge size="xs" />}
+                    </div>
                     <div
                       className={`w-full text-left truncate ${
                         !isIdle && onArtistClick

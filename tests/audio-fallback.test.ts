@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { findAlternativeVideoId } from "../src/lib/youtubeDirectAudioUrl";
+import { findAlternativeVideoId, resolveAudioUrlWithFallback } from "../src/lib/youtubeDirectAudioUrl";
 
 describe("Audio Fallback & Alternative Video Resolution", () => {
   it("resolves alternative working video ID when broken video ID is passed for Adele - Rolling in the Deep", async () => {
@@ -23,6 +23,22 @@ describe("Audio Fallback & Alternative Video Resolution", () => {
     const resolvedId = await findAlternativeVideoId("Skyfall", "Adele", "broken_mock_id");
     assert.ok(resolvedId);
     assert.notEqual(resolvedId, "broken_mock_id");
+  });
+
+  it("strictly rejects candidate when artist does not match", async () => {
+    const resolvedId = await findAlternativeVideoId("Rolling in the Deep", "CompletelyUnrelatedArtist999", "x9Qv47HpEqw");
+    assert.strictEqual(resolvedId, null, "Must return null when artist does not match");
+  });
+
+  it("returns null instead of picking arbitrary search results if no title matches", async () => {
+    const resolvedId = await findAlternativeVideoId("ZzzNonExistentSongTitle987654321", "Adele", "broken_id");
+    assert.strictEqual(resolvedId, null, "Must return null for non-matching title, never pick random results");
+  });
+
+  it("resolveAudioUrlWithFallback does not search alternatives when allowFallback is false", async () => {
+    // Non-existent or fake video ID where direct extraction fails
+    const result = await resolveAudioUrlWithFallback("fake_broken_id", false, "Fake Song", "Fake Artist", false);
+    assert.strictEqual(result, null, "Should return null when allowFallback is false and direct URL is unavailable");
   });
 });
 

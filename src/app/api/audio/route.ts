@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchSongsRobust, searchVideosRobust } from "@/lib/ytmSearchService";
-import { isTitleMatch } from "@/lib/lyrics/matchUtils";
+import { isTitleMatch, isArtistMatch } from "@/lib/lyrics/matchUtils";
 import redis from "@/lib/redis";
 
 interface VideoSearchResult {
@@ -63,15 +63,6 @@ export async function GET(request: Request) {
     const isLive = searchParams.get("isLive") === "true";
 
     let videoId: string | undefined = directVideoId;
-    if (directVideoId && redis) {
-      try {
-        const mapped = await redis.get<string>(`resolved_videoid:${directVideoId}`);
-        if (mapped && mapped !== directVideoId) {
-          console.log(`[audio] Using mapped alternative ID for ${directVideoId} -> ${mapped}`);
-          videoId = mapped;
-        }
-      } catch {}
-    }
     let trackName = passedTitle || query || "YouTube Video";
     let artist = passedArtist || "Unknown Artist";
     let thumbnailUrl = directVideoId ? youtubeHqThumbnail(directVideoId) : "";
@@ -165,10 +156,21 @@ export async function GET(request: Request) {
       // Fetch refined metadata from YouTube Music based on the query
       const searchResults = await searchSongsRobust(query || "");
       
-      // Try to find an exact ID match or title match, avoid blindly picking a different song
+      // Try to find an exact ID match or strict title+artist match, avoid blindly picking a different song
       const exactMatch = directVideoId ? searchResults.find((r: any) => r.youtubeId === directVideoId) : null;
       const targetTitle = passedTitle || query || "";
-      const titleMatch = searchResults.find((r: any) => isTitleMatch(targetTitle, r.title));
+      const titleMatch = searchResults.find((r: any) => {
+        if (!isTitleMatch(targetTitle, r.title)) return false;
+        if (passedArtist) {
+          const candArtist =
+            r.artist ||
+            r.artists?.map((a: any) => a.name).filter(Boolean).join(", ");
+          if (candArtist && !isArtistMatch(passedArtist, candArtist)) return false;
+        }
+        return true;
+      });
+
+      // If directVideoId is provided, ONLY trust exactMatch or verified title+artist match. Never pick searchResults[0].
       const metadataSource = exactMatch || titleMatch || (directVideoId ? null : searchResults[0]);
 
       if (titleMatch?.youtubeId && titleMatch.youtubeId !== directVideoId) {
@@ -184,9 +186,15 @@ export async function GET(request: Request) {
         } else if (!passedTitle) {
           trackName = metadataSource.title?.trim() || trackName;
         }
-        artist = metadataSource.artist || 
-                 metadataSource.artists?.map((a: any) => a.name).filter(Boolean).join(", ") || 
-                 "Unknown Artist";
+        
+        if (metadataSource.artist || metadataSource.artists?.length) {
+          const metaArtist =
+            metadataSource.artist ||
+            metadataSource.artists?.map((a: any) => a.name).filter(Boolean).join(", ");
+          if (metaArtist) {
+            artist = metaArtist;
+          }
+        }
         thumbnailUrl = metadataSource.thumbnailUrl || metadataSource.thumbnail || thumbnailUrl;
 
         // Keep music.youtube.com resolution only — use the same YTM song id (no main-YouTube video search).
@@ -210,7 +218,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const finalVideoId = videoId || directVideoId!;
+    const finalVideoId = directVideoId || videoId!;
     const thumbnail = upgradeThumbnail(thumbnailUrl, finalVideoId);
 
     const payload = {

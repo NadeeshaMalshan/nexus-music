@@ -16,24 +16,25 @@ export async function GET(request: Request) {
   const isLive = searchParams.get("isLive") === "true";
   const title = searchParams.get("title")?.trim() || undefined;
   const artist = searchParams.get("artist")?.trim() || undefined;
+  const allowFallback = searchParams.get("fallback") === "true";
 
   if (!videoId || videoId === "undefined" || videoId === "null") {
     return NextResponse.json({ error: "Invalid or missing videoId" }, { status: 400 });
   }
 
-  console.log(`[get-audio-url] Requesting direct URL. videoId: ${videoId}, isLive: ${isLive}, title: "${title || ''}", artist: "${artist || ''}".`);
-  const result = await resolveAudioUrlWithFallback(videoId, isLive, title, artist);
+  console.log(`[get-audio-url] Requesting direct URL. videoId: ${videoId}, isLive: ${isLive}, fallback: ${allowFallback}, title: "${title || ''}", artist: "${artist || ''}".`);
+  const result = await resolveAudioUrlWithFallback(videoId, isLive, title, artist, allowFallback);
 
-  if (!result || !result.url) {
+  if (!result || (!result.url && !result.isAlternative)) {
     return NextResponse.json(
-      { error: "Failed to extract audio URL", details: "Extraction failed" },
-      { status: 500 }
+      { error: "Direct stream not available" },
+      { status: 404 }
     );
   }
 
-  console.log(`[get-audio-url] OK (resolved: ${result.resolvedVideoId}, isAlt: ${result.isAlternative}, len ${result.url.length})`);
+  console.log(`[get-audio-url] OK (resolved: ${result.resolvedVideoId}, isAlt: ${result.isAlternative}, len ${result.url?.length || 0})`);
   return NextResponse.json(
-    { url: result.url, resolvedVideoId: result.resolvedVideoId },
+    { url: result.url || undefined, resolvedVideoId: result.resolvedVideoId, isAlternative: result.isAlternative },
     {
       headers: {
         "Cache-Control": "public, max-age=7200, s-maxage=7200, stale-while-revalidate=600",

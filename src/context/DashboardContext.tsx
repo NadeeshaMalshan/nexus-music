@@ -524,7 +524,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const player = ytPlayerRef.current;
     if (!player || !playerReadyRef.current) return;
 
-    const targetId = audioData?.videoId || currentSong?.id;
+    const targetId = currentSong?.id || audioData?.videoId;
     if (!targetId) return;
 
     if (userIntentRef.current === "playing") {
@@ -958,11 +958,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           const data = await readResponseJson<{ url?: string; resolvedVideoId?: string }>(response);
           if (data?.url) {
             directUrlCacheRef.current[currentSong.id] = data.url;
-            if (data.resolvedVideoId && data.resolvedVideoId !== currentSong.id) {
-              console.log(`[DashboardContext] Updating song to resolved alternative video ID: ${data.resolvedVideoId}`);
-              directUrlCacheRef.current[data.resolvedVideoId] = data.url;
-              setCurrentSong((prev) => (prev && prev.id === currentSong.id ? { ...prev, id: data.resolvedVideoId! } : prev));
-            }
             setDirectAudioUrl(data.url);
           }
         } catch (error) {
@@ -1670,12 +1665,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
                   videoId: song.id,
                   title: song.title || "",
                   artist: song.artist || "",
+                  fallback: "true",
                 });
                 const res = await fetch(`/api/get-audio-url?${params.toString()}`);
                 if (res.ok) {
-                  const data = (await res.json()) as { url?: string; resolvedVideoId?: string };
-                  if (data?.resolvedVideoId && data.resolvedVideoId !== song.id) {
-                    console.log(`[DashboardContext] Recovered from YouTube player error with alternative video ID: ${data.resolvedVideoId}`);
+                  const data = (await res.json()) as { url?: string; resolvedVideoId?: string; isAlternative?: boolean };
+                  if (data?.resolvedVideoId && data.resolvedVideoId !== song.id && data.isAlternative) {
+                    console.log(`[DashboardContext] Recovered from YouTube player error with verified alternative video ID: ${data.resolvedVideoId}`);
                     if (data.url) {
                       directUrlCacheRef.current[data.resolvedVideoId] = data.url;
                       setDirectAudioUrl(data.url);
@@ -1820,7 +1816,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (!ytPlayerRef.current || !isPlayerReady || isUsingNativeAudio) return;
 
     // We prioritize audioData.videoId, but fallback to currentSong.id for instant start
-    const targetId = audioData?.videoId || currentSong?.id;
+    const targetId = currentSong?.id || audioData?.videoId;
     if (!targetId) {
       // If no song is selected, ensure the player stops and clears
       try {
@@ -2343,7 +2339,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const onRateSong = useCallback(async (songId: string, rating: "like" | "none", meta?: { title: string; artist: string }): Promise<{ pendingSync?: boolean }> => {
     if (!session?.user) return {};
 
-    let targetId = (songId === currentSong?.id && audioData?.videoId) ? audioData.videoId : songId;
+    let targetId = songId;
     let finalMeta = meta ?? (rating === "like" && songId === currentSong?.id && currentSong ? { title: currentSong.title, artist: currentSong.artist } : undefined);
 
     // LIVE STREAM HANDLING: If liking during a live stream with metadata, find the actual song ID
@@ -2641,7 +2637,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       // Force YouTube player to reload by clearing last processed ID
       lastProcessedIdRef.current = null;
 
-      const targetId = audioData?.videoId || currentSong?.id;
+      const targetId = currentSong?.id || audioData?.videoId;
       if (targetId && ytPlayerRef.current && playerReadyRef.current) {
         try {
           if (userIntentRef.current === "playing") {
